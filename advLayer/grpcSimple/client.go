@@ -7,11 +7,11 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
-	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -32,11 +32,9 @@ type Config struct {
 	// 不过实际上用不到这一项，因为你只要回落到一个同时支持 h1和 h2的服务器不就ok了。
 }
 
-//implements net.Conn
+// implements net.Conn
 type ClientConn struct {
 	commonPart
-
-	netLayer.EasyDeadline
 
 	client *Client
 
@@ -112,19 +110,25 @@ func (c *ClientConn) Read(b []byte) (n int, err error) {
 
 func (c *ClientConn) Write(b []byte) (n int, err error) {
 
-	buf := commonWrite(b)
-	_, err = c.writer.Write(buf.Bytes())
-	utils.PutBuf(buf)
+	select {
+	case <-c.WriteTimeoutChan():
+		return 0, os.ErrDeadlineExceeded
+	default:
+		buf := commonWrite(b)
+		_, err = c.writer.Write(buf.Bytes())
+		utils.PutBuf(buf)
 
-	if err == io.ErrClosedPipe && c.err != nil {
-		err = c.err
+		if err == io.ErrClosedPipe && c.err != nil {
+			err = c.err
+		}
+		if err != nil {
+			c.client.dealErr(err)
+
+		}
+
+		return len(b), err
 	}
-	if err != nil {
-		c.client.dealErr(err)
 
-	}
-
-	return len(b), err
 }
 
 func (c *ClientConn) Close() error {
@@ -136,7 +140,7 @@ func (c *ClientConn) Close() error {
 	return c.writer.Close()
 }
 
-//implements advLayer.MuxClient
+// implements advLayer.MuxClient
 type Client struct {
 	Creator
 
@@ -217,6 +221,7 @@ func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 		shouldClose: atomic.NewBool(false),
 		client:      c,
 	}
+	conn.InitEasyDeadline()
 
 	go conn.handshakeOnce.Do(conn.handshake) //necessary。 因为 handshake不会立刻退出，所以必须要用 goroutine, 否则会卡住
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -16,7 +17,7 @@ import (
 	"golang.org/x/net/http2"
 )
 
-//implements advLayer.MuxServer
+// implements advLayer.MuxServer
 type Server struct {
 	Creator
 
@@ -279,8 +280,6 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 
 type ServerConn struct {
 	commonPart
-	//timeouter
-	netLayer.EasyDeadline
 
 	io.Closer
 	Writer http.ResponseWriter
@@ -290,7 +289,7 @@ type ServerConn struct {
 	closed    bool
 }
 
-//implements netLayer.RejectConn, 模仿nginx响应，参考httpLayer.Err400response_nginx
+// implements netLayer.RejectConn, 模仿nginx响应，参考httpLayer.Err400response_nginx
 func (sc *ServerConn) Reject() {
 	httpLayer.SetNginx400Response(sc.Writer)
 
@@ -314,8 +313,12 @@ func (sc *ServerConn) Write(b []byte) (n int, err error) {
 
 	if sc.closed {
 		return 0, net.ErrClosed
-	} else {
+	}
 
+	select {
+	case <-sc.WriteTimeoutChan():
+		return 0, os.ErrDeadlineExceeded
+	default:
 		buf := commonWrite(b)
 
 		if sc.closed { //较为谨慎，也许commonWrite 刚调用完, 就 g.closed 了

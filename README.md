@@ -653,7 +653,7 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议。(clash的gun又是借鉴 Qv2ray的gun的）
 
-tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
+tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它; 它有数个bug, 已经都在本作修复）
 
 来自v2ray的代码有：quic的嗅探，geosite文件的解析(v2fly/domain-list-community), vmess的 ShakeSizeParser 和 openAEADHeader 等函数。
 

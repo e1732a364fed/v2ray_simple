@@ -8,12 +8,12 @@ import (
 
 func StrPositive(value string) bool {
 	value = strings.ToLower(value)
-	return value == "1" || value == "on" || value == "true"
+	return value == "1" || value == "t" || value == "on" || value == "true"
 }
 func StrNegative(value string) bool {
 	value = strings.ToLower(value)
 
-	return value == "" || value == "0" || value == "off" || value == "false"
+	return value == "" || value == "0" || value == "f" || value == "off" || value == "false"
 }
 
 func QueryPositive(query url.Values, key string) bool {

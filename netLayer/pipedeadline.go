@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-//implements NetDeadliner. Must call InitEasyDeadline before use.
+// implements NetDeadliner. Must call InitEasyDeadline before use.
 // Can be embed to a struct to make it have SetWriteDeadline, SetReadDeadline and SetDeadline method.
-// And use select and ReadTimeoutChan or WriteTimeoutChan when reading or writing.
+// And MUST use select and ReadTimeoutChan or WriteTimeoutChan when reading or writing.
 type EasyDeadline struct {
 	readDeadline  PipeDeadline
 	writeDeadline PipeDeadline
@@ -43,7 +43,7 @@ func (ed *EasyDeadline) SetDeadline(t time.Time) error {
 }
 
 // PipeDeadline is an abstraction for handling timeouts.
-//copied from golang standard package net
+// copied from golang standard package net
 type PipeDeadline struct {
 	mu     sync.Mutex // Guards timer and cancel
 	timer  *time.Timer

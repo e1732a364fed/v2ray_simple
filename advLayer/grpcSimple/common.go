@@ -9,7 +9,9 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"os"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
@@ -29,13 +31,15 @@ func commonWrite(b []byte) *bytes.Buffer {
 }
 
 type commonPart struct {
+	netLayer.EasyDeadline
+
 	remain int
 	br     *bufio.Reader
 
 	la, ra net.Addr
 }
 
-//implements netLayer.RejectConn, return true
+// implements netLayer.RejectConn, return true
 func (*commonPart) HasOwnDefaultRejectBehavior() bool {
 	return true
 }
@@ -44,6 +48,16 @@ func (c *commonPart) LocalAddr() net.Addr  { return c.la }
 func (c *commonPart) RemoteAddr() net.Addr { return c.ra }
 
 func (c *commonPart) Read(b []byte) (n int, err error) {
+
+	select {
+	case <-c.ReadTimeoutChan():
+		return 0, os.ErrDeadlineExceeded
+	default:
+		return c.read(b)
+	}
+}
+
+func (c *commonPart) read(b []byte) (n int, err error) {
 
 	if c.remain > 0 {
 
