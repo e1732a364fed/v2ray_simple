@@ -147,7 +147,9 @@ Server and Client
 
 在 inServer 中，我们负责监听未知连接；在 outClient 中，我们负责拨号特定目标服务器.
 
-proxy中默认实现了 direct 和 reject 这两种 Client。
+proxy中默认实现了 direct 和 reject 这两种 Client。默认实现了 reject Server
+
+reject作为Client和Server 的作用基本是一致的，就是读取一下用户的请求，查看是否为 http请求，然后根据情况 返回 对应的 http1.1 的 4xx 响应，然后关闭连接。
 
 Comparison
 

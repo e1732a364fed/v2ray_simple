@@ -406,6 +406,7 @@ func mainFunc() (result int) {
 						Addr:        thisConf.GetAddrStrForListenOrDial(),
 						Tag:         thisConf.Tag,
 						UseSniffing: enableSniff,
+						Fullcone:    thisConf.Fullcone,
 					}
 					tm := vs.ListenTproxy(lc, defaultOutClient, routingEnv.RoutePolicy)
 					if tm != nil {

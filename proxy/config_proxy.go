@@ -13,6 +13,7 @@ type LesserConf struct {
 	Addr        string
 	Tag         string
 	UseSniffing bool
+	Fullcone    bool
 }
 
 // CommonConf is the common part of ListenConf and DialConf.
