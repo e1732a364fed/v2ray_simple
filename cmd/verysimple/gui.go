@@ -17,7 +17,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
-	"rsc.io/qr"
 )
 
 var (
@@ -53,18 +52,6 @@ func init() {
 				entriesGroup.Show()
 				multilineEntry.SetText(strings.Join(strs, "\n"))
 			}
-
-			const qrname = "vs_qrcode.png"
-
-			c, err := qr.Encode("https://example.org", qr.L)
-			if err != nil {
-				log.Fatal(err)
-			}
-			pngdat := c.PNG()
-			if true {
-				os.WriteFile(qrname, pngdat, 0666)
-			}
-			utils.OpenFile(qrname)
 
 		}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
+	"rsc.io/qr"
 )
 
 func setMenu() {
@@ -56,6 +57,64 @@ func setMenu() {
 			tryDownloadGeositeSource()
 		})
 
+		filesM.AppendSeparator()
+
+		filesM.AppendItem("从当前配置生成标准toml配置文件的QRCode").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+
+			vc := mainM.DumpVSConf()
+
+			bs, e := utils.GetPurgedTomlBytes(vc)
+			if e != nil {
+				if ce := utils.CanLogErr("转换格式错误"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+
+				return
+			}
+			str := string(bs)
+
+			const qrname = "vs_qrcode.png"
+
+			c, err := qr.Encode(str, qr.L)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pngdat := c.PNG()
+			if true {
+				os.WriteFile(qrname, pngdat, 0666)
+			}
+			utils.OpenFile(qrname)
+		})
+
+		filesM.AppendItem("从当前配置到第一个dial生成对应toml的QRCode").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+
+			vc := mainM.DumpStandardConf()
+			if len(vc.Dial) == 0 {
+				return
+			}
+
+			bs, e := utils.GetPurgedTomlBytes(vc.Dial[0])
+			if e != nil {
+				if ce := utils.CanLogErr("转换格式错误"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+
+				return
+			}
+			str := string(bs)
+
+			const qrname = "vs_qrcode.png"
+
+			c, err := qr.Encode(str, qr.L)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pngdat := c.PNG()
+			if true {
+				os.WriteFile(qrname, pngdat, 0666)
+			}
+			utils.OpenFile(qrname)
+		})
 	}
 
 	var viewM = ui.NewMenu("View")
