@@ -65,9 +65,10 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 	}
 
 	conf := tlsLayer.Conf{
-		Host:         dc.Host,
-		Insecure:     dc.Insecure,
-		Use_uTls:     dc.Utls,
+		Host:     dc.Host,
+		Insecure: dc.Insecure,
+		//Use_uTls:     dc.Utls,
+		Tls_type:     tlsLayer.StrToType(dc.TlsType),
 		AlpnList:     alpnList,
 		CertConf:     certConf,
 		Minver:       getTlsMinVerFromExtra(dc.Extra),
@@ -94,6 +95,8 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 		CertConf: &tlsLayer.CertConf{
 			CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
 		},
+		Tls_type: tlsLayer.StrToType(lc.TlsType),
+
 		Insecure: lc.Insecure,
 		AlpnList: alpnList,
 		Minver:   getTlsMinVerFromExtra(lc.Extra),

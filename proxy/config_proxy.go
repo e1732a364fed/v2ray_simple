@@ -9,21 +9,21 @@ import (
 )
 
 // 用于 tproxy 或 tun/tap 这种 只有 网络层 和传输层的情况
-type LesserConf struct {
-	Addr        string
-	Tag         string
-	UseSniffing bool
-	Fullcone    bool
-}
+// type LesserConf struct {
+// 	Addr        string
+// 	Tag         string
+// 	UseSniffing bool
+// 	Fullcone    bool
+// }
 
 // CommonConf is the common part of ListenConf and DialConf.
 type CommonConf struct {
 	Tag string `toml:"tag"` //可选
 
-	Extra map[string]any `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
+	Extra map[string]any `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据. 而且这也便于扁平化，避免出现大量各种子块。任何子块内容都放在extra中，比如 quic的就是 extra.quic_xxx
 
 	//tls 的最低版本号配置填在这里：
-	//extra = { tls_minVersion = "1.2" }
+	//extra = { tls_minVersion = "1.2" }, 或 extra.tls_minVersion = "1.2"
 
 	/////////////////// 网络层 ///////////////////
 
@@ -47,6 +47,7 @@ type CommonConf struct {
 	/////////////////// tls层 ///////////////////
 
 	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰地标明使用tls
+	TlsType  string   `toml:"tls_type"` //可选，可以为 utls或者shadowTls, 若不给出或为空, 则为golang的标准tls. utls 只在客户端有效。
 	Insecure bool     `toml:"insecure"` //tls 是否安全
 	Alpn     []string `toml:"alpn"`
 
@@ -142,10 +143,7 @@ type DialConf struct {
 	CommonConf
 
 	SendThrough string `toml:"sendThrough"` //可选，用于发送数据的 IP 地址, 可以是ip:port, 或者 tcp:ip:port\nudp:ip:port
-
-	Utls bool `toml:"utls"` //是否使用 uTls 库 替换 go官方tls库
-
-	Mux bool `toml:"use_mux"` //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
+	Mux         bool   `toml:"use_mux"`     //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
 }
 
 type SniffConf struct {

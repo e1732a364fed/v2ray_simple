@@ -230,7 +230,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	clientDial.Protocol = theProtocol
 	clientDial.TLS = true
 	clientDial.Tag = "my_proxy"
-	clientDial.Utls = true
+	//clientDial.Utls = true
 
 	select4 := promptui.Select{
 		Label: "请选择你客户端拨号想使用的高级层(与服务端监听的高级层相同)",

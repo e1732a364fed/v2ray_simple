@@ -11,6 +11,8 @@ import (
 
 type Server struct {
 	tlsConfig *tls.Config
+
+	isShadow bool
 }
 
 // 如 certFile, keyFile 有一项没给出，则会自动生成随机证书
@@ -34,12 +36,18 @@ func NewServer(conf Conf) (*Server, error) {
 
 	s := &Server{
 		tlsConfig: GetTlsConfig(true, conf),
+		isShadow:  conf.Tls_type == shadowTls_t,
 	}
 
 	return s, nil
 }
 
 func (s *Server) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
+	if s.isShadow {
+
+		return
+	}
+
 	rawTlsConn := tls.Server(underlay, s.tlsConfig)
 	err = rawTlsConn.Handshake()
 	if err != nil {

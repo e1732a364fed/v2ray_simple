@@ -243,7 +243,8 @@ func URLToDialConf(u *url.URL, conf *DialConf) error {
 
 	if conf.TLS {
 		conf.Insecure = utils.QueryPositive(q, "insecure")
-		conf.Utls = utils.QueryPositive(q, "utls")
+		//conf.Utls = utils.QueryPositive(q, "utls")
+		conf.TlsType = q.Get("tls_type")
 
 	}
 
@@ -364,8 +365,11 @@ func ToStandardUrl(cc *CommonConf, dc *DialConf, lc *ListenConf) string {
 		if cc.Insecure {
 			q.Add("insecure", "true")
 		}
-		if dc != nil && dc.Utls {
-			q.Add("utls", "true")
+		// if dc != nil && dc.Utls {
+		// 	q.Add("utls", "true")
+		// }
+		if dc.TlsType != "" {
+			q.Add("tls_type", dc.TlsType)
 		}
 		if cc.TLSCert != "" {
 			q.Add("cert", cc.TLSCert)

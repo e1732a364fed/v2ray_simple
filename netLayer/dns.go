@@ -222,7 +222,7 @@ func (dm *DNSMachine) SetDefaultConn(c net.Conn, addr *Addr) {
 	dm.defaultConn.raddr = addr
 }
 
-// 添加一个 特定的DNS服务器 , name为该dns服务器的名称. 若第一次调用, 则会设为 dm.DefaultConn
+// 添加一个 特定的DNS服务器 , name为该dns服务器的名称. 若dm.DefaultConn.Conn为空, 则会设为 dm.DefaultConn
 func (dm *DNSMachine) AddNewServer(name string, addr *Addr) error {
 
 	if dm.defaultConn.Conn == nil { //若未配置过 DefaultConn

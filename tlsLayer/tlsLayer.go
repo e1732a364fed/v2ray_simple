@@ -8,12 +8,33 @@ package tlsLayer
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"strings"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	utls "github.com/refraction-networking/utls"
 	"go.uber.org/zap"
 )
+
+const (
+	tls_t = iota
+	uTls_t
+	shadowTls_t
+)
+
+func StrToType(str string) int {
+	str = strings.ToLower(str)
+	switch str {
+	default:
+		fallthrough
+	case "", "tls", "gotls":
+		return tls_t
+	case "utls":
+		return uTls_t
+	case "shadow", "shadowtls":
+		return shadowTls_t
+	}
+}
 
 type Conf struct {
 	Host     string
@@ -23,7 +44,9 @@ type Conf struct {
 	AlpnList []string
 	CertConf *CertConf
 
-	Use_uTls         bool //only client
+	Tls_type int
+
+	//Use_uTls         bool //only client
 	RejectUnknownSni bool //only server
 	CipherSuites     []uint16
 }

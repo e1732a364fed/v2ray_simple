@@ -16,27 +16,28 @@ import (
 type Client struct {
 	tlsConfig  *tls.Config
 	uTlsConfig utls.Config
-	use_uTls   bool
-	alpnList   []string
+	//use_uTls   bool
+	tlsType  int
+	alpnList []string
 }
 
 func NewClient(conf Conf) *Client {
 
 	c := &Client{
-		use_uTls: conf.Use_uTls,
+		//use_uTls: conf.Use_uTls,
+		tlsType: conf.Tls_type,
 	}
 
 	c.alpnList = conf.AlpnList
 
-	if conf.Use_uTls {
-
+	switch conf.Tls_type {
+	case uTls_t:
 		c.uTlsConfig = GetUTlsConfig(conf)
 
 		if ce := utils.CanLogInfo("Using uTls and Chrome fingerprint for"); ce != nil {
 			ce.Write(zap.String("host", conf.Host))
 		}
-	} else {
-
+	default:
 		c.tlsConfig = GetTlsConfig(false, conf)
 
 	}
@@ -46,7 +47,8 @@ func NewClient(conf Conf) *Client {
 
 func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
-	if c.use_uTls {
+	switch c.tlsType {
+	case uTls_t:
 		configCopy := c.uTlsConfig //发现uTlsConfig竟然没法使用指针，握手一次后配置文件就会被污染，只能拷贝
 		//否则的话接下来的握手客户端会报错： tls: CurvePreferences includes unsupported curve
 
@@ -60,8 +62,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 			ptr:            unsafe.Pointer(utlsConn.Conn),
 			tlsPackageType: utlsPackage,
 		}
-
-	} else {
+	case tls_t:
 		officialConn := tls.Client(underlay, c.tlsConfig)
 		err = officialConn.Handshake()
 		if err != nil {
@@ -73,7 +74,9 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 			ptr:            unsafe.Pointer(officialConn),
 			tlsPackageType: official,
 		}
+	case shadowTls_t:
 
 	}
+
 	return
 }
