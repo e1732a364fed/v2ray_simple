@@ -15,6 +15,8 @@ func SetSockOpt(fd int, sockopt *Sockopt, isudp bool, isipv6 bool) {
 	}
 }
 
+//相关讨论参考 https://github.com/xjasonlyu/tun2socks/pull/192
+
 func bindToDevice(fd int, device string) {
 	iface, err := net.InterfaceByName(device)
 	if err != nil {

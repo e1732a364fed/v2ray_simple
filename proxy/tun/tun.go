@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	name         = "tun"
-	manualPrompt = "Please try run these commands manually(Administrator):"
+	name                        = "tun"
+	manualPrompt                = "Please try run these commands manually(Administrator):"
+	auto_route_bindToDeviceWarn = "tun auto route called, but no direct list given. Don't forget to set sockopt.device (bindToDevice) for your dial config."
 )
 
 var (
@@ -90,11 +91,9 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 				}
 
 				if len(s.autoRouteDirectList) == 0 {
-					utils.Warn("tun auto route set, but no direct list given. auto route will not run.")
-				} else {
-					s.autoRoute = true
-
+					utils.Warn("tun auto route set, but no direct list given. Don't forget to set sockopt.device (bindToDevice) for your dial config.")
 				}
+				s.autoRoute = true
 
 				if thing := lc.Extra["tun_auto_route_manual"]; thing != nil {
 

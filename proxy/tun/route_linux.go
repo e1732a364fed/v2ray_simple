@@ -28,6 +28,10 @@ func init() {
 	//ip route show
 
 	autoRoutePreFunc = func(tunDevName, tunGateway, tunIP string, directList []string) bool {
+		if len(directList) == 0 {
+			utils.Warn(auto_route_bindToDeviceWarn)
+		}
+
 		utils.Info("tun auto setup device for linux...")
 
 		e := utils.ExecCmd("ip tuntap add mode tun dev " + tunDevName)
@@ -73,8 +77,6 @@ func init() {
 			strs = append(strs, "ip route add "+v+" via "+rememberedRouterIP+" dev "+routerName+" metric 10")
 		}
 
-		utils.Info("auto route cmds generated. Don't forget to set bindToDevice for your dial config.")
-
 		if manualRoute {
 			promptManual(strs)
 		} else {
@@ -93,6 +95,7 @@ func init() {
 		}
 
 		var strs = []string{
+			//经测试，tun设备被关闭后，相关路由应该自动就恢复了
 			//"ip route del default",
 			//"ip route add default via " + rememberedRouterIP,
 

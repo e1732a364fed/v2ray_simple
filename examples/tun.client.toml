@@ -89,12 +89,22 @@ utls = true
 ###############################################################
 # 其他
 
-# 一、windows 上自动模式失败后的紧急修复
+# 一、自动模式失败后的紧急修复
 # 如果自动路由发生错误，则可能导致电脑路由出错，连不上网，除了重启解决以外，可以按如下指导进行恢复
+
+# 1. windows
 
 # route delete 在tun_auto_route_direct_list中的ip  (一个一行）
 # route delete 0.0.0.0 mask 0.0.0.0
 # route add 0.0.0.0 mask 0.0.0.0 192.168.1.1 metric 50  (加回原来的网关ip）
+
+# 2. linux
+
+# ip route del 10.0.0.0/15 dev mydev1       (通过 ip route show 来查看该删哪一个)
+# ip route add default via 192.168.1.1 dev eth0 metric 10  (通过ip addr show 找到自己的网卡名称, 替换 eth0）
+
+# ip link set dev tun0 down
+# ip tuntap del mode tun dev tun0
 
 # 二、实现相关
 # 最佳实践应该是通过dial的地址直接自动配置 tun中的直连列表；

@@ -2,7 +2,6 @@ package tun
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strings"
 	"time"
@@ -31,6 +30,10 @@ func init() {
 		wintun 和 默认路由 都存在时, wintun会优先
 	*/
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+
+		if len(directList) == 0 {
+			utils.Warn(auto_route_bindToDeviceWarn)
+		}
 
 		out, err := exec.Command("netstat", "-nr").Output()
 
@@ -121,7 +124,6 @@ func init() {
 		if manualRoute {
 			promptManual(strs)
 		} else {
-			log.Println("running these commands", strs)
 
 			if e := utils.ExecCmdList(strs); e != nil {
 				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {

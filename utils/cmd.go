@@ -18,7 +18,7 @@ func LogRunCmd(name string, arg ...string) (out string, err error) {
 	cmd1.Stdout = &sbO
 
 	if err = cmd1.Run(); err != nil {
-		ZapLogger.Error("run cmd failed", zap.Error(err))
+		ZapLogger.Error("run cmd failed", zap.Error(err), zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
 	}
 	out = sbO.String()
 	ZapLogger.Info("run cmd result", zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
