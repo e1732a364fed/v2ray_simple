@@ -240,18 +240,21 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 	//后来发现，这种方式无法应用于ipv6的情况，因为ipv6必须要给出中括号，
 	// 但是中括号会被url转义, 而我们作为配置字符串，不需要转义
 
-	isUDP := false
 	if !strings.Contains(addrStr, "://") {
 		return Addr{}, errors.New("not a url")
 	}
 
+	network := ""
 	var supported bool
 	var supportedList = []string{
 		"tcp://", "udp://", "tls://", "ip://", "ip6://", "ipv6://",
 	}
+	realindex := 0
 	for _, v := range supportedList {
 		if strings.HasPrefix(addrStr, v) {
+			realindex = len(v)
 			supported = true
+			network = addrStr[:strings.Index(addrStr, "://")]
 			break
 		}
 	}
@@ -260,11 +263,11 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 		return Addr{}, errors.New("unsupported url")
 	}
 
-	addrStr = addrStr[6:]
+	addrStr = addrStr[realindex:]
 
 	lastColonIndex := strings.LastIndex(addrStr, ":")
 	if lastColonIndex == -1 {
-		return Addr{}, errors.New("unsupported url")
+		return Addr{}, errors.New("unsupported url, no colon")
 	}
 	host := addrStr[:lastColonIndex]
 
@@ -277,18 +280,13 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 	if host == "" {
 		host = "127.0.0.1"
 	}
-	a := Addr{Port: port}
+	a := Addr{Port: port, Network: network}
 	if ip := net.ParseIP(host); ip != nil {
 		a.IP = ip
 	} else {
 		a.Name = host
 	}
 
-	if isUDP {
-		a.Network = "udp"
-	} else {
-		a.Network = "tcp"
-	}
 	return a, nil
 }
 
