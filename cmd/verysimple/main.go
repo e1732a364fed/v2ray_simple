@@ -409,7 +409,7 @@ func mainFunc() (result int) {
 						UseSniffing: enableSniff,
 						Fullcone:    thisConf.Fullcone,
 					}
-					tm := vs.ListenTproxy(lc, defaultOutClient, routingEnv.RoutePolicy)
+					tm := vs.ListenTproxy(lc, defaultOutClient, &routingEnv)
 					if tm != nil {
 						tproxyList = append(tproxyList, tm)
 					}

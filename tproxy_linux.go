@@ -11,7 +11,7 @@ import (
 )
 
 //非阻塞。监听透明代理
-func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, routePolicy *netLayer.RoutePolicy) (tm *tproxy.Machine) {
+func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (tm *tproxy.Machine) {
 	utils.Info("Start running Tproxy")
 
 	ad, err := netLayer.NewAddr(lc.Addr)
@@ -19,9 +19,7 @@ func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, rou
 		panic(err)
 	}
 	//因为 tproxy比较特殊, 不属于 proxy.Server, 所以 需要 独立的 转发过程去处理.
-	lis, err := startLoopTCP(ad, lc, defaultOutClientForThis, &proxy.RoutingEnv{
-		RoutePolicy: routePolicy,
-	})
+	lis, err := startLoopTCP(ad, lc, defaultOutClientForThis, env)
 	if err != nil {
 		if ce := utils.CanLogErr("TProxy startLoopTCP failed"); ce != nil {
 			ce.Write(zap.Error(err))
@@ -43,9 +41,7 @@ func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, rou
 	tm = &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn}
 	tm.Init()
 
-	go startLoopUDP(udpConn, tm, lc, defaultOutClientForThis, &proxy.RoutingEnv{
-		RoutePolicy: routePolicy,
-	})
+	go startLoopUDP(udpConn, tm, lc, defaultOutClientForThis, env)
 
 	return
 }
