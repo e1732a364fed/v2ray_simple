@@ -123,10 +123,8 @@ https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
 
 在含有 docker-compose.yaml 的目录下，运行 `docker-compose up -d` 来启动；运行 `docker-compose down` 来关闭。
 
-这个docker-compose 设计时，要求你 宿主机有一个 `/etc/verysimple` 文件夹，里面放 一个 `server.toml` 配置文件。 
+这个docker-compose 设计时，要求你 宿主机有一个 `/etc/verysimple` 文件夹，里面放 一个 `server.toml` 配置文件。 其他mmdb或者 geosite文件夹 如果有需要，也可以放入 /etc/verysimple 中
 
-还要求你宿主机的 `/etc/domain-list-community` 文件夹 为 geosite 文件夹 （内有data文件夹，data文件夹内部有很多文件，文件格式等同于 v2fly/domain-list-community 项目中的 data文件夹 中的 文件 的格式）。
-
-如果你没有这个文件夹或者没有这个文件，则该 docker-compose 肯定运行不了。当然，你可以自行修改 该 `docker-compose.yaml` 文件
+你可以自行修改 该 `docker-compose.yaml` 文件
 
 （我没试过，如果有错误请指正）

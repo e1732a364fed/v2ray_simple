@@ -13,6 +13,10 @@ const (
 	ProjectPath = ProjectName + "/"
 )
 
+var (
+	ExtraSearchPath = "" //若给出，则会优先在此路径里查找
+)
+
 func FileExist(path string) bool {
 	_, err := os.Lstat(path)
 	return !os.IsNotExist(err)
@@ -44,11 +48,12 @@ func IsFilePath(s string) error {
 }
 
 // Function that search the specified file in the following directories:
-//  -1. if starts with '/', or is an empty string, return directly
-//  0. if starts with string similar to "C:/", "D:\\", or "e:/", return directly
-//	1. Same folder with exec file
-//  2. Same folder of the source file, 一种可能 是 用于 go test等情况
-//  3. Same folder of working folder
+//  -1. If starts with '/', or is an empty string, return directly
+//  0. If starts with string similar to "C:/", "D:\\", or "e:/", return directly
+//  1. Search in ExtraSearchPath
+//	2. Same folder with exec file
+//  3. Same folder of the source file, 一种可能 是 用于 go test等情况
+//  4. Same folder of working folder
 func GetFilePath(fileName string) string {
 	if len(fileName) < 1 {
 		return ""
@@ -61,6 +66,13 @@ func GetFilePath(fileName string) string {
 
 	if len(fileName) > 3 && (fb >= 'C' && fb <= 'Z' || fb >= 'c' && fb <= 'z') && fileName[1] == ':' && (fileName[2] == '/' || fileName[2] == '\\') {
 		return fileName
+	}
+
+	if ExtraSearchPath != "" {
+		p := filepath.Join(filepath.Dir(ExtraSearchPath), fileName)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
 	}
 
 	if execFile, err := os.Executable(); err == nil {
