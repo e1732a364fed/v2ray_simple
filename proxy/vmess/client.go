@@ -22,11 +22,12 @@ import (
 )
 
 func init() {
-	//proxy.RegisterClient(Name, NewVmessClient)
+	proxy.RegisterClient(Name, ClientCreator{})
 }
 
-func NewVmessClient(url *url.URL) (*Client, error) {
-	addr := url.Host
+type ClientCreator struct{}
+
+func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	uuidStr := url.User.Username()
 	uuid, err := utils.StrToUUID(uuidStr)
 	if err != nil {
@@ -41,11 +42,47 @@ func NewVmessClient(url *url.URL) (*Client, error) {
 	}
 
 	c := &Client{}
-	c.SetAddrStr(addr)
-	user := utils.V2rayUser(uuid)
-	c.user = user
+	c.user = utils.V2rayUser(uuid)
 
 	c.opt = OptChunkStream
+	if err = c.specifySecurityByStr(security); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+	uuid, err := utils.StrToUUID(dc.Uuid)
+	if err != nil {
+		return nil, err
+	}
+	c := &Client{}
+	c.user = utils.V2rayUser(uuid)
+	c.opt = OptChunkStream
+
+	if len(dc.Extra) > 0 {
+		if thing := dc.Extra["vmess_security"]; thing != nil {
+			if str, ok := thing.(string); ok {
+				if err = c.specifySecurityByStr(str); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
+	return c, nil
+}
+
+// Client is a vmess client
+type Client struct {
+	proxy.Base
+	user     utils.V2rayUser
+	opt      byte
+	security byte
+}
+
+func (c *Client) specifySecurityByStr(security string) error {
 	security = strings.ToLower(security)
 	switch security {
 	case "aes-128-gcm":
@@ -59,24 +96,24 @@ func NewVmessClient(url *url.URL) (*Client, error) {
 		c.opt = OptBasicFormat
 		c.security = SecurityNone
 	default:
-		return nil, errors.New("unknown security type: " + security)
+		return errors.New("unknown security type: " + security)
 	}
-	rand.Seed(time.Now().UnixNano())
-
-	return c, nil
-}
-
-// Client is a vmess client
-type Client struct {
-	proxy.Base
-	user     utils.V2rayUser
-	opt      byte
-	security byte
+	return nil
 }
 
 func (c *Client) Name() string { return Name }
 
-func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (io.ReadWriter, error) {
+func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (io.ReadWriteCloser, error) {
+
+	return c.commonHandshake(underlay, firstPayload, target)
+}
+
+func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
+	return c.commonHandshake(underlay, firstPayload, target)
+
+}
+
+func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (*ClientConn, error) {
 
 	conn := &ClientConn{user: c.user, opt: c.opt, security: c.security}
 	conn.Conn = underlay
@@ -100,7 +137,14 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	}
 
 	// Request
-	err = conn.handshake(CmdTCP)
+	if target.IsUDP() {
+		err = conn.handshake(CmdUDP)
+		conn.theTarget = target
+
+	} else {
+		err = conn.handshake(CmdTCP)
+
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +160,8 @@ type ClientConn struct {
 	opt      byte
 	security byte
 
+	theTarget netLayer.Addr
+
 	atyp byte
 	addr []byte
 	port uint16
@@ -128,6 +174,34 @@ type ClientConn struct {
 
 	dataReader io.Reader
 	dataWriter io.Writer
+}
+
+func (c *ClientConn) CloseConnWithRaddr(_ netLayer.Addr) error {
+	return c.Conn.Close()
+}
+
+//vmess 标准 是不支持 fullcone的，和vless v0相同
+func (c *ClientConn) Fullcone() bool {
+	return false
+}
+
+func (c *ClientConn) ReadMsgFrom() (bs []byte, target netLayer.Addr, err error) {
+	bs = utils.GetPacket()
+	var n int
+	n, err = c.Conn.Read(bs)
+	if err != nil {
+		utils.PutPacket(bs)
+		bs = nil
+		return
+	}
+	bs = bs[:n]
+	target = c.theTarget
+	return
+}
+
+func (c *ClientConn) WriteMsgTo(b []byte, _ netLayer.Addr) error {
+	_, e := c.Write(b)
+	return e
 }
 
 // send auth info: HMAC("md5", UUID, UTC)

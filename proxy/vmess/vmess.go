@@ -3,6 +3,8 @@
 from github.com/Dreamacro/clash/tree/master/transport/vmess/
 
 本作不支持alterid!=0 的情况.
+
+标准:  https://www.v2fly.org/developer/protocols/vmess.html
 */
 package vmess
 
