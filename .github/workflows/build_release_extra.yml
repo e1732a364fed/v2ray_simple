@@ -14,6 +14,9 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.tagName }}
+          
       -
         name: Build vsc(verysimple client)
         uses: crazy-max/ghaction-xgo@v2
