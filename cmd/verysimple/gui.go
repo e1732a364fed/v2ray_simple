@@ -73,8 +73,14 @@ func makeBasicControlsPage() ui.Control {
 	hbox.Append(startBtn, false)
 
 	{
+		isR := mainM.IsRunning()
 
-		toggleCheckbox.SetChecked(mainM.IsRunning())
+		toggleCheckbox.SetChecked(isR)
+		if isR {
+			startBtn.Disable()
+		} else {
+			stopBtn.Disable()
+		}
 
 		mainM.AddToggleCallback(func(i int) {
 			if mainwin == nil {
@@ -366,9 +372,20 @@ func setupUI() {
 			//syscall.Kill(syscall.Getpid(), syscall.SIGINT) //退出app ,syscall.Kill 在windows上不存在
 
 			if p, err := os.FindProcess(os.Getpid()); err != nil {
-
+				if ce := utils.CanLogWarn("Failed call os.FindProcess"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
 			} else {
-				p.Signal(syscall.SIGINT) //不过这个方法在windows上还是不好使
+				p.Signal(syscall.SIGINT) //这个方法在windows上不好使
+			}
+		})
+
+		var vm = ui.NewMenu("View")
+		vm.AppendItem("toggle MultilineEntry view").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+			if entriesGroup.Visible() {
+				entriesGroup.Hide()
+			} else {
+				entriesGroup.Show()
 			}
 		})
 
