@@ -89,7 +89,8 @@ type HeaderPreset struct {
 	Request  *RequestHeader  `toml:"request"`
 	Response *ResponseHeader `toml:"response"`
 
-	Strict bool `toml:"strict"`
+	Strict                              bool `toml:"strict"`
+	NoResponseHeaderWhenGotHttpResponse bool `toml:"no_resp_h_c"` //用于读取 回落到 真实http服务器的情况，此时我们就不用自定义的响应，而是用 真实服务器的响应。no_resp_h_c 意思是 no response header conditional
 }
 
 // 将Header改为首字母大写
@@ -399,9 +400,26 @@ func (c *HeaderConn) Write(p []byte) (n int, err error) {
 	if c.IsServerEnd {
 		if c.notFirstWrite {
 			return c.Conn.Write(p)
+		} else {
+			c.notFirstWrite = true
+
+			var shouldWriteDirectly bool
+
+			if c.H.NoResponseHeaderWhenGotHttpResponse {
+				if len(p) > 5 && string(p[:4]) == "HTTP" {
+					shouldWriteDirectly = true
+				}
+			}
+
+			if shouldWriteDirectly {
+				return c.Conn.Write(p)
+
+			} else {
+				err = c.H.WriteResponse(c.Conn, p)
+
+			}
+
 		}
-		c.notFirstWrite = true
-		err = c.H.WriteResponse(c.Conn, p)
 
 	} else {
 

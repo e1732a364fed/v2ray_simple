@@ -11,6 +11,13 @@ key = "cert.key"
  advancedLayer = "ws"
 path = "/very"
 
+
+# 用于读取 回落到 真实http服务器的情况，此时我们就不用自定义的响应，而是用 真实服务器的响应。
+# no_resp_h_c 意思是 no response header conditional
+
+# header.no_resp_h_c = true 
+
+
 # 下面是 http伪装头的 配置
 # 完全兼容v2ray, 可参考 https://www.v2fly.org/config/transport/tcp.html#httprequestobject
 # 默认值 完全等同于 v2ray 文档中所描述的默认值

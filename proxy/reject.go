@@ -8,17 +8,28 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 const RejectName = "reject"
 
 func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 	switch rejectType {
+	default:
+		if ce := utils.CanLogDebug("reject server got unimplemented rejectType. Use default response instead."); ce != nil {
+
+			ce.Write(
+				zap.String("type", rejectType),
+			)
+		}
+
+		fallthrough
 	case "http":
 		underlay.Write([]byte(httpLayer.Err403response))
 	case "nginx":
 		SetCommonReadTimeout(underlay)
 		bs := utils.GetPacket()
+		defer utils.PutPacket(bs)
 		n, err := underlay.Read(bs)
 
 		if err == nil && n > 0 {
@@ -26,14 +37,22 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 			_, _, _, _, failreason := httpLayer.ParseH1Request(bs, false)
 			if failreason == 0 {
 				underlay.Write([]byte(httpLayer.GetNginx403Response())) //forbiden
+
 			} else {
+
 				underlay.Write([]byte(httpLayer.GetNginx400Response())) //bad request, for non-http (illegal) request
 			}
-		}
+		} else {
+			if ce := utils.CanLogDebug("reject server got Read error"); ce != nil {
 
+				ce.Write(
+					zap.Error(err),
+				)
+			}
+		}
 	}
 
-	underlay.Close()
+	underlay.Close() //实测，如果不Write 响应，就算Close掉，客户端的连接也不会真正被关闭
 }
 
 //implements ClientCreator for reject
