@@ -129,20 +129,11 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 	utils.PutBytes(randBytes)
 	conn.reqRespV = randBytes[32]
 
-	//non-aead
-	//conn.respBodyIV = md5.Sum(conn.reqBodyIV[:])
-	//conn.respBodyKey = md5.Sum(conn.reqBodyKey[:])
-
 	bodyKey := sha256.Sum256(conn.reqBodyKey[:])
 	bodyIV := sha256.Sum256(conn.reqBodyIV[:])
 	copy(conn.respBodyKey[:], bodyKey[:16])
 	copy(conn.respBodyIV[:], bodyIV[:16])
 
-	// Auth
-	//err := conn.non_aead_auth()
-	//if err != nil {
-	//	return nil, err
-	//}
 	var err error
 
 	// Request
@@ -223,11 +214,11 @@ func (c *ClientConn) handshake(cmd byte) error {
 	defer utils.PutBuf(buf)
 
 	// Request
-	buf.WriteByte(1)           // Ver
-	buf.Write(c.reqBodyIV[:])  // IV
-	buf.Write(c.reqBodyKey[:]) // Key
-	buf.WriteByte(c.reqRespV)  // V
-	buf.WriteByte(c.opt)       // Opt
+	buf.WriteByte(1) // Ver
+	buf.Write(c.reqBodyIV[:])
+	buf.Write(c.reqBodyKey[:])
+	buf.WriteByte(c.reqRespV)
+	buf.WriteByte(c.opt)
 
 	// pLen and Sec
 	paddingLen := rand.Intn(16)
@@ -238,13 +229,13 @@ func (c *ClientConn) handshake(cmd byte) error {
 	buf.WriteByte(cmd)
 
 	// target
-	err := binary.Write(buf, binary.BigEndian, c.port) // port
+	err := binary.Write(buf, binary.BigEndian, c.port)
 	if err != nil {
 		return err
 	}
 
-	buf.WriteByte(c.atyp) // atyp
-	buf.Write(c.addr)     // addr
+	buf.WriteByte(c.atyp)
+	buf.Write(c.addr)
 
 	// padding
 	if paddingLen > 0 {
@@ -254,26 +245,12 @@ func (c *ClientConn) handshake(cmd byte) error {
 		utils.PutBytes(padding)
 	}
 
-	// F
 	fnv1a := fnv.New32a()
 	_, err = fnv1a.Write(buf.Bytes())
 	if err != nil {
 		return err
 	}
 	buf.Write(fnv1a.Sum(nil))
-
-	// log.Printf("Request Send %v", buf.Bytes())
-	/*
-		//non-aead procedure
-
-		block, err := aes.NewCipher(GetKey(c.user))
-		if err != nil {
-			return err
-		}
-
-		stream := cipher.NewCFBEncrypter(block, TimestampHash(time.Now().UTC().Unix()))
-		stream.XORKeyStream(buf.Bytes(), buf.Bytes())
-	*/
 
 	var fixedLengthCmdKey [16]byte
 	copy(fixedLengthCmdKey[:], GetKey(c.user))
