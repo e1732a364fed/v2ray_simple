@@ -58,8 +58,6 @@ func makeWriteBuf(bs []byte, addr netLayer.Addr) *bytes.Buffer {
 	buf.WriteByte(byte(addr.Port >> 8))
 	buf.WriteByte(byte(addr.Port << 8 >> 8))
 
-	buf.WriteByte(byte(len(bs) >> 8))
-	buf.WriteByte(byte(len(bs) << 8 >> 8))
 	buf.Write(bs)
 
 	return buf

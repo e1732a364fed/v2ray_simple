@@ -23,6 +23,7 @@ https://github.com/shadowsocks/shadowsocks-org/issues/196
 package shadowsocks
 
 import (
+	"bytes"
 	"errors"
 	"net"
 	"strings"
@@ -58,6 +59,24 @@ func initShadowCipher(info MethodPass) (cipher core.Cipher) {
 	}
 
 	return
+}
+
+func makeWriteBuf(bs []byte, addr netLayer.Addr) *bytes.Buffer {
+	buf := utils.GetBuf()
+
+	abs, atype := addr.AddressBytes()
+
+	atype = netLayer.ATypeToSocks5Standard(atype)
+
+	buf.WriteByte(atype)
+	buf.Write(abs)
+
+	buf.WriteByte(byte(addr.Port >> 8))
+	buf.WriteByte(byte(addr.Port << 8 >> 8))
+
+	buf.Write(bs)
+
+	return buf
 }
 
 // 依照shadowsocks协议的格式读取 地址的域名、ip、port信息 (same as socks5 and trojan)

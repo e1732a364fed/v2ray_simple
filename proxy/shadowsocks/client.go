@@ -80,14 +80,8 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 	buf := utils.GetBuf()
 	defer utils.PutBuf(buf)
-	abs, atype := target.AddressBytes()
-	buf.WriteByte(netLayer.ATypeToSocks5Standard(atype))
-	buf.Write(abs)
-	buf.WriteByte(byte(target.Port >> 8))
-	buf.WriteByte(byte(target.Port << 8 >> 8))
-	if len(firstPayload) > 0 {
-		buf.Write(firstPayload)
-	}
+
+	makeWriteBuf(firstPayload, target)
 	_, err = conn.Write(buf.Bytes())
 
 	return
