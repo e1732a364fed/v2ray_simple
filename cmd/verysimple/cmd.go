@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/e1732a364fed/v2ray_simple/machine"
 	httpProxy "github.com/e1732a364fed/v2ray_simple/proxy/http"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 
@@ -26,12 +27,24 @@ var (
 
 	interactive_mode bool
 	download         bool
+
+	defaultApiServerConf machine.ApiServerConf
 )
 
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
+
+	//apiServer stuff
+
+	flag.BoolVar(&defaultApiServerConf.PlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
+
+	flag.StringVar(&defaultApiServerConf.PathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
+	flag.StringVar(&defaultApiServerConf.AdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
+	flag.StringVar(&defaultApiServerConf.Addr, "sa", "127.0.0.1:48345", "api Server listen address")
+	flag.StringVar(&defaultApiServerConf.CertFile, "scert", "", "api Server tls cert file path")
+	flag.StringVar(&defaultApiServerConf.KeyFile, "skey", "", "api Server tls cert key path")
 
 }
 

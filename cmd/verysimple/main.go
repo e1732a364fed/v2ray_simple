@@ -57,6 +57,7 @@ func init() {
 
 	//有时发现在某些情况下，dns查询或者tcp链接的建立很慢，甚至超过8秒, 所以开放自定义超时时间，便于在不同环境下测试
 	flag.IntVar(&dialTimeoutSecond, "dt", int(netLayer.DialTimeout/time.Second), "dial timeout, in second")
+	flag.BoolVar(&defaultMachine.EnableApiServer, "ea", false, "enable api server")
 
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
@@ -363,7 +364,20 @@ func mainFunc() (result int) {
 	}
 
 	if defaultMachine.EnableApiServer {
-		defaultMachine.TryRunApiServer(appConf)
+
+		defaultMachine.ApiServerConf = defaultApiServerConf
+
+		var thepass string
+
+		if defaultMachine.AdminPass == "" && appConf != nil {
+			if ap := appConf.AdminPass; ap != "" {
+				thepass = ap
+			}
+			defaultMachine.AdminPass = thepass
+
+		}
+
+		defaultMachine.TryRunApiServer()
 
 	}
 

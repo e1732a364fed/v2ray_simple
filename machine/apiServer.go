@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/tls"
-	"flag"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,58 +16,38 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	enableApiServer     bool
-	apiServerPlainHttp  bool
-	apiServerKeyFile    string
-	apiServerCertFile   string
-	apiServerPathPrefix string
-	apiServerAdminPass  string
-	apiServerAddr       string
-)
-
-func init() {
-	flag.BoolVar(&enableApiServer, "ea", false, "enable api server")
-	flag.BoolVar(&apiServerPlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
-
-	flag.StringVar(&apiServerPathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
-	flag.StringVar(&apiServerAdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
-	flag.StringVar(&apiServerAddr, "sa", "127.0.0.1:48345", "api Server listen address")
-	flag.StringVar(&apiServerCertFile, "scert", "", "api Server tls cert file path")
-	flag.StringVar(&apiServerKeyFile, "skey", "", "api Server tls cert key path")
-
-}
-
 /*
 curl -k https://127.0.0.1:48345/api/allstate
 */
 
+type ApiServerConf struct {
+	Enable     bool
+	PlainHttp  bool
+	KeyFile    string
+	CertFile   string
+	PathPrefix string
+	AdminPass  string
+	Addr       string
+}
+
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
-func (m *M) TryRunApiServer(appConf *AppConf) {
-
-	var thepass string
-
-	if appConf != nil {
-		if ap := appConf.AdminPass; ap != "" {
-			thepass = ap
-		}
-	} else if apiServerAdminPass != "" {
-		thepass = apiServerAdminPass
-	}
+func (m *M) TryRunApiServer() {
 
 	m.ApiServerRunning = true
 
-	go m.runApiServer(thepass)
+	go m.runApiServer()
 
 }
 
 const eIllegalParameter = "illegal parameter"
 
 // 阻塞
-func (m *M) runApiServer(adminUUID string) {
+func (m *M) runApiServer() {
 
-	var addrStr = apiServerAddr
-	if apiServerPlainHttp {
+	var adminUUID string = m.AdminPass
+
+	var addrStr = m.Addr
+	if m.PlainHttp {
 		if !strings.HasPrefix(addrStr, "http://") {
 			addrStr = "http://" + addrStr
 
@@ -83,6 +62,7 @@ func (m *M) runApiServer(adminUUID string) {
 	utils.Info("Start Api Server at " + addrStr)
 
 	ser := newApiServer("admin", adminUUID)
+	ser.PathPrefix = m.PathPrefix
 
 	mux := http.NewServeMux()
 
@@ -221,9 +201,9 @@ func (m *M) runApiServer(adminUUID string) {
 
 	tlsConf := &tls.Config{}
 
-	if apiServerPlainHttp {
+	if m.PlainHttp {
 
-	} else if apiServerCertFile == "" || apiServerKeyFile == "" {
+	} else if m.CertFile == "" || m.KeyFile == "" {
 		log.Println("api server will use tls but key or cert file not provided, use random cert instead")
 		tlsConf = &tls.Config{
 			InsecureSkipVerify: true,
@@ -232,7 +212,7 @@ func (m *M) runApiServer(adminUUID string) {
 	}
 
 	srv := &http.Server{
-		Addr:         apiServerAddr,
+		Addr:         m.Addr,
 		Handler:      mux,
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
@@ -240,11 +220,11 @@ func (m *M) runApiServer(adminUUID string) {
 		TLSConfig:    tlsConf,
 	}
 
-	if apiServerPlainHttp {
+	if m.PlainHttp {
 		srv.ListenAndServe()
 
 	} else {
-		srv.ListenAndServeTLS(apiServerCertFile, apiServerKeyFile)
+		srv.ListenAndServeTLS(m.CertFile, m.KeyFile)
 
 	}
 	m.ApiServerRunning = false
@@ -258,6 +238,7 @@ type auth struct {
 type apiServer struct {
 	admin_auth auth
 	nopass     bool
+	PathPrefix string
 }
 
 func newApiServer(user, pass string) *apiServer {
@@ -274,7 +255,7 @@ func newApiServer(user, pass string) *apiServer {
 }
 
 func (ser *apiServer) addServerHandle(mux *http.ServeMux, name string, f func(w http.ResponseWriter, r *http.Request)) {
-	mux.HandleFunc(apiServerPathPrefix+"/"+name, ser.basicAuth(f))
+	mux.HandleFunc(ser.PathPrefix+"/"+name, ser.basicAuth(f))
 }
 
 func (ser *apiServer) basicAuth(realfunc http.HandlerFunc) http.HandlerFunc {

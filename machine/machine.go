@@ -16,6 +16,8 @@ import (
 )
 
 type M struct {
+	ApiServerConf
+
 	ActiveConnectionCount      int32
 	AllDownloadBytesSinceStart uint64
 	AllUploadBytesSinceStart   uint64
