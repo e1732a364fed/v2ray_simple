@@ -3,17 +3,7 @@ package utils
 
 import (
 	"flag"
-	"os"
-	"strings"
-
-	"github.com/BurntSushi/toml"
 )
-
-// 本来可以直接用 fmt.Print, 但是那个Print多了一次到any的装箱，所以如果只
-// 打印一个字符串的话，不妨直接调用 os.Stdout.WriteString(str)。
-func PrintStr(str string) {
-	os.Stdout.WriteString(str)
-}
 
 func IsFlagGiven(name string) bool {
 	found := false
@@ -56,27 +46,6 @@ func GivenFlagKVs() (r map[string]string) {
 	return
 }
 
-// 移除 = "" 和 = false 的项
-func GetPurgedTomlStr(v any) (string, error) {
-	buf := GetBuf()
-	defer PutBuf(buf)
-	if err := toml.NewEncoder(buf).Encode(v); err != nil {
-		return "", err
-	}
-	lines := strings.Split(buf.String(), "\n")
-	var sb strings.Builder
-
-	for _, l := range lines {
-		if !strings.HasSuffix(l, ` = ""`) && !strings.HasSuffix(l, ` = false`) {
-
-			sb.WriteString(l)
-			sb.WriteByte('\n')
-		}
-	}
-	return sb.String(), nil
-
-}
-
 func WrapFuncForPromptUI(f func(string) bool) func(string) error {
 	return func(s string) error {
 		if f(s) {
@@ -84,9 +53,4 @@ func WrapFuncForPromptUI(f func(string) bool) func(string) error {
 		}
 		return ErrInvalidData
 	}
-}
-
-// https://stackoverflow.com/questions/37290693/how-to-remove-redundant-spaces-whitespace-from-a-string-in-golang
-func StandardizeSpaces(s string) string {
-	return strings.Join(strings.Fields(s), " ")
 }
