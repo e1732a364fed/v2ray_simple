@@ -40,6 +40,8 @@ protocol = "socks5" # 必填, 作为本地入口 也可写为 http或者 socks5h
 host = "127.0.0.1"  # 必填, 可填ip或域名；如果 network是unix的话，要填一个文件名(不需要已存在,可以是完整路径).
 port = 10800        # 必填
 
+# 如果ip和host都 没给出，则默认为 127.0.0.1。 所以你的 listen 配置 必须给出正确的ip，比如 0.0.0.0, 否则客户端可能无法访问。
+
 #uuid = "user:xx\npass:yy"   # 可选. 本行 示范了 protocol为 socks5 或者 http时, 当 user为 xx 且 密码为 yy 时所需的配置. 
 
 # user的值的结尾的右侧 和 pass 的左侧 中间用 \n 分隔开。 你也可以使用toml的 多行字符串的语法。但是本示例为了清晰起见，还是明确把linefeed写出来了。 这个顺序不能改, 必须user在前 pass在后, 且都不能为空

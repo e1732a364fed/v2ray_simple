@@ -40,7 +40,12 @@ headers.Pragma = ["no-cache"]
 
 # 我们vs的header验证比v2ray严格，必须所有的header 均匹配才能通过。而v2ray默认只验证path等，不验证header。
 
+
+
 [dial.header.response]
 # 如果使用 ws, 则 Connection头不用给出，因为必须是Upgrade; 你给出也是可以的，但是会被无视。
 #headers.Connection = [  "Upgrade"   ]
 headers.mycustom2 = ["i_agree"]
+
+
+# dial.header.strict = true # 只有在strict开关打开时才会那么严格地检查header，默认是关闭的。
