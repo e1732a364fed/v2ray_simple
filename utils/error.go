@@ -177,3 +177,18 @@ func (e ErrList) String() string {
 func (e ErrList) Error() string {
 	return e.String()
 }
+
+func (e ErrList) Is(target error) bool {
+	for _, ee := range e.List {
+		if ee.E == nil {
+			continue
+		}
+		if ee.E == target {
+			return true
+		} else if errors.Is(ee.E, target) {
+			return true
+		}
+	}
+
+	return false
+}
