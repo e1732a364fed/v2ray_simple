@@ -3,13 +3,16 @@
 cmd:=go build -tags "vsc $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
 
 define compile
-	CGO_ENABLED=1 $(cmd)
+	$(cmd)
 	tar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
-	rm verysimple$(4)
+	rm verysimple*
 endef
 
+
+
+
 all:
-	$(call compile)
+	$(call compile,${THARCH})
 
 clean:
 	rm -f ${prefix}

@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [windows, linux, darwin]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         goarch: [amd64, arm64]
 
+
     env:
-      GOOS: ${{ matrix.goos }}
+      THEOS: ${{ matrix.os }}
       GOARCH: ${{ matrix.goarch }}
-      GOARM: ${{ matrix.goarm }}
       CGO_ENABLED: 1
 
     steps:
@@ -30,8 +30,8 @@ jobs:
       - name: Show workflow information 
         id: get_filename
         run: |
-          export _NAME=$(jq ".[\"$GOOS-$GOARCH$GOARM$GOMIPS\"].friendlyName" -r < .github/build/friendly-filenames.json)
-          echo "GOOS: $GOOS, GOARCH: $GOARCH, GOARM: $GOARM, GOMIPS: $GOMIPS, RELEASE_NAME: $_NAME"
+          export _NAME=vs_gui_${{ matrix.os }}_${{ matrix.goarch }}
+          echo "THEOS: $THEOS, GOARCH: $GOARCH, RELEASE_NAME: $_NAME"
           echo "::set-output name=ASSET_NAME::$_NAME"
           echo "ASSET_NAME=$_NAME" >> $GITHUB_ENV
 
