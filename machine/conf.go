@@ -129,7 +129,6 @@ func (ac *AppConf) Setup() {
 }
 
 func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
-	//var ac *AppConf
 	var vsConf VSConf
 	vsConf, err = LoadVSConfFromBs(bs)
 

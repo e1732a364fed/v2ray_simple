@@ -54,32 +54,32 @@ func (asc *ApiServerConf) SetupFlags(fs *flag.FlagSet) {
 
 }
 
-// 若 acref 里有与默认值不同的项且字符串不为空, 将该项的值赋值给 asc
-func (asc *ApiServerConf) SetUnDefault(acref *ApiServerConf) {
-	defaultAc := NewApiServerConf()
+// 若 ref 里有与默认值不同的项且字符串不为空, 将该项的值赋值给 c
+func (c *ApiServerConf) SetNonDefault(ref *ApiServerConf) {
+	d := NewApiServerConf()
 	var emptyAc ApiServerConf
 
-	if acref.PlainHttp != defaultAc.PlainHttp {
-		asc.PlainHttp = acref.PlainHttp
+	if ref.PlainHttp != d.PlainHttp {
+		c.PlainHttp = ref.PlainHttp
 	}
-	if acref.EnableApiServer != defaultAc.EnableApiServer {
-		asc.EnableApiServer = acref.EnableApiServer
+	if ref.EnableApiServer != d.EnableApiServer {
+		c.EnableApiServer = ref.EnableApiServer
 	}
 
-	if acref.Addr != defaultAc.Addr && acref.Addr != emptyAc.Addr {
-		asc.Addr = acref.Addr
+	if ref.Addr != d.Addr && ref.Addr != emptyAc.Addr {
+		c.Addr = ref.Addr
 	}
-	if acref.AdminPass != defaultAc.AdminPass {
-		asc.AdminPass = acref.AdminPass
+	if ref.AdminPass != d.AdminPass {
+		c.AdminPass = ref.AdminPass
 	}
-	if acref.PathPrefix != defaultAc.PathPrefix && acref.PathPrefix != emptyAc.PathPrefix {
-		asc.PathPrefix = acref.PathPrefix
+	if ref.PathPrefix != d.PathPrefix && ref.PathPrefix != emptyAc.PathPrefix {
+		c.PathPrefix = ref.PathPrefix
 	}
-	if acref.CertFile != defaultAc.CertFile {
-		asc.CertFile = acref.CertFile
+	if ref.CertFile != d.CertFile {
+		c.CertFile = ref.CertFile
 	}
-	if acref.KeyFile != defaultAc.KeyFile {
-		asc.KeyFile = acref.KeyFile
+	if ref.KeyFile != d.KeyFile {
+		c.KeyFile = ref.KeyFile
 	}
 }
 

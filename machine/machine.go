@@ -13,6 +13,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -47,6 +48,8 @@ type M struct {
 	listenCloserList []io.Closer
 
 	callbacks
+
+	ticker *time.Ticker
 }
 
 func New() *M {
@@ -103,6 +106,15 @@ func (m *M) Start() {
 		if dm := m.routingEnv.DnsMachine; dm != nil {
 			dm.StartListen()
 		}
+
+		if m.ticker == nil {
+			m.ticker = time.NewTicker(time.Minute * 5) //每隔五分钟输出一次目前状态
+			go func() {
+				for range m.ticker.C {
+					m.PrintAllState(os.Stdout)
+				}
+			}()
+		}
 		m.Unlock()
 	}
 
@@ -116,8 +128,8 @@ func (m *M) Start() {
 func (m *M) SetupApiConf() {
 	m.ApiServerConf = NewApiServerConf()
 
-	m.ApiServerConf.SetUnDefault(&m.tomlApiServerConf)
-	m.ApiServerConf.SetUnDefault(&m.CmdApiServerConf)
+	m.ApiServerConf.SetNonDefault(&m.tomlApiServerConf)
+	m.ApiServerConf.SetNonDefault(&m.CmdApiServerConf)
 }
 
 // Stop不会停止ApiServer
@@ -140,6 +152,10 @@ func (m *M) Stop() {
 	}
 	if dm := m.routingEnv.DnsMachine; dm != nil {
 		dm.Stop()
+	}
+	if m.ticker != nil {
+		m.ticker.Stop()
+		m.ticker = nil
 	}
 	m.Unlock()
 }
