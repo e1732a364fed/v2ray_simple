@@ -26,7 +26,7 @@ geosite是v2fly社区维护的，非常有用！本作以及任何其它项目�
 geosite数据格式可参考
 https://github.com/v2fly/v2ray-core/blob/master/app/router/routercommon/common.proto
 
-or xray的 app/router/config.proto
+or xray's app/router/config.proto
 然而我们不引用任何v2ray和xray的代码, 也不使用protobuf
 
 我们只能自行读取该项目原始文件，然后生成自己的数据结构
@@ -76,14 +76,16 @@ wget https://github.com/v2fly/domain-list-community/archive/refs/tags/$tag.tar.x
 
 */
 
+const DefaultGeositeFolder = "geosite/data"
+
 var (
 	GeositeListMap = make(map[string]*GeositeList)
-	geositeFolder  = "geosite/data"
+	GeositeFolder  = DefaultGeositeFolder
 )
 
 func HasGeositeFolder() bool {
-	geositeFolder = utils.GetFilePath(geositeFolder)
-	return utils.DirExist(geositeFolder)
+	GeositeFolder = utils.GetFilePath(GeositeFolder)
+	return utils.DirExist(GeositeFolder)
 }
 
 // v2fly经典匹配配置：
@@ -95,7 +97,7 @@ func HasGeositeFolder() bool {
 func IsDomainInsideGeosite(geositeName string, domain string) bool {
 	geositeName = strings.ToUpper(geositeName)
 	glist := GeositeListMap[geositeName]
-	//log.Println("IsDomainInsideGeosite called", geositeName, len(glist))
+
 	if glist == nil {
 		return false
 	}
@@ -148,9 +150,11 @@ func (mdh MapGeositeDomainHaser) HasDomain(d string) bool {
 	return found
 }
 
-// 从 geosite/data 文件夹中读取所有文件并加载到 GeositeListMap 中.
+// 从 GeositeFolder (geosite/data) 文件夹中读取所有文件并加载到 GeositeListMap 中.
 //
 // 该 geosite/data 就是 github.com/v2fly/domain-list-community 项目的 data文件夹.
+//
+// todo: 直接加载tar, 而不是分别加载碎片文件. 实现加载tar后，就可以把geosite内嵌到vs中。
 func LoadGeositeFiles() (err error) {
 
 	if !HasGeositeFolder() {
@@ -158,7 +162,7 @@ func LoadGeositeFiles() (err error) {
 	}
 	ref := make(map[string]*GeositeRawList)
 
-	err = filepath.WalkDir(geositeFolder, func(path string, info fs.DirEntry, err error) error {
+	err = filepath.WalkDir(GeositeFolder, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -190,13 +194,14 @@ func LoadGeositeFiles() (err error) {
 }
 
 // DownloadCommunity_DomainListFiles 从 v2fly/domain-list-community 下载数据文件, 并放到 geosite文件夹中。
-// 如果已存在geosite文件夹，return immediately.
+// 如果已存在geosite文件夹,立即return.
 //
 // 该函数适用于系统中没有git的情况, 如果有git我们直接 git clone就行了,而且还能不断pull进行滚动更新
 func DownloadCommunity_DomainListFiles(proxyurl string) {
 
 	if HasGeositeFolder() {
-		utils.PrintStr("geosite/data folder already exists.\n")
+		utils.PrintStr(GeositeFolder)
+		utils.PrintStr(" folder already exists.\n")
 		return
 	}
 

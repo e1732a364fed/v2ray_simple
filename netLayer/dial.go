@@ -12,6 +12,8 @@ import (
 var (
 	//你可以通过向这个map插入 自定义函数的方式 来拓展 vs的 拨号功能, 可以拨号 其它 net包无法拨号的 network
 	CustomDialerMap = make(map[string]func(address string, timeout time.Duration) (net.Conn, error))
+
+	DialTimeout time.Duration = defaultDialTimeout
 )
 
 const (
@@ -101,7 +103,7 @@ defaultPart:
 		//若tls到达了这里，则说明a的ip没有给出，而只给出了域名，所以上面tcp部分没有直接拨号
 
 		if sockopt == nil && localAddr == nil {
-			resultConn, err = net.DialTimeout("tcp", a.String(), defaultDialTimeout)
+			resultConn, err = net.DialTimeout("tcp", a.String(), DialTimeout)
 
 		} else {
 			newA := *a
@@ -112,7 +114,7 @@ defaultPart:
 	} else {
 		//一般情况下，unix domain socket 会到达这里，其他情况则都被前面代码捕获到了
 		if sockopt == nil {
-			resultConn, err = net.DialTimeout(a.Network, a.String(), defaultDialTimeout)
+			resultConn, err = net.DialTimeout(a.Network, a.String(), DialTimeout)
 		} else {
 			resultConn, err = a.DialWithOpt(sockopt, localAddr)
 		}
@@ -143,7 +145,7 @@ dialedPart:
 func (a Addr) DialWithOpt(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error) {
 
 	dialer := &net.Dialer{
-		Timeout: defaultDialTimeout,
+		Timeout: DialTimeout,
 	}
 	if localAddr != nil {
 		dialer.LocalAddr = localAddr

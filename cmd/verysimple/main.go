@@ -11,6 +11,7 @@ import (
 	"runtime/pprof"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
@@ -31,6 +32,7 @@ var (
 	listenURL          string //用于命令行模式
 	dialURL            string //用于命令行模式
 	//jsonMode       int
+	dialTimeoutSecond int
 
 	allServers = make([]proxy.Server, 0, 8)
 	allClients = make([]proxy.Client, 0, 8)
@@ -55,6 +57,9 @@ func init() {
 
 	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 
+	//有时发现在某些情况下，dns查询或者tcp链接的建立很慢，甚至超过8秒, 所以开放自定义超时时间，便于在不同环境下测试
+	flag.IntVar(&dialTimeoutSecond, "dt", int(netLayer.DialTimeout/time.Second), "dial timeout, in second")
+
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
 	//flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
@@ -72,7 +77,8 @@ func init() {
 
 	flag.StringVar(&utils.LogOutFileName, "lf", defaultLogFile, "output file for log; If empty, no log file will be used.")
 
-	flag.StringVar(&netLayer.GeoipFileName, "geoip", defaultGeoipFn, "geoip maxmind file name")
+	flag.StringVar(&netLayer.GeoipFileName, "geoip", defaultGeoipFn, "geoip maxmind file name (relative or absolute path)")
+	flag.StringVar(&netLayer.GeositeFolder, "geosite", netLayer.DefaultGeositeFolder, "geosite folder name (set it to the relative or absolute path of your geosite/data folder)")
 	flag.StringVar(&utils.ExtraSearchPath, "path", "", "search path for mmdb, geosite and other required files")
 
 }
@@ -134,7 +140,7 @@ func mainFunc() (result int) {
 
 	}
 
-	// config by bool params
+	// config params step
 	{
 		if disableSplice {
 			netLayer.SystemCanSplice = false
@@ -167,6 +173,8 @@ func mainFunc() (result int) {
 		if useNativeUrlFormat {
 			proxy.UrlFormat = proxy.UrlNativeFormat
 		}
+
+		netLayer.DialTimeout = time.Duration(dialTimeoutSecond) * time.Second
 	}
 
 	var configMode int

@@ -55,9 +55,6 @@ func init() {
 type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
-	if format != proxy.StandardMode {
-		return lc, utils.ErrUnImplemented
-	}
 	if lc == nil {
 		return nil, utils.ErrNilParameter
 	}

@@ -21,13 +21,13 @@ var (
 	simpleConf   proxy.SimpleConf
 )
 
-//VS 标准toml文件格式 由 proxy.StandardConf 和 AppConf两部分组成
+// VS 标准toml文件格式 由 proxy.StandardConf 和 AppConf两部分组成
 type VSConf struct {
 	AppConf *AppConf `toml:"app"`
 	proxy.StandardConf
 }
 
-//AppConf 配置App级别的配置
+// AppConf 配置App级别的配置
 type AppConf struct {
 	LogLevel          *int    `toml:"loglevel"` //需要为指针, 否则无法判断0到底是未给出的默认值还是 显式声明的0
 	LogFile           *string `toml:"logfile"`
@@ -39,6 +39,11 @@ type AppConf struct {
 	AdminPass string `toml:"admin_pass"` //用于apiServer等情况
 
 	UDP_timeout *int `toml:"udp_timeout"`
+
+	DialTimeoutSeconds *int `toml:"dial_timeout"`
+
+	GeoipFile     *string `toml:"geoip_file"`
+	GeositeFolder *string `toml:"geosite_folder"`
 }
 
 func setupByAppConf(ac *AppConf) {
@@ -62,6 +67,19 @@ func setupByAppConf(ac *AppConf) {
 			if minutes := *ac.UDP_timeout; minutes > 0 {
 				netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
 			}
+		}
+
+		if ac.DialTimeoutSeconds != nil {
+			if s := *ac.DialTimeoutSeconds; s > 0 {
+				netLayer.DialTimeout = time.Duration(s) * time.Second
+
+			}
+		}
+		if ac.GeoipFile != nil {
+			netLayer.GeoipFileName = *ac.GeoipFile
+		}
+		if ac.GeositeFolder != nil {
+			netLayer.GeositeFolder = *ac.GeositeFolder
 		}
 	}
 }

@@ -1,4 +1,4 @@
-//Package simplesocks implements SimpleSocks protocol for proxy.Server and proxy.Client.
+// Package simplesocks implements SimpleSocks (defined by trojan-go) protocol for proxy.Server and proxy.Client.
 //
 // See https://p4gefau1t.github.io/trojan-go/developer/simplesocks/
 package simplesocks
@@ -28,7 +28,7 @@ var (
 	crlf = []byte{0x0d, 0x0a}
 )
 
-//依照trojan协议的格式读取 地址的域名、ip、port信息
+// 依照trojan协议的格式读取 地址的域名、ip、port信息
 func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	var b1 byte
 
