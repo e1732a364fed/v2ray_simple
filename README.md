@@ -15,6 +15,8 @@
 
 最近在开发vsb计划，即verysimple 面板项目，在 https://github.com/e1732a364fed/vsb , 可以看看。
 
+telegram channel: https://t.me/+r5hKQKYyeuowMTcx
+
 # verysimple
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
