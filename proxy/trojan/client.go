@@ -129,11 +129,17 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 		return underlay, nil
 	} else {
 		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
-		return &UserTCPConn{
+		uc := &UserTCPConn{
 			Conn:            underlay,
 			User:            c.User,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
-		}, nil
+		}
+
+		if mw, ok := underlay.(utils.MultiWriter); ok {
+			uc.mw = mw
+		}
+
+		return uc, nil
 	}
 
 }

@@ -20,6 +20,8 @@ type UserTCPConn struct {
 	underlayIsBasic bool
 
 	isServerEnd bool
+
+	mw utils.MultiWriter
 }
 
 func (c *UserTCPConn) Upstream() net.Conn {
@@ -110,8 +112,8 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 		if c.underlayIsBasic {
 			return utils.BuffersWriteTo(buffers, c.Conn)
 
-		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
-			return mr.WriteBuffers(buffers)
+		} else if c.mw != nil {
+			return c.mw.WriteBuffers(buffers)
 		}
 	}
 

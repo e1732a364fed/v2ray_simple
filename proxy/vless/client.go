@@ -163,6 +163,9 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 				uc.br = underlay.(utils.BuffersReader)
 			}
 		}
+		if mw, ok := underlay.(utils.MultiWriter); ok {
+			uc.mw = mw
+		}
 
 		return uc, nil
 	} else {

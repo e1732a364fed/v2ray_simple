@@ -306,6 +306,9 @@ realPart:
 				uc.br = underlay.(utils.BuffersReader)
 			}
 		}
+		if mw, ok := underlay.(utils.MultiWriter); ok {
+			uc.mw = mw
+		}
 		return uc, nil, targetAddr, nil
 
 	}

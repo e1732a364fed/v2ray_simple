@@ -85,6 +85,8 @@ func (c *FakeAppDataConn) Upstream() any {
 
 func (c *FakeAppDataConn) WriteBuffers(bss [][]byte) (int64, error) {
 	// 在server端，从direct用readv读到的数据可以用 WriteBuffers写回，可以加速
+	//不过虽然如此, 一般情况下是不会发生的，除非 你裸奔使用vless/trojan,
+	//不然就是用vmess/ss，除非 vmess/ss实现 WriteBuffers, 否则这里不会被调用到
 
 	allLen := utils.BuffersLen(bss)
 	err := WriteAppDataHeader(c.Conn, allLen)

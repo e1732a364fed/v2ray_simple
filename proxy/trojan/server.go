@@ -242,14 +242,20 @@ realPart:
 	} else {
 		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
 
-		return &UserTCPConn{
+		uc := &UserTCPConn{
 			Conn:              underlay,
 			User:              theUser.(User),
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),
 			isServerEnd:       true,
-		}, nil, targetAddr, nil
+		}
+
+		if mw, ok := underlay.(utils.MultiWriter); ok {
+			uc.mw = mw
+		}
+
+		return uc, nil, targetAddr, nil
 
 	}
 }

@@ -144,13 +144,14 @@ func RecoverBuffers(bs [][]byte, oldLen, old_sub_len int) [][]byte {
 	return bs
 }
 
-func BuffersWriteTo(bs [][]byte, writer io.Writer) (num int64, err2 error) {
+// 按顺序将bs内容写入writer
+func BuffersWriteTo(bs [][]byte, writer io.Writer) (num int64, err error) {
 	for _, b := range bs {
-		nb, err := writer.Write(b)
+		nb, e := writer.Write(b)
 		num += int64(nb)
-		if err != nil {
+		if e != nil {
 
-			err2 = err
+			err = e
 			break
 		}
 	}

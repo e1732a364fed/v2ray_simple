@@ -32,6 +32,7 @@ type UserTCPConn struct {
 
 	readvType int
 	br        utils.BuffersReader
+	mw        utils.MultiWriter
 }
 
 func (u *UserTCPConn) GetProtocolVersion() int {
@@ -127,9 +128,9 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 			return utils.BuffersWriteTo(buffers, c.Conn)
 
-		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
+		} else if c.mw != nil {
 
-			return mr.WriteBuffers(buffers)
+			return c.mw.WriteBuffers(buffers)
 		}
 	}
 	//发现用tls时，下面的 MergeBuffers然后一起写入的方式，能提供巨大的性能提升
