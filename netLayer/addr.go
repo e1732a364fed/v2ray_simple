@@ -444,6 +444,19 @@ func (a *Addr) UrlString() string {
 
 }
 
+// 返回以url表示的 地址.不转义
+func (a *Addr) RawUrlString() string {
+	if a.Network != "" {
+
+		return a.Network + "://" + a.String()
+
+	} else {
+		return "tcp://" + a.String()
+
+	}
+
+}
+
 func (a *Addr) IsEmpty() bool {
 	return a.Name == "" && len(a.IP) == 0 && a.Network == "" && a.Port == 0
 }

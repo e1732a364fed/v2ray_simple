@@ -28,13 +28,13 @@ func StrToType(str string) int {
 	switch str {
 	default:
 		fallthrough
-	case "", "tls", "gotls":
+	case "", "go", "tls", "gotls":
 		return Tls_t
 	case "utls":
 		return UTls_t
-	case "shadow", "shadowtls", "shadowtls1", "shadowtlsv1", "shadowtls_v1":
+	case "shadow", "shadowtls", "shadowtls1", "shadowtlsv1", "shadowtls_v1", "shadowtls v1":
 		return ShadowTls_t
-	case "shadow2", "shadowtls2", "shadowtlsv2", "shadowtls_v2":
+	case "shadow2", "shadowtls2", "shadowtlsv2", "shadowtls_v2", "shadowtls v2":
 		return ShadowTls2_t
 	}
 }

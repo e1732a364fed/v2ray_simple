@@ -40,6 +40,9 @@ var (
 var (
 	fallback_h2c_transport = &http2.Transport{
 		DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+			// if ce := utils.CanLogDebug("fallback_h2c_transport, got dial"); ce != nil {
+			// 	ce.Write(zap.String("a", n))
+			// }
 			return net.Dial(n, a)
 		},
 		AllowHTTP: true,
@@ -668,6 +671,16 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				if fbResult == 0 {
 					transport = fallback_h2c_transport
 
+					if targetAddr.Network == "unix" {
+						transport = &http2.Transport{
+							DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+
+								return net.Dial("unix", targetAddr.String())
+							},
+							AllowHTTP: true,
+						}
+					}
+
 				} else if fbResult > 0 {
 					var wlcRaddrStr string
 
@@ -711,7 +724,10 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 				if err != nil {
 					if ce := iics.CanLogErr("Failed in fallback h2 RoundTrip"); ce != nil {
-						ce.Write(zap.Error(err), zap.String("url", urlStr))
+						ce.Write(
+							zap.Error(err), zap.String("url", urlStr),
+							zap.String("real addr", targetAddr.UrlString()),
+						)
 					}
 
 					return

@@ -77,6 +77,10 @@ func CopyTls12Handshake(isSrcClient bool, dst, src net.Conn) error {
 		}
 
 		step += 1
+		if step > 6 {
+			return errors.New("shit, shadowTls copy loop > 6, maybe under attack")
+
+		}
 	}
 	return nil
 }
