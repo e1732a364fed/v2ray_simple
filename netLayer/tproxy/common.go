@@ -136,12 +136,17 @@ type Machine struct {
 	sync.RWMutex  //避免存储 与 移除  产生多线程冲突
 
 	iptablePort int
+	closed      bool
 }
 
 func NewMachine() *Machine {
 	return &Machine{
 		udpMsgConnMap: make(map[netLayer.HashableAddr]*MsgConn),
 	}
+}
+
+func (m *Machine) Closed() bool {
+	return m.closed
 }
 
 func (m *Machine) Init() {
@@ -157,11 +162,12 @@ func (m *Machine) SetIPTable(port int) {
 }
 
 func (m *Machine) Stop() {
+	m.closed = true
 	if m.Listener != nil {
 		log.Println("closing tproxy listener")
 		//后来发现，不知为何，这个 Close调用会卡住
 
-		ch := make(chan int)
+		ch := make(chan struct{})
 		go func() {
 			m.Listener.Close()
 			close(ch)

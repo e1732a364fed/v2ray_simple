@@ -8,13 +8,11 @@ insecure = true
 cert = "cert.pem"
 key = "cert.key"
 advancedLayer = "grpc"
-path = "ohmygod_verysimple_is_very_simple"  #正常来说不宜前面再加斜杠,不过加了斜杠也能用(两端都加的情况下), 因为只是个字符串, 所以无所谓
+path = "ohmygod_verysimple_is_very_simple"  #前面加斜杠了话, 程序会自动把斜杠移除
 
-# 这个path填的就是 v2ray中的 "service name", 
+# 这个path填的就是 v2ray中的 "service name", 因为 service name 在技术实现上就是url的path的一部分而已.
 
-# service name 在技术实现上就是url的一部分而已. 只是因为 谷歌的grpc包要求传递的是不加斜杠的名称，然后它会自己加上这个斜杠； 我们虽然默认用的是vs的grpcSimple包，也依然遵循这个惯例。
-
-# 如需使用 Nginx、Caddy 等软件进行分流，设置的分流路径应为 /${path}/Tun
+# 如需使用 Nginx、Caddy 等软件进行分流，其设置的分流路径应为 /${path}/Tun
 #   比如当前示例的情况下，Nginx的配置就是 /ohmygod_verysimple_is_very_simple/Tun
 
 [[dial]]

@@ -77,27 +77,33 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		if tcp {
 			chantcp = make(chan proxy.IncomeTCPInfo)
-			for tcpInfo := range chantcp {
-				go passToOutClient(incomingInserverConnState{
-					inTag:         inServer.GetTag(),
-					useSniffing:   inServer.Sniffing(),
-					wrappedConn:   tcpInfo.Conn,
-					defaultClient: defaultOutClient,
-					routingEnv:    env,
-				}, false, tcpInfo.Conn, nil, tcpInfo.Target)
-			}
+			go func() {
+				for tcpInfo := range chantcp {
+					go passToOutClient(incomingInserverConnState{
+						inTag:         inServer.GetTag(),
+						useSniffing:   inServer.Sniffing(),
+						wrappedConn:   tcpInfo.Conn,
+						defaultClient: defaultOutClient,
+						routingEnv:    env,
+					}, false, tcpInfo.Conn, nil, tcpInfo.Target)
+				}
+			}()
+
 		}
 		if udp {
 			chanudp = make(chan proxy.IncomeUDPInfo)
 
-			for tcpInfo := range chanudp {
-				go passToOutClient(incomingInserverConnState{
-					inTag:         inServer.GetTag(),
-					useSniffing:   inServer.Sniffing(),
-					defaultClient: defaultOutClient,
-					routingEnv:    env,
-				}, false, nil, tcpInfo.MsgConn, tcpInfo.Target)
-			}
+			go func() {
+				for udpInfo := range chanudp {
+					go passToOutClient(incomingInserverConnState{
+						inTag:         inServer.GetTag(),
+						useSniffing:   inServer.Sniffing(),
+						defaultClient: defaultOutClient,
+						routingEnv:    env,
+					}, false, nil, udpInfo.MsgConn, udpInfo.Target)
+				}
+			}()
+
 		}
 		closer = inServer.(proxy.ListenerServer).StartListen(chantcp, chanudp)
 		return

@@ -45,6 +45,11 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 func (ServerCreator) AfterCommonConfServer(ps proxy.Server) (err error) {
 	s := ps.(*Server)
+	if s.Sockopt != nil {
+		s.Sockopt.TProxy = true
+	} else {
+		s.Sockopt = &netLayer.Sockopt{TProxy: true}
+	}
 	if s.shouldSetIPTable {
 		err = tproxy.SetIPTablesByPort(s.ListenConf.Port)
 	}
@@ -69,8 +74,21 @@ func NewServer() (proxy.Server, error) {
 }
 func (*Server) Name() string { return name }
 
-func (*Server) SelfListen() (is, tcp, udp bool) {
-	return true, true, true
+func (s *Server) SelfListen() (is, tcp, udp bool) {
+	switch n := s.Network(); n {
+	case "", netLayer.DualNetworkName:
+		tcp = true
+		udp = true
+
+	case "tcp":
+		tcp = true
+	case "udp":
+		udp = true
+	}
+
+	is = tcp || udp
+
+	return
 }
 
 func (s *Server) Close() error {
@@ -80,6 +98,8 @@ func (s *Server) Close() error {
 
 func (s *Server) Stop() {
 	s.Once.Do(func() {
+		s.tm.Stop()
+
 		if s.infoChan != nil {
 			close(s.infoChan)
 		}
@@ -87,74 +107,93 @@ func (s *Server) Stop() {
 			close(s.udpInfoChan)
 		}
 
-		s.tm.Close()
 	})
 
 }
 
 func (s *Server) StartListen(infoChan chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- proxy.IncomeUDPInfo) io.Closer {
-	s.infoChan = infoChan
-	s.udpInfoChan = udpInfoChan
 
-	lis, err := netLayer.ListenAndAccept("tcp", s.Addr, &netLayer.Sockopt{TProxy: true}, 0, func(conn net.Conn) {
-		tcpconn := conn.(*net.TCPConn)
-		targetAddr := tproxy.HandshakeTCP(tcpconn)
+	tm := new(tproxy.Machine)
 
-		info := proxy.IncomeTCPInfo{
-			Conn:   tcpconn,
-			Target: targetAddr,
-		}
+	_, lt, lu := s.SelfListen()
 
-		if ce := utils.CanLogInfo("TProxy loop read got new tcp"); ce != nil {
-			ce.Write(zap.String("->", targetAddr.String()))
-		}
-		infoChan <- info
-	})
-	if err != nil {
-		if ce := utils.CanLogErr("TProxy listen tcp failed"); ce != nil {
-			ce.Write(zap.Error(err))
-		}
-	}
+	if lt {
+		s.infoChan = infoChan
 
-	ad, err := netLayer.NewAddr(s.Addr)
-	if err != nil {
-		if ce := utils.CanLogErr("TProxy convert listen addr failed"); ce != nil {
-			ce.Write(zap.Error(err))
-		}
-	}
+		lis, err := netLayer.ListenAndAccept("tcp", s.Addr, s.Sockopt, 0, func(conn net.Conn) {
+			tcpconn := conn.(*net.TCPConn)
+			targetAddr := tproxy.HandshakeTCP(tcpconn)
 
-	uconn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
-	if err != nil {
-		if ce := utils.CanLogErr("TProxy listen udp failed"); ce != nil {
-			ce.Write(zap.Error(err))
-		}
-		return nil
-	}
-
-	udpConn := uconn.(*net.UDPConn)
-
-	tm := &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn}
-	tm.Init()
-
-	go func() {
-		for {
-			msgConn, raddr, err := tm.HandshakeUDP(udpConn)
-			if err != nil {
-				if ce := utils.CanLogErr("TProxy startLoopUDP loop read failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				break
-			} else {
-				if ce := utils.CanLogInfo("TProxy loop read got new udp"); ce != nil {
-					ce.Write(zap.String("->", raddr.String()))
-				}
+			info := proxy.IncomeTCPInfo{
+				Conn:   tcpconn,
+				Target: targetAddr,
 			}
-			msgConn.SetFullcone(s.IsFullcone)
 
-			udpInfoChan <- proxy.IncomeUDPInfo{MsgConn: msgConn, Target: raddr}
-
+			if ce := utils.CanLogInfo("TProxy loop read got new tcp"); ce != nil {
+				ce.Write(zap.String("->", targetAddr.String()))
+			}
+			if tm.Closed() {
+				return
+			}
+			infoChan <- info
+		})
+		if err != nil {
+			if ce := utils.CanLogErr("TProxy listen tcp failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
 		}
-	}()
+		tm.Listener = lis
+
+	}
+
+	if lu {
+		s.udpInfoChan = udpInfoChan
+
+		ad, err := netLayer.NewAddr(s.Addr)
+		if err != nil {
+			if ce := utils.CanLogErr("TProxy convert listen addr failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+		}
+
+		uconn, err := ad.ListenUDP_withOpt(s.Sockopt)
+		if err != nil {
+			if ce := utils.CanLogErr("TProxy listen udp failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return nil
+		}
+
+		udpConn := uconn.(*net.UDPConn)
+		tm.Addr = ad
+		tm.UDPConn = udpConn
+
+		go func() {
+			for {
+				msgConn, raddr, err := tm.HandshakeUDP(udpConn)
+				if err != nil {
+					if ce := utils.CanLogErr("TProxy startLoopUDP loop read failed"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+					break
+				} else {
+					if ce := utils.CanLogInfo("TProxy loop read got new udp"); ce != nil {
+						ce.Write(zap.String("->", raddr.String()))
+					}
+				}
+				msgConn.SetFullcone(s.IsFullcone)
+				if tm.Closed() {
+					return
+				}
+
+				udpInfoChan <- proxy.IncomeUDPInfo{MsgConn: msgConn, Target: raddr}
+
+			}
+		}()
+
+	}
+
+	tm.Init()
 	s.tm = tm
 
 	return s
