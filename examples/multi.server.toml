@@ -7,7 +7,7 @@ default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # 这个除了作为默�
 [[listen]]
 tag = "my_vlesss1"
 protocol = "vlesss"
-host = "0.0.0.0"
+ip = "0.0.0.0"
 version = -1    # 支持所有vless版本
 port = 4433
 insecure = true
@@ -16,6 +16,7 @@ cert = "cert.pem"
 key = "cert.key"
 users = [ {user = "a684455c-b14f-11ea-bf0d-42010aaa0004"} , {user = "a684455c-b14f-11ea-bf0d-42010aaa0005"} ]
 
+# extra.tls_rejectUnknownSni = true # 这个开启了的话，防御效果更佳, 不过, 这要求你有真实证书
 
 [[listen]]
 tag = "my_ws1"

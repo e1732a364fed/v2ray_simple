@@ -13,6 +13,8 @@ type Server struct {
 	tlsConfig *tls.Config
 
 	tlstype int
+
+	shadowpass string
 }
 
 // 如 certFile, keyFile 有一项没给出，则会自动生成随机证书
@@ -39,13 +41,22 @@ func NewServer(conf Conf) (*Server, error) {
 		tlstype:   conf.Tls_type,
 	}
 
+	if conf.Tls_type == ShadowTls2_t {
+		s.shadowpass = getShadowTlsPasswordFromExtra(conf.Extra)
+
+	}
+
 	return s, nil
 }
 
 func (s *Server) Handshake(clientConn net.Conn) (tlsConn *Conn, err error) {
-	if s.tlstype == shadowTls_t {
 
+	switch s.tlstype {
+	case ShadowTls_t:
 		return shadowTls1(s.tlsConfig.ServerName, clientConn)
+	case ShadowTls2_t:
+		return shadowTls2(s.tlsConfig.ServerName, clientConn, s.shadowpass)
+
 	}
 
 	rawTlsConn := tls.Server(clientConn, s.tlsConfig)

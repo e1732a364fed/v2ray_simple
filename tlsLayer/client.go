@@ -5,6 +5,7 @@ import (
 	"net"
 	"unsafe"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	utls "github.com/refraction-networking/utls"
 	"go.uber.org/zap"
@@ -16,28 +17,29 @@ import (
 type Client struct {
 	tlsConfig  *tls.Config
 	uTlsConfig utls.Config
-	//use_uTls   bool
-	tlsType  int
-	alpnList []string
+	tlsType    int
+	alpnList   []string
+
+	shadowTlsPassword string
 }
 
 func NewClient(conf Conf) *Client {
 
 	c := &Client{
-		//use_uTls: conf.Use_uTls,
 		tlsType: conf.Tls_type,
 	}
 
 	c.alpnList = conf.AlpnList
 
 	switch conf.Tls_type {
-	case shadowTls2_t:
+	case ShadowTls2_t:
 		fallthrough
-	case shadowTls_t:
+	case ShadowTls_t:
 		//fallthrough
 		c.tlsConfig = GetTlsConfig(false, conf)
+		c.shadowTlsPassword = getShadowTlsPasswordFromExtra(conf.Extra)
 		fallthrough
-	case uTls_t:
+	case UTls_t:
 		c.uTlsConfig = GetUTlsConfig(conf)
 
 		if ce := utils.CanLogInfo("Using uTls and Chrome fingerprint for"); ce != nil {
@@ -54,7 +56,7 @@ func NewClient(conf Conf) *Client {
 func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
 	switch c.tlsType {
-	case uTls_t:
+	case UTls_t:
 		configCopy := c.uTlsConfig //发现uTlsConfig竟然没法使用指针，握手一次后配置文件就会被污染，只能拷贝
 		//否则的话接下来的握手客户端会报错： tls: CurvePreferences includes unsupported curve
 
@@ -66,9 +68,9 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 		tlsConn = &Conn{
 			Conn:    utlsConn,
 			ptr:     unsafe.Pointer(utlsConn.Conn),
-			tlsType: uTls_t,
+			tlsType: UTls_t,
 		}
-	case tls_t:
+	case Tls_t:
 		officialConn := tls.Client(underlay, c.tlsConfig)
 		err = officialConn.Handshake()
 		if err != nil {
@@ -78,9 +80,9 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 		tlsConn = &Conn{
 			Conn:    officialConn,
 			ptr:     unsafe.Pointer(officialConn),
-			tlsType: tls_t,
+			tlsType: Tls_t,
 		}
-	case shadowTls_t:
+	case ShadowTls_t:
 		// configCopy := c.uTlsConfig
 		// utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
 		// err = utlsConn.Handshake()
@@ -96,20 +98,36 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
 		tlsConn = &Conn{
 			Conn:    underlay,
-			tlsType: shadowTls_t,
+			tlsType: ShadowTls_t,
 		}
 
-	case shadowTls2_t:
+	case ShadowTls2_t:
+
+		hashR := utils.NewHashReader(underlay, []byte(c.shadowTlsPassword))
+
+		rw := &netLayer.IOWrapper{
+			Reader: hashR,
+			Writer: underlay,
+		}
+
 		configCopy := c.uTlsConfig
-		utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
-		err = utlsConn.Handshake()
+
+		err = utls.UClient(rw, &configCopy, utls.HelloChrome_Auto).Handshake()
 		if err != nil {
 			return
 		}
 
+		// err = tls.Client(rw, c.tlsConfig).Handshake()
+		// if err != nil {
+		// 	return
+		// }
+
 		tlsConn = &Conn{
-			Conn:    underlay,
-			tlsType: shadowTls2_t,
+			Conn: &shadowClientConn{
+				FakeAppDataConn: &FakeAppDataConn{Conn: rw},
+				sum:             hashR.Sum(),
+			},
+			tlsType: ShadowTls2_t,
 		}
 
 	}

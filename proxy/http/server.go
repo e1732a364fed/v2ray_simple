@@ -119,7 +119,7 @@ func (*Server) Name() string {
 
 func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 
-	if err = proxy.SetCommonReadTimeout(underlay); err != nil {
+	if err = netLayer.SetCommonReadTimeout(underlay); err != nil {
 		return
 	}
 	defer netLayer.PersistConn(underlay)

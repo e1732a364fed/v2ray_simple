@@ -110,7 +110,7 @@ func (s *Server) authNone(underlay net.Conn) (returnErr error) {
 // 处理tcp收到的请求. 注意, udp associate后的 udp请求并不 直接 通过此函数处理, 而是由 UDPConn 处理
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if !s.TrustClient {
-		if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+		if err := netLayer.SetCommonReadTimeout(underlay); err != nil {
 			returnErr = err
 			return
 		}
@@ -194,7 +194,7 @@ For:
 
 			if n == 2+nmethods {
 				if !s.TrustClient {
-					if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+					if err := netLayer.SetCommonReadTimeout(underlay); err != nil {
 						returnErr = err
 						return
 					}
@@ -264,7 +264,7 @@ For:
 	}
 
 	if !s.TrustClient {
-		if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+		if err := netLayer.SetCommonReadTimeout(underlay); err != nil {
 			returnErr = err
 			return
 		}

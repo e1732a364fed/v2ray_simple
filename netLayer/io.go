@@ -9,7 +9,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//选择性从 OptionalReader读取, 直到 RemainFirstBufLen 小于等于0 为止；
+// 选择性从 OptionalReader读取, 直到 RemainFirstBufLen 小于等于0 为止；
 type ReadWrapper struct {
 	net.Conn
 	OptionalReader    io.Reader
@@ -40,10 +40,10 @@ func (rw *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
 
 }
 
-//一个自定义的由多个组件组成的实现 net.Conn 的结构, 也通过设置 Rejecter 实现 RejectConn
+// 一个自定义的由多个组件组成的实现 net.Conn 的结构, 也通过设置 Rejecter 实现 RejectConn
 type IOWrapper struct {
 	EasyNetAddresser
-	EasyDeadline
+	EasyDeadline //无需再调用 InitEasyDeadline，内部已经处理好了。
 
 	io.Reader //不可为nil
 	io.Writer //不可为nil

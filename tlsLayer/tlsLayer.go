@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	tls_t = iota
-	uTls_t
-	shadowTls_t
-	shadowTls2_t
+	Tls_t = iota
+	UTls_t
+	ShadowTls_t
+	ShadowTls2_t
 )
 
 func StrToType(str string) int {
@@ -29,13 +29,13 @@ func StrToType(str string) int {
 	default:
 		fallthrough
 	case "", "tls", "gotls":
-		return tls_t
+		return Tls_t
 	case "utls":
-		return uTls_t
-	case "shadow", "shadowtls":
-		return shadowTls_t
+		return UTls_t
+	case "shadow", "shadowtls", "shadowtls1", "shadowtlsv1", "shadowtls_v1":
+		return ShadowTls_t
 	case "shadow2", "shadowtls2", "shadowtlsv2", "shadowtls_v2":
-		return shadowTls2_t
+		return ShadowTls2_t
 	}
 }
 
@@ -49,9 +49,10 @@ type Conf struct {
 
 	Tls_type int
 
-	//Use_uTls         bool //only client
 	RejectUnknownSni bool //only server
 	CipherSuites     []uint16
+
+	Extra map[string]any
 }
 
 func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {

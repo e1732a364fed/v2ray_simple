@@ -273,7 +273,9 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			wrappedConn = teeConn
 		}
 
-		if inServer.GetBase().TlsConf.RejectUnknownSni {
+		tConf := inServer.GetBase().TlsConf
+
+		if tConf.RejectUnknownSni {
 			bs := utils.GetPacket()
 			n, e := wrappedConn.Read(bs)
 			if e != nil {
@@ -292,6 +294,17 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				}
 				wrappedConn.Close()
 				return
+			}
+
+			//shadowTls自己没有防御功能，完全靠我们包外过滤
+			if tConf.Tls_type == tlsLayer.ShadowTls2_t || tConf.Tls_type == tlsLayer.ShadowTls_t {
+				if tlsSniff.SniffedServerName != tConf.Host {
+					if ce := iics.CanLogWarn("tls rejectUnknownSni, client sni not match"); ce != nil {
+						ce.Write(zap.String("sni", tlsSniff.SniffedServerName), zap.String("shouldBe", tConf.Host))
+					}
+					wrappedConn.Close()
+					return
+				}
 			}
 
 			wrappedConn = &netLayer.ReadWrapper{

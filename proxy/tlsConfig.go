@@ -65,15 +65,15 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 	}
 
 	conf := tlsLayer.Conf{
-		Host:     dc.Host,
-		Insecure: dc.Insecure,
-		//Use_uTls:     dc.Utls,
+		Host:         dc.Host,
+		Insecure:     dc.Insecure,
 		Tls_type:     tlsLayer.StrToType(dc.TlsType),
 		AlpnList:     alpnList,
 		CertConf:     certConf,
 		Minver:       getTlsMinVerFromExtra(dc.Extra),
 		Maxver:       getTlsMaxVerFromExtra(dc.Extra),
 		CipherSuites: getTlsCipherSuitesFromExtra(dc.Extra),
+		Extra:        dc.Extra,
 	}
 
 	clic.Tls_c = tlsLayer.NewClient(conf)
@@ -104,6 +104,7 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 		RejectUnknownSni: getTlsRejectUnknownSniFromExtra(lc.Extra),
 		CipherSuites:     getTlsCipherSuitesFromExtra(lc.Extra),
+		Extra:            lc.Extra,
 	}
 
 	tlsserver, err := tlsLayer.NewServer(conf)

@@ -83,7 +83,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 		return
 	}
 
-	proxy.SetCommonReadTimeout(underlay)
+	netLayer.SetCommonReadTimeout(underlay)
 
 	n, err := underlay.Read(ba[:])
 	if err != nil {
@@ -107,7 +107,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 		if err != nil {
 			return nil, err
 		}
-		proxy.SetCommonReadTimeout(underlay)
+		netLayer.SetCommonReadTimeout(underlay)
 
 		n, err = underlay.Read(ba[:])
 		if err != nil {
@@ -137,7 +137,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 		return
 	}
 
-	proxy.SetCommonReadTimeout(underlay)
+	netLayer.SetCommonReadTimeout(underlay)
 	var bigBs = utils.GetBytes(100)
 	defer utils.PutBytes(bigBs)
 

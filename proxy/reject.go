@@ -27,7 +27,7 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 	case "http":
 		underlay.Write([]byte(httpLayer.Err403response))
 	case "nginx":
-		SetCommonReadTimeout(underlay)
+		netLayer.SetCommonReadTimeout(underlay)
 		bs := utils.GetPacket()
 		defer utils.PutPacket(bs)
 		n, err := underlay.Read(bs)

@@ -11,7 +11,6 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
-	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -62,7 +61,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 	//可以参考 golang.org/x/net/http2/server.go 里的 readPreface 方法.
 
 	bs := utils.GetPacket()
-	proxy.SetCommonReadTimeout(underlay)
+	netLayer.SetCommonReadTimeout(underlay)
 
 	var notH2c bool
 	n, err := underlay.Read(bs)

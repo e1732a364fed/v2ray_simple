@@ -155,7 +155,7 @@ func (*Server) HasInnerMux() (int, string) {
 }
 
 func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
-	if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+	if err := netLayer.SetCommonReadTimeout(underlay); err != nil {
 		returnErr = err
 		return
 	}

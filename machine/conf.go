@@ -89,7 +89,7 @@ func SetupByAppConf(ac *AppConf) {
 
 	if ac.ReadTimeoutSeconds != nil {
 		if s := *ac.ReadTimeoutSeconds; s > 0 {
-			proxy.CommonReadTimeout = time.Duration(s) * time.Second
+			netLayer.CommonReadTimeout = time.Duration(s) * time.Second
 		}
 	}
 

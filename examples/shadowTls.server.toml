@@ -1,0 +1,19 @@
+
+[[listen]]
+protocol = "trojans"
+tag = "t"
+host = "cloud.tecent.com"
+ip = "127.0.0.1"
+port = 443 #我们这里为了测试使用4433端口，你如果实际用，改成443 更隐蔽
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+tls_type = "shadowTls2" # v1 写成 shadowTls1 ，但有2了谁用1呢
+
+#extra = { tls_minVersion = "1.2",tls_maxVersion = "1.2" }  # 用于 shadowTls v1
+
+extra.shadowtls_password = "a684455c-b14f-11ea-bf0d-42010aaa0003"  # 用于 shadowTls v2
+
+# 回落测试命令: curl -vik --resolve cloud.tecent.com:443:127.0.0.1 https://cloud.tecent.com
+
+extra.tls_rejectUnknownSni = true # 这个开启了的话，防御效果更佳, vs已经做了针对性优化。
+
+# vs的 shadowTls v2中，自动使用了 uTls，使用了chrome指纹，无需配置。

@@ -55,13 +55,13 @@ func (c *Conn) GetTeeConn() *TeeConn {
 func (c *Conn) GetAlpn() string {
 
 	switch c.tlsType {
-	case uTls_t:
+	case UTls_t:
 		cc := (*utls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().NegotiatedProtocol
-	case tls_t:
+	case Tls_t:
 		cc := (*tls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
@@ -75,14 +75,14 @@ func (c *Conn) GetAlpn() string {
 func (c *Conn) GetSni() string {
 
 	switch c.tlsType {
-	case uTls_t:
+	case UTls_t:
 		cc := (*utls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().ServerName
 
-	case tls_t:
+	case Tls_t:
 		cc := (*tls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
