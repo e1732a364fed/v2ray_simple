@@ -516,7 +516,9 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 }
 
-//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。
+//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。 iics.inServer可能为nil。
+// 本函数可能是本文件中 最长的函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy。
+//
 // 会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
@@ -719,30 +721,38 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	var tlsSniff *tlsLayer.ComSniff
 
+	inServer := iics.inServer
+
 	////////////////////////////// Sniff阶段 /////////////////////////////////////
 
 	//tls请求和纯http请求是可以嗅探 host的，嗅探可以帮助我们使用 geosite 精准分流，所以是很有用的
 
-	inserverMarkedSniffing := (iics.inServer != nil && iics.inServer.Sniffing())
+	if len(iics.firstPayload) > 0 {
 
-	shouldSniff := inserverMarkedSniffing || iics.defaultClient.IsLazyTls()
+		inserverMarkedSniffing := (inServer != nil && inServer.Sniffing())
 
-	if len(iics.firstPayload) > 0 && shouldSniff {
-		tlsSniff = new(tlsLayer.ComSniff)
+		dialIslazy := iics.defaultClient.IsLazyTls()
 
-		if !iics.isTlsLazyServerEnd {
-			tlsSniff.Isclient = true
-		}
+		shouldSniff := inserverMarkedSniffing || dialIslazy
 
-		tlsSniff.CommonDetect(iics.firstPayload, true, inserverMarkedSniffing && !(iics.isTlsLazyServerEnd || iics.defaultClient.IsLazyTls()))
+		if shouldSniff {
+			tlsSniff = new(tlsLayer.ComSniff)
 
-		if sni := tlsSniff.SniffedServerName; sni != "" {
-			if ce := iics.CanLogDebug("Sniffed Sni"); ce != nil {
-				ce.Write(zap.String("sni", sni))
+			if !iics.isTlsLazyServerEnd {
+				tlsSniff.Isclient = true
 			}
 
-			targetAddr.Name = sni
+			tlsSniff.CommonDetect(iics.firstPayload, true, inserverMarkedSniffing && !(iics.isTlsLazyServerEnd || dialIslazy))
+
+			if sni := tlsSniff.SniffedServerName; sni != "" {
+				if ce := iics.CanLogDebug("Sniffed Sni"); ce != nil {
+					ce.Write(zap.String("sni", sni))
+				}
+
+				targetAddr.Name = sni
+			}
 		}
+
 	}
 
 	////////////////////////////// DNS解析阶段 /////////////////////////////////////
@@ -774,8 +784,6 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	var client proxy.Client = iics.defaultClient
 	routed := false
-
-	inServer := iics.inServer
 
 	//尝试分流, 获取到真正要发向 的 outClient
 	if re := iics.routingEnv; re != nil && re.RoutePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
@@ -870,11 +878,12 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 		if inServer != nil {
 			switch inServer.Name() {
-			case "socks5":
+			case "socks5", "socks5http":
 				// UDP Associate：
 				// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
 				// 但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
 				// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
+
 			default:
 				iics.shouldCloseInSerBaseConnWhenFinish = true
 
