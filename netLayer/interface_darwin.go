@@ -13,6 +13,7 @@ import (
 
 func init() {
 	SetSystemDNS = setSystemDNS
+	GetSystemDNS = getSystemDNS
 	ToggleSystemProxy = toggleSystemProxy
 	GetSystemProxyState = getSystemProxyState
 }
@@ -155,7 +156,7 @@ darwin 获取wifi名称
 
 */
 
-func GetSystemDNS() (result []string) {
+func getSystemDNS() (result []string) {
 
 	hardwareportStr, err := GetDefaultHardwarePort()
 	if err != nil {
