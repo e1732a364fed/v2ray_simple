@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime/debug"
@@ -20,8 +21,21 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+type confFileArrayFlags []string
+
+func (i *confFileArrayFlags) String() string {
+	return "my string representation"
+}
+
+func (i *confFileArrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 var (
-	configFileName     string
+	//configFileName string
+	configFiles confFileArrayFlags
+
 	useNativeUrlFormat bool
 	disableSplice      bool
 	startPProf         bool
@@ -68,7 +82,7 @@ func init() {
 
 	flag.BoolVar(&disableSplice, "ds", false, "if given, then the app won't use splice.")
 
-	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
+	//flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 
 	flag.StringVar(&listenURL, "L", "", "listen URL, only used when no config file is provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL, only used when no config file is provided.")
@@ -78,6 +92,8 @@ func init() {
 	flag.StringVar(&netLayer.GeoipFileName, "geoip", defaultGeoipFn, "geoip maxmind file name (relative or absolute path)")
 	flag.StringVar(&netLayer.GeositeFolder, "geosite", netLayer.DefaultGeositeFolder, "geosite folder name (set it to the relative or absolute path of your geosite/data folder)")
 	flag.StringVar(&utils.ExtraSearchPath, "path", "", "search path for mmdb, geosite and other required files")
+
+	flag.Var(&configFiles, "c", "config files")
 
 }
 
@@ -126,6 +142,39 @@ func mainFunc() (result int) {
 	setupSystemParemeters()
 
 	runPreCommands()
+
+	var configFileName string
+	if len(configFiles) == 1 {
+		configFileName = configFiles[0]
+	} else {
+		//在临时目录创建一个大文件，读取所有传入的文件，拼接在一起
+
+		tmpfile, err := os.CreateTemp(os.TempDir(), "vs_tmp_*.toml")
+		if err != nil {
+			log.Fatalln("failed when creating tmp file for merging config files:", err)
+		}
+		tfn := tmpfile.Name()
+		defer os.Remove(tfn)
+		defer tmpfile.Close()
+
+		for _, fn := range configFiles {
+			curfile, err := os.Open(utils.GetFilePath(fn))
+			if err != nil {
+				log.Fatalln("failed to open config file:", err)
+			}
+			defer curfile.Close()
+
+			_, err = io.Copy(tmpfile, curfile)
+			if err != nil {
+				log.Fatalln("failed to append config file to tmpfile:", err)
+			}
+
+			tmpfile.WriteString("\n")
+		}
+		tmpfile.Close()
+
+		configFileName = tfn
+	}
 
 	fpath := utils.GetFilePath(configFileName)
 	if !utils.FileExist(fpath) {

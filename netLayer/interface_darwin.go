@@ -169,7 +169,7 @@ func GetSystemDNS() string {
 	if e != nil {
 		return ""
 	}
-	return out
+	return strings.TrimSpace(out)
 }
 
 func toggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
