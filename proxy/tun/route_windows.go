@@ -53,13 +53,24 @@ func init() {
 							return
 						}
 
-						params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunGateway + " metric 6"
+						params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunAddr + " metric 6"
 						out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
 						if err != nil {
 							goto errStep
 						}
 						if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
 							ce.Write(zap.String("output", string(out1)))
+						}
+
+						for _, v := range directList {
+							params1 = "add " + v + " " + rememberedRouterIP + " metric 5"
+							out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+							if err != nil {
+								goto errStep
+							}
+							if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
+								ce.Write(zap.String("output", string(out1)))
+							}
 						}
 
 						ok = true
@@ -89,5 +100,13 @@ func init() {
 			ce.Write(zap.String("output", string(out1)))
 		}
 
+		for _, v := range directList {
+			params = "delete " + v + " " + rememberedRouterIP
+			out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
+
+			if ce := utils.CanLogInfo("auto route delete direct"); ce != nil {
+				ce.Write(zap.String("output", string(out1)))
+			}
+		}
 	}
 }
