@@ -2,9 +2,13 @@
 
 from github.com/Dreamacro/clash/tree/master/transport/vmess/
 
-本作不支持alterid!=0 的情况.
+本作不支持alterid!=0 的情况. 即 仅支持 使用 aead 方式 进行认证
 
 标准:  https://www.v2fly.org/developer/protocols/vmess.html
+
+aead:
+
+https://github.com/v2fly/v2fly-github-io/issues/20
 */
 package vmess
 
