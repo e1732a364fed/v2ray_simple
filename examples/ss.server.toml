@@ -5,3 +5,9 @@ port = 4434
 uuid = "method:AES-128-GCM\npass:iloveverysimple"
 
 #network = "dual"
+
+# 如果不设network，或者为dual的话，vs的shadowsocks会 用tcp传递tcp，udp传递udp
+
+# 如果设为 tcp的话，则 该ss只传递tcp，并拒绝 任何对udp的请求; 设为udp时同理。
+
+# vs的 ss 目前还没有 udp over tcp 功能

@@ -1,6 +1,8 @@
 
 [[listen]]
-protocol = "vmesss"    #注意末尾的s, 这在vs中意味着使用tls.
+protocol = "vmesss"    #注意末尾的s, 这在vs中意味着使用tls. 
+# 另外注意在vs中，与shadowTls一起使用的必须是具有内层加密的协议，不能用trojan或vless, 否则就是裸奔
+
 tag = "t"
 host = "cloud.tecent.com"   #假域名, 两端要配置为一致的。 一般用 www.microsoft.com 等常见大型公司的
 ip = "127.0.0.1"

@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
+//https://www.ihcblog.com/a-better-tls-obfs-proxy/
 //https://github.com/ihciah/shadow-tls/blob/master/docs/protocol-cn.md
 
 func getShadowTlsPasswordFromExtra(extra map[string]any) string {
