@@ -63,9 +63,21 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 	if underlay == nil {
 
 		if d.Sockopt != nil {
-			result, err = target.DialWithOpt(d.Sockopt, d.localTCPAddr)
+			if d.localTCPAddr == nil {
+				result, err = target.DialWithOpt(d.Sockopt, nil) //尽量避免把nil的 *net.TCPAddr 装箱到 net.Addr里
+
+			} else {
+				result, err = target.DialWithOpt(d.Sockopt, d.localTCPAddr)
+
+			}
 		} else {
-			result, err = target.Dial(nil, d.localTCPAddr)
+			if d.localTCPAddr == nil {
+				result, err = target.Dial(nil, nil)
+
+			} else {
+				result, err = target.Dial(nil, d.localTCPAddr)
+
+			}
 		}
 
 	} else {

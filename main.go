@@ -619,8 +619,10 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				return
 			}
 
-			iics.fallbackXver = fbResult
 		}
+
+		iics.fallbackXver = fbResult
+
 	}
 
 	// inServer 握手失败，且 没有任何回落可用时的情况, 在这里我们直接退出。

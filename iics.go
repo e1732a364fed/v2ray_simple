@@ -79,7 +79,7 @@ type incomingInserverConnState struct {
 	fallbackH2Request   *http.Request
 	fallbackFirstBuffer *bytes.Buffer
 
-	fallbackXver int
+	fallbackXver int //若大于等于0，则证明该进项已经被确定需要进行fallback。
 
 	firstPayload   []byte
 	udpFirstTarget netLayer.Addr
