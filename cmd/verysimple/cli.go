@@ -212,18 +212,6 @@ func generateConfigFileInteractively() {
 
 				utils.PrintStr("生成的分享链接如下：\n")
 
-				// for _, d := range confClient.Dial {
-				// 	switch d.Protocol {
-				// 	case vless.Name:
-				// 		utils.PrintStr("xray官方链接:\n")
-				// 		utils.PrintStr(vless.GenerateXrayShareURL(d))
-				// 		utils.PrintStr("\n")
-
-				// 	case trojan.Name:
-				// 		utils.PrintStr(trojan.GenerateOfficialDraftShareURL(d))
-				// 		utils.PrintStr("\n")
-				// 	}
-				// }
 				interactively_generate_share(&confClient)
 
 			} else {

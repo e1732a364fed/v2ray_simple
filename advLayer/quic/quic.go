@@ -60,14 +60,14 @@ var (
 		MaxIdleTimeout:        common_maxidletimeout,
 		MaxIncomingStreams:    Default_Server_maxStreamCountInOneConn,
 		MaxIncomingUniStreams: -1,
-		KeepAlive:             true,
+		KeepAlivePeriod:       time.Minute,
 	}
 
 	common_DialConfig = quic.Config{
 		ConnectionIDLength:   common_ConnectionIDLength,
 		HandshakeIdleTimeout: common_HandshakeIdleTimeout,
 		MaxIdleTimeout:       common_maxidletimeout,
-		KeepAlive:            true,
+		KeepAlivePeriod:      time.Minute,
 	}
 )
 
