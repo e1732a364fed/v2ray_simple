@@ -107,7 +107,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 				}
 
 			} else {
-				return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: re, ExtraIs: []error{httpLayer.ErrNotHTTP_Request}}
+				return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: re, ExtraIs: []error{httpLayer.ErrNotHTTP_Request}, Data: rp.Failreason}
 
 				//return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: re, Data: rp.WholeRequestBuf.String(), ExtraIs: []error{httpLayer.ErrNotHTTP_Request}}
 
@@ -124,6 +124,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 	notWsRequest := false
 	notReason := ""
+	var realAddr net.Addr
 
 	//因为 gobwas 会先自行给错误的连接 返回 错误信息，而这不行，所以我们先过滤一遍。
 	//header 我们只过滤一个 connection 就行. 要是怕攻击者用 “对的path,method 和错误的header” 进行探测,
@@ -134,7 +135,11 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 		notReason = `rp.Method != "GET" || s.Thepath != rp.Path || len(rp.Headers) == 0`
 
 	} else {
+		//不在这里检查header，可以让后面ws部分检查一下X-forwarded-for 找出实际客户端地址
+		//但是必须要在这里检查header，所以也在这里检查 X-forwarded-for
+
 		hasUpgrade := false
+		gotXForward := false
 		for _, rh := range rp.Headers {
 			httpLayer.CanonicalizeHeaderKey(rh.Head)
 			if bytes.Equal(rh.Head, connectionBs) {
@@ -143,9 +148,31 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 				if bytes.Equal(rh.Value, upgradeBs) {
 
 					hasUpgrade = true
-					break
+					if gotXForward {
+						break
+					}
 				}
 			}
+
+			if string(rh.Head) == httpLayer.XForwardStr {
+				gotXForward = true
+
+				realV := string(rh.Value)
+				xffs := strings.SplitN(realV, ",", 2)
+
+				if len(xffs) > 0 {
+					ta, e := net.ResolveIPAddr("ip", strings.TrimSpace(xffs[0]))
+					if e == nil {
+						realAddr = ta
+					} else {
+						if ce := utils.CanLogWarn("Failed in ws parse X-Forwarded-For"); ce != nil {
+							ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
+						}
+					}
+				}
+
+			}
+
 		}
 		if !hasUpgrade {
 			notWsRequest = true
@@ -161,14 +188,13 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			Path:         rp.Path,
 			Method:       rp.Method,
 			Reason:       notReason,
+			XFF:          realAddr,
 		}, httpLayer.ErrShouldFallback
 	}
 
 	var thePotentialEarlyData []byte
 
 	requestHeaderNotGivenCount := s.requestHeaderCheckCount
-
-	var realAddr net.Addr
 
 	var theUpgrader *ws.Upgrader = &ws.Upgrader{
 
@@ -186,22 +212,6 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 		OnHeader: func(key, value []byte) error {
 			sk := string(key)
 
-			if sk == httpLayer.XForwardStr {
-				realV := string(value)
-				xffs := strings.SplitN(realV, ",", 2)
-
-				if len(xffs) > 0 {
-					ta, e := net.ResolveIPAddr("ip", strings.TrimLeft(xffs[0], " "))
-					if e == nil {
-						realAddr = ta
-					} else {
-						if ce := utils.CanLogErr("Failed in ws parse X-Forwarded-For"); ce != nil {
-							ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
-						}
-					}
-				}
-
-			}
 			if s.noNeedToCheckRequestHeaders {
 				return nil
 			}
@@ -284,6 +294,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			Path:         rp.Path,
 			Method:       rp.Method,
 			Reason:       err.Error(),
+			XFF:          realAddr,
 		}, httpLayer.ErrShouldFallback
 	}
 

@@ -47,6 +47,7 @@ type FallbackMeta struct {
 	Reason       string
 
 	H2Request *http.Request
+	XFF       net.Addr
 }
 
 func getfallbacktype_byindex(i int) byte {

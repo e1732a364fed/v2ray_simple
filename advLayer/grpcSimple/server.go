@@ -268,7 +268,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 			if e == nil {
 				sc.ra = ta
 			} else {
-				if ce := utils.CanLogErr("Failed in grpcSimple parse X-Forwarded-For"); ce != nil {
+				if ce := utils.CanLogWarn("Failed in grpcSimple parse X-Forwarded-For"); ce != nil {
 					ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
 				}
 			}

@@ -1,6 +1,7 @@
-/*Package ws implements websocket for advLayer.
+/*
+Package ws implements websocket for advLayer.
 
-Reference
+# Reference
 
 websocket rfc: https://datatracker.ietf.org/doc/html/rfc6455/
 
@@ -8,22 +9,22 @@ Below is a real websocket handshake progress:
 
 Request
 
-    GET /chat HTTP/1.1
-        Host: server.example.com
-        Upgrade: websocket
-        Connection: Upgrade
-        Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==
-        Sec-WebSocket-Protocol: chat, superchat
-        Sec-WebSocket-Version: 13
-        Origin: http://example.com
+	GET /chat HTTP/1.1
+	    Host: server.example.com
+	    Upgrade: websocket
+	    Connection: Upgrade
+	    Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==
+	    Sec-WebSocket-Protocol: chat, superchat
+	    Sec-WebSocket-Version: 13
+	    Origin: http://example.com
 
 Response
 
-    HTTP/1.1 101 Switching Protocols
-        Upgrade: websocket
-        Connection: Upgrade
-        Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
-        Sec-WebSocket-Protocol: chat
+	HTTP/1.1 101 Switching Protocols
+	    Upgrade: websocket
+	    Connection: Upgrade
+	    Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
+	    Sec-WebSocket-Protocol: chat
 
 websocket packages comparison:
 https://yalantis.com/blog/how-to-build-websockets-in-go/
@@ -32,6 +33,8 @@ https://yalantis.com/blog/how-to-build-websockets-in-go/
 https://tonybai.com/2019/09/28/how-to-build-websockets-in-go/
 
 All in all gobwas/ws is the best package. We use gobwas/ws.
+
+gobwas包只支持http1.1, 所以如果使用nginx前置，确保 proxy_http_version 1.1;
 */
 package ws
 

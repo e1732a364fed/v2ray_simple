@@ -267,8 +267,15 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	wrappedConn := thisLocalConnectionInstance
 
 	if ce := iics.CanLogInfo("New Accepted Conn"); ce != nil {
+		var addrstr string
 
-		addrstr := wrappedConn.RemoteAddr().String()
+		if inServer.Network() == "unix" {
+			addrstr = inServer.AddrStr()
+
+		} else {
+			addrstr = wrappedConn.RemoteAddr().String()
+
+		}
 		ce.Write(
 			zap.String("from", addrstr),
 			zap.String("handler", proxy.GetVSI_url(inServer, "")),
@@ -423,6 +430,10 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				iics.fallbackRequestPath = meta.Path
 				iics.fallbackFirstBuffer = meta.H1RequestBuf
 				iics.wrappedConn = meta.Conn
+				if meta.XFF != nil {
+					iics.cachedRemoteAddr = meta.XFF.String()
+
+				}
 
 				if ce := iics.CanLogDebug("Single AdvLayer Check failed, will fallback."); ce != nil {
 
@@ -433,6 +444,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 						zap.String("validPath", advSer.GetPath()),
 						zap.String("gotMethod", meta.Method),
 						zap.String("gotPath", meta.Path),
+						zap.String("from", iics.cachedRemoteAddr),
 					)
 				}
 
@@ -739,7 +751,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	if wlc == nil && udp_wlc == nil {
 
 		if ce := iics.CanLogWarn("Invalid request and no matched fallback, hung up"); ce != nil {
-			ce.Write(zap.String("client RemoteAddr", iics.getRealRAddr()))
+			ce.Write(zap.String("client RemoteAddr", iics.cachedRemoteAddr))
 		}
 
 		if wc := iics.wrappedConn; wc != nil {
