@@ -26,7 +26,9 @@ jobs:
           sudo apt-get update -q -y
           sudo apt-get install -q -y build-essential libgtk-3-dev wget gcc-aarch64-linux-gnu
           echo "CC=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "GOARCH=arm64" >> $GITHUB_ENV
           CC="aarch64-linux-gnu-gcc"
+          GOARCH=arm64
           cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release
