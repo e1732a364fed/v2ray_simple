@@ -507,7 +507,8 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 	return
 }
 
-// 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
+// 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，调用 passToOutClient 将流量导向目标。
+//
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
 //
 //被 handleNewIncomeConnection 和 ListenSer 调用。
@@ -535,7 +536,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 //被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 以及 tproxy 调用。 iics.inServer可能为nil。
 // 本函数 可能是 本文件中 最长的 函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy，最终转发到 某个 outClient。
 //
-// 会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
+// 最终会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
 	//这里的 iics.inServer 是可能为nil的，所以一定要判断一下，否则会空指针闪退
@@ -1124,6 +1125,9 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 	}
 
 	if xver := iics.fallbackXver; xver > 0 && xver < 3 {
+		if clientConn == nil {
+			clientConn, err = realTargetAddr.Dial(nil, nil)
+		}
 
 		netLayer.WritePROXYprotocol(xver, wlc, clientConn)
 	}

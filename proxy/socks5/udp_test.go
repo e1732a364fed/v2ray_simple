@@ -22,7 +22,7 @@ func TestUDP(t *testing.T) {
 
 	s := socks5.NewServer()
 
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 
 	//建立socks5服务并监听，这里仅用于 udp associate 握手
 	sAddrStr := netLayer.GetRandLocalAddr(true, true)
