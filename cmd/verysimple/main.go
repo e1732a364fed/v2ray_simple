@@ -71,8 +71,7 @@ func init() {
 	flag.IntVar(&utils.LogLevelForFile, "llf", -1, "log level for log file,if negative, it will be the same as ll. 0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 
 	//有时发现在某些情况下，dns查询或者tcp链接的建立很慢，甚至超过8秒, 所以开放自定义超时时间，便于在不同环境下测试
-	flag.IntVar(&dialTimeoutSecond, "dt", int(netLayer.DialTimeout/time.Second), "dial timeout, in second")
-	flag.BoolVar(&mainM.EnableApiServer, "ea", false, "enable api server")
+	flag.IntVar(&dialTimeoutSecond, "dt", int(netLayer.DefaultDialTimeout/time.Second), "dial timeout, in second")
 
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
@@ -82,8 +81,6 @@ func init() {
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 
 	flag.BoolVar(&disableSplice, "ds", false, "if given, then the app won't use splice.")
-
-	//flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 
 	flag.StringVar(&listenURL, "L", "", "listen URL, only used when no config file is provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL, only used when no config file is provided.")
@@ -103,6 +100,8 @@ func main() {
 }
 
 func mainFunc() (result int) {
+	mainM.ApiServerConf.SetupFlags()
+
 	defer func() {
 		//注意，这个recover代码并不是万能的，有时捕捉不到panic。
 		if r := recover(); r != nil {
@@ -153,7 +152,7 @@ func mainFunc() (result int) {
 
 	} else if len(configFiles) > 1 {
 
-		tomlBuf = new(bytes.Buffer)
+		tomlBuf = utils.GetBuf()
 
 		for _, fn := range configFiles {
 			curfile, err := os.Open(utils.GetFilePath(fn))
@@ -177,6 +176,7 @@ func mainFunc() (result int) {
 	if tomlBuf != nil {
 		configMode = proxy.StandardMode
 		loadConfigErr = mainM.LoadConfigByTomlBytes(tomlBuf.Bytes())
+		utils.PutBuf(tomlBuf)
 		tomlBuf = nil
 	} else {
 		fpath := utils.GetFilePath(configFileName)
@@ -233,8 +233,6 @@ func mainFunc() (result int) {
 		return -1
 	}
 
-	//netLayer.PrepareInterfaces()	//有时ipv6不是程序刚运行时就有的, 所以不应默认 预读网卡。主要是 openwrt等设备 在使用 DHCPv6 获取ipv6 等情况
-
 	fmt.Printf("Log Level:%d %s\n", utils.LogLevel, utils.LogLevelStr(utils.LogLevel))
 
 	if ce := utils.CanLogInfo("Options"); ce != nil {
@@ -254,12 +252,6 @@ func mainFunc() (result int) {
 	}
 
 	switch configMode {
-	case proxy.UrlMode:
-		result = mainM.LoadSimpleConf(false)
-		if result < 0 {
-			return result
-		}
-
 	case proxy.StandardMode:
 		mainM.SetupListenAndRoute()
 		mainM.SetupDial()
@@ -282,15 +274,14 @@ func mainFunc() (result int) {
 
 	mainM.Start()
 
+	// if defaultApiServerConf.EnableApiServer {
+	// 	mainM.ApiServerConf = defaultApiServerConf
+	// }
+
 	//没可用的listen/dial，而且还无法动态更改配置
 	if NoFuture(mainM) {
 		utils.Error(willExitStr)
 		return -1
-	}
-
-	if mainM.EnableApiServer {
-		mainM.ApiServerConf = defaultApiServerConf
-		mainM.TryRunApiServer()
 	}
 
 	if interactive_mode {

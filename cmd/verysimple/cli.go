@@ -514,8 +514,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 
 	fmt.Printf("你输入了 %s\n", fpath)
 
-	var confMode int
-	confMode, err = mainM.LoadConfig(fpath, "", "")
+	_, err = mainM.LoadConfig(fpath, "", "")
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)
@@ -532,20 +531,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 
 	//也就是说，理论上要写一个比较好的前端，才能妥善解决 复杂条目的热增删问题。
 
-	switch confMode {
-	case proxy.StandardMode:
-		m.LoadStandardConf()
-	case proxy.UrlMode:
-		result := m.LoadSimpleConf(true)
-		if result < 0 {
-			utils.PrintStr("添加失败！当前状态：\n")
-			utils.PrintStr(delimiter)
-			m.PrintAllState(os.Stdout)
-
-			return
-		}
-
-	}
+	m.LoadStandardConf()
 
 	utils.PrintStr("添加成功！当前状态：\n")
 	utils.PrintStr(delimiter)

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/e1732a364fed/v2ray_simple/machine"
 	httpProxy "github.com/e1732a364fed/v2ray_simple/proxy/http"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 
@@ -24,7 +23,7 @@ import (
 var (
 	download bool
 
-	defaultApiServerConf machine.ApiServerConf
+	//defaultApiServerConf machine.ApiServerConf
 
 	extra_preCommands []func()
 
@@ -68,14 +67,7 @@ func init() {
 
 	//apiServer stuff
 
-	flag.BoolVar(&defaultApiServerConf.PlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
-
-	flag.StringVar(&defaultApiServerConf.PathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
-	flag.StringVar(&defaultApiServerConf.AdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
-	flag.StringVar(&defaultApiServerConf.Addr, "sa", "127.0.0.1:48345", "api Server listen address")
-	flag.StringVar(&defaultApiServerConf.CertFile, "scert", "", "api Server tls cert file path")
-	flag.StringVar(&defaultApiServerConf.KeyFile, "skey", "", "api Server tls cert key path")
-
+	//defaultApiServerConf.SetupFlags()
 }
 
 // 运行一些 执行后立即退出程序的 命令

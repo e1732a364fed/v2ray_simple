@@ -15,6 +15,7 @@ import (
 	_ "github.com/e1732a364fed/ui/winmanifest"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 
 	qrcode "github.com/skip2/go-qrcode"
 )
@@ -111,28 +112,28 @@ func makeBasicControlsPage() ui.Control {
 	vsToggleGroup := ui.NewGroup("开启或关闭vs代理")
 	vsToggleGroup.SetMargined(true)
 
-	vsVbox := ui.NewVerticalBox()
-	vsVbox.SetPadded(true)
-
-	vsToggleGroup.SetChild(vsVbox)
-	vsHbox.Append(vsToggleGroup, true)
-	vbox.Append(vsHbox, true)
-
-	//vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
-
-	toggleHbox := ui.NewHorizontalBox()
-	toggleHbox.SetPadded(true)
-	vsVbox.Append(toggleHbox, false)
-
-	toggleCheckbox := ui.NewCheckbox("Enable")
-	stopBtn := ui.NewButton("Stop")
-	startBtn := ui.NewButton("Start")
-
-	toggleHbox.Append(toggleCheckbox, false)
-	toggleHbox.Append(stopBtn, false)
-	toggleHbox.Append(startBtn, false)
-
 	{
+		vsVbox := ui.NewVerticalBox()
+		vsVbox.SetPadded(true)
+
+		vsToggleGroup.SetChild(vsVbox)
+		vsHbox.Append(vsToggleGroup, true)
+		vbox.Append(vsHbox, true)
+
+		//vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
+
+		toggleHbox := ui.NewHorizontalBox()
+		toggleHbox.SetPadded(true)
+		vsVbox.Append(toggleHbox, false)
+
+		toggleCheckbox := ui.NewCheckbox("Enable")
+		stopBtn := ui.NewButton("Stop")
+		startBtn := ui.NewButton("Start")
+
+		toggleHbox.Append(toggleCheckbox, false)
+		toggleHbox.Append(stopBtn, false)
+		toggleHbox.Append(startBtn, false)
+
 		var updateState = func(btn, cbx bool) {
 			isR := mainM.IsRunning()
 
@@ -219,6 +220,17 @@ func makeBasicControlsPage() ui.Control {
 				filename = "(cancelled)"
 			}
 			entry.SetText(filename)
+
+			_, loadConfigErr := mainM.LoadConfig(filename, "", "")
+			if loadConfigErr != nil {
+				if ce := utils.CanLogErr("Gui Load Conf File Err"); ce != nil {
+					ce.Write(zap.Error(loadConfigErr))
+				}
+			} else {
+				mainM.SetupListenAndRoute()
+				mainM.SetupDial()
+			}
+
 		})
 		grid.Append(button,
 			0, 0, 1, 1,
@@ -349,13 +361,8 @@ func makeBasicControlsPage() ui.Control {
 	entryForm.SetPadded(true)
 	entriesGroup.SetChild(entryForm)
 
-	// entryForm.Append("Entry", ui.NewEntry(), false)
-	// entryForm.Append("Password Entry", ui.NewPasswordEntry(), false)
-	// entryForm.Append("Search Entry", ui.NewSearchEntry(), false)
-
 	multilineEntry = ui.NewMultilineEntry()
 	entryForm.Append("Multiline Entry", multilineEntry, true)
-	// entryForm.Append("Multiline Entry No Wrap", ui.NewNonWrappingMultilineEntry(), true)
 
 	return vbox
 }

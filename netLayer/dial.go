@@ -13,11 +13,11 @@ var (
 	//你可以通过向这个map插入 自定义函数的方式 来拓展 vs的 拨号功能, 可以拨号 其它 net包无法拨号的 network
 	CustomDialerMap = make(map[string]func(address string, timeout time.Duration) (net.Conn, error))
 
-	DialTimeout time.Duration = defaultDialTimeout
+	DialTimeout time.Duration = DefaultDialTimeout
 )
 
 const (
-	defaultDialTimeout = time.Second * 8 //作为对照，v2ray默认是16秒
+	DefaultDialTimeout = time.Second * 8 //作为对照，v2ray默认是16秒
 )
 
 // Dial 可以拨号tcp、udp、unix domain socket、tls 这几种协议。

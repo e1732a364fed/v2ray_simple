@@ -110,14 +110,14 @@ func (m *M) HotDeleteServer(index int) {
 	m.listenCloserList = utils.TrimSlice(m.listenCloserList, index)
 }
 
-func (m *M) LoadSimpleConf(hot bool) (result int) {
+func (m *M) loadUrlConf(hot bool) (result int) {
 	var ser proxy.Server
-	result, ser = m.loadSimpleServer(m.urlConf)
+	result, ser = m.loadUrlServer(m.urlConf)
 	if result < 0 {
 		return
 	}
 	var cli proxy.Client
-	result, cli = m.loadSimpleClient(m.urlConf)
+	result, cli = m.loadUrlClient(m.urlConf)
 	if result < 0 {
 		return
 	}
@@ -137,9 +137,9 @@ func (m *M) LoadSimpleConf(hot bool) (result int) {
 }
 
 // load failed if result <0,
-func (m *M) loadSimpleServer(simpleConf proxy.UrlConf) (result int, server proxy.Server) {
+func (m *M) loadUrlServer(urlConf proxy.UrlConf) (result int, server proxy.Server) {
 	var e error
-	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
+	server, e = proxy.ServerFromURL(urlConf.ListenUrl)
 	if e != nil {
 		if ce := utils.CanLogErr("can not create local server"); ce != nil {
 			ce.Write(zap.String("error", e.Error()))
@@ -153,9 +153,9 @@ func (m *M) loadSimpleServer(simpleConf proxy.UrlConf) (result int, server proxy
 	return
 }
 
-func (m *M) loadSimpleClient(simpleConf proxy.UrlConf) (result int, client proxy.Client) {
+func (m *M) loadUrlClient(urlConf proxy.UrlConf) (result int, client proxy.Client) {
 	var e error
-	client, e = proxy.ClientFromURL(simpleConf.DialUrl)
+	client, e = proxy.ClientFromURL(urlConf.DialUrl)
 	if e != nil {
 		if ce := utils.CanLogErr("can not create remote client"); ce != nil {
 			ce.Write(zap.String("error", e.Error()))

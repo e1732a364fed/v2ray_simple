@@ -23,14 +23,16 @@ import (
 type M struct {
 	ApiServerConf
 
+	AppConf
+
 	standardConf proxy.StandardConf
 	urlConf      proxy.UrlConf
-	appConf      *AppConf
+	//appConf      *AppConf
 
 	v2ray_simple.GlobalInfo
 	sync.RWMutex
 
-	DefaultUUID string
+	//DefaultUUID string
 
 	ApiServerRunning bool
 
@@ -78,6 +80,7 @@ func (m *M) IsRunning() bool {
 	return m.running
 }
 
+// 运行配置 以及 apiServer
 func (m *M) Start() {
 	if (m.DefaultOutClient != nil) && (len(m.allServers) > 0) {
 		utils.Info("Starting...")
@@ -96,6 +99,9 @@ func (m *M) Start() {
 			dm.StartListen()
 		}
 		m.Unlock()
+	}
+	if !m.ApiServerRunning && m.EnableApiServer {
+		m.TryRunApiServer()
 	}
 
 }

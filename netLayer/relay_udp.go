@@ -15,13 +15,15 @@ import (
 const (
 	MaxUDP_packetLen = 64 * 1024 // 关于 udp包数据长度，可参考 https://cloud.tencent.com/developer/article/1021196
 
+	DefaultUDP_timeout          = time.Minute * 3
+	DefaultUDP_fullcone_timeout = time.Minute * 30
 )
 
 var (
 	//udp不能无限监听, 否则每一个udp申请都对应打开了一个本地udp端口，一直监听的话时间一长，就会导致 too many open files
 	// 因为实际上udp在网页代理中主要用于dns请求, 所以不妨设的小一点。
 	// 放心，只要能持续不断地从远程服务器收到数据, 建立的udp连接就会持续地更新Deadline 而续命一段时间.
-	UDP_timeout = time.Minute * 3
+	UDP_timeout = DefaultUDP_timeout
 
 	/*
 		fullcone时，wlc 监听本地随机udp端口，而且时刻准备接收 其它端口发来的信息，所以 某个 wrc 被关闭后，wlc 不能随意被关闭；相反，如果 wlc的读取 或写入 遇到 错误而推出后，可以关闭 wrc 和 wlc。
@@ -30,7 +32,7 @@ var (
 
 		还有就是，因为 udp 是 无状态的，所以 基本上很难遇到 udp读取失败的情况，一般都是会一直卡住，所以确实需要我们设置超时
 	*/
-	UDP_fullcone_timeout = time.Minute * 30
+	UDP_fullcone_timeout = DefaultUDP_fullcone_timeout
 )
 
 /*

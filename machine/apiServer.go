@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"crypto/tls"
+	"flag"
 	"log"
 	"net/http"
 	"strconv"
@@ -21,27 +22,30 @@ curl -k https://127.0.0.1:48345/api/allstate
 */
 
 type ApiServerConf struct {
-	EnableApiServer bool
-	PlainHttp       bool
-	KeyFile         string
-	CertFile        string
-	PathPrefix      string
-	AdminPass       string
-	Addr            string
+	EnableApiServer bool   `toml:"app"`
+	PlainHttp       bool   `toml:"plain"`
+	KeyFile         string `toml:"key"`
+	CertFile        string `toml:"cert"`
+	PathPrefix      string `toml:"prefix"`
+	AdminPass       string `toml:"admin_pass"`
+	Addr            string `toml:"addr"`
+}
+
+func (asc *ApiServerConf) SetupFlags() {
+	flag.BoolVar(&asc.EnableApiServer, "ea", false, "enable api server")
+
+	flag.BoolVar(&asc.PlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
+
+	flag.StringVar(&asc.PathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
+	flag.StringVar(&asc.AdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
+	flag.StringVar(&asc.Addr, "sa", "127.0.0.1:48345", "api Server listen address")
+	flag.StringVar(&asc.CertFile, "scert", "", "api Server tls cert file path")
+	flag.StringVar(&asc.KeyFile, "skey", "", "api Server tls cert key path")
+
 }
 
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
 func (m *M) TryRunApiServer() {
-
-	var thepass string
-
-	if m.AdminPass == "" && m.appConf != nil {
-		if ap := m.appConf.AdminPass; ap != "" {
-			thepass = ap
-		}
-		m.AdminPass = thepass
-
-	}
 
 	m.ApiServerRunning = true
 

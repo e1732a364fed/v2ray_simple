@@ -14,9 +14,10 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-// VS 标准toml文件格式 由 proxy.StandardConf 和 AppConf两部分组成
+// VS 标准toml文件格式 由 proxy.StandardConf , ApiServerConf, AppConf 3部分组成
 type VSConf struct {
-	AppConf *AppConf `toml:"app"`
+	AppConf       *AppConf       `toml:"app"`
+	ApiServerConf *ApiServerConf `toml:"api_server"`
 	proxy.StandardConf
 }
 
@@ -25,11 +26,9 @@ type AppConf struct {
 	LogLevel          *int    `toml:"loglevel"` //需要为指针, 否则无法判断0到底是未给出的默认值还是 显式声明的0
 	LogFile           *string `toml:"logfile"`
 	DefaultUUID       string  `toml:"default_uuid"`
-	MyCountryISO_3166 string  `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
+	MyCountryISO_3166 string  `toml:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
 
 	NoReadV bool `toml:"noreadv"`
-
-	AdminPass string `toml:"admin_pass"` //用于apiServer等情况
 
 	UDP_timeout *int `toml:"udp_timeout"`
 
@@ -40,8 +39,7 @@ type AppConf struct {
 	GeositeFolder *string `toml:"geosite_folder"`
 }
 
-func LoadVSConfFromBs(bs []byte) (sc proxy.StandardConf, ac *AppConf, err error) {
-	var vsConf VSConf
+func LoadVSConfFromBs(bs []byte) (vsConf VSConf, err error) {
 
 	bs = utils.ReplaceBytesSynonyms(bs, proxy.StandardConfBytesSynonyms)
 
@@ -50,12 +48,41 @@ func LoadVSConfFromBs(bs []byte) (sc proxy.StandardConf, ac *AppConf, err error)
 	if err != nil {
 		return
 	}
-	sc = vsConf.StandardConf
-	ac = vsConf.AppConf
 	return
 }
 
-func SetupByAppConf(ac *AppConf) {
+func GetAppConfByCurrentState() (ac AppConf) {
+	lfn := utils.LogOutFileName
+	if lfn != "" {
+		ac.LogFile = &lfn
+	}
+	if ll := utils.LogLevel; ll != utils.DefaultLL {
+		ac.LogLevel = &ll
+	}
+	if !netLayer.UseReadv {
+		ac.NoReadV = true
+	}
+	if netLayer.UDP_timeout != netLayer.DefaultUDP_timeout {
+		to := int(netLayer.UDP_timeout / time.Minute)
+		ac.UDP_timeout = &to
+	}
+	// if netLayer.UDP_fullcone_timeout != netLayer.DefaultUDP_fullcone_timeout {
+
+	// }
+
+	if netLayer.DialTimeout != netLayer.DefaultDialTimeout {
+		to := int(netLayer.DialTimeout / time.Second)
+		ac.DialTimeoutSeconds = &to
+	}
+
+	if netLayer.CommonReadTimeout != netLayer.DefaultCommonReadTimeout {
+		to := int(netLayer.CommonReadTimeout / time.Second)
+		ac.ReadTimeoutSeconds = &to
+	}
+	return
+}
+
+func (ac *AppConf) Setup() {
 	if ac == nil {
 		return
 	}
@@ -102,13 +129,25 @@ func SetupByAppConf(ac *AppConf) {
 }
 
 func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
-	m.standardConf, m.appConf, err = LoadVSConfFromBs(bs)
+	//var ac *AppConf
+	var vsConf VSConf
+	vsConf, err = LoadVSConfFromBs(bs)
+
 	if err != nil {
 		log.Printf("can not load standard config file: %v, \n", err)
 		return err
 	}
+	m.standardConf = vsConf.StandardConf
 
-	m.setupAppConf()
+	if vsConf.AppConf != nil {
+		m.AppConf = *vsConf.AppConf
+
+		m.AppConf.Setup()
+	}
+	if vsConf.ApiServerConf != nil {
+		m.ApiServerConf = *vsConf.ApiServerConf
+	}
+
 	return nil
 }
 
@@ -147,6 +186,12 @@ url:
 
 		confMode = proxy.UrlMode
 		m.urlConf, err = proxy.LoadUrlConf(listenURL, dialURL)
+		if err == nil {
+			r := m.loadUrlConf(false)
+			if r < 0 {
+				return r, errors.New("load url conf failed")
+			}
+		}
 	} else {
 
 		log.Println(proxy.ErrStrNoListenUrl)
@@ -158,17 +203,9 @@ url:
 	return
 }
 
-func (m *M) setupAppConf() {
-	SetupByAppConf(m.appConf)
-}
-
 func (m *M) SetupListenAndRoute() {
-	var myCountryISO_3166 string
-	if m.appConf != nil {
-		myCountryISO_3166 = m.appConf.MyCountryISO_3166
 
-		m.DefaultUUID = m.appConf.DefaultUUID
-	}
+	myCountryISO_3166 := m.MyCountryISO_3166
 
 	if len(m.standardConf.Listen) < 1 {
 		utils.Warn("no listen in config settings")
