@@ -242,7 +242,29 @@ func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func
 		autoRouteFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
 	}
 
-	newTchan, newUchan, stackCloser, err := tun.Listen(tunDev)
+	newTcpFunc := func(info netLayer.TCPRequestInfo) {
+		if s.stopped {
+			return
+		}
+		if ce := utils.CanLogInfo("tun got new tcp"); ce != nil {
+			ce.Write(zap.String("->", info.Target.String()))
+		}
+
+		tcpFunc(info)
+	}
+
+	newUdpFunc := func(info netLayer.UDPRequestInfo) {
+		if s.stopped {
+			return
+		}
+		if ce := utils.CanLogInfo("tun got new udp"); ce != nil {
+			ce.Write(zap.String("->", info.Target.String()))
+		}
+		udpFunc(info)
+
+	}
+
+	stackCloser, err := tun.Listen(tunDev, newTcpFunc, newUdpFunc)
 
 	if err != nil {
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
@@ -252,30 +274,6 @@ func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func
 		return nil
 	}
 
-	go func() {
-		for tr := range newTchan {
-			if s.stopped {
-				return
-			}
-			if ce := utils.CanLogInfo("tun got new tcp"); ce != nil {
-				ce.Write(zap.String("->", tr.Target.String()))
-			}
-			go tcpFunc(tr)
-
-		}
-	}()
-
-	go func() {
-		for ur := range newUchan {
-			if s.stopped {
-				return
-			}
-			if ce := utils.CanLogInfo("tun got new udp"); ce != nil {
-				ce.Write(zap.String("->", ur.Target.String()))
-			}
-			go udpFunc(ur)
-		}
-	}()
 	s.stackCloser = stackCloser
 	s.tunDev = tunDev
 

@@ -51,10 +51,7 @@ func (sc *StackCloser) Close() error {
 	return nil
 }
 
-func Listen(dev device.Device) (tcpChan chan netLayer.TCPRequestInfo, udpChan chan netLayer.UDPRequestInfo, closer io.Closer, err error) {
-
-	tcpChan = make(chan netLayer.TCPRequestInfo)
-	udpChan = make(chan netLayer.UDPRequestInfo)
+func Listen(dev device.Device, tcpFunc func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) (closer io.Closer, err error) {
 
 	s := stack.New(stack.Options{
 		NetworkProtocols: []stack.NetworkProtocolFactory{
@@ -130,7 +127,7 @@ func Listen(dev device.Device) (tcpChan chan netLayer.TCPRequestInfo, udpChan ch
 		// log.Printf("forward tcp request %s:%d->%s:%d\n",
 		// 	id.RemoteAddress, id.RemotePort, id.LocalAddress, id.LocalPort)
 
-		tcpChan <- info
+		go tcpFunc(info)
 
 		r.Complete(false)
 	})
@@ -160,7 +157,7 @@ func Listen(dev device.Device) (tcpChan chan netLayer.TCPRequestInfo, udpChan ch
 			},
 		}
 
-		udpChan <- info
+		go udpFunc(info)
 	})
 	s.SetTransportProtocolHandler(udp.ProtocolNumber, udpForwarder.HandlePacket)
 
