@@ -62,12 +62,23 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 }
 
 //direct的Client的 EstablishUDPChannel 直接 监听一个udp端口，无视传入的net.Conn.
+// 这是因为要考虑到fullcone.
 func (d *DirectClient) EstablishUDPChannel(_ net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
+
+	var la *net.UDPAddr
+	if d.LA != nil {
+		tmpla, ok := d.LA.(*net.UDPAddr)
+		if ok {
+			la = tmpla
+		}
+	}
+
 	if len(firstPayload) == 0 {
-		return netLayer.NewUDPMsgConn(nil, d.IsFullcone, false, d.Sockopt)
+
+		return netLayer.NewUDPMsgConn(la, d.IsFullcone, false, d.Sockopt)
 
 	} else {
-		mc, err := netLayer.NewUDPMsgConn(nil, d.IsFullcone, false, d.Sockopt)
+		mc, err := netLayer.NewUDPMsgConn(la, d.IsFullcone, false, d.Sockopt)
 		if err != nil {
 			return nil, err
 		}

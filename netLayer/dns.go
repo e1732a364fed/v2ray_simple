@@ -150,8 +150,8 @@ type IPRecord struct {
 // SpecialIPPollicy 用于指定特殊的 域名-ip 映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip。
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询。
 type DNSMachine struct {
-	TypeStrategy int64 // 0, 4, 6, 40, 60
-	TTLStrategy  int64 // 0, 1, arbitrary
+	TypeStrategy int64  // 0, 4, 6, 40, 60
+	TTLStrategy  uint64 // 0, 1, arbitrary
 	defaultConn  DnsConn
 	conns        map[string]*DnsConn
 	cache        map[string]IPRecord //cache的key统一为 未经 Fqdn包装过的域名. 即尾部没有点号
