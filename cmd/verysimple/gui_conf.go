@@ -114,6 +114,9 @@ func makeConfPage() ui.Control {
 	}
 
 	dialPCbox.OnSelected(func(c *ui.Combobox) {
+		if curSelectedDial < 0 {
+			return
+		}
 		idx := dialPCbox.Selected()
 
 		sc.Dial[curSelectedDial].Protocol = allDialPs[idx]
@@ -121,14 +124,20 @@ func makeConfPage() ui.Control {
 
 	muxC := ui.NewCheckbox("mux")
 	muxC.OnToggled(func(c *ui.Checkbox) {
+		if curSelectedDial < 0 {
+			return
+		}
 		sc.Dial[curSelectedDial].Mux = muxC.Checked()
 	})
 	vbox2.Append(muxC, false)
 
 	update = func(shouldChange bool) {
-		curD := sc.Dial[curSelectedDial]
-		muxC.SetChecked(curD.Mux)
-		dialPCbox.SetSelected(slices.Index(allDialPs, curD.Protocol))
+		if curSelectedDial >= 0 {
+			curD := sc.Dial[curSelectedDial]
+			muxC.SetChecked(curD.Mux)
+			dialPCbox.SetSelected(slices.Index(allDialPs, curD.Protocol))
+
+		}
 
 		if shouldChange {
 			var shouldStart = false

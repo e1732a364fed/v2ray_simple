@@ -102,6 +102,7 @@ cd v2ray_simple/cmd/verysimple && go build
 2. 标准模式 (也称 toml模式)
 3. 兼容模式
 4. 交互模式
+5. GUI 模式
 
 本项目自 v1.2.5开始，移除了 json格式的"极简模式".
 
@@ -183,6 +184,16 @@ verysimple -c server.toml
 
 
 交互生成配置后还可以输出到文件、加载到当前运行环境、生成分享链接。
+
+### GUI 模式
+
+运行 vs_gui 开头的发布包中的 verysimple
+
+下面是在macOS运行的效果
+
+![](docs/pics/vsgui_baseControl_cb02d3b7.png)
+
+![](docs/pics/vsgui_appControl_cb02d3b7.png)
 
 ### 其他说明
 
