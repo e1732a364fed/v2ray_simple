@@ -91,8 +91,6 @@ var SetSystemDNS = func(dns string) {
 		ce.Write(zap.String("platform", runtime.GOOS))
 	}
 
-	//https://www.linuxfordevices.com/tutorials/linux/change-dns-on-linux
-	//linux 的 dns配置 看起来似乎不按网卡分 ，这个和 win/darwin 不同
 }
 
 var ToggleSystemProxy = func(isSocks5 bool, addr, port string, enable bool) {

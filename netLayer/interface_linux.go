@@ -11,7 +11,49 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
+
+func init() {
+	SetSystemDNS = setSystemDNS
+	GetSystemDNS = getSystemDNS
+
+}
+
+// https://www.linuxfordevices.com/tutorials/linux/change-dns-on-linux
+// linux 的 dns配置 看起来似乎不按网卡分 ，这个和 win/darwin 不同
+func setSystemDNS(dns string) {
+	e := os.WriteFile("/etc/resolv.conf", []byte("nameserver "+dns), 0644)
+	if e != nil {
+		if ce := utils.CanLogErr("setSystemDns os.WriteFile /etc/resolv.conf failed"); ce != nil {
+			ce.Write(zap.Error(e))
+		}
+		return
+	}
+}
+
+func getSystemDNS() (result []string) {
+
+	bs, e := os.ReadFile("/etc/resolv.conf")
+	if e != nil {
+		if ce := utils.CanLogErr("getSystemDNS os.ReadFile /etc/resolv.conf failed"); ce != nil {
+			ce.Write(zap.Error(e))
+		}
+		return
+	}
+	pf := []byte("nameserver ")
+	lines := bytes.Split(bs, []byte("\n"))
+	for _, l := range lines {
+		if !bytes.HasPrefix(l, pf) {
+			continue
+		}
+		l = bytes.TrimPrefix(l, pf)
+		result = append(result, string(l))
+	}
+	return
+}
 
 // https://github.com/jackpal/gateway/blob/master/gateway_parsers.go
 func GetGateway() (ip net.IP, ifName string, err error) {

@@ -41,7 +41,6 @@ func init() {
 		return true
 	}
 
-	//暂未实现linux 上配置dns的功能
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP, dns string, directList []string) {
 		routerip, routerName, err := netLayer.GetGateway()
 		if err != nil {
@@ -80,6 +79,16 @@ func init() {
 			}
 		}
 
+		if dns != "" {
+			rdnss := netLayer.GetSystemDNS()
+			if len(rdnss) > 0 {
+				rememberedRouterDns = rdnss[0]
+				netLayer.SetSystemDNS(dns)
+			}
+		}
+
+		utils.Info("auto route succeed!")
+
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
@@ -112,12 +121,16 @@ func init() {
 			}
 
 		}
+
+		if rememberedRouterDns != "" {
+			netLayer.SetSystemDNS(rememberedRouterDns)
+		}
 	}
 
 	autoRouteDownAfterCloseFunc = func(tunDevName, tunGateway, tunIP string, directlist []string) {
 		if _, e := utils.LogRunCmd("ip", "tuntap", "del", "mode", "tun", "dev", tunDevName); e != nil {
 			if ce := utils.CanLogErr("recover auto route after close failed"); ce != nil {
-				ce.Write(zap.Error(e))
+				ce.Write(zap.Error(e), zap.String("plz run this command manually,", "ip tuntap del mode tun dev "+tunDevName))
 			}
 			return
 
