@@ -56,6 +56,10 @@ func (*Server) Name() string {
 	return Name
 }
 
+func (*Server) MultiTransportLayer() bool {
+	return true
+}
+
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	result = s.cipher.StreamConn(underlay)
 	readbs := utils.GetBytes(utils.MTU)

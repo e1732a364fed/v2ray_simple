@@ -3,4 +3,4 @@ protocol = "shadowsocks"
 uuid = "method:AES-128-GCM\npass:iloveverysimple"
 host = "127.0.0.1"
 port = 4434
-#network = "udp"
+#network = "mix"
