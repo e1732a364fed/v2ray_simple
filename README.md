@@ -135,7 +135,7 @@ verysimple -c server.json
 
 verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
-关于url格式，见： https://github.com/e1732a364fed/v2ray_simple/discussions/163
+关于url格式，见： [url标准定义](docs/url.md)
 
 ### 命令行模式
 

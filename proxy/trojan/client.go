@@ -25,9 +25,10 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 	case proxy.UrlStandardFormat:
 		if dc == nil {
 			dc = &proxy.DialConf{}
+			uuidStr := url.User.Username()
+			dc.Uuid = uuidStr
+
 		}
-		uuidStr := url.User.Username()
-		dc.Uuid = uuidStr
 		return dc, nil
 	default:
 		return nil, utils.ErrUnImplemented

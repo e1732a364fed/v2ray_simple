@@ -50,13 +50,15 @@ func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format in
 		lc = &proxy.ListenConf{}
 	}
 
-	user := u.Query().Get("user")
-	pass := u.Query().Get("pass")
+	if p, set := u.User.Password(); set {
+		user := u.User.Username()
+		pass := p
+		lc.Users = append(lc.Users, utils.UserConf{
+			User: user,
+			Pass: pass,
+		})
+	}
 
-	lc.Users = append(lc.Users, utils.UserConf{
-		User: user,
-		Pass: pass,
-	})
 	return lc, nil
 }
 

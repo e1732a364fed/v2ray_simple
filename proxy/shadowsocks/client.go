@@ -25,10 +25,11 @@ func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (
 		dc = &proxy.DialConf{}
 	}
 
-	m := u.Query().Get("method")
-	p := u.Query().Get("pass")
+	if p, set := u.User.Password(); set {
 
-	dc.Uuid = "method:" + m + "\npass:" + p
+		dc.Uuid = "method:" + u.User.Username() + "\npass:" + p
+	}
+
 	return dc, nil
 }
 

@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"strconv"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -54,18 +53,8 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 		if lc == nil {
 			lc = &proxy.ListenConf{}
 
-		}
-
-		uuidStr := url.User.Username()
-		lc.Uuid = uuidStr
-		vStr := url.Query().Get("v")
-		if vStr != "" {
-			v, e := strconv.Atoi(vStr)
-			if e != nil {
-				return nil, e
-			}
-			lc.Version = v
-
+			uuidStr := url.User.Username()
+			lc.Uuid = uuidStr
 		}
 
 		return lc, nil

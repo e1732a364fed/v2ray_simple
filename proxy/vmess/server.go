@@ -76,10 +76,9 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 		if lc == nil {
 			lc = &proxy.ListenConf{}
 
+			uuidStr := url.User.Username()
+			lc.Uuid = uuidStr
 		}
-
-		uuidStr := url.User.Username()
-		lc.Uuid = uuidStr
 
 		return lc, nil
 	default:

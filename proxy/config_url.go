@@ -19,7 +19,7 @@ const (
 var (
 	// Url格式 设置以何种方式解析 命令行模式/极简模式 中出现的url配置
 	//
-	//关于url格式的详细， 见 https://github.com/e1732a364fed/v2ray_simple/discussions/163
+	//关于url格式的详细， 见 docs/url.md
 	UrlFormat = UrlStandardFormat
 )
 
@@ -175,6 +175,8 @@ func URLToCommonConf(u *url.URL, conf *CommonConf) error {
 
 	conf.Network = q.Get("network")
 
+	conf.Uuid = u.User.Username()
+
 	conf.Fullcone = utils.QueryPositive(q, "fullcone")
 	conf.Tag = u.Fragment
 	conf.Path = u.Path
@@ -279,6 +281,20 @@ func URLToListenConf(u *url.URL, conf *ListenConf) error {
 
 		conf.TLSCert = certFile
 		conf.TLSKey = keyFile
+	}
+
+	targetStr := q.Get("target.ip")
+
+	if targetStr != "" {
+		target_portStr := q.Get("target.port")
+		if target_portStr != "" {
+			if conf.Network == "" {
+				conf.Network = "tcp"
+			}
+			taStr := conf.Network + "://" + targetStr + ":" + target_portStr
+			conf.TargetAddr = taStr
+		}
+
 	}
 
 	return e

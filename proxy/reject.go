@@ -66,29 +66,11 @@ func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	return r, nil
 }
 
-func (RejectCreator) initCommonConfByURL(url *url.URL, lc *CommonConf, format int) {
-
-	if format != UrlStandardFormat {
-		return
-	}
-
-	nStr := url.Query().Get("type")
-
-	if nStr != "" {
-
-		lc.Extra = make(map[string]any)
-		lc.Extra["type"] = nStr
-
-	}
-
-}
-
 func (rc RejectCreator) URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error) {
 	if iv == nil {
 		iv = &DialConf{}
 
 	}
-	rc.initCommonConfByURL(url, &iv.CommonConf, format)
 
 	return iv, nil
 }
@@ -97,7 +79,6 @@ func (rc RejectCreator) URLToListenConf(url *url.URL, iv *ListenConf, format int
 	if iv == nil {
 		iv = &ListenConf{}
 	}
-	rc.initCommonConfByURL(url, &iv.CommonConf, format)
 
 	return iv, nil
 }

@@ -191,7 +191,7 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 	maxStreamsInOneConn int64) {
 
 	if thing := extra["maxStreamsInOneConn"]; thing != nil {
-		if count, ok := thing.(int64); ok && count > 0 {
+		if count, ok := utils.AnyToInt64(thing); ok && count > 0 {
 			if ce := utils.CanLogInfo("Quic max Streams In One Conn"); ce != nil {
 				ce.Write(zap.Int("count,", int(count)))
 			} else {
@@ -209,7 +209,7 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 			useHysteria = true
 
 			if thing := extra["mbps"]; thing != nil {
-				if mbps, ok := thing.(int64); ok && mbps > 1 {
+				if mbps, ok := utils.AnyToInt64(thing); ok && mbps > 1 {
 					maxbyteCount = int(mbps) * 1024 * 1024 / 8
 				}
 			} else {
@@ -224,7 +224,7 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 			}
 
 			if thing := extra["hy_manual"]; thing != nil {
-				if ismanual, ok := thing.(bool); ok {
+				if ismanual, ok := utils.AnyToBool(thing); ok {
 					hysteria_manual = ismanual
 					if ismanual {
 
@@ -235,7 +235,7 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 						}
 
 						if thing := extra["hy_manual_initial_rate"]; thing != nil {
-							if initRate, ok := thing.(float64); ok {
+							if initRate, ok := utils.AnyToFloat64(thing); ok {
 
 								if rateOk(initRate) == 0 {
 									TheCustomRate = initRate

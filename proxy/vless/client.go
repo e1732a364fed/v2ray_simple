@@ -59,27 +59,8 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 	case proxy.UrlStandardFormat:
 		if dc == nil {
 			dc = &proxy.DialConf{}
-		}
-		uuidStr := url.User.Username()
-		dc.Uuid = uuidStr
-
-		vStr := url.Query().Get("v")
-		if vStr != "" {
-			v, e := strconv.Atoi(vStr)
-			if e != nil {
-				return nil, e
-			}
-			dc.Version = v
-			if v == 1 {
-				vless1_udp_multiStr := url.Query().Get("vless1_udp_multi")
-				if vless1_udp_multiStr == "true" || vless1_udp_multiStr == "1" {
-					if dc.Extra == nil {
-						dc.Extra = make(map[string]any)
-					}
-					dc.Extra["vless1_udp_multi"] = true
-
-				}
-			}
+			uuidStr := url.User.Username()
+			dc.Uuid = uuidStr
 
 		}
 

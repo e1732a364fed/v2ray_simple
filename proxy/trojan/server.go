@@ -35,11 +35,10 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 	case proxy.UrlStandardFormat:
 		if lc == nil {
 			lc = &proxy.ListenConf{}
-
+			uuidStr := url.User.Username()
+			lc.Uuid = uuidStr
 		}
 
-		uuidStr := url.User.Username()
-		lc.Uuid = uuidStr
 		return lc, nil
 	default:
 		return nil, utils.ErrUnImplemented

@@ -42,6 +42,7 @@ package grpc
 
 import (
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 func init() {
@@ -79,10 +80,10 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 	grpc_multi := false
 	if extra := conf.Extra; len(extra) > 0 {
 		if thing := extra["grpc_multi"]; thing != nil {
-			if use_multi, ok := thing.(bool); ok {
-				grpc_multi = use_multi
-			}
 
+			if v, ok := utils.AnyToBool(thing); ok {
+				grpc_multi = v
+			}
 		}
 	}
 

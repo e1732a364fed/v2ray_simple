@@ -372,8 +372,8 @@ func interactively_hotLoadUrlConfig() {
 	Select := promptui.Select{
 		Label: "请选择你的url的格式类型",
 		Items: []string{
-			"协议官方url格式(视代理协议不同而不同)",
 			"vs标准url格式",
+			"协议官方url格式(视代理协议不同而不同)",
 		},
 	}
 	i, result, err := Select.Run()
@@ -386,16 +386,16 @@ func interactively_hotLoadUrlConfig() {
 	fmt.Printf("你选择了 %s\n", result)
 
 	switch i {
-	case 0:
+	case 1:
 		fmt.Printf("目前暂不支持")
 		return
 
-	case 1:
+	case 0:
 		Select := promptui.Select{
-			Label: "请选择该url是用于服务端还是客户端",
+			Label: "请选择该url是用于dial还是listen",
 			Items: []string{
-				"客户端",
-				"服务端",
+				"dial",
+				"listen",
 			},
 		}
 		i, result, err := Select.Run()
@@ -418,7 +418,7 @@ func interactively_hotLoadUrlConfig() {
 		}
 
 		if i == 0 {
-			u, sn, _, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
+			u, sn, creator, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
 			if err != nil {
 				fmt.Printf("parse url failed %v\n", err)
 				return
@@ -432,12 +432,17 @@ func interactively_hotLoadUrlConfig() {
 				fmt.Printf("parse url failed %v\n", err)
 				return
 			}
+			dc, err = creator.URLToDialConf(u, dc, proxy.UrlStandardFormat)
+			if err != nil {
+				fmt.Printf("parse url step 2 failed %v\n", err)
+				return
+			}
 
 			hotLoadDialConfForRuntime("", []*proxy.DialConf{dc})
 
 		} else {
 
-			u, sn, _, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
+			u, sn, creator, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
 			if err != nil {
 				fmt.Printf("parse url failed %v\n", err)
 				return
@@ -453,7 +458,11 @@ func interactively_hotLoadUrlConfig() {
 				fmt.Printf("parse url failed %v\n", err)
 				return
 			}
-
+			lc, err = creator.URLToListenConf(u, lc, proxy.UrlStandardFormat)
+			if err != nil {
+				fmt.Printf("parse url step 2 failed %v\n", err)
+				return
+			}
 			hotLoadListenConfForRuntime([]*proxy.ListenConf{lc})
 		}
 		return

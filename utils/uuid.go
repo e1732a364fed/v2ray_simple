@@ -67,7 +67,7 @@ GenerateUUID_v4 生成符合v4标准的uuid.
 
  version: https://datatracker.ietf.org/doc/html/rfc4122#section-4.1.3
 */
-func GenerateUUID_v4() (r [UUID_BytesLen]byte) {
+func GenerateUUID_v4() (r UUID) {
 	rand.Reader.Read(r[:])
 	r[6] = (r[6] & 0x0f) | 0x40 // Version 4
 	r[8] = (r[8] & 0x3f) | 0x80

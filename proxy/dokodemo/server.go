@@ -53,7 +53,6 @@ func init() {
 
 type ServerCreator struct{}
 
-// 用如下参数形式： network=tcp&target=127.0.0.1&target_port=80
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 	if format != proxy.StandardMode {
 		return lc, utils.ErrUnImplemented
@@ -62,20 +61,6 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 		return nil, utils.ErrNilParameter
 	}
 
-	targetStr := url.Query().Get("target")
-	if targetStr == "" {
-		return nil, utils.ErrNilParameter
-	}
-
-	target_portStr := url.Query().Get("target_port")
-	if target_portStr == "" {
-		return nil, utils.ErrNilParameter
-	}
-	if lc.Network == "" {
-		lc.Network = "tcp"
-	}
-	taStr := lc.Network + "://" + targetStr + ":" + target_portStr
-	lc.TargetAddr = taStr
 	return lc, nil
 }
 

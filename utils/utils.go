@@ -3,7 +3,6 @@ package utils
 
 import (
 	"flag"
-	"net/url"
 	"os"
 	"strings"
 
@@ -85,14 +84,4 @@ func WrapFuncForPromptUI(f func(string) bool) func(string) error {
 		}
 		return ErrInvalidData
 	}
-}
-
-func QueryPositive(query url.Values, key string) bool {
-	nStr := query.Get(key)
-	return nStr == "true" || nStr == "1"
-}
-
-func QueryNegative(query url.Values, key string) bool {
-	nStr := query.Get(key)
-	return nStr == "false" || nStr == "0"
 }

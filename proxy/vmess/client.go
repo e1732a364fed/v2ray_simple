@@ -56,23 +56,12 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 
 	if dc == nil {
 		dc = &proxy.DialConf{}
-	}
+		uuidStr := url.User.Username()
 
-	uuidStr := url.User.Username()
-
-	dc.Uuid = uuidStr
-
-	query := url.Query()
-
-	security := query.Get("security")
-	if security != "" {
-		if dc.Extra == nil {
-			dc.Extra = make(map[string]any)
-		}
-
-		dc.Extra[Security_confStr] = security
+		dc.Uuid = uuidStr
 
 	}
+
 	return dc, nil
 }
 
