@@ -11,12 +11,12 @@ import (
 
 var ErrInvalidWrite = errors.New("readfrom, invalid write result")
 
-const SystemCanSplice = runtime.GOARCH != "wasm" && runtime.GOOS != "windows"
+var SystemCanSplice = runtime.GOARCH != "wasm" && runtime.GOOS != "windows"
 
 //Splicer 是一个 可以进行Write时使用splice的接口。
 type Splicer interface {
 	EverPossibleToSplice() bool      //是否有机会splice, 如果这个返回false，则永远无法splice; 主要审视自己能否向裸连接写入数据; 读不用splicer担心。
-	CanSplice() (bool, *net.TCPConn) //当前状态是否可以splice，返回的 net.Conn必须是tcp
+	CanSplice() (bool, *net.TCPConn) //当前状态是否可以splice
 }
 
 //tcp, unix

@@ -26,6 +26,7 @@ import (
 var (
 	configFileName     string
 	useNativeUrlFormat bool
+	disableSplice      bool
 	startPProf         bool
 	startMProf         bool
 	listenURL          string //用于命令行模式
@@ -66,6 +67,8 @@ func init() {
 	flag.BoolVar(&useNativeUrlFormat, "nu", false, "use the proxy-defined url format, instead of the standard verysimple one.")
 
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
+
+	flag.BoolVar(&disableSplice, "ds", false, "if given, then the app won't use splice.")
 
 	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 
@@ -146,6 +149,9 @@ func mainFunc() (result int) {
 
 	// config by bool params
 	{
+		if disableSplice {
+			netLayer.SystemCanSplice = false
+		}
 		if startPProf {
 			const pprofFN = "cpu.pprof"
 			f, err := os.OpenFile(pprofFN, os.O_CREATE|os.O_RDWR, 0644)
