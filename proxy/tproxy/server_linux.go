@@ -60,9 +60,7 @@ type Server struct {
 
 	shouldSetIPTable bool
 
-	infoChan    chan<- netLayer.TCPRequestInfo
-	udpInfoChan chan<- netLayer.UDPRequestInfo
-	tm          *tproxy.Machine
+	tm *tproxy.Machine
 	sync.Once
 }
 
@@ -99,26 +97,17 @@ func (s *Server) Close() error {
 func (s *Server) Stop() {
 	s.Once.Do(func() {
 		s.tm.Stop()
-
-		if s.infoChan != nil {
-			close(s.infoChan)
-		}
-		if s.udpInfoChan != nil {
-			close(s.udpInfoChan)
-		}
-
 	})
 
 }
 
-func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoChan chan<- netLayer.UDPRequestInfo) io.Closer {
+func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) io.Closer {
 
 	tm := new(tproxy.Machine)
 
 	_, lt, lu := s.SelfListen()
 
 	if lt > 0 {
-		s.infoChan = infoChan
 
 		lis, err := netLayer.ListenAndAccept("tcp", s.Addr, s.Sockopt, 0, func(conn net.Conn) {
 			tcpconn := conn.(*net.TCPConn)
@@ -135,7 +124,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 			if tm.Closed() {
 				return
 			}
-			infoChan <- info
+			go tcpFunc(info)
 		})
 		if err != nil {
 			if ce := utils.CanLogErr("TProxy listen tcp failed"); ce != nil {
@@ -147,7 +136,6 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 	}
 
 	if lu > 0 {
-		s.udpInfoChan = udpInfoChan
 
 		ad, err := netLayer.NewAddr(s.Addr)
 		if err != nil {
@@ -186,7 +174,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 					return
 				}
 
-				udpInfoChan <- netLayer.UDPRequestInfo{MsgConn: msgConn, Target: raddr}
+				go udpFunc(netLayer.UDPRequestInfo{MsgConn: msgConn, Target: raddr})
 
 			}
 		}()

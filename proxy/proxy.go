@@ -91,12 +91,16 @@ type Server interface {
 	//get/listen a useable inner mux
 	GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session
 
-	SelfListen() (is bool, tcp, udp int) //is表示开启自监听; 此时若 tcp=1, 表示监听tcp, 若tcp=0, 表示自己不监听tcp, 但需要vs进行监听; 若tcp<0, 则表示自己不监听, 也不要vs监听; udp同理
+	//tproxy,tun 和 shadowsocks(udp) 都用到了 SelfListen
+	//
+	//is表示开启自监听; 此时若 tcp=1, 表示监听tcp, 若tcp=0, 表示自己不监听tcp, 但需要vs进行监听; 若tcp<0, 则表示自己不监听, 也不要vs监听; udp同理; 开启SelfListen同时表明 Server实现了 ListenerServer
+	SelfListen() (is bool, tcp, udp int)
 }
 
 type ListenerServer interface {
 	Server
-	StartListen(chan<- netLayer.TCPRequestInfo, chan<- netLayer.UDPRequestInfo) io.Closer
+
+	StartListen(func(netLayer.TCPRequestInfo), func(netLayer.UDPRequestInfo)) io.Closer
 }
 
 type UserServer interface {

@@ -134,10 +134,8 @@ type Server struct {
 
 	stopped bool
 
-	infoChan       chan<- netLayer.TCPRequestInfo
-	udpRequestChan chan<- netLayer.UDPRequestInfo
-	stackCloser    io.Closer
-	tunDev         device.Device
+	stackCloser io.Closer
+	tunDev      device.Device
 
 	devName, realIP, selfip string //selfip 只在 darwin 上用到
 	autoRoute               bool
@@ -180,8 +178,6 @@ func (s *Server) Stop() {
 			autoRouteDownFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
 		}
 
-		close(s.infoChan)
-		close(s.udpRequestChan)
 		s.stackCloser.Close()
 		s.tunDev.Close()
 
@@ -191,15 +187,13 @@ func (s *Server) Stop() {
 		}
 		s.stackCloser = nil
 		s.tunDev = nil
-		s.infoChan = nil
-		s.udpRequestChan = nil
 		rememberedRouterIP = ""
 		rememberedRouterName = ""
 	}
 
 }
 
-func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
+func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) io.Closer {
 	s.stopped = false
 
 	if s.devName == "" {
@@ -247,8 +241,6 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 		utils.Info("tun running auto table")
 		autoRouteFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
 	}
-	s.infoChan = tcpRequestChan
-	s.udpRequestChan = udpRequestChan
 
 	newTchan, newUchan, stackCloser, err := tun.Listen(tunDev)
 
@@ -268,7 +260,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			if ce := utils.CanLogInfo("tun got new tcp"); ce != nil {
 				ce.Write(zap.String("->", tr.Target.String()))
 			}
-			tcpRequestChan <- tr
+			go tcpFunc(tr)
 
 		}
 	}()
@@ -281,7 +273,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			if ce := utils.CanLogInfo("tun got new udp"); ce != nil {
 				ce.Write(zap.String("->", ur.Target.String()))
 			}
-			udpRequestChan <- ur
+			go udpFunc(ur)
 		}
 	}()
 	s.stackCloser = stackCloser

@@ -58,8 +58,7 @@ type Server struct {
 
 	shouldSetRoute bool
 
-	infoChan chan<- netLayer.TCPRequestInfo
-	tm       *tproxy.Machine
+	tm *tproxy.Machine
 	sync.Once
 }
 
@@ -86,21 +85,16 @@ func (s *Server) Stop() {
 	s.Once.Do(func() {
 		s.tm.Stop()
 
-		if s.infoChan != nil {
-			close(s.infoChan)
-		}
-
 	})
 
 }
 
-func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoChan chan<- netLayer.UDPRequestInfo) io.Closer {
+func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), _ func(netLayer.UDPRequestInfo)) io.Closer {
 
 	tm := new(tproxy.Machine)
 	_, lt, _ := s.SelfListen()
 
 	if lt > 0 {
-		s.infoChan = infoChan
 
 		lis, err := netLayer.ListenAndAccept("tcp", s.Addr, s.Sockopt, 0, func(conn net.Conn) {
 			tcpconn := conn.(*net.TCPConn)
@@ -124,7 +118,8 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 			if tm.Closed() {
 				return
 			}
-			infoChan <- info
+
+			go tcpFunc(info)
 		})
 		if err != nil {
 			if ce := utils.CanLogErr("TProxy listen tcp failed"); ce != nil {

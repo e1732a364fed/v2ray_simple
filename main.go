@@ -76,10 +76,10 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 	var is bool
 	var tcp, udp int
-	//tproxy,tun/tap 和 shadowsocks(udp) 都用到了 SelfListen
+	//tproxy,tun 和 shadowsocks(udp) 都用到了 SelfListen
 	if is, tcp, udp = inServer.SelfListen(); is {
-		var chantcp chan netLayer.TCPRequestInfo
-		var chanudp chan netLayer.UDPRequestInfo
+		var tcpFunc func(netLayer.TCPRequestInfo)
+		var udpFunc func(netLayer.UDPRequestInfo)
 
 		if ce := utils.CanLogInfo("Listening"); ce != nil {
 
@@ -93,38 +93,32 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		}
 
 		if tcp == 1 {
-			chantcp = make(chan netLayer.TCPRequestInfo, 2)
-			go func() {
-				for tcpInfo := range chantcp {
-					go passToOutClient(incomingInserverConnState{
-						inTag:         inServer.GetTag(),
-						useSniffing:   inServer.Sniffing(),
-						wrappedConn:   tcpInfo.Conn,
-						defaultClient: defaultOutClient,
-						routingEnv:    env,
-						GlobalInfo:    gi,
-					}, false, tcpInfo.Conn, nil, tcpInfo.Target)
-				}
-			}()
+
+			tcpFunc = func(tcpInfo netLayer.TCPRequestInfo) {
+				passToOutClient(incomingInserverConnState{
+					inTag:         inServer.GetTag(),
+					useSniffing:   inServer.Sniffing(),
+					wrappedConn:   tcpInfo.Conn,
+					defaultClient: defaultOutClient,
+					routingEnv:    env,
+					GlobalInfo:    gi,
+				}, false, tcpInfo.Conn, nil, tcpInfo.Target)
+			}
 
 		}
 		if udp == 1 {
-			chanudp = make(chan netLayer.UDPRequestInfo, 2)
 
-			go func() {
-				for udpInfo := range chanudp {
-					go passToOutClient(incomingInserverConnState{
-						inTag:         inServer.GetTag(),
-						useSniffing:   inServer.Sniffing(),
-						defaultClient: defaultOutClient,
-						routingEnv:    env,
-						GlobalInfo:    gi,
-					}, false, nil, udpInfo.MsgConn, udpInfo.Target)
-				}
-			}()
-
+			udpFunc = func(udpInfo netLayer.UDPRequestInfo) {
+				passToOutClient(incomingInserverConnState{
+					inTag:         inServer.GetTag(),
+					useSniffing:   inServer.Sniffing(),
+					defaultClient: defaultOutClient,
+					routingEnv:    env,
+					GlobalInfo:    gi,
+				}, false, nil, udpInfo.MsgConn, udpInfo.Target)
+			}
 		}
-		closer = inServer.(proxy.ListenerServer).StartListen(chantcp, chanudp)
+		closer = inServer.(proxy.ListenerServer).StartListen(tcpFunc, udpFunc)
 
 		//可以直接return的值: 1,1 1,-1, -1,1 ;
 		//还需继续监听的值: 1,0 0,1
