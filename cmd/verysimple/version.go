@@ -4,6 +4,13 @@ Package main 读取配置文件，然后进行代理转发, 并选择性运行 c
 命令行参数请使用 --help / -h 查看详情，配置文件示例请参考 ../../examples/ .
 
 如果一个命令行参数无法在标准配置中进行配置，那么它就属于高级/开发者选项，or 不推荐的选项，or 正在开发中的功能.
+
+# Tags
+
+提供 noquic,notun,gui 这几个 build tag。
+
+若 noquic给出，则不引用 advLayer/quic，否则 默认引用 advLayer/quic。
+quic大概占用 2MB 大小。
 */
 package main
 
@@ -14,6 +21,17 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpcSimple"
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
+
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/shadowsocks"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/simplesocks"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/socks5http" //该包自动引用 socks5 和 http
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/trojan"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/vmess"
 )
 
 const (

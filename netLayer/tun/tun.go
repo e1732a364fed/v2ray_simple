@@ -56,6 +56,7 @@ func (sc *StackCloser) Close() error {
 	return nil
 }
 
+// 非阻塞
 func Listen(dev device.Device, tcpFunc func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) (closer io.Closer, err error) {
 
 	s := stack.New(stack.Options{

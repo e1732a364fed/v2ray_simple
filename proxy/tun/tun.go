@@ -193,6 +193,7 @@ func (s *Server) Stop() {
 
 }
 
+// 非阻塞
 func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) io.Closer {
 	s.stopped = false
 

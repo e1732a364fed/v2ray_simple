@@ -12,6 +12,17 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpcSimple"
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
+
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/shadowsocks"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/simplesocks"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/socks5http"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/trojan"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/vmess"
 )
 
 func TestTCP_vless(t *testing.T) {

@@ -21,17 +21,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
-
-	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpcSimple"
-	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
-
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/shadowsocks"
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/simplesocks"
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/socks5http"
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/trojan"
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/vmess"
 )
 
 // statistics
@@ -143,8 +132,6 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		superSer := advs.(advLayer.SuperMuxServer)
 
-		// var newConnChan chan net.Conn
-
 		closer = superSer.StartListen(func(newConn net.Conn) {
 			iics := incomingInserverConnState{
 				wrappedConn:   newConn,
@@ -157,40 +144,11 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 			handshakeInserver_and_passToOutClient(iics)
 		})
-		// newConnChan, closer = superSer.StartListen()
+
 		if closer == nil {
 			utils.Error("Failed in SuperMuxServer StartListen ")
 			return
 		}
-
-		// go func() {
-		// 	for {
-		// 		newConn, ok := <-newConnChan
-		// 		if !ok {
-		// 			if ce := utils.CanLogErr("Read chan from Super AdvLayer closed"); ce != nil {
-		// 				ce.Write(zap.String("advLayer", inServer.AdvancedLayer()))
-		// 			}
-
-		// 			if closer != nil {
-		// 				closer.Close()
-		// 			}
-
-		// 			return
-		// 		}
-
-		// 		iics := incomingInserverConnState{
-		// 			wrappedConn:   newConn,
-		// 			inServer:      inServer,
-		// 			defaultClient: defaultOutClient,
-		// 			routingEnv:    env,
-		// 			GlobalInfo:    gi,
-		// 		}
-		// 		iics.genID()
-
-		// 		go handshakeInserver_and_passToOutClient(iics)
-		// 	}
-
-		// }()
 
 		if ce := utils.CanLogInfo("Listening Super AdvLayer"); ce != nil {
 

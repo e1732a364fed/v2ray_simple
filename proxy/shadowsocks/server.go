@@ -162,6 +162,7 @@ func (m *Server) removeUDPByHash(hash netLayer.HashableAddr) {
 	m.Unlock()
 }
 
+// 非阻塞
 func (s *Server) StartListen(_ func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) io.Closer {
 	uc, err := net.ListenUDP("udp", s.LUA)
 	if err != nil {

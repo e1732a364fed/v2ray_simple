@@ -100,6 +100,7 @@ type Server interface {
 type ListenerServer interface {
 	Server
 
+	//非阻塞
 	StartListen(func(netLayer.TCPRequestInfo), func(netLayer.UDPRequestInfo)) io.Closer
 }
 
