@@ -661,13 +661,13 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 				shouldStart = true
 			}
 
-			mainM.RemoveAllClient()
-
-			mainM.LoadDialConf(sc.Dial)
-
-			mainM.RemoveAllServer()
-
-			mainM.LoadListenConf(sc.Listen, false)
+			if isDial {
+				mainM.RemoveAllClient()
+				mainM.LoadDialConf(sc.Dial)
+			} else {
+				mainM.RemoveAllServer()
+				mainM.LoadListenConf(sc.Listen, false)
+			}
 
 			if shouldStart {
 				mainM.Start()
@@ -679,13 +679,11 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 	}
 	update(false)
 
-	if isDial {
-		applyBtn := ui.NewButton("提交修改")
-		vb.Append(ui.NewHorizontalBox(), true)
-		vb.Append(applyBtn, false)
-		applyBtn.OnClicked(func(b *ui.Button) {
-			update(true)
-		})
+	applyBtn := ui.NewButton("提交修改")
+	vb.Append(ui.NewHorizontalBox(), true)
+	vb.Append(applyBtn, false)
+	applyBtn.OnClicked(func(b *ui.Button) {
+		update(true)
+	})
 
-	}
 }
