@@ -241,13 +241,23 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 	// 但是中括号会被url转义, 而我们作为配置字符串，不需要转义
 
 	isUDP := false
-	if strings.HasPrefix(addrStr, "tcp://") {
+	if !strings.Contains(addrStr, "://") {
+		return Addr{}, errors.New("not a url")
+	}
 
-	} else if strings.HasPrefix(addrStr, "udp://") {
-		isUDP = true
-	} else {
+	var supported bool
+	var supportedList = []string{
+		"tcp://", "udp://", "tls://", "ip://", "ip6://", "ipv6://",
+	}
+	for _, v := range supportedList {
+		if strings.HasPrefix(addrStr, v) {
+			supported = true
+			break
+		}
+	}
+
+	if !supported {
 		return Addr{}, errors.New("unsupported url")
-
 	}
 
 	addrStr = addrStr[6:]
