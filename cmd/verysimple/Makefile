@@ -8,7 +8,7 @@
 # for embedding geoip file:
 #	make tags="embed_geoip" macm
 #
-# also has grpc_full and noquic tags. See godoc for details.
+# other tags: noquic nocli
 #
 # 编译后，还会生成一个 "tags" 和 "BUILD_VERSION" 文件，记录此次编译所使用的 tag 和生成的版本号
 #
