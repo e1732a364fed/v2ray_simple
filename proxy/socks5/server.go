@@ -492,6 +492,8 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 				)
 			}
 
+			clientSupposedAddrIsNothing = true
+
 			//return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "socks5 UDPConn ReadMsg failed, addr not coming from supposed client addr", ErrDetail: utils.ErrInvalidData, Data: addr.String()}
 
 		}
