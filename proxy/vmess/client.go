@@ -42,7 +42,7 @@ func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	security := query.Get("security")
 
 	c := &Client{}
-	c.user = utils.V2rayUser(uuid)
+	c.V2rayUser = utils.V2rayUser(uuid)
 
 	c.opt = OptChunkStream
 	if err = c.specifySecurityByStr(security); err != nil {
@@ -58,7 +58,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 		return nil, err
 	}
 	c := &Client{}
-	c.user = utils.V2rayUser(uuid)
+	c.V2rayUser = utils.V2rayUser(uuid)
 	c.opt = OptChunkStream
 
 	hasSetSecurityByExtra := false
@@ -88,7 +88,8 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 type Client struct {
 	proxy.Base
-	user     utils.V2rayUser
+	utils.V2rayUser
+
 	opt      byte
 	security byte
 }
@@ -134,7 +135,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 
 func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (*ClientConn, error) {
 
-	conn := &ClientConn{user: c.user, opt: c.opt, security: c.security}
+	conn := &ClientConn{V2rayUser: c.V2rayUser, opt: c.opt, security: c.security}
 	conn.Conn = underlay
 
 	conn.addr, conn.atyp = target.AddressBytes()
@@ -144,8 +145,8 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 	rand.Read(randBytes)
 	copy(conn.reqBodyIV[:], randBytes[:16])
 	copy(conn.reqBodyKey[:], randBytes[16:32])
-	utils.PutBytes(randBytes)
 	conn.reqRespV = randBytes[32]
+	utils.PutBytes(randBytes)
 
 	bodyKey := sha256.Sum256(conn.reqBodyKey[:])
 	bodyIV := sha256.Sum256(conn.reqBodyIV[:])
@@ -178,7 +179,7 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 type ClientConn struct {
 	net.Conn
 
-	user     utils.V2rayUser
+	utils.V2rayUser
 	opt      byte
 	security byte
 
@@ -271,7 +272,7 @@ func (c *ClientConn) handshake(cmd byte) error {
 	buf.Write(fnv1a.Sum(nil))
 
 	var fixedLengthCmdKey [16]byte
-	copy(fixedLengthCmdKey[:], GetKey(c.user))
+	copy(fixedLengthCmdKey[:], GetKey(c.V2rayUser))
 	vmessout := sealVMessAEADHeader(fixedLengthCmdKey, buf.Bytes(), time.Now())
 	_, err = c.Conn.Write(vmessout)
 	return err
@@ -280,7 +281,7 @@ func (c *ClientConn) handshake(cmd byte) error {
 
 func (vc *ClientConn) aead_decodeRespHeader() error {
 	var buf []byte
-	aeadResponseHeaderLengthEncryptionKey := kdf(vc.respBodyKey[:], kdfSaltConstAEADRespHeaderLenKey)[:16]
+	aeadResponseHeaderLengthEncryptionKey := kdf16(vc.respBodyKey[:], kdfSaltConstAEADRespHeaderLenKey)
 	aeadResponseHeaderLengthEncryptionIV := kdf(vc.respBodyIV[:], kdfSaltConstAEADRespHeaderLenIV)[:12]
 
 	aeadResponseHeaderLengthEncryptionKeyAESBlock, _ := aes.NewCipher(aeadResponseHeaderLengthEncryptionKey)

@@ -31,13 +31,33 @@ func (e InvalidDataErr) Error() string {
 	return string(e)
 }
 
-//nothing special
+//nothing special. Normally, N==0 means no error
 type NumErr struct {
+	N int
+	E error
+}
+
+func (ne NumErr) Error() string {
+
+	return ne.E.Error() + ", " + strconv.Itoa(ne.N)
+}
+
+func (e NumErr) Is(target error) bool {
+	return errors.Is(e.E, target)
+
+}
+func (ef NumErr) Unwarp() error {
+
+	return ef.E
+}
+
+//nothing special
+type NumStrErr struct {
 	N      int
 	Prefix string
 }
 
-func (ne NumErr) Error() string {
+func (ne NumStrErr) Error() string {
 
 	return ne.Prefix + strconv.Itoa(ne.N)
 }

@@ -1,4 +1,6 @@
 
+# 普通安装
+
 下面给出安装到 ubuntu/debian amd64服务器 所需要的步骤和命令, 大家总结一下即可得到一个简单的一键脚本
 
 本指导默认不使用root账户，且不建议用一键脚本。分步骤学习、安装 更加科学。
@@ -7,7 +9,7 @@
 
 下面的命令也不要整个一大段拷贝，而要分条拷贝到终端并运行。
 
-## 第〇步，准备
+## 第〇步，服务器准备
 
 首先确保自己服务器相应端口都是打开状态，防火墙要处理一下。然后安装一些BBR之类的加速组件。
 
@@ -15,7 +17,7 @@
 
 命令解释：先移除旧版本文件夹，然后从github下载最新版发布包，然后解压到相应位置后复制出一个配置文件。
 
-注意，本命令只会下载正式版，不会下载beta版。如果你要测试beta版，到github上找到对应的下载链接下载，而不是使用jq所读到的版本。
+注意，本命令只会下载正式版，不会下载 pre-release 版。如果你要测试 pre-release 版，到github上找到对应的下载链接下载，而不是使用jq所读到的版本。
 
 注意，如果你以前用过verysimple，则最好在运行前将自己配置文件先拷贝到其它地方，防止下面代码将你原来配置误删除。
 或你可以先解压 新版verysimple可执行文件 到其他位置，然后再用 mv 覆盖掉老版本 的可执行文件 和 examples 目录。
@@ -86,4 +88,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable verysimple
 sudo systemctl start verysimple
 ```
+
+# docker 安装
+
+有待完善。
+
+查看 cmd/verysimple下 的 Dockerfile 和 docker-compose, 以及 
+
+https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
 

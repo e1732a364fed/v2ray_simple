@@ -30,8 +30,8 @@ type UserHaser interface {
 
 //通过验证信息 试图取出 一个User
 type UserAuther interface {
-	AuthUserByStr(idStr string) User
-	AuthUserByBytes(bs []byte) User
+	AuthUserByStr(authStr string) User
+	AuthUserByBytes(authBytes []byte) User
 	AuthBytesLen() int
 }
 
@@ -63,6 +63,16 @@ func InitV2rayUsers(uc []UserConf) (us []User) {
 	return
 }
 
+func InitRealV2rayUsers(uc []UserConf) (us []V2rayUser) {
+	us = make([]V2rayUser, len(uc))
+	for i, theuc := range uc {
+		var vu V2rayUser
+		copy(vu[:], StrToUUID_slice(theuc.User))
+		us[i] = vu
+	}
+	return
+}
+
 //一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口. (其实就是uuid)
 type V2rayUser [16]byte
 
@@ -80,8 +90,8 @@ func (u V2rayUser) AuthBytes() []byte {
 	return u[:]
 }
 
-func NewV2rayUser(s string) (V2rayUser, error) {
-	uuid, err := StrToUUID(s)
+func NewV2rayUser(uuidStr string) (V2rayUser, error) {
+	uuid, err := StrToUUID(uuidStr)
 	if err != nil {
 		return V2rayUser{}, err
 	}
@@ -231,15 +241,17 @@ func (mu *MultiUserMap) SetUseUUIDStr_asKey() {
 	mu.AuthStrToBytesFunc = StrToUUID_slice
 }
 
+//same as AddUser_nolock but with lock; concurrent safe
 func (mu *MultiUserMap) AddUser(u User) error {
 	mu.Mutex.Lock()
-	mu.addUser(u)
+	mu.AddUser_nolock(u)
 	mu.Mutex.Unlock()
 
 	return nil
 }
 
-func (mu *MultiUserMap) addUser(u User) {
+//not concurrent safe, use with caution.
+func (mu *MultiUserMap) AddUser_nolock(u User) {
 	if mu.StoreKeyByStr {
 
 		mu.IDMap[u.IdentityStr()] = u
@@ -275,7 +287,7 @@ func (mu *MultiUserMap) LoadUsers(us []User) {
 	defer mu.Mutex.Unlock()
 
 	for _, u := range us {
-		mu.addUser(u)
+		mu.AddUser_nolock(u)
 	}
 }
 

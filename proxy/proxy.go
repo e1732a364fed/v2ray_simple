@@ -11,10 +11,10 @@ import (
 	"github.com/xtaci/smux"
 )
 
-// default recommended handshake timeout
+// default recommended handshake read timeout
 const CommonReadTimeout = time.Second * 4
 
-//set read timeout after HandshakeTimeout
+//set read timeout after CommonReadTimeout
 func SetCommonReadTimeout(c net.Conn) error {
 	return c.SetReadDeadline(time.Now().Add(CommonReadTimeout))
 }

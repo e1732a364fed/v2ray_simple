@@ -129,7 +129,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	netLayer.PersistConn(underlay)
 
 	if n < 10 || ba[0] != 5 || ba[1] != 0 || ba[2] != 0 {
-		return nil, utils.NumErr{Prefix: "socks5 client handshake failed when reading response", N: 2}
+		return nil, utils.NumStrErr{Prefix: "socks5 client handshake failed when reading response", N: 2}
 
 	}
 	if len(firstPayload) > 0 {

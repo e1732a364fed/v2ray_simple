@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const UUID_BytesLen = 16
+const UUID_BytesLen int = 16
 
 func StrToUUID_slice(s string) []byte {
 	bs, err := StrToUUID(s)

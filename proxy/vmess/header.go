@@ -10,7 +10,11 @@ import (
 	"encoding/binary"
 	"hash"
 	"hash/crc32"
+	"io"
+	"math"
 	"time"
+
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 const (
@@ -36,6 +40,11 @@ func kdf(key []byte, path ...string) []byte {
 	return hmacf.Sum(nil)
 }
 
+func kdf16(key []byte, path ...string) []byte {
+	r := kdf(key, path...)
+	return r[:16]
+}
+
 type hMacCreator struct {
 	parent *hMacCreator
 	value  []byte
@@ -48,6 +57,7 @@ func (h *hMacCreator) Create() hash.Hash {
 	return hmac.New(h.parent.Create, h.value)
 }
 
+//https://github.com/v2fly/v2fly-github-io/issues/20
 func createAuthID(cmdKey []byte, time int64) [16]byte {
 	buf := &bytes.Buffer{}
 	binary.Write(buf, binary.BigEndian, time)
@@ -58,10 +68,50 @@ func createAuthID(cmdKey []byte, time int64) [16]byte {
 	zero := crc32.ChecksumIEEE(buf.Bytes())
 	binary.Write(buf, binary.BigEndian, zero)
 
-	aesBlock, _ := aes.NewCipher(kdf(cmdKey[:], kdfSaltConstAuthIDEncryptionKey)[:16])
+	aesBlock, _ := generateCipher(cmdKey)
 	var result [16]byte
 	aesBlock.Encrypt(result[:], buf.Bytes())
 	return result
+}
+
+func generateCipher(cmdKey []byte) (cipher.Block, error) {
+	return aes.NewCipher(kdf16(cmdKey, kdfSaltConstAuthIDEncryptionKey))
+}
+func generateCipherByV2rayUser(u utils.V2rayUser) (cipher.Block, error) {
+	var fixedLengthCmdKey [16]byte
+	copy(fixedLengthCmdKey[:], GetKey(u))
+	return generateCipher(fixedLengthCmdKey[:])
+}
+
+//为0表示匹配成功
+func tryMatchAuthIDByBlock(block cipher.Block, bs []byte) (failReason int) {
+
+	var t int64
+	var rand int32
+	var zero uint32
+
+	if len(bs) < utils.UUID_BytesLen {
+		return 1
+	}
+	data := utils.GetBytes(utils.UUID_BytesLen)
+	block.Decrypt(data, bs)
+
+	buf := bytes.NewBuffer(data)
+
+	binary.Read(buf, binary.BigEndian, &t)
+	binary.Read(buf, binary.BigEndian, &rand)
+	binary.Read(buf, binary.BigEndian, &zero)
+
+	if zero != crc32.ChecksumIEEE(data[:12]) {
+		return 2
+	}
+
+	if math.Abs(math.Abs(float64(t))-float64(time.Now().Unix())) > 120 {
+		return 3
+	}
+
+	//todo: 用自己的代码 实现 防重放 机制
+	return 0
 }
 
 func sealVMessAEADHeader(key [16]byte, data []byte, t time.Time) []byte {
@@ -100,4 +150,96 @@ func sealVMessAEADHeader(key [16]byte, data []byte, t time.Time) []byte {
 	outputBuffer.Write(payloadHeaderAEADEncrypted)
 
 	return outputBuffer.Bytes()
+}
+
+//from v2fly/v2ray-core/proxy/vmess/aead/encrypt.go/OpenVMessAEADHeader.
+// key 必须是16字节长. v2ray 的代码返回值没命名，不可取，我们加上。
+func openAEADHeader(key []byte, authid []byte, remainDataReader io.Reader) (aeadData []byte, shouldDrain bool, bytesRead int, errorReason error) {
+
+	var payloadHeaderLengthAEADEncrypted [18]byte
+	var nonce [8]byte
+
+	authidCheckValueReadBytesCounts, err := io.ReadFull(remainDataReader, payloadHeaderLengthAEADEncrypted[:])
+	bytesRead += authidCheckValueReadBytesCounts
+	if err != nil {
+		return nil, false, bytesRead, err
+	}
+	nonceReadBytesCounts, err := io.ReadFull(remainDataReader, nonce[:])
+	bytesRead += nonceReadBytesCounts
+	if err != nil {
+
+		return nil, false, bytesRead, err
+	}
+
+	var decryptedAEADHeaderLengthPayloadResult []byte
+
+	{
+		payloadHeaderLengthAEADKey := kdf16(key[:], kdfSaltConstVMessHeaderPayloadLengthAEADKey, string(authid[:]), string(nonce[:]))
+
+		payloadHeaderLengthAEADNonce := kdf(key[:], kdfSaltConstVMessHeaderPayloadLengthAEADIV, string(authid[:]), string(nonce[:]))[:12]
+
+		payloadHeaderAEADAESBlock, err := aes.NewCipher(payloadHeaderLengthAEADKey)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		payloadHeaderLengthAEAD, err := cipher.NewGCM(payloadHeaderAEADAESBlock)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		decryptedAEADHeaderLengthPayload, erropenAEAD := payloadHeaderLengthAEAD.Open(nil, payloadHeaderLengthAEADNonce, payloadHeaderLengthAEADEncrypted[:], authid[:])
+
+		if erropenAEAD != nil {
+
+			return nil, true, bytesRead, erropenAEAD
+		}
+
+		decryptedAEADHeaderLengthPayloadResult = decryptedAEADHeaderLengthPayload
+	}
+
+	var length uint16
+	if err := binary.Read(bytes.NewReader(decryptedAEADHeaderLengthPayloadResult), binary.BigEndian, &length); err != nil {
+		panic(err)
+	}
+
+	var decryptedAEADHeaderPayloadR []byte
+
+	var payloadHeaderAEADEncryptedReadedBytesCounts int
+	{
+		payloadHeaderAEADKey := kdf16(key[:], kdfSaltConstVMessHeaderPayloadAEADKey, string(authid[:]), string(nonce[:]))
+
+		payloadHeaderAEADNonce := kdf(key[:], kdfSaltConstVMessHeaderPayloadAEADIV, string(authid[:]), string(nonce[:]))[:12]
+
+		// 16 == AEAD Tag size
+		payloadHeaderAEADEncrypted := make([]byte, length+16)
+
+		payloadHeaderAEADEncryptedReadedBytesCounts, err = io.ReadFull(remainDataReader, payloadHeaderAEADEncrypted)
+		bytesRead += payloadHeaderAEADEncryptedReadedBytesCounts
+		if err != nil {
+
+			return nil, false, bytesRead, err
+		}
+
+		payloadHeaderAEADAESBlock, err := aes.NewCipher(payloadHeaderAEADKey)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		payloadHeaderAEAD, err := cipher.NewGCM(payloadHeaderAEADAESBlock)
+		if err != nil {
+			panic(err.Error())
+		}
+
+		decryptedAEADHeaderPayload, erropenAEAD := payloadHeaderAEAD.Open(nil, payloadHeaderAEADNonce, payloadHeaderAEADEncrypted, authid[:])
+
+		if erropenAEAD != nil {
+
+			return nil, true, bytesRead, erropenAEAD
+		}
+
+		decryptedAEADHeaderPayloadR = decryptedAEADHeaderPayload
+	}
+
+	return decryptedAEADHeaderPayloadR, false, bytesRead, nil
 }
