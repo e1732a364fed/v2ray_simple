@@ -40,8 +40,14 @@ func interactively_generate_share(conf *proxy.StandardConf) {
 			Name: "vs标准toml",
 			f: func() {
 				fmt.Println("#vs_auto_generated:")
+				gstr, e := utils.GetPurgedTomlStr(conf)
+				if e != nil {
+					fmt.Println(e.Error())
 
-				fmt.Println(utils.GetPurgedTomlStr(conf))
+				} else {
+					fmt.Println(gstr)
+
+				}
 
 			},
 		},

@@ -45,7 +45,8 @@ func StandardizeSpaces(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
-// 移除 = "" 和 = false 的项
+// 从any生成toml字符串，
+// 移除 = "", = 0 和 = false 的项
 func GetPurgedTomlStr(v any) (string, error) {
 	buf := GetBuf()
 	defer PutBuf(buf)
@@ -56,7 +57,7 @@ func GetPurgedTomlStr(v any) (string, error) {
 	var sb strings.Builder
 
 	for _, l := range lines {
-		if !strings.HasSuffix(l, ` = ""`) && !strings.HasSuffix(l, ` = false`) {
+		if !strings.HasSuffix(l, ` = ""`) && !strings.HasSuffix(l, ` = false`) && !strings.HasSuffix(l, ` = 0`) {
 
 			sb.WriteString(l)
 			sb.WriteByte('\n')

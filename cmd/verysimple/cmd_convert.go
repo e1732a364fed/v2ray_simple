@@ -14,9 +14,16 @@ import (
 
 func convertQxToVs() {
 	dc := configAdapter.FromQX(cmdConvertQxToVs)
-	fmt.Println(utils.GetPurgedTomlStr(proxy.StandardConf{
+
+	gstr, e := utils.GetPurgedTomlStr(proxy.StandardConf{
 		Dial: []*proxy.DialConf{&dc},
-	}))
+	})
+
+	if e != nil {
+		fmt.Println(e.Error())
+	} else {
+		fmt.Println(gstr)
+	}
 
 }
 

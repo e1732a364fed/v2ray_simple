@@ -252,7 +252,7 @@ func (mc *UdpMsgConn) WriteMsg(p []byte, peera netLayer.Addr) error {
 	//https://github.com/xjasonlyu/tun2socks/issues/112
 
 	// 看来似乎不应该采用tun2socks目前重构后的方法而应该用它在2.4.0之前的旧方法
-	// 然而旧方法所使用的 gvisor包已经过时了。
+	// 然而旧方法所使用的 gvisor包已经过时了。我尝试了一次，失败了，代码放在 tun_failed中备用。
 
 	_, err := mc.WriteTo(p, mc.tunSrcAddr)
 

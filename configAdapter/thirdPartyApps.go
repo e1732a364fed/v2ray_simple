@@ -201,7 +201,13 @@ func FromQX(str string) (dc proxy.DialConf) {
 			if err != nil {
 				fmt.Printf("FromQX: net.SplitHostPort err, %s\n", err.Error())
 			} else {
-				dc.Host = host
+				ip := net.ParseIP(host)
+				if ip != nil {
+					dc.IP = host
+				} else {
+					dc.Host = host
+				}
+
 				np, _ := strconv.Atoi(port)
 				dc.Port = np
 			}
@@ -213,6 +219,24 @@ func FromQX(str string) (dc proxy.DialConf) {
 				dc.Uuid = v
 			case "tag":
 				dc.Tag = v
+			case "obfs-uri":
+				dc.Path = v
+			case "obfs-host":
+				dc.Host = v
+			case "udp-relay":
+				if v == "false" {
+					dc.Network = "tcp"
+				}
+			case "obfs":
+				switch v {
+				case "ws":
+					dc.AdvancedLayer = "ws"
+				case "wss":
+					dc.AdvancedLayer = "ws"
+					dc.TLS = true
+				case "tls", "over-tls":
+					dc.TLS = true
+				}
 			}
 		}
 	}
