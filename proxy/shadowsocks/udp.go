@@ -45,24 +45,6 @@ func (c *clientUDPMsgConn) ReadMsg() (bs []byte, targetAddr netLayer.Addr, err e
 
 }
 
-func makeWriteBuf(bs []byte, addr netLayer.Addr) *bytes.Buffer {
-	buf := utils.GetBuf()
-
-	abs, atype := addr.AddressBytes()
-
-	atype = netLayer.ATypeToSocks5Standard(atype)
-
-	buf.WriteByte(atype)
-	buf.Write(abs)
-
-	buf.WriteByte(byte(addr.Port >> 8))
-	buf.WriteByte(byte(addr.Port << 8 >> 8))
-
-	buf.Write(bs)
-
-	return buf
-}
-
 func (c *clientUDPMsgConn) WriteMsg(bs []byte, addr netLayer.Addr) (err error) {
 
 	buf := makeWriteBuf(bs, addr)
