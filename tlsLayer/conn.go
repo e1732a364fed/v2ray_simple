@@ -8,12 +8,6 @@ import (
 	utls "github.com/refraction-networking/utls"
 )
 
-const (
-	official = iota
-	utlsPackage
-	shadowTls
-)
-
 // 参考 crypt/tls 的 conn.go， 注意，如果上游代码的底层结构发生了改变，则这里也要跟着修改，保持头部结构一致
 type faketlsconn struct {
 	conn     net.Conn
@@ -24,10 +18,9 @@ type faketlsconn struct {
 // 唯一特性就是它可以返回tls连接的底层tcp连接，见 GetRaw
 
 type Conn struct {
-	//*tls.Conn
 	net.Conn
-	ptr            unsafe.Pointer
-	tlsPackageType byte // 0 means crypto/tls, 1 means utls
+	ptr     unsafe.Pointer
+	tlsType int
 }
 
 func (c *Conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
@@ -61,14 +54,14 @@ func (c *Conn) GetTeeConn() *TeeConn {
 // return c.Conn.ConnectionState().NegotiatedProtocol
 func (c *Conn) GetAlpn() string {
 
-	switch c.tlsPackageType {
-	case utlsPackage:
+	switch c.tlsType {
+	case uTls_t:
 		cc := (*utls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().NegotiatedProtocol
-	case official:
+	case tls_t:
 		cc := (*tls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
@@ -81,15 +74,15 @@ func (c *Conn) GetAlpn() string {
 
 func (c *Conn) GetSni() string {
 
-	switch c.tlsPackageType {
-	case utlsPackage:
+	switch c.tlsType {
+	case uTls_t:
 		cc := (*utls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().ServerName
 
-	case official:
+	case tls_t:
 		cc := (*tls.Conn)(c.ptr)
 		if cc == nil {
 			return ""

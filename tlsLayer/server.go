@@ -3,9 +3,11 @@ package tlsLayer
 import (
 	"crypto/tls"
 	"net"
+	"sync"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
@@ -42,13 +44,63 @@ func NewServer(conf Conf) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
+func (s *Server) Handshake(clientConn net.Conn) (tlsConn *Conn, err error) {
 	if s.isShadow {
+		var fakeConn net.Conn
+		fakeConn, err = net.Dial("tcp", s.tlsConfig.ServerName+":443")
+		if err != nil {
+			if ce := utils.CanLogErr("Failed shadowTls server fake dial server "); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return
+		}
+		if ce := utils.CanLogDebug("shadowTls ready to fake "); ce != nil {
+			ce.Write()
+		}
+
+		var wg sync.WaitGroup
+		var e1, e2 error
+		wg.Add(2)
+		go func() {
+			e1 = copyTls12Handshake(true, fakeConn, clientConn)
+			wg.Done()
+
+			if ce := utils.CanLogDebug("shadowTls copy client end"); ce != nil {
+				ce.Write(zap.Error(e1))
+			}
+		}()
+		go func() {
+			e2 = copyTls12Handshake(false, clientConn, fakeConn)
+			wg.Done()
+
+			if ce := utils.CanLogDebug("shadowTls copy server end"); ce != nil {
+				ce.Write(
+					zap.Error(e2),
+				)
+			}
+		}()
+
+		wg.Wait()
+
+		if e1 != nil || e2 != nil {
+			e := utils.Errs{}
+			e.Add(utils.ErrsItem{Index: 1, E: e1})
+			e.Add(utils.ErrsItem{Index: 2, E: e2})
+			return nil, e
+		}
+
+		if ce := utils.CanLogDebug("shadowTls fake ok "); ce != nil {
+			ce.Write()
+		}
+
+		tlsConn = &Conn{
+			Conn: clientConn,
+		}
 
 		return
 	}
 
-	rawTlsConn := tls.Server(underlay, s.tlsConfig)
+	rawTlsConn := tls.Server(clientConn, s.tlsConfig)
 	err = rawTlsConn.Handshake()
 	if err != nil {
 		err = utils.ErrInErr{ErrDesc: "Failed in Tls handshake", ErrDetail: err}

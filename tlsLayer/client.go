@@ -31,6 +31,10 @@ func NewClient(conf Conf) *Client {
 	c.alpnList = conf.AlpnList
 
 	switch conf.Tls_type {
+	case shadowTls_t:
+		//fallthrough
+		c.tlsConfig = GetTlsConfig(false, conf)
+		fallthrough
 	case uTls_t:
 		c.uTlsConfig = GetUTlsConfig(conf)
 
@@ -58,9 +62,9 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 			return
 		}
 		tlsConn = &Conn{
-			Conn:           utlsConn,
-			ptr:            unsafe.Pointer(utlsConn.Conn),
-			tlsPackageType: utlsPackage,
+			Conn:    utlsConn,
+			ptr:     unsafe.Pointer(utlsConn.Conn),
+			tlsType: uTls_t,
 		}
 	case tls_t:
 		officialConn := tls.Client(underlay, c.tlsConfig)
@@ -70,12 +74,30 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 		}
 
 		tlsConn = &Conn{
-			Conn:           officialConn,
-			ptr:            unsafe.Pointer(officialConn),
-			tlsPackageType: official,
+			Conn:    officialConn,
+			ptr:     unsafe.Pointer(officialConn),
+			tlsType: tls_t,
 		}
 	case shadowTls_t:
+		// configCopy := c.uTlsConfig
+		// utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
+		// err = utlsConn.Handshake()
+		// if err != nil {
+		// 	return
+		// }
 
+		officialConn := tls.Client(underlay, c.tlsConfig)
+		err = officialConn.Handshake()
+		if err != nil {
+			return
+		}
+
+		tlsConn = &Conn{
+			Conn: underlay,
+			//Conn:    utlsConn,
+			//ptr:     unsafe.Pointer(utlsConn.Conn),
+			tlsType: shadowTls_t,
+		}
 	}
 
 	return
