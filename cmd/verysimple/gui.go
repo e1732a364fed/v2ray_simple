@@ -17,6 +17,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/e1732a364fed/v2ray_simple/proxy/tun"
+
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 var mainwin *ui.Window
@@ -48,6 +50,19 @@ func init() {
 					multilineEntry.SetText(strings.Join(strs, "\n"))
 				}
 			}
+
+			var qr *qrcode.QRCode
+
+			qr, err := qrcode.New("https://example.org", qrcode.Medium)
+
+			if err != nil {
+				return
+			}
+
+			const qrname = "vs_qrcode.png"
+			qr.WriteFile(256, qrname)
+			utils.OpenFile(qrname)
+
 		}
 
 		defer func() {

@@ -6,7 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/biter777/countries v1.5.6
-	github.com/e1732a364fed/ui v0.0.1-alpha.5
+	github.com/e1732a364fed/ui v0.0.1-alpha.7
 	github.com/gobwas/ws v1.1.0
 	github.com/lucas-clemente/quic-go v0.0.0-00010101000000-000000000000
 	github.com/manifoldco/promptui v0.9.0
@@ -17,6 +17,7 @@ require (
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/profile v1.6.0
 	github.com/refraction-networking/utls v1.1.5
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/xtaci/smux v1.5.16
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/atomic v1.9.0
