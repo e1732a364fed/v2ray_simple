@@ -414,6 +414,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
 						zap.String("advLayer", adv),
+						zap.String("Reason", meta.Reason),
 						zap.String("validPath", advSer.GetPath()),
 						zap.String("gotMethod", meta.Method),
 						zap.String("gotPath", meta.Path),

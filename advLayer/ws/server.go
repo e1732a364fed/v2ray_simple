@@ -23,7 +23,7 @@ var (
 	upgradeBs    = []byte("Upgrade")
 )
 
-//implements advLayer.SingleServer
+// implements advLayer.SingleServer
 type Server struct {
 	Creator
 	UseEarlyData   bool
@@ -123,6 +123,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	optionalFirstBuffer := rp.WholeRequestBuf
 
 	notWsRequest := false
+	notReason := ""
 
 	//因为 gobwas 会先自行给错误的连接 返回 错误信息，而这不行，所以我们先过滤一遍。
 	//header 我们只过滤一个 connection 就行. 要是怕攻击者用 “对的path,method 和错误的header” 进行探测,
@@ -130,6 +131,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 	if rp.Method != "GET" || s.Thepath != rp.Path || len(rp.Headers) == 0 {
 		notWsRequest = true
+		notReason = `rp.Method != "GET" || s.Thepath != rp.Path || len(rp.Headers) == 0`
 
 	} else {
 		hasUpgrade := false
@@ -147,6 +149,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 		}
 		if !hasUpgrade {
 			notWsRequest = true
+			notReason = "has no upgrade field"
 		}
 
 	}
@@ -157,6 +160,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			H1RequestBuf: optionalFirstBuffer,
 			Path:         rp.Path,
 			Method:       rp.Method,
+			Reason:       notReason,
 		}, httpLayer.ErrShouldFallback
 	}
 
@@ -279,6 +283,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			H1RequestBuf: optionalFirstBuffer,
 			Path:         rp.Path,
 			Method:       rp.Method,
+			Reason:       err.Error(),
 		}, httpLayer.ErrShouldFallback
 	}
 

@@ -44,6 +44,7 @@ type FallbackMeta struct {
 	Path         string
 	Method       string
 	IsH2         bool
+	Reason       string
 
 	H2Request *http.Request
 }
@@ -52,12 +53,12 @@ func getfallbacktype_byindex(i int) byte {
 	return 1 << (i + 1)
 }
 
-//判断 Fallback.SupportType 返回的 数值 是否具有特定的Fallback类型
+// 判断 Fallback.SupportType 返回的 数值 是否具有特定的Fallback类型
 func HasFallbackType(ftype, b byte) bool {
 	return ftype&b > 0
 }
 
-//实现 Fallback. 这里的fallback只与http协议有关，所以只能按path,alpn 和 sni 进行分类
+// 实现 Fallback. 这里的fallback只与http协议有关，所以只能按path,alpn 和 sni 进行分类
 type Fallback interface {
 	GetFallback(ftype byte, params ...string) *FallbackResult
 	SupportType() byte //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果

@@ -273,12 +273,12 @@ func mainFunc() (result int) {
 	//load inServers and RoutingEnv
 	switch configMode {
 	case proxy.SimpleMode:
-		var theServer proxy.Server
-		result, theServer = loadSimpleServer()
+		//var theServer proxy.Server
+		result, _ = loadSimpleServer()
 		if result < 0 {
 			return result
 		}
-		allServers = append(allServers, theServer)
+		//allServers = append(allServers, theServer)	//loadSimpleServer 已经加过一遍了
 
 	case proxy.StandardMode:
 
