@@ -73,8 +73,9 @@ non-blocking. closer used to stop listening. It means listening failed if closer
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
 	var extraCloser io.Closer
 
+	var is, tcp, udp bool
 	//tproxy 和 shadowsocks 都用到了 SelfListen
-	if is, tcp, udp := inServer.SelfListen(); is {
+	if is, tcp, udp = inServer.SelfListen(); is {
 		var chantcp chan proxy.IncomeTCPInfo
 		var chanudp chan proxy.IncomeUDPInfo
 
@@ -179,8 +180,19 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 	var err error
 
+	network := inServer.Network()
+	if network == netLayer.DualNetworkName && is {
+		if is != tcp && udp {
+			if tcp {
+				network = "udp"
+			} else {
+				network = "tcp"
+			}
+		}
+	}
+
 	closer, err = netLayer.ListenAndAccept(
-		inServer.Network(),
+		network,
 		inServer.AddrStr(),
 		inServer.GetSockopt(),
 		inServer.GetXver(),

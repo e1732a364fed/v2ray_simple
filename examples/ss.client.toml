@@ -17,4 +17,4 @@ uuid = "method:AES-128-GCM\npass:iloveverysimple"
 
 #encrypt_algo = "AES-128-GCM"  # chacha20-ietf-poly1305,AES-128-GCM, AES-256-GCM, 大小写均可；一般应该是 aes 更快， 如果 encrypt_algo 给出，会覆盖 uuid中的 method 部分
 
-#network = "dual"   #ss同时使用tcp和udp分别传输tcp和udp数据，属于双栈
+#network = "dual"   #ss同时使用tcp和udp分别传输tcp和udp数据，属于双栈, 如果设成tcp，则不会传输udp。
