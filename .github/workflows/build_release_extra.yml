@@ -91,8 +91,8 @@ jobs:
       - if: ${{ matrix.os  == 'macos-latest' }}
         name: macos gnu-tar extra step
         run: |
-          sudo brew install gnu-tar
-          sudo mv `which gnu-tar` `which tar`
+          brew install gnu-tar
+          sudo mv `which gtar` `which tar`
 
       - name: Set up Go
         uses: actions/setup-go@v2
