@@ -158,6 +158,7 @@ func (ph *UserPass) InitWithUrl(u *url.URL) bool {
 
 //uuid: "user:xxxx\npass:xxxx"
 func (ph *UserPass) InitWithStr(str string) (ok bool) {
+	str = strings.TrimSuffix(str, "\n")
 	strs := strings.SplitN(str, "\n", 2)
 	if len(strs) != 2 {
 		return

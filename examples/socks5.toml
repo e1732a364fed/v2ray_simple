@@ -15,7 +15,8 @@ tag = "dial1"
 host = "127.0.0.1"  
 port = 10801
 
-uuid = "user:very\npass:simple"
+#uuid = "user:very\npass:simple"
+uuid = "user:admin\npass:nimda"
 
 [[route]]
 fromTag = ["my_socks5_1"]
@@ -34,8 +35,10 @@ user:admin
 pass:nimda
 """
 
-# 或者这种
-#uuid = "user:very\npass:simple"    
+# 上面这个格式 根据toml的规范，头部是没有 \n 的，但是尾部多了一个 \n, 不过不用担心，我们程序会修剪掉末尾的换行符.
+
+# 或者这种，但是看起来不太美观
+#uuid = "user:very\npass:simple"
 
 users = [ {user = "very", pass = "simple"}, {user = "v2ray", pass = "hard"} ]   #也可以用users 来存储多个用户
 

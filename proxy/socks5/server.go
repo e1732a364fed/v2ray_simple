@@ -57,7 +57,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 		if userPass.InitWithStr(str) {
 			s.AddUser(&userPass)
 		} else {
-			if ce := utils.CanLogWarn("http: user and password format malformed. Will not use default uuid"); ce != nil {
+			if ce := utils.CanLogWarn("socks5: user and password format malformed. Will not use default uuid"); ce != nil {
 				ce.Write()
 			}
 		}
