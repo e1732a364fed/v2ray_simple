@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/e1732a364fed/v2ray_simple/configAdapter"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -209,11 +208,11 @@ func runApiServer(adminUUID string) {
 			}
 			if isDial {
 				dc := getDialConfFromCurrentState(ind)
-				url := configAdapter.ToVS(&dc.CommonConf, dc, nil)
+				url := proxy.ToStandardUrl(&dc.CommonConf, dc, nil)
 				w.Write([]byte(url))
 			} else {
 				lc := getListenConfFromCurrentState(ind)
-				url := configAdapter.ToVS(&lc.CommonConf, nil, lc)
+				url := proxy.ToStandardUrl(&lc.CommonConf, nil, lc)
 				w.Write([]byte(url))
 			}
 

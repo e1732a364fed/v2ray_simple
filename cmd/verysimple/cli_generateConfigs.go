@@ -24,14 +24,14 @@ func interactively_generate_share(conf *proxy.StandardConf) {
 				fmt.Println("Dials:")
 
 				for _, v := range conf.Dial {
-					url := configAdapter.ToVS(&v.CommonConf, v, nil)
+					url := proxy.ToStandardUrl(&v.CommonConf, v, nil)
 					fmt.Println(url)
 				}
 
 				fmt.Println("\nListens:")
 
 				for _, v := range conf.Listen {
-					url := configAdapter.ToVS(&v.CommonConf, nil, v)
+					url := proxy.ToStandardUrl(&v.CommonConf, nil, v)
 					fmt.Println(url)
 				}
 			},

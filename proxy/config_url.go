@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
@@ -303,4 +304,108 @@ func URLToListenConf(u *url.URL, conf *ListenConf) error {
 	}
 
 	return e
+}
+
+// convert DialConf or ListenConf to verysimple Official URL format.
+// cc must not be nil or it will panic.
+// See docs/url.md and https://github.com/e1732a364fed/v2ray_simple/discussions/163
+func ToStandardUrl(cc *CommonConf, dc *DialConf, lc *ListenConf) string {
+	var u url.URL
+
+	u.Scheme = cc.Protocol
+	if cc.TLS {
+		u.Scheme += "s"
+	}
+
+	u.User = url.User(cc.Uuid)
+	if cc.IP != "" {
+		u.Host = cc.IP + ":" + strconv.Itoa(cc.Port)
+	} else {
+		u.Host = cc.Host + ":" + strconv.Itoa(cc.Port)
+
+	}
+	if cc.Path != "" {
+		u.Path = cc.Path
+	}
+
+	q := u.Query()
+	if cc.Network != "" {
+		q.Add("network", cc.Network)
+
+	}
+
+	if cc.Fullcone {
+		q.Add("fullcone", "true")
+	}
+
+	if lc != nil {
+		if lc.TargetAddr != "" {
+			a, e := netLayer.NewAddrFromAny(lc.TargetAddr)
+			if e == nil {
+				q.Add("target.ip", a.IP.String())
+				q.Add("target.network", a.Network)
+				q.Add("target.port", strconv.Itoa(a.Port))
+			}
+		}
+	}
+
+	if dc != nil {
+		if dc.SendThrough != "" {
+			q.Add("sendThrough", dc.SendThrough)
+		}
+		if dc.Mux {
+			q.Add("mux", "true")
+		}
+	}
+
+	if cc.TLS {
+		if cc.Insecure {
+			q.Add("insecure", "true")
+		}
+		if dc != nil && dc.Utls {
+			q.Add("utls", "true")
+		}
+		if cc.TLSCert != "" {
+			q.Add("cert", cc.TLSCert)
+		}
+		if cc.TLSKey != "" {
+			q.Add("key", cc.TLSKey)
+		}
+	}
+
+	if hh := cc.HttpHeader; hh != nil {
+
+		q.Add("http", "true")
+
+		if r := hh.Request; r != nil {
+
+			if r.Method != "" {
+				q.Add("http.method", r.Method)
+			}
+			if r.Version != "" {
+				q.Add("http.version", r.Version)
+			}
+
+			for k, headers := range r.Headers {
+
+				q.Add("header."+k, strings.Join(headers, ", "))
+			}
+		}
+	}
+
+	if cc.AdvancedLayer != "" {
+		q.Add("adv", cc.AdvancedLayer)
+	}
+
+	if cc.EncryptAlgo != "" {
+		q.Add("security", cc.EncryptAlgo)
+	}
+
+	u.RawQuery = q.Encode()
+	if cc.Tag != "" {
+		u.Fragment = cc.Tag
+
+	}
+
+	return u.String()
 }
