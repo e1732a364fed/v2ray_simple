@@ -2,10 +2,10 @@ package vmess
 
 import (
 	"crypto/cipher"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math/rand"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
