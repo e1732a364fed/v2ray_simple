@@ -36,7 +36,7 @@ func (c *TCPConn) Write(p []byte) (int, error) {
 
 func (c *TCPConn) EverPossibleToSplice() bool {
 
-	if netLayer.IsBasicConn(c.Conn) {
+	if netLayer.IsTCP(c.Conn) != nil {
 		return true
 	}
 	if s, ok := c.Conn.(netLayer.Splicer); ok {
@@ -45,14 +45,14 @@ func (c *TCPConn) EverPossibleToSplice() bool {
 	return false
 }
 
-func (c *TCPConn) CanSplice() (r bool, conn net.Conn) {
+func (c *TCPConn) CanSplice() (r bool, conn *net.TCPConn) {
 	if !c.isServerEnd && c.remainFirstBufLen > 0 {
 		return false, nil
 	}
 
-	if netLayer.IsBasicConn(c.Conn) {
+	if tc := netLayer.IsTCP(c.Conn); tc != nil {
 		r = true
-		conn = c.Conn
+		conn = tc
 
 	} else if s, ok := c.Conn.(netLayer.Splicer); ok {
 		r, conn = s.CanSplice()

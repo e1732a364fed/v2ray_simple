@@ -283,11 +283,11 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	}
 
 	theConn := &Conn{
-		Conn:            underlay,
-		underlayIsBasic: netLayer.IsBasicConn(underlay),
-		state:           ws.StateServerSide,
-		r:               wsutil.NewServerSideReader(underlay),
-		realRaddr:       realAddr,
+		Conn:          underlay,
+		underlayIsTCP: netLayer.IsTCP(underlay) != nil,
+		state:         ws.StateServerSide,
+		r:             wsutil.NewServerSideReader(underlay),
+		realRaddr:     realAddr,
 	}
 	//不想客户端；服务端是不怕客户端在握手阶段传来任何多余数据的
 	// 因为我们还没实现 0-rtt

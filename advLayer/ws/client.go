@@ -101,6 +101,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayloadLen int) (net.Conn, er
 	theConn := &Conn{
 		Conn:            underlay,
 		state:           ws.StateClientSide,
+		underlayIsTCP:   netLayer.IsTCP(underlay) != nil,
 		underlayIsBasic: netLayer.IsBasicConn(underlay),
 	}
 
@@ -170,6 +171,7 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 		theConn := &Conn{
 			Conn:            edc.Conn,
 			state:           ws.StateClientSide,
+			underlayIsTCP:   netLayer.IsTCP(edc.Conn) != nil,
 			underlayIsBasic: netLayer.IsBasicConn(edc.Conn),
 		}
 

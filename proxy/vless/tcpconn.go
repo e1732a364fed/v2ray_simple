@@ -47,7 +47,7 @@ func (c *UserTCPConn) canDirectWrite() bool {
 
 func (c *UserTCPConn) EverPossibleToSplice() bool {
 
-	if netLayer.IsBasicConn(c.Conn) {
+	if netLayer.IsTCP(c.Conn) != nil {
 		return true
 	}
 	if s, ok := c.Conn.(netLayer.Splicer); ok {
@@ -56,15 +56,15 @@ func (c *UserTCPConn) EverPossibleToSplice() bool {
 	return false
 }
 
-func (c *UserTCPConn) CanSplice() (r bool, conn net.Conn) {
+func (c *UserTCPConn) CanSplice() (r bool, conn *net.TCPConn) {
 
 	if !c.canDirectWrite() {
 		return
 	}
 
-	if netLayer.IsBasicConn(c.Conn) {
+	if tc := netLayer.IsTCP(c.Conn); tc != nil {
 		r = true
-		conn = c.Conn
+		conn = tc
 
 	} else if s, ok := c.Conn.(netLayer.Splicer); ok {
 		r, conn = s.CanSplice()

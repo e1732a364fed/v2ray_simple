@@ -46,6 +46,14 @@ func PersistConn(c net.Conn) {
 	c.SetDeadline(time.Time{})
 }
 
+func IsTCP(r any) *net.TCPConn {
+	if tc, ok := r.(*net.TCPConn); ok {
+		return tc
+	}
+
+	return nil
+}
+
 //net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
 func IsBasicConn(r interface{}) bool {
 	if _, ok := r.(syscall.Conn); ok {

@@ -35,11 +35,11 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 
 	if SystemCanSplice {
 
-		rCanSplice := CanSpliceDirectly(readConn)
+		rCanSplice := CanRSplice(readConn)
 
 		if rCanSplice {
 			var wCanSplice bool
-			wCanSpliceDirectly := CanSpliceDirectly(writeConn)
+			wCanSpliceDirectly := CanWSplice(writeConn)
 			if wCanSpliceDirectly {
 				wCanSplice = true
 			} else {

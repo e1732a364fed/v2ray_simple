@@ -24,6 +24,7 @@ type Conn struct {
 
 	serverEndGotEarlyData []byte
 
+	underlayIsTCP   bool
 	underlayIsBasic bool
 
 	bigHeaderEverUsed bool
@@ -112,7 +113,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 }
 
 func (c *Conn) EverPossibleToSplice() bool {
-	return c.underlayIsBasic && c.state == ws.StateServerSide
+	return c.underlayIsTCP && c.state == ws.StateServerSide
 }
 
 //采用 “超长包” 的办法 试图进行splice
@@ -133,7 +134,7 @@ func (c *Conn) tryWriteBigHeader() (e error) {
 	return
 }
 
-func (c *Conn) CanSplice() (r bool, conn net.Conn) {
+func (c *Conn) CanSplice() (r bool, conn *net.TCPConn) {
 	if !c.EverPossibleToSplice() {
 		return
 	}
@@ -141,7 +142,14 @@ func (c *Conn) CanSplice() (r bool, conn net.Conn) {
 	if c.tryWriteBigHeader() != nil {
 		return
 	}
-	return true, c.Conn
+
+	if tc := netLayer.IsTCP(c.Conn); tc != nil {
+		r = true
+		conn = tc
+
+	}
+
+	return
 
 }
 
@@ -156,11 +164,11 @@ func (c *Conn) ReadFrom(r io.Reader) (written int64, err error) {
 	if e != nil {
 		return 0, e
 	}
-	if c.underlayIsBasic {
+	if c.underlayIsTCP {
 		if rt, ok := c.Conn.(io.ReaderFrom); ok {
 			return rt.ReadFrom(r)
 		} else {
-			panic("ws.Conn underlayIsBasic, but can't cast to ReadFrom")
+			panic("ws.Conn underlayIsTCP, but can't cast to ReadFrom")
 		}
 	}
 
