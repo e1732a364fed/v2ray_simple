@@ -88,6 +88,23 @@ type Server interface {
 
 	//get/listen a useable inner mux
 	GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session
+
+	SelfListen() (is, tcp, udp bool)
+}
+
+type IncomeTCPInfo struct {
+	net.Conn
+	Target netLayer.Addr
+}
+
+type IncomeUDPInfo struct {
+	netLayer.MsgConn
+	Target netLayer.Addr
+}
+
+type ListenerServer interface {
+	Server
+	StartListen(chan<- IncomeTCPInfo, chan<- IncomeUDPInfo) io.Closer
 }
 
 type UserServer interface {

@@ -18,7 +18,6 @@ import (
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
-	"github.com/e1732a364fed/v2ray_simple/netLayer/tproxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
@@ -33,12 +32,12 @@ var (
 	dialURL            string //用于命令行模式
 	//jsonMode       int
 
-	allServers = make([]proxy.Server, 0, 8) //储存除tproxy之外 所有运行的 inServer
+	allServers = make([]proxy.Server, 0, 8)
 	allClients = make([]proxy.Client, 0, 8)
 
-	tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
+	//tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
 
-	listenCloserList []io.Closer //储存除tproxy之外 所有运行的 inServer 的 Listener 的 Closer
+	listenCloserList []io.Closer //所有运行的 inServer 的 Listener 的 Closer
 
 	defaultOutClient proxy.Client
 
@@ -95,14 +94,14 @@ func cleanup() {
 		}
 	}
 
-	if len(tproxyList) > 0 {
-		log.Println("closing tproxies")
-		for _, tm := range tproxyList {
-			if tm != nil {
-				tm.Stop()
-			}
-		}
-	}
+	// if len(tproxyList) > 0 {
+	// 	log.Println("closing tproxies")
+	// 	for _, tm := range tproxyList {
+	// 		if tm != nil {
+	// 			tm.Stop()
+	// 		}
+	// 	}
+	// }
 
 }
 
@@ -268,8 +267,6 @@ func mainFunc() (result int) {
 		routingEnv.MainFallback = mainFallback
 	}
 
-	var tproxyConfs []*proxy.ListenConf
-
 	//load inServers and RoutingEnv
 	switch configMode {
 	case proxy.SimpleMode:
@@ -293,11 +290,6 @@ func mainFunc() (result int) {
 
 		for _, serverConf := range standardConf.Listen {
 			thisConf := serverConf
-			if thisConf.Protocol == "tproxy" {
-				tproxyConfs = append(tproxyConfs, thisConf)
-
-				continue
-			}
 
 			if thisConf.Uuid == "" && Default_uuid != "" {
 				thisConf.Uuid = Default_uuid
@@ -368,7 +360,7 @@ func mainFunc() (result int) {
 
 	runPreCommands()
 
-	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
+	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0) {
 
 		if configMode == proxy.SimpleMode {
 			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
@@ -384,45 +376,9 @@ func mainFunc() (result int) {
 				}
 			}
 
-			if len(tproxyConfs) > 0 {
-
-				if len(tproxyConfs) == 1 {
-					conf := tproxyConfs[0]
-					if thing := conf.Extra["auto_iptables"]; thing != nil {
-						if auto, ok := thing.(bool); ok && auto {
-							tproxy.SetIPTablesByPort(conf.Port)
-
-							defer func() {
-								tproxy.CleanupIPTables()
-							}()
-						}
-					}
-
-				}
-
-				for _, thisConf := range tproxyConfs {
-					enableSniff := false
-					if thisConf.SniffConf != nil {
-						enableSniff = thisConf.SniffConf.Enable
-					}
-					lc := proxy.LesserConf{
-						Addr:        thisConf.GetAddrStrForListenOrDial(),
-						Tag:         thisConf.Tag,
-						UseSniffing: enableSniff,
-						Fullcone:    thisConf.Fullcone,
-					}
-					tm := vs.ListenTproxy(lc, defaultOutClient, &routingEnv)
-					if tm != nil {
-						tproxyList = append(tproxyList, tm)
-					}
-
-				}
-
-			} //if len(tproxyConfs) > 0 {
-
 		} //if mode == proxy.SimpleMode {
 
-	} //if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
+	} //if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 ) {
 
 	//没可用的listen/dial，而且还无法动态更改配置
 	if noFuture() {
@@ -459,7 +415,7 @@ func mainFunc() (result int) {
 }
 
 func hasProxyRunning() bool {
-	return len(listenCloserList) > 0 || len(tproxyList) > 0
+	return len(listenCloserList) > 0
 }
 
 // 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改

@@ -27,7 +27,7 @@ vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&v=0&u
 
 vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?adv=quic&v=0&extra.maxStreamsInOneConn=6&extra.congestion_control=hy&extra.mbps=1024#my_vless_quic
 
-vmess://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?http=true&header.host=myhost.com
+vmess://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433/mypath?http=true&header.host=myhost.com
 
 dokodemo://?target.ip=1.1.1.1&target.port=80#my_doko
 

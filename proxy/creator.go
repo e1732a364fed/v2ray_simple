@@ -41,7 +41,7 @@ type CreatorCommonStruct struct{}
 func (CreatorCommonStruct) MultiTransportLayer() bool {
 	return false
 }
-func (CreatorCommonStruct) AfterCommonConfServer(Server) {}
+func (CreatorCommonStruct) AfterCommonConfServer(Server) error { return nil }
 
 type CreatorCommon interface {
 	//若为true，则表明该协议可同时使用tcp和udp来传输数据。direct, socks5 和 shadowsocks 都为true。
@@ -70,7 +70,7 @@ type ServerCreator interface {
 	CreatorCommon
 
 	NewServer(*ListenConf) (Server, error)
-	AfterCommonConfServer(Server)
+	AfterCommonConfServer(Server) error
 
 	URLToListenConf(url *url.URL, iv *ListenConf, format int) (*ListenConf, error)
 	//ListenConfToURL(url *ListenConf, format int) (*url.URL, error)

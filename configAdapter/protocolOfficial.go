@@ -10,9 +10,9 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//Generate shadowsocks's official uri based on proxy.CommonConf and other parameters.
+// Generate shadowsocks's official uri based on proxy.CommonConf and other parameters.
 //
-//See https://github.com/shadowsocks/shadowsocks-org/wiki/SIP002-URI-Scheme
+// See https://github.com/shadowsocks/shadowsocks-org/wiki/SIP002-URI-Scheme
 // 若lc给出，则表示用于服务端.
 // sip 用于指定协议标准，可以设为4 或者22. 4 表示 sip004, Aead; 22表示 sip022, 即aead-2022
 func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip int) string {
@@ -66,7 +66,7 @@ func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip i
 
 	q := u.Query()
 
-	//https://github.com/shadowsocks/v2ray-plugin
+	//https://github.com/shadowsocks/v2ray-plugin/blob/master/main.go
 	switch cc.AdvancedLayer {
 	case "ws":
 		pluginStr := "v2ray-plugin"
@@ -80,6 +80,9 @@ func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip i
 			if cc.Host != "" {
 				pluginStr += ";host=" + cc.Host
 			}
+		}
+		if cc.Path != "" {
+			pluginStr += ";path=" + cc.Path
 		}
 
 		q.Add("plugin", pluginStr)
@@ -97,6 +100,7 @@ func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip i
 
 	default:
 		//https://github.com/shadowsocks/simple-obfs
+		//https://github.com/shadowsocks/simple-obfs/blob/486bebd9208539058e57e23a12f23103016e09b4/src/local.c
 		if cc.HttpHeader != nil || cc.TLS {
 			var pluginStr string
 
@@ -114,6 +118,10 @@ func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip i
 			}
 			if cc.Host != "" {
 				pluginStr += ";obfs-host=" + cc.Host
+			}
+			if cc.Path != "" {
+				pluginStr += ";obfs-uri=" + cc.Path
+
 			}
 			if isServer && lc.Fallback != nil {
 				switch value := lc.Fallback.(type) {
@@ -140,8 +148,8 @@ func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip i
 	return u.String()
 }
 
-//Generate xray url draft based on proxy.DialConf.
-//See https://github.com/XTLS/Xray-core/discussions/716
+// Generate xray url draft based on proxy.DialConf.
+// See https://github.com/XTLS/Xray-core/discussions/716
 func ToXray(dc *proxy.DialConf) string {
 	//内容基本与 proxy/vless 包内的 GenerateXrayShareURL 一致, 为了不依赖vless包, 我们在这里并不复用代码
 

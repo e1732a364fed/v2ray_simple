@@ -3,7 +3,7 @@ Package tproxy listens tproxy and setup corresponding iptables for linux.
 
 透明代理只能用于linux。
 
-About TProxy 关于透明代理
+# About TProxy 关于透明代理
 
 透明代理原理
 https://www.kernel.org/doc/html/latest/networking/tproxy.html
@@ -16,13 +16,11 @@ https://github.com/LiamHaworth/go-tproxy/blob/master/tproxy_tcp.go
 c 语言 示例
 https://github.com/FarFetchd/simple_tproxy_example/blob/master/tproxy_captive_portal.c
 
-
 关键点在于
 
 1. 要使用 syscall.IP_TRANSPARENT 监听
 
 2. 监听到的 连接 的 localAddr实际上是 真实的目标地址, 而不是我们监听的地址;
-
 
 我们在本包里要做的事情就是 模仿 上面的 golang示例,
 
@@ -39,13 +37,12 @@ https://github.com/cybozu-go/transocks/blob/master/original_dst_linux.go
 
 不过实测我们不需要用这个代码来获取原始地址，因为地址我们直接就从 localAddr就能获取。也许是trojan-go的作者不懂tproxy的原理吧！
 
-Iptables
+# Iptables
 
 iptables配置教程：
 https://toutyrater.github.io/app/tproxy.html
 
 下面把该教程的重要部分搬过来。
-
 
 	ip rule add fwmark 1 table 100
 	ip route add local 0.0.0.0/0 dev lo table 100
@@ -70,8 +67,7 @@ https://toutyrater.github.io/app/tproxy.html
 	iptables -t mangle -A V2RAY_MASK -p tcp -j MARK --set-mark 1
 	iptables -t mangle -A OUTPUT -j V2RAY_MASK
 
-
-Persistent iptables
+# Persistent iptables
 
 单独设置iptables，重启后会消失. 下面是 有systemd 的系统的 持久化方法
 
@@ -95,12 +91,11 @@ Persistent iptables
 
 	systemctl enable tproxyrule
 
-OffTopic
+# OffTopic
 
 透明代理与Redir的参考博客：
 
 http://ivo-wang.github.io/2018/02/24/ss-redir/
-
 */
 package tproxy
 
@@ -113,7 +108,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
-//implements netLayer.MsgConn
+// implements netLayer.MsgConn
 type MsgConn struct {
 	netLayer.EasyDeadline
 
@@ -130,7 +125,7 @@ type MsgConn struct {
 	fullcone bool
 }
 
-//一个tproxy状态机 具有 监听端口、tcplistener、udpConn 这三个要素。
+// 一个tproxy状态机 具有 监听端口、tcplistener、udpConn 这三个要素。
 // 用于关闭 以及 储存所监听的 端口。
 type Machine struct {
 	netLayer.Addr
@@ -139,6 +134,8 @@ type Machine struct {
 
 	udpMsgConnMap map[netLayer.HashableAddr]*MsgConn
 	sync.RWMutex  //避免存储 与 移除  产生多线程冲突
+
+	iptablePort int
 }
 
 func NewMachine() *Machine {
@@ -149,6 +146,14 @@ func NewMachine() *Machine {
 
 func (m *Machine) Init() {
 	m.udpMsgConnMap = make(map[netLayer.HashableAddr]*MsgConn)
+}
+
+func (m *Machine) SetIPTable(port int) {
+	if port > 0 {
+		SetIPTablesByPort(port)
+		m.iptablePort = port
+
+	}
 }
 
 func (m *Machine) Stop() {
@@ -175,5 +180,8 @@ func (m *Machine) Stop() {
 
 		m.UDPConn.Close()
 
+	}
+	if m.iptablePort > 0 {
+		CleanupIPTables()
 	}
 }

@@ -159,11 +159,11 @@ func printAllState(w io.Writer, withoutTProxy bool) {
 
 	}
 
-	if !withoutTProxy && len(tproxyList) > 0 {
-		for i, tc := range tproxyList {
-			fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
-		}
-	}
+	// if !withoutTProxy && len(tproxyList) > 0 {
+	// 	for i, tc := range tproxyList {
+	// 		fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
+	// 	}
+	// }
 
 	for i, c := range allClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())

@@ -71,6 +71,37 @@ Use cases: refer to tcp_test.go, udp_test.go or cmd/verysimple.
 non-blocking. closer used to stop listening. It means listening failed if closer == nil,
 */
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
+	if is, tcp, udp := inServer.SelfListen(); is {
+		var chantcp chan proxy.IncomeTCPInfo
+		var chanudp chan proxy.IncomeUDPInfo
+
+		if tcp {
+			chantcp = make(chan proxy.IncomeTCPInfo)
+			for tcpInfo := range chantcp {
+				go passToOutClient(incomingInserverConnState{
+					inTag:         inServer.GetTag(),
+					useSniffing:   inServer.Sniffing(),
+					wrappedConn:   tcpInfo.Conn,
+					defaultClient: defaultOutClient,
+					routingEnv:    env,
+				}, false, tcpInfo.Conn, nil, tcpInfo.Target)
+			}
+		}
+		if udp {
+			chanudp = make(chan proxy.IncomeUDPInfo)
+
+			for tcpInfo := range chanudp {
+				go passToOutClient(incomingInserverConnState{
+					inTag:         inServer.GetTag(),
+					useSniffing:   inServer.Sniffing(),
+					defaultClient: defaultOutClient,
+					routingEnv:    env,
+				}, false, nil, tcpInfo.MsgConn, tcpInfo.Target)
+			}
+		}
+		closer = inServer.(proxy.ListenerServer).StartListen(chantcp, chanudp)
+		return
+	}
 
 	var handleHere bool
 	advs := inServer.GetAdvServer()
