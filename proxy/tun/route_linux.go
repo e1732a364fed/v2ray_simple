@@ -11,7 +11,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -98,7 +97,6 @@ func init() {
 			//"ip route add default via " + rememberedRouterIP,
 
 			"ip link set dev " + tunDevName + " down",
-			"ip tuntap del mode tun dev " + tunDevName,
 		}
 
 		for _, v := range directList {
@@ -108,20 +106,29 @@ func init() {
 		if manualRoute {
 			promptManual(strs)
 		} else {
-			if e := utils.LogExecCmdList(strs[:1]); e != nil {
+			// defer func() {
+			// 	//发现在vs退出之前，是无法成功运行 ip tuntap del mode tun 的
+			// 	utils.Warn("please run this command belowmanually after exit vs:\nip tuntap del mode tun dev " + tunDevName)
+
+			// }()
+			if e := utils.LogExecCmdList(strs); e != nil {
 				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
 					ce.Write(zap.Error(e))
 				}
 				return
 
 			}
-			time.Sleep(time.Second) //似乎不能太快紧接着 down 执行ip tuntap del
 
-			if e := utils.LogExecCmdList(strs[1:]); e != nil {
-				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
-					ce.Write(zap.Error(e))
-				}
+		}
+	}
+
+	autoRouteDownAfterCloseFunc = func(tunDevName, tunGateway, tunIP string, directlist []string) {
+		if _, e := utils.LogRunCmd("ip", "tuntap", "del", "mode", "tun", "dev", tunDevName); e != nil {
+			if ce := utils.CanLogErr("recover auto route after close failed"); ce != nil {
+				ce.Write(zap.Error(e))
 			}
+			return
+
 		}
 	}
 }

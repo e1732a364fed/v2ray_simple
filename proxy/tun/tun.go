@@ -28,12 +28,13 @@ const (
 )
 
 var (
-	AddManualRunCmdsListFunc func([]string)
-	rememberedRouterIP       string
-	manualRoute              bool
-	autoRoutePreFunc         func(tunDevName, tunGateway, tunIP string, directlist []string) bool
-	autoRouteFunc            func(tunDevName, tunGateway, tunIP string, directlist []string)
-	autoRouteDownFunc        func(tunDevName, tunGateway, tunIP string, directlist []string)
+	AddManualRunCmdsListFunc    func([]string)
+	rememberedRouterIP          string
+	manualRoute                 bool
+	autoRoutePreFunc            func(tunDevName, tunGateway, tunIP string, directlist []string) bool
+	autoRouteFunc               func(tunDevName, tunGateway, tunIP string, directlist []string)
+	autoRouteDownFunc           func(tunDevName, tunGateway, tunIP string, directlist []string)
+	autoRouteDownAfterCloseFunc func(tunDevName, tunGateway, tunIP string, directlist []string)
 )
 
 func promptManual(strs []string) {
@@ -179,6 +180,11 @@ func (s *Server) Stop() {
 		close(s.infoChan)
 		close(s.udpRequestChan)
 		s.lwipCloser.Close()
+
+		if s.autoRoute && autoRouteDownAfterCloseFunc != nil {
+
+			autoRouteDownAfterCloseFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
+		}
 	}
 
 }
