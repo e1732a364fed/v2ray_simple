@@ -184,6 +184,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 
 					fm.IsH2 = true
 					fm.H2Request = rq
+					fm.H2RW = rw
 
 					if s.closed {
 						return

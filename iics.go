@@ -79,6 +79,7 @@ type incomingInserverConnState struct {
 	isFallbackH2        bool
 	fallbackRequestPath string
 	fallbackH2Request   *http.Request
+	fallbackRW          http.ResponseWriter
 	fallbackFirstBuffer *bytes.Buffer
 
 	fallbackXver int //若大于等于0，则证明该进项已经被确定需要进行fallback。

@@ -399,6 +399,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				newiics.wrappedConn = fallbackMeta.Conn
 				newiics.isFallbackH2 = fallbackMeta.IsH2
 				newiics.fallbackH2Request = fallbackMeta.H2Request
+				newiics.fallbackRW = fallbackMeta.H2RW
 
 				passToOutClient(newiics, true, nil, nil, netLayer.Addr{})
 			})
@@ -663,8 +664,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				rq.Host = targetAddr.Name
 
 				urlStr := "https://" + targetAddr.String() + iics.fallbackRequestPath
-				url, _ := url.Parse(urlStr)
-				rq.URL = url
+				u, _ := url.Parse(urlStr)
+				rq.URL = u
 
 				var transport *http2.Transport
 
@@ -679,6 +680,11 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 							},
 							AllowHTTP: true,
 						}
+
+						if ce := utils.CanLogDebug("fallback grpc"); ce != nil {
+							ce.Write(zap.String("path", iics.fallbackRequestPath))
+						}
+						rq.URL, _ = url.Parse("http://127.0.0.1" + iics.fallbackRequestPath)
 					}
 
 				} else if fbResult > 0 {
@@ -732,6 +738,12 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 					return
 				}
+
+				for k, v := range rsp.Header {
+					iics.fallbackRW.Header().Set(k, v[0])
+				}
+
+				iics.fallbackRW.WriteHeader(rsp.StatusCode)
 
 				netLayer.TryCopy(wlc, rsp.Body, iics.id)
 

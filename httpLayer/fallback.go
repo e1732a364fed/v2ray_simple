@@ -47,6 +47,7 @@ type FallbackMeta struct {
 	Reason       string
 
 	H2Request *http.Request
+	H2RW      http.ResponseWriter
 	XFF       net.Addr
 }
 
