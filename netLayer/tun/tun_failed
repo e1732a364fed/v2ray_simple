@@ -1,4 +1,5 @@
 /*
+本文件是vs作者一次对udp xjasonlyu/tun2socks中旧方法的 失败的尝试
 Packages tun provides utilities for tun.
 
 tun包提供 创建tun设备的方法，以及监听tun，将数据解析为tcp/udp数据的方法。
@@ -16,8 +17,8 @@ package tun
 
 import (
 	"errors"
+	"fmt"
 	"io"
-	"log"
 	"net"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/device/tun"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/option"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"gvisor.dev/gvisor/pkg/bufferv2"
 	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/adapters/gonet"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
@@ -139,19 +141,26 @@ func Listen(dev device.Device, tcpFunc func(netLayer.TCPRequestInfo), udpFunc fu
 	})
 	s.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForwarder.HandlePacket)
 
-	udpForwarder := udp.NewForwarder(s, func(r *udp.ForwarderRequest) {
-		var (
-			wq waiter.Queue
-			id = r.ID()
-		)
-		ep, err := r.CreateEndpoint(&wq)
-		if err != nil {
-			log.Printf("tun Err, udp forwarder request %s:%d->%s:%d: %\n",
-				id.RemoteAddress, id.RemotePort, id.LocalAddress, id.LocalPort, err)
-			return
+	udpHandlePacket := func(id stack.TransportEndpointID, pkt stack.PacketBufferPtr) bool {
+		// Ref: gVisor pkg/tcpip/transport/udp/endpoint.go HandlePacket
+
+		v := pkt.TransportHeader().View()
+		udpHdr := header.UDP(v.AsSlice())
+		if int(udpHdr.Length()) > pkt.Data().Size()+header.UDPMinimumSize {
+			// Malformed packet.
+			s.Stats().UDP.MalformedPacketsReceived.Increment()
+			return true
 		}
 
-		udpConn := gonet.NewUDPConn(s, &wq, ep)
+		// if !verifyChecksum(udpHdr, pkt) {
+		// 	// Checksum error.
+		// 	s.Stats().UDP.ChecksumErrors.Increment()
+		// 	return true
+		// }
+
+		s.Stats().UDP.PacketsReceived.Increment()
+
+		pd := pkt.Data()
 
 		ad := netLayer.Addr{
 			Network: "udp",
@@ -159,17 +168,57 @@ func Listen(dev device.Device, tcpFunc func(netLayer.TCPRequestInfo), udpFunc fu
 			Port:    int(id.LocalPort),
 		}
 
+		packet := &UdpMsgConn{
+			s:          s,
+			id:         &id,
+			data:       ExtractVV(pd),
+			nicID:      pkt.NICID,
+			netHdr:     pkt.Network(),
+			netProto:   pkt.NetworkProtocolNumber,
+			RealTarget: ad,
+		}
+
 		info := netLayer.UDPRequestInfo{
-			MsgConn: &UdpMsgConn{
-				PacketConn: udpConn,
-				RealTarget: ad,
-			},
-			Target: ad,
+			MsgConn: packet,
+			Target:  ad,
 		}
 
 		go udpFunc(info)
-	})
-	s.SetTransportProtocolHandler(udp.ProtocolNumber, udpForwarder.HandlePacket)
+		return true
+	}
+
+	// udpForwarder := udp.NewForwarder(s, func(r *udp.ForwarderRequest) {
+	// 	var (
+	// 		wq waiter.Queue
+	// 		id = r.ID()
+	// 	)
+	// 	ep, err := r.CreateEndpoint(&wq)
+	// 	if err != nil {
+	// 		log.Printf("tun Err, udp forwarder request %s:%d->%s:%d: %\n",
+	// 			id.RemoteAddress, id.RemotePort, id.LocalAddress, id.LocalPort, err)
+	// 		return
+	// 	}
+
+	// 	udpConn := gonet.NewUDPConn(s, &wq, ep)
+
+	// 	ad := netLayer.Addr{
+	// 		Network: "udp",
+	// 		IP:      net.IP(id.LocalAddress),
+	// 		Port:    int(id.LocalPort),
+	// 	}
+
+	// 	info := netLayer.UDPRequestInfo{
+	// 		MsgConn: &UdpMsgConn{
+	// 			PacketConn: udpConn,
+	// 			RealTarget: ad,
+	// 		},
+	// 		Target: ad,
+	// 	}
+
+	// 	go udpFunc(info)
+	// })
+
+	s.SetTransportProtocolHandler(udp.ProtocolNumber, udpHandlePacket)
 
 	s.SetPromiscuousMode(nicID, true) //必须调用这个,否则tun什么也收不到
 	s.SetSpoofing(nicID, true)
@@ -186,6 +235,10 @@ func Listen(dev device.Device, tcpFunc func(netLayer.TCPRequestInfo), udpFunc fu
 	})
 
 	return
+}
+
+func ExtractVV(d stack.PacketData) *bufferv2.View {
+	return d.AsRange().ToView()
 }
 
 func setSocketOptions(s *stack.Stack, ep tcpip.Endpoint) tcpip.Error {
@@ -226,45 +279,125 @@ func setSocketOptions(s *stack.Stack, ep tcpip.Endpoint) tcpip.Error {
 
 // Wraps net.PacketConn and implements MsgConn
 type UdpMsgConn struct {
-	net.PacketConn
+	// net.PacketConn
 	RealTarget netLayer.Addr
+	netLayer.EasyDeadline
 
-	tunSrcAddr net.Addr
+	// tunSrcAddr net.Addr
+
+	s        *stack.Stack
+	id       *stack.TransportEndpointID
+	data     *bufferv2.View
+	nicID    tcpip.NICID
+	netHdr   header.Network
+	netProto tcpip.NetworkProtocolNumber
 }
 
 func (mc *UdpMsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
-	bs := utils.GetPacket()
-	n, ad, err := mc.ReadFrom(bs)
-	if err != nil {
-		return nil, mc.RealTarget, err
-	}
-	mc.tunSrcAddr = ad
+	// bs := utils.GetPacket()
+	// n, ad, err := mc.ReadFrom(bs)
+	// if err != nil {
+	// 	return nil, mc.RealTarget, err
+	// }
+	// mc.tunSrcAddr = ad
 
-	return bs[:n], mc.RealTarget, nil
+	// return bs[:n], mc.RealTarget, nil
+	return mc.data.AsSlice(), mc.RealTarget, nil
+
 }
 
-func (mc *UdpMsgConn) WriteMsg(p []byte, peera netLayer.Addr) error {
-	//这里的peera是 远程地址，不是我们要写向的地址。在tun中我们要发向之前的tun的地址
+func (p *UdpMsgConn) WriteMsg(b []byte, peera netLayer.Addr) error {
+	//v := buffer.View(b)
+	// if len(v) > header.UDPMaximumPacketSize {
+	// 	// Payload can't possibly fit in a packet.
+	// 	e := tcpip.ErrMessageTooLong{}
+	// 	return errors.New(e.String())
+	// }
 
-	//笔记：那么在哪里传回远程地址的信息呢，如果不设该信息，不就无法进行fullcone了吗？
+	var (
+		localAddress tcpip.Address
+		localPort    uint16
+	)
 
-	//根据下面讨论，果然，这样不行。
-	//https://github.com/xjasonlyu/tun2socks/issues/112
+	ua := peera.ToUDPAddr()
 
-	// 看来似乎不应该采用tun2socks目前重构后的方法而应该用它在2.4.0之前的旧方法
-	// 然而旧方法所使用的 gvisor包已经过时了。
+	if ipv4 := ua.IP.To4(); ipv4 != nil {
+		localAddress = tcpip.Address(ipv4)
+		localPort = uint16(peera.Port)
+	} else {
+		localAddress = tcpip.Address(peera.IP)
+		localPort = uint16(peera.Port)
+	}
 
-	_, err := mc.WriteTo(p, mc.tunSrcAddr)
+	route, err := p.s.FindRoute(p.nicID, localAddress, p.netHdr.SourceAddress(), p.netProto, false /* multicastLoop */)
+	if err != nil {
+		return fmt.Errorf("%#v find route: %s", p.id, err)
+	}
+	defer route.Release()
 
-	return err
+	if err = sendUDP(route, bufferv2.MakeWithData(b), localPort, p.id.RemotePort, true); err != nil {
+		return fmt.Errorf("%v", err)
+	}
+	return nil
 }
 func (mc *UdpMsgConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
-	return mc.PacketConn.Close()
+	return nil
 
 }
 func (mc *UdpMsgConn) Close() error {
-	return mc.PacketConn.Close()
+	return nil
 }
 func (mc *UdpMsgConn) Fullcone() bool {
-	return false
+	return true
+}
+
+// sendUDP sends a UDP segment via the provided network endpoint and under the
+// provided identity.
+func sendUDP(r *stack.Route, data bufferv2.Buffer, localPort, remotePort uint16, noChecksum bool) tcpip.Error {
+	pkt := stack.NewPacketBuffer(stack.PacketBufferOptions{
+		ReserveHeaderBytes: header.UDPMinimumSize + int(r.MaxHeaderLength()),
+		Payload:            data,
+	})
+
+	// Initialize the UDP header.
+	udpHdr := header.UDP(pkt.TransportHeader().Push(header.UDPMinimumSize))
+	pkt.TransportProtocolNumber = udp.ProtocolNumber
+
+	length := uint16(pkt.Size())
+	udpHdr.Encode(&header.UDPFields{
+		SrcPort: localPort,
+		DstPort: remotePort,
+		Length:  length,
+	})
+
+	// Set the checksum field unless TX checksum offload is enabled.
+	// On IPv4, UDP checksum is optional, and a zero value indicates the
+	// transmitter skipped the checksum generation (RFC768).
+	// On IPv6, UDP checksum is not optional (RFC2460 Section 8.1).
+	if r.RequiresTXTransportChecksum() &&
+		(!noChecksum || r.NetProto() == header.IPv6ProtocolNumber) {
+		// xsum := r.PseudoHeaderChecksum(udp.ProtocolNumber, length)
+
+		// vs,_:=data.PullUp(0,1)
+		// // for _, v := range vs {
+		// // 	xsum = header.Checksum(v, xsum)
+		// // }
+		// vs.Next()
+		// udpHdr.SetChecksum(^udpHdr.CalculateChecksum(xsum))
+	}
+
+	ttl := r.DefaultTTL()
+
+	if err := r.WritePacket(stack.NetworkHeaderParams{
+		Protocol: udp.ProtocolNumber,
+		TTL:      ttl,
+		TOS:      0, /* default */
+	}, pkt); err != nil {
+		r.Stats().UDP.PacketSendErrors.Increment()
+		return err
+	}
+
+	// Track count of packets sent.
+	r.Stats().UDP.PacketsSent.Increment()
+	return nil
 }
