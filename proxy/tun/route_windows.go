@@ -34,7 +34,7 @@ func init() {
 			utils.Warn(auto_route_bindToDeviceWarn)
 		}
 
-		routerIP, err := netLayer.GetGateway()
+		routerIP, _, err := netLayer.GetGateway()
 		if err != nil {
 			return
 		}

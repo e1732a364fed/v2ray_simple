@@ -10,7 +10,9 @@ import (
 
 // Stdout, Stderr to zap
 func LogRunCmd(name string, arg ...string) (out string, err error) {
-	ZapLogger.Info("run cmd", zap.String("cmd", name), zap.Strings("args", arg))
+	if ce := CanLogInfo("run cmd"); ce != nil {
+		ce.Write(zap.String("cmd", name), zap.Strings("args", arg))
+	}
 
 	cmd1 := exec.Command(name, arg...)
 	var sbE strings.Builder
@@ -19,10 +21,17 @@ func LogRunCmd(name string, arg ...string) (out string, err error) {
 	cmd1.Stdout = &sbO
 
 	if err = cmd1.Run(); err != nil {
-		ZapLogger.Error("run cmd failed", zap.Error(err), zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
+
+		if ce := CanLogErr("run cmd failed"); ce != nil {
+			ce.Write(zap.Error(err), zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
+		}
+
 	}
 	out = sbO.String()
-	ZapLogger.Info("run cmd result", zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
+
+	if ce := CanLogInfo("run cmd"); ce != nil {
+		ce.Write(zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
+	}
 
 	return
 }
@@ -41,7 +50,7 @@ func FmtPrintRunCmd(name string, arg ...string) (out string, err error) {
 		fmt.Println("run cmd failed", err, "stdOut", out, "stdErr", sbE.String())
 	}
 	out = sbO.String()
-	fmt.Println("run cmd result", "stdOut", out, "stdErr", sbE.String())
+	fmt.Println("run cmd result", "stdOut:", out, "stdErr:", sbE.String())
 
 	return
 }

@@ -2,6 +2,8 @@ package netLayer
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"runtime"
@@ -63,6 +65,25 @@ func HasIpv6Interface() bool {
 		}
 	}
 	return false
+}
+
+func PrintAllInterface(w io.Writer) {
+	ifs, err := net.Interfaces()
+	if err != nil {
+		fmt.Fprintln(w, err)
+		return
+	}
+	for _, thisIf := range ifs {
+		ads, _ := thisIf.Addrs()
+		fmt.Fprintln(w, thisIf.Name, ads)
+	}
+}
+
+var GetSystemDNS = func() (result []string) {
+	if ce := utils.CanLogErr("GetSystemDNS: not implemented"); ce != nil {
+		ce.Write(zap.String("platform", runtime.GOOS))
+	}
+	return
 }
 
 var SetSystemDNS = func(dns string) {

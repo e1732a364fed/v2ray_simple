@@ -66,9 +66,9 @@ func init() {
 		}
 
 		if dns != "" {
-			rdns := netLayer.GetSystemDNS()
-			if rdns != "" {
-				rememberedRouterDns = rdns
+			rdnss := netLayer.GetSystemDNS()
+			if len(rdnss) > 0 {
+				rememberedRouterDns = rdnss[0]
 				netLayer.SetSystemDNS(dns)
 			}
 		}

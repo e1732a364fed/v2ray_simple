@@ -9,9 +9,34 @@ import (
 
 func init() {
 	ToggleSystemProxy = toggleSystemProxy
+	SetSystemDNS = setSystemDNS
+	GetSystemDNS = getSystemDNS
 }
 
-func GetGateway() (ip string, err error) {
+// helper func, call GetGateway + GetNetworkAdapterNameByIP
+func GetDefaultNetworkAdapterName() string {
+	_, selfip, _ := GetGateway()
+	if selfip == "" {
+		return ""
+	}
+	return GetNetworkAdapterNameByIP(selfip)
+
+}
+
+func GetNetworkAdapterNameByIP(ip string) string {
+	var sb strings.Builder
+	PrintAllInterface(&sb)
+	str := sb.String()
+	lines := strings.Split(str, "\n")
+	for _, l := range lines {
+		if strings.Contains(l, ip) {
+			return l[:strings.Index(l, "[")-1]
+		}
+	}
+	return ""
+}
+
+func GetGateway() (routerIP, selfIP string, err error) {
 	var out []byte
 	out, err = exec.Command("netstat", "-nr").Output()
 
@@ -46,10 +71,11 @@ func GetGateway() (ip string, err error) {
 		return
 	}
 
-	ip = fields[2]
+	routerIP = fields[2]
+	selfIP = fields[3]
 
-	if ip == "On-link" {
-		utils.Warn("auto route failed, routerIP parse failed, got " + ip)
+	if routerIP == "On-link" {
+		utils.Warn("auto route failed, routerIP parse failed, got " + routerIP)
 		err = utils.ErrFailed
 
 		return
@@ -88,4 +114,54 @@ func toggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
 		utils.LogRunCmd("reg", "delete", inetSettings, "/v", "ProxyOverride", "/f")
 	}
 
+}
+
+func setSystemDNS(dns string) {
+
+	devName := GetDefaultNetworkAdapterName()
+	if devName == "" {
+		return
+	}
+
+	utils.LogRunCmd("netsh", "interface", "ip", "set", "dns", `name="`+devName+`"`, "static", dns)
+}
+
+func getSystemDNS() (result []string) {
+
+	devName := GetDefaultNetworkAdapterName()
+	if devName == "" {
+		return
+	}
+
+	out, e := utils.FmtPrintRunCmd("powershell", "Get-DnsClientServerAddress")
+	if e != nil {
+		return
+	}
+
+	lines := strings.Split(out, "\n")
+	for _, l := range lines {
+		if !strings.Contains(l, devName) {
+			continue
+		}
+		l = utils.StandardizeSpaces(l)
+		fields := strings.SplitN(l, " ", 4)
+		if len(fields) == 4 {
+			l = strings.Trim(fields[3], "{}")
+			if strings.Contains(l, ",") {
+				l = strings.TrimSpace(l)
+				ls := strings.Split(l, ",")
+				for _, ll := range ls {
+					if ll != "" {
+						result = append(result, ll)
+
+					}
+
+				}
+			} else if l != "" {
+				result = append(result, l)
+			}
+
+		}
+	}
+	return
 }

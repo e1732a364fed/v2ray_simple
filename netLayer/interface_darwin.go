@@ -155,21 +155,23 @@ darwin 获取wifi名称
 
 */
 
-func GetSystemDNS() string {
+func GetSystemDNS() (result []string) {
 
 	hardwareportStr, err := GetDefaultHardwarePort()
 	if err != nil {
 		if ce := utils.CanLogErr("GetSystemDNS: call GetDefaultHardwarePort failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
-		return ""
+		return
 	}
 
 	out, e := utils.LogRunCmd("networksetup", "-getdnsservers", hardwareportStr)
 	if e != nil {
-		return ""
+		return
 	}
-	return strings.TrimSpace(out)
+	out = strings.TrimRight(out, "\n")
+	result = strings.Split(out, "\n")
+	return
 }
 
 func toggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {

@@ -12,8 +12,8 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-func convertQxToVs() {
-	dc := configAdapter.FromQX(cmdConvertQxToVs)
+func convertQxToVs(str string) {
+	dc := configAdapter.FromQX(str)
 
 	gstr, e := utils.GetPurgedTomlStr(proxy.StandardConf{
 		Dial: []*proxy.DialConf{&dc},
@@ -27,14 +27,14 @@ func convertQxToVs() {
 
 }
 
-func extractQxRemoteServers() {
+func extractQxRemoteServers(str string) {
 	var bs []byte
 	var readE error
-	if strings.HasPrefix(cmdExtractQX_remoteServer, "http") {
+	if strings.HasPrefix(str, "http") {
 
-		fmt.Printf("downloading %s\n", cmdExtractQX_remoteServer)
+		fmt.Printf("downloading %s\n", str)
 
-		resp, err := http.DefaultClient.Get(cmdExtractQX_remoteServer)
+		resp, err := http.DefaultClient.Get(str)
 
 		if err != nil {
 			fmt.Printf("Download failed %s\n", err.Error())
@@ -47,8 +47,8 @@ func extractQxRemoteServers() {
 		bs, readE = io.ReadAll(io.TeeReader(resp.Body, counter))
 		fmt.Printf("\n")
 	} else {
-		if utils.FileExist(cmdExtractQX_remoteServer) {
-			path := utils.GetFilePath(cmdExtractQX_remoteServer)
+		if utils.FileExist(str) {
+			path := utils.GetFilePath(str)
 			f, e := os.Open(path)
 			if e != nil {
 				fmt.Printf("Download failed %s\n", e.Error())
@@ -56,7 +56,7 @@ func extractQxRemoteServers() {
 			}
 			bs, readE = io.ReadAll(f)
 		} else {
-			fmt.Printf("file not exist %s\n", cmdExtractQX_remoteServer)
+			fmt.Printf("file not exist %s\n", str)
 			return
 
 		}
