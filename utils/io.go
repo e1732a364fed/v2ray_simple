@@ -60,7 +60,7 @@ func ClassicCopy_detailErr(w io.Writer, r io.Reader) (written int64, err error) 
 			}
 			written += int64(nw)
 			if ew != nil {
-				err = ErrInErr{ErrDetail: Errs{[]ErrsItem{{Index: 1, E: ErrInErr{ErrDetail: ew, Data: []int{nr, nw}}}, {Index: 2, E: er}}}, ErrDesc: "ew"}
+				err = ErrInErr{ErrDetail: ErrList{[]ErrItem{{Index: 1, E: ErrInErr{ErrDetail: ew}}, {Index: 2, E: er}}}, ErrDesc: "ew", Data: []int{nr, nw}}
 				break
 			}
 			if nr != nw {
@@ -286,11 +286,11 @@ type MultiCloser struct {
 
 func (cc *MultiCloser) Close() (result error) {
 	cc.Once.Do(func() {
-		var es Errs
+		var es ErrList
 		for i, c := range cc.Closers {
 			e := c.Close()
 			if e != nil {
-				es.Add(ErrsItem{Index: i, E: e})
+				es.Add(ErrItem{Index: i, E: e})
 			}
 		}
 		if !es.OK() {

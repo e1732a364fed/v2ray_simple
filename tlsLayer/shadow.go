@@ -66,12 +66,12 @@ func shadowTls1(servername string, clientConn net.Conn) (err error) {
 	<-finish1
 
 	if e1 != nil || e2 != nil {
-		e := utils.Errs{}
+		e := utils.ErrList{}
 		if e1 != nil {
-			e.Add(utils.ErrsItem{Index: 1, E: e1})
+			e.Add(utils.ErrItem{Index: 1, E: e1})
 		}
 		if e2 != nil {
-			e.Add(utils.ErrsItem{Index: 2, E: e2})
+			e.Add(utils.ErrItem{Index: 2, E: e2})
 		}
 
 		return e

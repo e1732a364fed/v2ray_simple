@@ -145,22 +145,22 @@ func (e ErrInErr) String() string {
 
 }
 
-type Errs struct {
-	List []ErrsItem
+type ErrList struct {
+	List []ErrItem
 }
 
-type ErrsItem struct {
+type ErrItem struct {
 	Index int
 	E     error
 }
 
-func (ee *Errs) Add(e ErrsItem) {
+func (ee *ErrList) Add(e ErrItem) {
 	ee.List = append(ee.List, e)
 }
-func (e Errs) OK() bool {
+func (e ErrList) OK() bool {
 	return len(e.List) == 0
 }
-func (e Errs) String() string {
+func (e ErrList) String() string {
 	var sb strings.Builder
 	for _, err := range e.List {
 		sb.WriteString(strconv.Itoa(err.Index))
@@ -174,6 +174,6 @@ func (e Errs) String() string {
 	return sb.String()
 }
 
-func (e Errs) Error() string {
+func (e ErrList) Error() string {
 	return e.String()
 }
