@@ -80,47 +80,14 @@ func init() {
 			fmt.Sprintf(`netsh interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=none`, tunDevName, tunGateway),
 		}
 
-		_, err = utils.LogRunCmd("netsh", "interface", "ip", "set", "address", `name="`+tunDevName+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none")
-
-		if err != nil {
-			return
-		}
-
-		if err != nil {
-			if ce := utils.CanLogErr("auto route failed"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
-			return
-		}
-
 		for _, v := range directList {
 			strs = append(strs, fmt.Sprintf("route add %s %s metric 5", v, rememberedRouterIP))
-
-			_, err = utils.LogRunCmd("route", "add", v, rememberedRouterIP, "metric", "5")
-			if err != nil {
-				if err != nil {
-					if ce := utils.CanLogErr("auto route failed"); ce != nil {
-						ce.Write(zap.Error(err))
-					}
-					return
-				}
-			}
 
 		}
 
 		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
 
-		_, err = utils.LogRunCmd("route", "add", "0.0.0.0", "mask", "0.0.0.0", tunGateway, "metric", "6")
-		if err != nil {
-			if err != nil {
-				if ce := utils.CanLogErr("auto route failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				return
-			}
-		}
-
-		utils.Info("auto route succeed! If not working somehow, please try run these commands manually:")
+		utils.Info("Please try run these commands manually:")
 		for _, s := range strs {
 			utils.Info(s)
 		}
