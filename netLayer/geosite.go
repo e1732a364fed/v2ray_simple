@@ -4,14 +4,11 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
 	"io/ioutil"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -199,34 +196,10 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 		return
 	}
 
-	var resp *http.Response
-	var err error
-
 	const requestUrl = "https://api.github.com/repos/v2fly/domain-list-community/releases/latest"
 
-	var thehttpClient = http.DefaultClient
+	thehttpClient, resp, err := utils.TryDownloadWithProxyUrl(proxyurl, requestUrl)
 
-	if proxyurl == "" {
-		resp, err = thehttpClient.Get(requestUrl)
-
-	} else {
-		url_proxy, e2 := url.Parse(proxyurl)
-		if e2 != nil {
-			fmt.Println("proxyurl given was wrong,", proxyurl, e2)
-			return
-		}
-
-		client := &http.Client{
-			Transport: &http.Transport{
-				Proxy:           http.ProxyURL(url_proxy),
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		}
-
-		resp, err = client.Get(requestUrl)
-
-		thehttpClient = client
-	}
 	if err != nil {
 		fmt.Println("http get failed", err)
 		return

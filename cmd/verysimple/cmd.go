@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 
+	httpProxy "github.com/e1732a364fed/v2ray_simple/proxy/http"
+
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"go.uber.org/zap"
 
@@ -23,14 +25,14 @@ var (
 	cmdPrintSupportedProtocols bool
 
 	interactive_mode bool
-	nodownload       bool
+	download         bool
 	cmdPrintVer      bool
 )
 
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
-	flag.BoolVar(&nodownload, "nd", false, "don't automatically download any extra data files")
+	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 
 	//本文件 中定义的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
@@ -42,8 +44,14 @@ func init() {
 	})
 
 	cliCmdList = append(cliCmdList, CliCmd{
-		"下载geosite原文件", func() {
+		"下载geosite文件夹", func() {
 			tryDownloadGeositeSource()
+		},
+	})
+
+	cliCmdList = append(cliCmdList, CliCmd{
+		"下载geoip文件(GeoLite2-Country.mmdb)", func() {
+			tryDownloadMMDB()
 		},
 	})
 
@@ -79,7 +87,7 @@ func runExitCommands() (atLeastOneCalled bool) {
 //在开始正式代理前, 先运行一些需要运行的命令与函数
 func runPreCommands() {
 
-	if !nodownload {
+	if download {
 		tryDownloadMMDB()
 	}
 }
@@ -106,7 +114,34 @@ func tryDownloadMMDB() {
 
 	fmt.Printf("No %s found,start downloading from %s\n", netLayer.GeoipFileName, mmdbDownloadLink)
 
-	resp, err := http.Get(mmdbDownloadLink)
+	var outClient proxy.Client
+
+	if defaultOutClient != nil && defaultOutClient.Name() != proxy.DirectName && defaultOutClient.Name() != proxy.RejectName {
+		outClient = defaultOutClient
+		utils.PrintStr("trying to download mmdb through your proxy dial\n")
+	} else {
+		utils.PrintStr("trying to download mmdb directly\n")
+	}
+
+	var proxyUrl string
+	var listener io.Closer
+
+	if outClient != nil {
+
+		clientEndInServer, proxyurl, err := httpProxy.SetupTmpProxyServer()
+		if err != nil {
+			fmt.Println("can not create clientEndInServer: ", err)
+			return
+		}
+
+		listener = vs.ListenSer(clientEndInServer, outClient, nil)
+		if listener != nil {
+			proxyUrl = proxyurl
+
+		}
+	}
+
+	_, resp, err := utils.TryDownloadWithProxyUrl(proxyUrl, mmdbDownloadLink)
 
 	if err != nil {
 		fmt.Printf("Download mmdb failed %s\n", err.Error())
@@ -170,38 +205,25 @@ func tryDownloadGeositeSource() {
 		utils.PrintStr("trying to download geosite directly\n")
 	}
 
-	var proxyurl string
+	var proxyUrl string
 	var listener io.Closer
 
 	if outClient != nil {
 
-		const tempClientConfStr = `
-[[listen]]
-protocol = "http"
-`
-
-		clientConf, err := proxy.LoadTomlConfStr(tempClientConfStr)
-		if err != nil {
-			fmt.Println("can not create LoadTomlConfStr: ", err)
-
-			return
-		}
-
-		clientEndInServer, err := proxy.NewServer(clientConf.Listen[0])
+		clientEndInServer, proxyurl, err := httpProxy.SetupTmpProxyServer()
 		if err != nil {
 			fmt.Println("can not create clientEndInServer: ", err)
 			return
 		}
-		listenAddrStr := netLayer.GetRandLocalPrivateAddr(true, false)
-		clientEndInServer.SetAddrStr(listenAddrStr)
 
 		listener = vs.ListenSer(clientEndInServer, outClient, nil)
+		if listener != nil {
+			proxyUrl = proxyurl
 
-		proxyurl = "http://" + listenAddrStr
-
+		}
 	}
 
-	netLayer.DownloadCommunity_DomainListFiles(proxyurl)
+	netLayer.DownloadCommunity_DomainListFiles(proxyUrl)
 
 	if listener != nil {
 		listener.Close()
