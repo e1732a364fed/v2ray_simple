@@ -411,20 +411,10 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			muxSer := advSer.(advLayer.MuxServer)
 
 			muxSer.StartHandle(wrappedConn, func(newGConn net.Conn) {
-				// newGConn, ok := <-newConnChan
-
-				// if !ok {
-				// 	if ce := iics.CanLogWarn("Grpc getNewSubConn not ok"); ce != nil {
-				// 		ce.Write()
-				// 	}
-
-				// 	iics.baseLocalConn.Close()
-				// 	return
-				// }
 
 				iics.wrappedConn = newGConn
 
-				go handshakeInserver_and_passToOutClient(iics)
+				handshakeInserver_and_passToOutClient(iics)
 
 			}, func(fallbackMeta httpLayer.FallbackMeta) {
 

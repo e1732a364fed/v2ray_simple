@@ -113,6 +113,8 @@ type SingleServer interface {
 type MuxServer interface {
 
 	//blocking. if fallbackFunc != nil, then it can serve for fallback feature.
+	//
+	//newSubConnFunc and fallbackFunc are blocking
 	StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), fallbackFunc func(httpLayer.FallbackMeta))
 }
 

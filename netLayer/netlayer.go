@@ -152,7 +152,13 @@ func (cl *ConnList) Insert(c net.Conn) {
 	cl.Unlock()
 }
 
-func (cl *ConnList) Remove(c net.Conn) {
+func (cl *ConnList) CloseDelete(c net.Conn) {
+	c.Close()
+
+	cl.Delete(c)
+}
+
+func (cl *ConnList) Delete(c net.Conn) {
 	cl.Lock()
 
 	index := -1
@@ -169,7 +175,7 @@ func (cl *ConnList) Remove(c net.Conn) {
 	cl.Unlock()
 }
 
-func (cl *ConnList) CloseAndRemoveAll() {
+func (cl *ConnList) CloseDeleteAll() {
 	cl.Lock()
 	for _, conn := range cl.list {
 		conn.Close()

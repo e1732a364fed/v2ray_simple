@@ -41,7 +41,7 @@ func (s *Server) Stop() {
 	}
 	s.closed = true
 
-	s.CloseAndRemoveAll()
+	s.CloseDeleteAll()
 
 }
 
@@ -53,7 +53,9 @@ var (
 func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), fallbackFunc func(httpLayer.FallbackMeta)) {
 	s.closed = false
 
-	s.Insert(underlay)
+	oldUnderlay := underlay
+
+	s.Insert(oldUnderlay)
 
 	//先过滤一下h2c 的 preface. 因为不是h2c的话，依然可以试图回落到 h1.
 
@@ -171,10 +173,9 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 					}
 
 					respConn := &netLayer.IOWrapper{
-						Reader:    rq.Body,
-						Writer:    rw,
-						CloseChan: make(chan struct{}),
-						Rejecter:  httpLayer.RejectConn{ResponseWriter: rw},
+						Reader:   rq.Body,
+						Writer:   rw,
+						Rejecter: httpLayer.RejectConn{ResponseWriter: rw},
 					}
 
 					fm := httpLayer.FallbackMeta{
@@ -189,10 +190,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 						return
 					}
 
-					go fallbackFunc(fm)
-
-					<-respConn.CloseChan
-
+					fallbackFunc(fm)
 				}
 
 				return
@@ -215,12 +213,11 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 			if s.closed {
 				return
 			}
-			go newSubConnFunc(sc)
-			<-sc.closeChan //necessary
+			newSubConnFunc(sc)
 		}),
 	})
 
-	s.Remove(underlay)
+	s.CloseDelete(oldUnderlay)
 
 }
 
@@ -230,9 +227,8 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 			br: bufio.NewReader(rq.Body),
 		},
 
-		Writer:    rw,
-		Closer:    rq.Body,
-		closeChan: make(chan int),
+		Writer: rw,
+		Closer: rq.Body,
 	}
 	sc.InitEasyDeadline()
 
@@ -276,7 +272,6 @@ type ServerConn struct {
 	Writer http.ResponseWriter
 
 	closeOnce sync.Once
-	closeChan chan int
 	closed    bool
 }
 
@@ -289,7 +284,6 @@ func (sc *ServerConn) Reject() {
 func (sc *ServerConn) Close() error {
 	sc.closeOnce.Do(func() {
 		sc.closed = true
-		close(sc.closeChan)
 		if sc.Closer != nil {
 			sc.Closer.Close()
 
