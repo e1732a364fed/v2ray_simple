@@ -92,19 +92,19 @@ type Server interface {
 	SelfListen() (is, tcp, udp bool)
 }
 
-type IncomeTCPInfo struct {
+type TCPRequestInfo struct {
 	net.Conn
 	Target netLayer.Addr
 }
 
-type IncomeUDPInfo struct {
+type UDPRequestInfo struct {
 	netLayer.MsgConn
 	Target netLayer.Addr
 }
 
 type ListenerServer interface {
 	Server
-	StartListen(chan<- IncomeTCPInfo, chan<- IncomeUDPInfo) io.Closer
+	StartListen(chan<- TCPRequestInfo, chan<- UDPRequestInfo) io.Closer
 }
 
 type UserServer interface {

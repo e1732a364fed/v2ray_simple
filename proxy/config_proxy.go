@@ -8,7 +8,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//用于 tproxy 或 tun/tap 这种 只有 网络层 和传输层的情况
+// 用于 tproxy 或 tun/tap 这种 只有 网络层 和传输层的情况
 type LesserConf struct {
 	Addr        string
 	Tag         string
@@ -42,7 +42,7 @@ type CommonConf struct {
 
 	Xver int `toml:"xver"` //可选，只能为0/1/2. 若不为0, 则使用 PROXY protocol 协议头.
 
-	Fullcone bool `toml:"fullcone"` //在direct会用到, fullcone的话因为不能关闭udp连接, 所以 时间长后, 可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
+	Fullcone bool `toml:"fullcone"` //在udp会用到, fullcone的话因为不能关闭udp连接, 所以 时间长后, 可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
 
 	/////////////////// tls层 ///////////////////
 
@@ -75,7 +75,7 @@ type CommonConf struct {
 
 }
 
-//和 GetAddrStrForListenOrDial 的区别是，它优先使用host，其次再使用ip
+// 和 GetAddrStrForListenOrDial 的区别是，它优先使用host，其次再使用ip
 func (cc *CommonConf) GetAddrStr() string {
 	switch cc.Network {
 	case "unix":
@@ -94,7 +94,7 @@ func (cc *CommonConf) GetAddrStr() string {
 
 }
 
-//if network is unix domain socket, return Host，or return ip:port / host:port; 和 GetAddr的区别是，它优先使用ip，其次再使用host
+// if network is unix domain socket, return Host，or return ip:port / host:port; 和 GetAddr的区别是，它优先使用ip，其次再使用host
 func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 	switch cc.Network {
 	case "unix":
@@ -114,7 +114,8 @@ func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 }
 
 // config for listening, the user can be called as listener or inServer.
-//  CommonConf.Host , CommonConf.IP, CommonConf.Port is the addr and port for listening
+//
+//	CommonConf.Host , CommonConf.IP, CommonConf.Port is the addr and port for listening
 type ListenConf struct {
 	CommonConf
 
@@ -135,11 +136,12 @@ type ListenConf struct {
 }
 
 // config for dialing, user can be called dialer or outClient.
-//  CommonConf.Host , CommonConf.IP, CommonConf.Port  are the addr and port for dialing.
+//
+//	CommonConf.Host , CommonConf.IP, CommonConf.Port  are the addr and port for dialing.
 type DialConf struct {
 	CommonConf
 
-	SendThrough string `toml:"sendThrough"` //可选，用于发送数据的 IP 地址
+	SendThrough string `toml:"sendThrough"` //可选，用于发送数据的 IP 地址, 可以是ip:port, 或者 tcp:ip:port\nudp:ip:port
 
 	Utls bool `toml:"utls"` //是否使用 uTls 库 替换 go官方tls库
 

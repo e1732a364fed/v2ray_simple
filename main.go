@@ -76,11 +76,11 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 	var is, tcp, udp bool
 	//tproxy 和 shadowsocks 都用到了 SelfListen
 	if is, tcp, udp = inServer.SelfListen(); is {
-		var chantcp chan proxy.IncomeTCPInfo
-		var chanudp chan proxy.IncomeUDPInfo
+		var chantcp chan proxy.TCPRequestInfo
+		var chanudp chan proxy.UDPRequestInfo
 
 		if tcp {
-			chantcp = make(chan proxy.IncomeTCPInfo, 2)
+			chantcp = make(chan proxy.TCPRequestInfo, 2)
 			go func() {
 				for tcpInfo := range chantcp {
 					go passToOutClient(incomingInserverConnState{
@@ -95,7 +95,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		}
 		if udp {
-			chanudp = make(chan proxy.IncomeUDPInfo, 2)
+			chanudp = make(chan proxy.UDPRequestInfo, 2)
 
 			go func() {
 				for udpInfo := range chanudp {

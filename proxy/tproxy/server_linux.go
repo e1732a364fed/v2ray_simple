@@ -62,8 +62,8 @@ type Server struct {
 
 	shouldSetIPTable bool
 
-	infoChan    chan<- proxy.IncomeTCPInfo
-	udpInfoChan chan<- proxy.IncomeUDPInfo
+	infoChan    chan<- proxy.TCPRequestInfo
+	udpInfoChan chan<- proxy.UDPRequestInfo
 	tm          *tproxy.Machine
 	sync.Once
 }
@@ -111,7 +111,7 @@ func (s *Server) Stop() {
 
 }
 
-func (s *Server) StartListen(infoChan chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- proxy.IncomeUDPInfo) io.Closer {
+func (s *Server) StartListen(infoChan chan<- proxy.TCPRequestInfo, udpInfoChan chan<- proxy.UDPRequestInfo) io.Closer {
 
 	tm := new(tproxy.Machine)
 
@@ -124,7 +124,7 @@ func (s *Server) StartListen(infoChan chan<- proxy.IncomeTCPInfo, udpInfoChan ch
 			tcpconn := conn.(*net.TCPConn)
 			targetAddr := tproxy.HandshakeTCP(tcpconn)
 
-			info := proxy.IncomeTCPInfo{
+			info := proxy.TCPRequestInfo{
 				Conn:   tcpconn,
 				Target: targetAddr,
 			}
@@ -186,7 +186,7 @@ func (s *Server) StartListen(infoChan chan<- proxy.IncomeTCPInfo, udpInfoChan ch
 					return
 				}
 
-				udpInfoChan <- proxy.IncomeUDPInfo{MsgConn: msgConn, Target: raddr}
+				udpInfoChan <- proxy.UDPRequestInfo{MsgConn: msgConn, Target: raddr}
 
 			}
 		}()

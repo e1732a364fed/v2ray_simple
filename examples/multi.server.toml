@@ -76,3 +76,12 @@ protocol = "reject"
 [[route]]
 toTag = "my_special_tag_for_this_guy"
 user = ["a684455c-b14f-11ea-bf0d-42010aaa0004"] #通过 listen 所得到 的 user的不同 来分流
+
+
+[[dial]]
+tag = "my_special_direct"
+protocol = "direct"
+network = "dual"
+sendThrough = "tcp:127.0.0.1:80\nudp:127.0.0.1:12345"
+# 这里展示了一种特殊用法，direct设置sendThrough, 就能限制它发送数据的端口, 而且tcp和udp可以设为不同的地址
+# 注意这个写法 "tcp:ip:port\nudp:ip:port"
