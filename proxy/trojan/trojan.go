@@ -112,7 +112,7 @@ func SHA224_hexStringBytes(password string) []byte {
 	hash.Write([]byte(password))
 	bs := hash.Sum(nil)
 	r := make([]byte, passStrLen)
-	hex.Encode(r, bs) //hex包Encode 使用小写字符，（但是decode确实同时支持大写和小写的，怪）
+	hex.Encode(r, bs) //hex包Encode 使用小写字符，（但decode却是同时支持大写和小写的，怪）
 	return r
 }
 
@@ -187,8 +187,6 @@ func GetAddrFrom(buf utils.ByteReader, ismux bool) (addr netLayer.Addr, err erro
 		err = utils.ErrInErr{ErrDesc: "trojan GetAddrFrom err", ErrDetail: utils.ErrInvalidData, Data: b1}
 		return
 	}
-
-	//log.Println("trojan got addr", addr)
 
 	pb1, err := buf.ReadByte()
 	if err != nil {

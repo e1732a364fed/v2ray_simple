@@ -122,7 +122,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
 		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
 
-		returnErr = utils.ErrInErr{ErrDesc: "fallback, msg too short", Data: wholeReadLen}
+		returnErr = utils.ErrInErr{ErrDesc: "msg too short", Data: wholeReadLen}
 		return
 	}
 
@@ -228,7 +228,7 @@ realPart:
 		targetAddr, err = netLayer.V2rayGetAddrFrom(readbuf)
 		if err != nil {
 
-			returnErr = utils.ErrInErr{ErrDesc: "fallback, reason 4", ErrDetail: err}
+			returnErr = utils.ErrInErr{ErrDesc: "parse addr failed", ErrDetail: err}
 			goto errorPart
 		}
 
