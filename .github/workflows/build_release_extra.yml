@@ -137,7 +137,7 @@ jobs:
     
     - name: Build
       run: |
-        cd cmd/verysimple/ && make -f Makefile_release extra PACK=1 BUILD_VERSION=${{ github.event.inputs.tagName }}
+        cd cmd/verysimple/ && make -f Makefile_release.mk extra PACK=1 BUILD_VERSION=${{ github.event.inputs.tagName }}
     
     - name: touch xz archive
       shell: bash
