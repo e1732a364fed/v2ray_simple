@@ -112,12 +112,12 @@ func (mc *MsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 }
 
 // 通过透明代理 写回 客户端
-func (mc *MsgConn) WriteMsg(p []byte, addr netLayer.Addr) error {
+func (mc *MsgConn) WriteMsg(p []byte, peerAddr netLayer.Addr) error {
 	back, err := DialUDP(
 		"udp",
 		&net.UDPAddr{
-			IP:   addr.IP,
-			Port: addr.Port,
+			IP:   peerAddr.IP,
+			Port: peerAddr.Port,
 		},
 		mc.ourSrcAddr,
 	)

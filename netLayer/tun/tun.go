@@ -243,9 +243,13 @@ func (mc *UdpMsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 	return bs[:n], mc.RealTarget, nil
 }
 
-func (mc *UdpMsgConn) WriteMsg(p []byte, a netLayer.Addr) error {
-	//_, err := mc.WriteTo(p, a.ToAddr())
-	//这里的a是 远程地址，不是我们要写向的地址。在tun中我们要发向之前的tun的地址
+func (mc *UdpMsgConn) WriteMsg(p []byte, peera netLayer.Addr) error {
+	//这里的peera是 远程地址，不是我们要写向的地址。在tun中我们要发向之前的tun的地址
+
+	//笔记：那么在哪里传回远程地址的信息呢，如果不设该信息，不就无法进行fullcone了吗？
+
+	//根据下面讨论，果然，这样不行。 看来似乎不应该采用tun2socks目前重构后的方法而应该用它在2.4.0之前的旧方法
+	//https://github.com/xjasonlyu/tun2socks/issues/112
 
 	_, err := mc.WriteTo(p, mc.tunSrcAddr)
 
