@@ -16,7 +16,6 @@ var PDD bool //print tls detect detail
 var OnlyTest bool
 
 func init() {
-	//log.SetOutput(os.Stdout) //主要是日志太多，如果都能直接用管道放到文件中就好了，默认不是Stdout所以有点尴尬，操作麻烦点
 
 	flag.BoolVar(&PDD, "pdd", false, "print tls detect detail")
 	flag.BoolVar(&OnlyTest, "ot", false, "only detect tls, doesn't actually mark tls")
@@ -26,7 +25,7 @@ func init() {
 // 用于 探测 承载数据是否使用了tls, 它先与 底层tcp连接 进行 数据传输，然后查看传输到内容
 // 	可以参考 https://www.baeldung.com/linux/tcpdump-capture-ssl-handshake
 type SniffConn struct {
-	net.Conn //这个 Conn本DetectConn 中不会用到，只是为了能让 SniffConn 支持 net.Conn
+	net.Conn //这个 Conn 在 SniffConn 中不会用到，只是为了能让 SniffConn 支持 net.Conn
 	W        *DetectLazyWriter
 	R        *DetectReader
 
@@ -50,7 +49,7 @@ func (cc *SniffConn) ReadFrom(r io.Reader) (int64, error) {
 	return 0, io.EOF
 }
 
-//可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 DetectConn 的 Read 和Write的 具体调用的主体
+//可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 SniffConn 的 Read 和Write的 具体调用的主体
 // is_secure 表示，是否使用更强的过滤手段（越强越浪费时间, 但是越安全）
 func NewSniffConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure bool, sniffedFirstPart *ComSniff) *SniffConn {
 
@@ -344,7 +343,7 @@ func (cd *ComSniff) CommonDetect(p []byte, isRead bool, onlyForSni bool) {
 
 		var helloValue byte = 1
 
-		//我们 DetectConn中，考察客户端浏览器传输来的流量 时 使用 Read， 考察远程真实服务端发来的流量 时 使用Write;
+		//我们 SniffConn 中，考察客户端浏览器传输来的流量 时 使用 Read， 考察远程真实服务端发来的流量 时 使用Write;
 		// 无论 代理程序的客户端还是 代理程序的服务端都是如此
 
 		if !isRead {
@@ -619,7 +618,7 @@ func (dw *DetectLazyWriter) Write(p []byte) (n int, err error) {
 	if dw.IsTls {
 
 		if dw.Isclient {
-			// 客户端 DetectConn的Write被调用的话，那就是从 服务端的 tls连接中 提取出了新数据，准备通过socks5发往浏览器
+			// 客户端 SniffConn 的Write被调用的话，那就是从 服务端的 tls连接中 提取出了新数据，准备通过socks5发往浏览器
 			//
 			//客户端判断出IsTLS，那就是收到了特殊指令，p的头部就是特殊指令；p后面可能还跟 数据
 			//  然而，一旦后面跟了数据，就完蛋了，这说明特殊指令 和 直连数据连在一起 整个被tls处理 了

@@ -242,6 +242,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 		Closer:    rq.Body,
 		closeChan: make(chan int),
 	}
+	sc.InitEasyDeadline()
 
 	ta, e := net.ResolveTCPAddr("tcp", rq.RemoteAddr)
 	if e == nil {
@@ -272,14 +273,6 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 			}
 		}
 	}
-
-	/*
-		sc.timeouter = timeouter{
-			closeFunc: func() {
-				sc.Close()
-			},
-		}
-	*/
 
 	return
 }

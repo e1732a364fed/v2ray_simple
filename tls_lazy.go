@@ -44,7 +44,7 @@ func CanNetwork_tlsLazy(n string) bool {
 
 // tryTlsLazyRawRelay 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发.
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
-// 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice / 退化为普通拷贝.
+// 我们内部先 使用 SniffConn 进行过滤分析，然后再判断进化为splice / 退化为普通拷贝.
 //
 // useSecureMethod仅用于 tls_lazy_secure
 func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
@@ -64,7 +64,7 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 	// 之所以可以对拷直连，是因为无论是 socks5 还是vless，只是在最开始的部分 加了目标头，后面的所有tcp连接都是直接传输的数据，就是说，一开始握手什么的是不能直接对拷的，等到后期就可以了
 	// 而且之所以能对拷，还有个原因就是，远程服务器 与 客户端 总是源源不断地 为 我们的 原始 TCP 连接 提供数据，我们只是一个中间商而已，左手倒右手
 
-	// 如果是客户端，则 从 wlc 读取，写入 wrc ，这种情况是 Write, 然后对于 DetectConn 来说是 Read，即 从DetectConn读取，然后 写入到远程连接
+	// 如果是客户端，则 从 wlc 读取，写入 wrc ，这种情况是 Write, 然后对于 SniffConn 来说是 Read，即 SniffConn 读取，然后 写入到远程连接
 	// 如果是服务端，则 从 wrc 读取，写入 wlc， 这种情况是 Write
 	//
 	// 总之判断 Write 的对象，是考虑 客户端和服务端之间的数据传输，不考虑 远程真实服务器

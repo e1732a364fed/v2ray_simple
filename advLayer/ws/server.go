@@ -244,6 +244,10 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			//还有要注意的是，因为这个是回调函数，所以需要是闭包 才能向我们实际连接储存数据，所以是无法直接放到通用的upgrader里的
 
 			if len(b) > MaxEarlyDataLen_Base64 {
+				if ce := utils.CanLogWarn("WS len of Sec-WebSocket-Protocol exceeds limit"); ce != nil {
+					ce.Write(zap.Int("len", len(b)))
+				}
+
 				return "", true
 			}
 			bs, err := base64.RawURLEncoding.DecodeString(string(b))
