@@ -36,9 +36,10 @@ jobs:
             apt-get install -q -y build-essential libgtk-3-dev wget
             wget https://go.dev/dl/go1.19.4.linux-arm64.tar.gz
             tar -C /usr/local -xzf go1.19.4.linux-arm64.tar.gz
-            echo "/usr/local/go/bin" >> $GITHUB_PATH
 
+          #不能在install里运行 /root/run-on-arch-install.sh， 会显示 line 8: GITHUB_PATH: unbound variable
           run: |
+            echo "/usr/local/go/bin" >> $GITHUB_PATH
             cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release
