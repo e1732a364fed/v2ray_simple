@@ -63,8 +63,8 @@ type CommonConf struct {
 
 	/////////////////// 高级层 ///////////////////
 
-	AdvancedLayer string `toml:"advancedLayer"` //高级层; 可选
-	IsEarly       bool   `toml:"early"`         //是否启用 0-rtt
+	AdvancedLayer string `toml:"adv"`   //高级层; 可选
+	IsEarly       bool   `toml:"early"` //是否启用 0-rtt
 
 	/////////////////// 代理层 ///////////////////
 

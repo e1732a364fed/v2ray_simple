@@ -1,12 +1,14 @@
 package proxy
 
 import (
+	"strings"
+
 	"github.com/BurntSushi/toml"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
-//配置文件格式
+// 配置文件格式
 const (
 	SimpleMode = iota
 	StandardMode
@@ -15,7 +17,7 @@ const (
 	ErrStrNoListenUrl = "no listen URL provided"
 )
 
-//标准配置，使用toml格式。
+// 标准配置，使用toml格式。
 // toml：https://toml.io/cn/
 //
 // English: https://toml.io/en/
@@ -29,8 +31,11 @@ type StandardConf struct {
 	Fallbacks []*httpLayer.FallbackConf `toml:"fallback"`
 }
 
-//convenient function for loading StandardConf from a string
+// convenient function for loading StandardConf from a string
 func LoadStandardConfFromTomlStr(str string) (c StandardConf, err error) {
+
+	str = strings.Replace(str, ("advancedLayer"), ("adv"), -1)
+
 	_, err = toml.Decode(str, &c)
 	return
 }
