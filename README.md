@@ -322,9 +322,9 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 api服务器；tproxy 透明代理； http伪装头.
 
-本作也是支持 trojan-go 声称的 “可插拔模块”的，没什么复杂的。而且也可以用build tag 来开启或关闭某项功能。
+本作支持 trojan-go 的 “可插拔模块”模式的。而且也可以用build tag 来开启或关闭某项功能。不过本作为了速度，耦合高一些。
 
-本作也是支持 clash 的 "use as library" 的，而且更加简单，very simple，你看godoc文档就懂了，主项目就一个主要的函数。
+本作也是支持 clash 的 "use as library" 的，而且 very simple，看godoc文档就懂了，主项目就一个主要的函数。
 
 支持 Docker 容器, 见 #56，以及 cmd/verysimple/Dockerfile,  相关问题请找 该PR作者。
 
@@ -358,7 +358,7 @@ v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless
 
 vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 
-因为本作率先提出了 vless v1的开发，所以本作的版本号 也直接从 v1.0.0开始
+因为本作率先提出了 vless v1的开发，所以本作的版本号 也直接从 v1.0.0开始 (手动狗头～)
 
 ### 关于udp
 
@@ -415,7 +415,7 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 
 
-#### 总结 tls lazy encrypt 技术优点
+#### 总结 tls lazy encrypt (tle) 技术优点
 
 解决了xtls以下痛点
 
@@ -426,10 +426,10 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 原因：
 
-1. 我不使用循环进行tls过滤，而且不魔改tls包
-2. 我直接开启了双向splice；xtls只能优化客户端性能，我们两端都会优化;一般而言大部分服务器都是linux的，所以这样就大大提升了所有连接的性能.
-3. 因为我的vless v1的fullcone是非mux的，分离信道，所以说是可以应用splice的（以后会添加支持，可能需要加一些代码，有待考察）
-4. 因为我不魔改tls包，所以说可以套任何tls包的，比如utls，目前已经添加了utls。所以你可以享受伪装的同时享受splice
+1. tle 不使用循环进行tls过滤，而且不魔改tls包
+2. tle直接开启了双向splice；xtls只能优化客户端性能，tle两端都会优化;一般而言大部分服务器都是linux的，所以这样就大大提升了所有连接的性能.
+3. 因为tle的vless v1的fullcone是非mux的，分离信道，所以说是可以应用splice的（以后会添加支持，可能需要加一些代码，有待考察）
+4. 因为tle不魔改tls包，所以说可以套任何tls包的，比如utls，目前已经添加了utls。所以你可以享受伪装的同时享受splice
 
 而且alert根本不需要过滤，因为反正xtls本身过滤了还是有两个issue存在，是吧。
 
@@ -653,7 +653,7 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 
-grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议，其文件开头都写了，不信自己看。（clash的gun又是借鉴 Qv2ray的gun的）
+grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议。clash的gun又是借鉴 Qv2ray的gun的）
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
@@ -663,9 +663,9 @@ tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借�
 
 以上借鉴的代码都是用的MIT协议。
 
-vmess 的客户端代码 来自 github.com/Dreamacro/clash/transport/vmess, 使用的是 GPLv3协议。该协议我直接 放在 proxy/vmess/ 文件夹下了。
+vmess 的客户端代码 来自 github.com/Dreamacro/clash/transport/vmess, 使用的是 GPLv3协议。该协议直接 放在 proxy/vmess/ 文件夹下了。
 
-同时我通过该vmess 客户端代码 反推出了 对应的服务端代码。
+同时通过该vmess 客户端代码 反推出了 对应的服务端代码。
 
 ## Stargazers over time
 

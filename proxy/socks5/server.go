@@ -449,7 +449,7 @@ func (u *ServerUDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	var clientSupposedAddrIsNothing bool
-	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
+	if u.clientSupposedAddr == nil || len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
 		clientSupposedAddrIsNothing = true
 	}
 
@@ -483,9 +483,9 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 			//just random attack message,
 
 			//但是有些其他socks5客户端确实会导致这个问题，所以不应直接退出; 见issue 157
-			// socks5本不应用在公网，更不应在公网开启udp转发，所以这里给一个warning已经足够。
+			// socks5 本 不应 用在公网，更不应在公网开启udp转发。所以这里给一个warning已经足够。
 
-			if ce := utils.CanLogWarn("socks5 got udp from a different source than expected one"); ce != nil {
+			if ce := utils.CanLogWarn("socks5 got udp from a different source rather than the expected one"); ce != nil {
 				ce.Write(
 					zap.String("expected", u.clientSupposedAddr.String()),
 					zap.String("real", addr.String()),
