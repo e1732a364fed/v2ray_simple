@@ -107,7 +107,7 @@ type RejectConn struct {
 	http.ResponseWriter
 }
 
-func (RejectConn) HasOwnDefaultRejectBehavior() bool {
+func (RejectConn) RejectBehaviorDefined() bool {
 
 	return true
 }

@@ -622,6 +622,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			//应该返回一个http400错误，这样更逼真一些
 			// 不过有一些高级层不属于 http1.1，如grpc和 quic，此时通过 如下方式处理
 
+			//本默认响应并不智能，如果你要智能、真实的响应，还是要自行配置好 回落。
+
 			if rejectConn, ok := wc.(netLayer.RejectConn); ok {
 
 				if rejectConn.RejectBehaviorDefined() {
