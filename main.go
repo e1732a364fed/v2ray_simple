@@ -1165,7 +1165,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 		tlsConn, err2 := client.GetTLS_Client().Handshake(clientConn)
 		if err2 != nil {
 			if ce := iics.CanLogErr("Failed in handshake outClient tls"); ce != nil {
-				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
+				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err2))
 			}
 
 			result = -1
