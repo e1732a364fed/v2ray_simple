@@ -112,7 +112,7 @@ func RandPort(mustValid, isudp bool, depth int) (p int) {
 			}
 
 			if depth < 20 {
-				return RandPort(mustValid, false, depth)
+				return RandPort(mustValid, false, depth+1)
 
 			} else {
 				if ce := utils.CanLogDebug("Get RandPort udp but got err, and depth reach limit, return directly"); ce != nil {
