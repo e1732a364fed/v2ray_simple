@@ -91,7 +91,6 @@ jobs:
       - if: ${{ matrix.os  == 'macos-latest' }}
         name: macos gnu-tar extra step
         run: |
-          sudo mv `which gtar` `which tar`
           echo "PATH=\"$(brew --prefix)/opt/gnu-tar/libexec/gnubin:$PATH\"" >> $GITHUB_ENV
 
       - name: Set up Go
