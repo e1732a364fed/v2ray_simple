@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -93,7 +94,7 @@ func init() {
 	flag.StringVar(&netLayer.GeositeFolder, "geosite", netLayer.DefaultGeositeFolder, "geosite folder name (set it to the relative or absolute path of your geosite/data folder)")
 	flag.StringVar(&utils.ExtraSearchPath, "path", "", "search path for mmdb, geosite and other required files")
 
-	flag.Var(&configFiles, "c", "config files")
+	flag.Var(&configFiles, "c", "config files; mutiple files are possible, but must all be toml files, like -c c1.toml -c c2.toml")
 
 }
 
@@ -143,19 +144,16 @@ func mainFunc() (result int) {
 
 	runPreCommands()
 
+	var tomlBuf *bytes.Buffer
+
 	var configFileName string
+
 	if len(configFiles) == 1 {
 		configFileName = configFiles[0]
-	} else {
-		//在临时目录创建一个大文件，读取所有传入的文件，拼接在一起
 
-		tmpfile, err := os.CreateTemp(os.TempDir(), "vs_tmp_*.toml")
-		if err != nil {
-			log.Fatalln("failed when creating tmp file for merging config files:", err)
-		}
-		tfn := tmpfile.Name()
-		defer os.Remove(tfn)
-		defer tmpfile.Close()
+	} else if len(configFiles) > 1 {
+
+		tomlBuf = new(bytes.Buffer)
 
 		for _, fn := range configFiles {
 			curfile, err := os.Open(utils.GetFilePath(fn))
@@ -164,39 +162,45 @@ func mainFunc() (result int) {
 			}
 			defer curfile.Close()
 
-			_, err = io.Copy(tmpfile, curfile)
+			_, err = io.Copy(tomlBuf, curfile)
 			if err != nil {
 				log.Fatalln("failed to append config file to tmpfile:", err)
 			}
 
-			tmpfile.WriteString("\n")
+			tomlBuf.WriteString("\n")
 		}
-		tmpfile.Close()
-
-		configFileName = tfn
 	}
 
-	fpath := utils.GetFilePath(configFileName)
-	if !utils.FileExist(fpath) {
+	var configMode int
+	var loadConfigErr error
 
-		if utils.GivenFlags["c"] == nil {
-			log.Printf("No -c provided and default %q doesn't exist", defaultConfFn)
-		} else {
-			log.Printf("-c provided but %q doesn't exist", configFileName)
+	if tomlBuf != nil {
+		configMode = proxy.StandardMode
+		loadConfigErr = mainM.LoadConfigByTomlBytes(tomlBuf.Bytes())
+		tomlBuf = nil
+	} else {
+		fpath := utils.GetFilePath(configFileName)
+		if !utils.FileExist(fpath) {
+
+			if utils.GivenFlags["c"] == nil {
+				log.Printf("No -c provided and default %q doesn't exist", defaultConfFn)
+			} else {
+				log.Printf("-c provided but %q doesn't exist", configFileName)
+			}
+
+			configFileName = ""
+
 		}
 
-		configFileName = ""
+		configMode, loadConfigErr = mainM.LoadConfig(configFileName, listenURL, dialURL)
 
-	}
+		if utils.LogOutFileName == defaultLogFile {
 
-	configMode, loadConfigErr := mainM.LoadConfig(configFileName, listenURL, dialURL)
-
-	if utils.LogOutFileName == defaultLogFile {
-
-		if strings.Contains(configFileName, "server") {
-			utils.LogOutFileName += "_server"
-		} else if strings.Contains(configFileName, "client") {
-			utils.LogOutFileName += "_client"
+			if strings.Contains(configFileName, "server") {
+				utils.LogOutFileName += "_server"
+			} else if strings.Contains(configFileName, "client") {
+				utils.LogOutFileName += "_client"
+			}
 		}
 	}
 

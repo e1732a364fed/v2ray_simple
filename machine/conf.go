@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -102,6 +101,17 @@ func SetupByAppConf(ac *AppConf) {
 	}
 }
 
+func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
+	m.standardConf, m.appConf, err = LoadVSConfFromBs(bs)
+	if err != nil {
+		log.Printf("can not load standard config file: %v, \n", err)
+		return err
+	}
+
+	m.setupAppConf()
+	return nil
+}
+
 // 先检查configFileName是否存在，存在就尝试加载文件到 standardConf or simpleConf，否则尝试通过 listenURL, dialURL 参数 创建simpleConf
 func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int, err error) {
 
@@ -115,29 +125,18 @@ func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int,
 				defer cf.Close()
 				bs, _ := io.ReadAll(cf)
 
-				m.standardConf, m.appConf, err = LoadVSConfFromBs(bs)
+				err = m.LoadConfigByTomlBytes(bs)
+
 				if err != nil {
-
-					log.Printf("can not load standard config file: %v, \n", err)
 					goto url
-
 				}
 
 				confMode = proxy.StandardMode
-				m.setupAppConf()
-
 			}
 
 		} else {
-			var mainFallback *httpLayer.ClassicFallback
-
 			confMode = proxy.SimpleMode
-			m.simpleConf, mainFallback, err = proxy.LoadSimpleConf_byFile(fpath)
-
-			if mainFallback != nil {
-				m.RoutingEnv.Fallback = mainFallback
-			}
-
+			m.simpleConf, m.RoutingEnv.Fallback, err = proxy.LoadSimpleConf_byFile(fpath)
 		}
 
 		return
