@@ -1,14 +1,14 @@
 package tproxy
 
 import (
-	"bytes"
-	"encoding/binary"
 	"fmt"
 	"net"
 	"os"
 	"strconv"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 //credit: https://github.com/LiamHaworth/go-tproxy/blob/master/tproxy_udp.go ,  which is under MIT License
@@ -60,37 +60,32 @@ func ReadFromUDP(conn *net.UDPConn, b []byte) (n int, srcAddr *net.UDPAddr, dstA
 		return
 	}
 
-	for _, msg := range msgs {
-		if msg.Header.Level == syscall.SOL_IP && msg.Header.Type == syscall.IP_RECVORIGDSTADDR {
-			originalDstRaw := &syscall.RawSockaddrInet4{}
-			if err = binary.Read(bytes.NewReader(msg.Data), binary.LittleEndian, originalDstRaw); err != nil {
-				err = fmt.Errorf("reading original destination address: %s", err)
-				return
+	//from golang.org/x/sys/unix/sockcmsg_linux.go ParseOrigDstAddr
+
+	for _, m := range msgs {
+
+		switch {
+		case m.Header.Level == syscall.SOL_IP && m.Header.Type == syscall.IP_ORIGDSTADDR:
+			pp := (*syscall.RawSockaddrInet4)(unsafe.Pointer(&m.Data[0]))
+
+			p := (*[2]byte)(unsafe.Pointer(&pp.Port))
+
+			dstAddr = &net.UDPAddr{
+				IP:   net.IPv4(pp.Addr[0], pp.Addr[1], pp.Addr[2], pp.Addr[3]),
+				Port: int(p[0])<<8 + int(p[1]),
 			}
 
-			switch originalDstRaw.Family {
-			case syscall.AF_INET:
-				pp := (*syscall.RawSockaddrInet4)(unsafe.Pointer(originalDstRaw))
-				p := (*[2]byte)(unsafe.Pointer(&pp.Port))
-				dstAddr = &net.UDPAddr{
-					IP:   net.IPv4(pp.Addr[0], pp.Addr[1], pp.Addr[2], pp.Addr[3]),
-					Port: int(p[0])<<8 + int(p[1]),
-				}
-
-			case syscall.AF_INET6:
-				pp := (*syscall.RawSockaddrInet6)(unsafe.Pointer(originalDstRaw))
-				p := (*[2]byte)(unsafe.Pointer(&pp.Port))
-				dstAddr = &net.UDPAddr{
-					IP:   net.IP(pp.Addr[:]),
-					Port: int(p[0])<<8 + int(p[1]),
-					Zone: strconv.Itoa(int(pp.Scope_id)),
-				}
-
-			default:
-				err = fmt.Errorf("original destination is an unsupported network family")
-				return
+		case m.Header.Level == syscall.SOL_IPV6 && m.Header.Type == unix.IPV6_ORIGDSTADDR:
+			pp := (*syscall.RawSockaddrInet6)(unsafe.Pointer(&m.Data[0]))
+			p := (*[2]byte)(unsafe.Pointer(&pp.Port))
+			dstAddr = &net.UDPAddr{
+				IP:   net.IP(pp.Addr[:]),
+				Port: int(p[0])<<8 + int(p[1]),
+				Zone: strconv.Itoa(int(pp.Scope_id)),
 			}
+
 		}
+
 	}
 
 	if dstAddr == nil {
@@ -101,6 +96,8 @@ func ReadFromUDP(conn *net.UDPConn, b []byte) (n int, srcAddr *net.UDPAddr, dstA
 	return
 }
 
+// 该函数与 v2ray的 proxy/dokodemo/fakeudp_linux.go 的 FakeUDP 基本一致
+//
 // DialUDP connects to the remote address raddr on the network net,
 // which must be "udp", "udp4", or "udp6".  If laddr is not nil, it is
 // used as the local address for the connection.
