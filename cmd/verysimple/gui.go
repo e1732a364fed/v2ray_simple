@@ -3,6 +3,7 @@
 package main
 
 // gui界面, 所属计划为 vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
+//tun 的支持 通过在这里引入 proxy/tun 包 实现.
 
 import (
 	"flag"
@@ -18,31 +19,42 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/proxy/tun"
 )
 
+var mainwin *ui.Window
+
 var testFunc func()
 var theTunStartCmds []string
-var me *ui.MultilineEntry
+var multilineEntry *ui.MultilineEntry //用于向用户提供一些随机的有用的需要复制的字符串
+var entriesGroup *ui.Group            //父 of multilineEntry
 
 func init() {
-	//gui_mode = true
 
 	flag.BoolVar(&gui_mode, "g", true, "gui mode")
 
 	runGui = func() {
-		ui.Main(setupUI)
 		testFunc = func() {
 
+			if ce := utils.CanLogDebug("testFunc"); ce != nil {
+				ce.Write()
+				var strs = []string{"sfdsf", "sdfdsfdfj"}
+				if multilineEntry != nil {
+					entriesGroup.Show()
+					multilineEntry.SetText(strings.Join(strs, "\n"))
+				}
+			}
 		}
+
+		ui.Main(setupUI)
+
 	}
 
 	tun.AddManualRunCmdsListFunc = func(s []string) {
 		theTunStartCmds = s
-		if me != nil {
-			me.SetText(strings.Join(theTunStartCmds, "\n"))
+		if multilineEntry != nil {
+			entriesGroup.Show()
+			multilineEntry.SetText(strings.Join(theTunStartCmds, "\n"))
 		}
 	}
 }
-
-var mainwin *ui.Window
 
 func makeBasicControlsPage() ui.Control {
 	vbox := ui.NewVerticalBox()
@@ -97,30 +109,63 @@ func makeBasicControlsPage() ui.Control {
 
 	}
 
-	vbox.Append(ui.NewLabel("This is a label. Right now, labels can only span one line."), false)
+	vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
 
 	vbox.Append(ui.NewHorizontalSeparator(), false)
 
-	group := ui.NewGroup("Entries")
-	group.SetMargined(true)
-	vbox.Append(group, true)
+	systemProxyGroup := ui.NewGroup("系统代理")
+	systemProxyGroup.SetMargined(true)
+	vbox.Append(systemProxyGroup, true)
 
-	group.SetChild(ui.NewNonWrappingMultilineEntry())
+	proxyForm := ui.NewForm()
+	proxyForm.SetPadded(true)
+	systemProxyGroup.SetChild(proxyForm)
+
+	const defaultPort = "10800"
+	const defaultAddr = "127.0.0.1"
+
+	var newProxyToggle = func(form *ui.Form, isSocks5 bool) {
+		str := "http"
+		if isSocks5 {
+			str = "socks5"
+		}
+
+		addrE := ui.NewEntry()
+		addrE.SetText(defaultPort)
+		portE := ui.NewEntry()
+		portE.SetText(defaultAddr)
+
+		cb := ui.NewCheckbox("系统" + str)
+		cb.OnToggled(func(c *ui.Checkbox) {
+			utils.ToggleSystemProxy(isSocks5, addrE.Text(), portE.Text(), c.Checked())
+		})
+
+		proxyForm.Append("开关系统"+str, cb, false)
+		proxyForm.Append(str+"地址", addrE, false)
+		proxyForm.Append(str+"端口", portE, false)
+	}
+
+	newProxyToggle(proxyForm, true)
+
+	newProxyToggle(proxyForm, false)
+
+	entriesGroup = ui.NewGroup("Entries")
+	entriesGroup.Hide()
+
+	entriesGroup.SetMargined(true)
+	vbox.Append(entriesGroup, true)
 
 	entryForm := ui.NewForm()
 	entryForm.SetPadded(true)
-	group.SetChild(entryForm)
+	entriesGroup.SetChild(entryForm)
 
-	entryForm.Append("Entry", ui.NewEntry(), false)
-	entryForm.Append("Password Entry", ui.NewPasswordEntry(), false)
-	entryForm.Append("Search Entry", ui.NewSearchEntry(), false)
+	// entryForm.Append("Entry", ui.NewEntry(), false)
+	// entryForm.Append("Password Entry", ui.NewPasswordEntry(), false)
+	// entryForm.Append("Search Entry", ui.NewSearchEntry(), false)
 
-	me = ui.NewMultilineEntry()
-	if theTunStartCmds != nil {
-		me.SetText(strings.Join(theTunStartCmds, "\n"))
-	}
-	entryForm.Append("Multiline Entry", me, true)
-	entryForm.Append("Multiline Entry No Wrap", ui.NewNonWrappingMultilineEntry(), true)
+	multilineEntry = ui.NewMultilineEntry()
+	entryForm.Append("Multiline Entry", multilineEntry, true)
+	// entryForm.Append("Multiline Entry No Wrap", ui.NewNonWrappingMultilineEntry(), true)
 
 	return vbox
 }
@@ -157,9 +202,9 @@ func makeConfPage() ui.Control {
 		vbox.Append(slider, false)
 		vbox.Append(pbar, false)
 
-		ip := ui.NewProgressBar()
-		ip.SetValue(-1)
-		vbox.Append(ip, false)
+		// ip := ui.NewProgressBar()
+		// ip.SetValue(-1)
+		// vbox.Append(ip, false)
 	}
 
 	vbox := ui.NewVerticalBox()

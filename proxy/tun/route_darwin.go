@@ -27,8 +27,7 @@ func init() {
 			return
 		}
 
-		params := "-nr -f inet"
-		out, err = exec.Command("netstat", strings.Split(params, " ")...).Output()
+		out, err = exec.Command("netstat", "-nr", "-f", "inet").Output()
 
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {
@@ -66,8 +65,7 @@ func init() {
 		}
 		rememberedRouterIP = routerIP
 
-		params1 := "delete -host default"
-		out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
+		out1, err := exec.Command("route", "delete", "-host", "default").Output()
 
 		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
 
@@ -83,8 +81,7 @@ func init() {
 			return
 		}
 
-		params1 = "add default -interface " + tunDevName
-		out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+		out1, err = exec.Command("route", "add", "default", "-interface", tunDevName).Output()
 		if err != nil {
 			goto checkErrStep
 		}
@@ -93,8 +90,7 @@ func init() {
 		}
 
 		for _, v := range directList {
-			params1 = "add -host " + v + " " + rememberedRouterIP
-			out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+			out1, err = exec.Command("route", "add", "-host", v, rememberedRouterIP).Output()
 			if err != nil {
 				goto checkErrStep
 			}

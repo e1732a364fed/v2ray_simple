@@ -119,3 +119,51 @@ func GetSystemKillChan() <-chan os.Signal {
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
 	return osSignals
 }
+
+func ToggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
+	switch runtime.GOOS {
+	case "darwin":
+		if isSocks5 {
+			if enable {
+				LogRunCmd("networksetup", "-setsocksfirewallproxy", "Wi-Fi", addr, port)
+
+			} else {
+				LogRunCmd("networksetup", "-setsocksfirewallproxystate", "Wi-Fi", "off")
+			}
+		} else {
+			if enable {
+				LogRunCmd("networksetup", "-setwebproxy", "Wi-Fi", addr, port)
+
+			} else {
+				LogRunCmd("networksetup", "-setwebproxystate", "Wi-Fi", "off")
+			}
+		}
+	case "windows":
+		const inetSettings = `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+		if enable {
+
+			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f", addr, port)
+			addr = addr + ":" + port
+
+			if isSocks5 {
+				LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "socks="+addr, "/f")
+
+			} else {
+
+				LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "http="+addr+";https="+addr, "/f")
+
+			}
+
+			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyOverride", "/t", "REG_SZ", "/d", "<-loopback>", "/f")
+
+		} else {
+			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "0", "/f")
+
+			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "", "/f")
+
+			LogRunCmd("reg", "delete", inetSettings, "/v", "ProxyOverride", "/v", "ProxyOverride", "/f")
+		}
+
+	}
+
+}
