@@ -112,12 +112,12 @@ func (m *M) HotDeleteServer(index int) {
 
 func (m *M) LoadSimpleConf(hot bool) (result int) {
 	var ser proxy.Server
-	result, ser = m.loadSimpleServer(m.simpleConf)
+	result, ser = m.loadSimpleServer(m.urlConf)
 	if result < 0 {
 		return
 	}
 	var cli proxy.Client
-	result, cli = m.loadSimpleClient(m.simpleConf)
+	result, cli = m.loadSimpleClient(m.urlConf)
 	if result < 0 {
 		return
 	}

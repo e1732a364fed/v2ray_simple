@@ -112,7 +112,7 @@ func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
 	return nil
 }
 
-// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf , 否则尝试通过 listenURL, dialURL 参数 创建simpleConf
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf , 否则尝试通过 listenURL, dialURL 参数 创建urlConf
 func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
@@ -135,8 +135,6 @@ func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int,
 			}
 
 		} else {
-			// confMode = proxy.SimpleMode
-			// m.simpleConf, m.RoutingEnv.Fallback, err = proxy.LoadSimpleConf_byFile(fpath)
 			return -1, errors.New("file passed in but no .toml suffix")
 		}
 
@@ -148,7 +146,7 @@ url:
 		log.Printf("trying listenURL and dialURL \n")
 
 		confMode = proxy.UrlMode
-		m.simpleConf, err = proxy.LoadUrlConf(listenURL, dialURL)
+		m.urlConf, err = proxy.LoadUrlConf(listenURL, dialURL)
 	} else {
 
 		log.Println(proxy.ErrStrNoListenUrl)

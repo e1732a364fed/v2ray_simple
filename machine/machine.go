@@ -24,7 +24,7 @@ type M struct {
 	ApiServerConf
 
 	standardConf proxy.StandardConf
-	simpleConf   proxy.UrlConf
+	urlConf      proxy.UrlConf
 	appConf      *AppConf
 
 	v2ray_simple.GlobalInfo
