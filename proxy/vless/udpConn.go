@@ -24,7 +24,7 @@ type UDPConn struct {
 
 	remainFirstBufLen int
 
-	version int
+	version byte
 
 	udp_multi   bool
 	isClientEnd bool
@@ -47,7 +47,7 @@ func (u *UDPConn) Fullcone() bool {
 }
 
 func (u *UDPConn) GetProtocolVersion() int {
-	return u.version
+	return int(u.version)
 }
 
 func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {

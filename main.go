@@ -254,7 +254,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		addrstr := wrappedConn.RemoteAddr().String()
 		ce.Write(
 			zap.String("from", addrstr),
-			zap.String("handler", proxy.GetVSI_url(inServer)),
+			zap.String("handler", proxy.GetVSI_url(inServer, "")),
 		)
 
 		iics.cachedRemoteAddr = addrstr
@@ -1130,7 +1130,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 				ce.Write(
 					zap.String("Fallback from", iics.cachedRemoteAddr),
 					zap.String("Target", targetAddr.UrlString()),
-					zap.String("through", proxy.GetVSI_url(client)),
+					zap.String("through", proxy.GetVSI_url(client, targetAddr.Network)),
 					zap.Int("with xver", iics.fallbackXver),
 				)
 
@@ -1138,7 +1138,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 				ce.Write(
 					zap.String("Fallback from", iics.cachedRemoteAddr),
 					zap.String("Target", targetAddr.UrlString()),
-					zap.String("through", proxy.GetVSI_url(client)),
+					zap.String("through", proxy.GetVSI_url(client, targetAddr.Network)),
 				)
 
 			}
@@ -1146,7 +1146,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			ce.Write(
 				zap.String("From", iics.cachedRemoteAddr),
 				zap.String("Target", targetAddr.UrlString()),
-				zap.String("through", proxy.GetVSI_url(client)),
+				zap.String("through", proxy.GetVSI_url(client, targetAddr.Network)),
 			)
 		}
 

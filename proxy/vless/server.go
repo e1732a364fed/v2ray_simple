@@ -275,7 +275,7 @@ realPart:
 		return nil, &UDPConn{
 			Conn:              underlay,
 			V2rayUser:         thisUUIDBytes,
-			version:           int(version),
+			version:           version,
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			raddr:             targetAddr,
 			remainFirstBufLen: readbuf.Len(),
@@ -287,7 +287,7 @@ realPart:
 		uc := &UserTCPConn{
 			Conn:              underlay,
 			V2rayUser:         thisUUIDBytes,
-			version:           int(version),
+			version:           version,
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),

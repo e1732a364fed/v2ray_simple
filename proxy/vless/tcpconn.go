@@ -11,7 +11,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//实现 net.Conn, io.ReaderFrom, utils.User, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper
+// 实现 net.Conn, io.ReaderFrom, utils.User, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper
 type UserTCPConn struct {
 	net.Conn
 
@@ -23,7 +23,7 @@ type UserTCPConn struct {
 
 	underlayIsBasic bool
 
-	version     int
+	version     byte
 	isServerEnd bool //for v0
 
 	isntFirstPacket bool //for v0
@@ -33,14 +33,14 @@ type UserTCPConn struct {
 }
 
 func (u *UserTCPConn) GetProtocolVersion() int {
-	return u.version
+	return int(u.version)
 }
 
 func (c *UserTCPConn) GetRawConn() net.Conn {
 	return c.Conn
 }
 
-//当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
+// 当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
 func (c *UserTCPConn) canDirectWrite() bool {
 	return c.version == 1 || (c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket))
 }
@@ -154,13 +154,13 @@ func (c *UserTCPConn) Write(p []byte) (int, error) {
 	}
 }
 
-//专门适用于 裸奔splice的情况
+// 专门适用于 裸奔splice的情况
 func (c *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
 
 	return netLayer.TryReadFrom_withSplice(c, c.Conn, r, c.canDirectWrite)
 }
 
-//如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
+// 如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
 // 这里规定，如果是UDP，则 每次 Read 得到的都是一个 完整的UDP 数据包，除非p给的太小……
 func (c *UserTCPConn) Read(p []byte) (int, error) {
 

@@ -405,9 +405,10 @@ For:
 		}
 
 		targetAddr = netLayer.Addr{
-			IP:   theIP,
-			Name: theName,
-			Port: thePort,
+			IP:      theIP,
+			Name:    theName,
+			Port:    thePort,
+			Network: "tcp",
 		}
 
 		return underlay, nil, targetAddr, nil

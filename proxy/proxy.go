@@ -117,21 +117,30 @@ type UserServer interface {
 //
 // An Example of a full name:  tcp+tls+ws+vless.
 func GetFullName(pc BaseInterface) string {
-	if n := pc.Name(); n == DirectName {
-		return n
-	} else {
 
-		return getFullNameBuilder(pc, n).String()
-	}
+	return getFullNameBuilder(pc, pc.Name()).String()
 }
 
 // return GetFullName(pc) + "://" + pc.AddrStr() (+ #tag)
-func GetVSI_url(pc BaseInterface) string {
+func GetVSI_url(pc BaseInterface, targetNetwork string) string {
 	n := pc.Name()
 
 	sb := getFullNameBuilder(pc, n)
 	sb.WriteString("://")
 	sb.WriteString(pc.AddrStr())
+	if n == DirectName {
+		if targetNetwork == "tcp" {
+			if lta := pc.GetBase().LTA; lta != nil {
+				sb.WriteString(lta.String())
+			}
+		} else if targetNetwork == "udp" {
+			if lua := pc.GetBase().LUA; lua != nil {
+				sb.WriteString(lua.String())
+			}
+		}
+
+	}
+
 	if t := pc.GetTag(); t != "" {
 		sb.WriteByte('#')
 		sb.WriteString(t)

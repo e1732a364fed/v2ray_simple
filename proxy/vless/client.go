@@ -80,7 +80,7 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 type Client struct {
 	proxy.Base
 
-	version int
+	version byte
 
 	user utils.V2rayUser
 
@@ -95,12 +95,12 @@ func (c *Client) Name() string {
 	if c.version == 0 {
 		return Name
 	}
-	return Name + "_" + strconv.Itoa(c.version)
+	return Name + "_" + strconv.Itoa(int(c.version))
 
 	// 根据 https://forum.golangbridge.org/t/fmt-sprintf-vs-string-concatenation/23006
 	// 直接 + 比 fmt.Sprintf 快不少.
 }
-func (c *Client) Version() int { return c.version }
+func (c *Client) Version() int { return int(c.version) }
 func (c *Client) GetUser() utils.User {
 	return c.user
 }

@@ -113,7 +113,8 @@ defaultPart:
 
 	} else {
 		//一般情况下，unix domain socket 会到达这里，其他情况则都被前面代码捕获到了
-		if sockopt == nil {
+
+		if sockopt == nil && localAddr == nil {
 			resultConn, err = net.DialTimeout(a.Network, a.String(), DialTimeout)
 		} else {
 			resultConn, err = a.DialWithOpt(sockopt, localAddr)
@@ -161,6 +162,7 @@ func (a Addr) DialWithOpt(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error
 				} else {
 					a.Network = "tcp4"
 				}
+				dialer.FallbackDelay = -1
 			}
 		case "udp":
 			if ta, ok := localAddr.(*net.UDPAddr); ok && ta != nil {
