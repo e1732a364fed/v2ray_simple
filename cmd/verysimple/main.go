@@ -362,7 +362,7 @@ func mainFunc() (result int) {
 			break
 		}
 
-		hotLoadDialConfForRuntime(Default_uuid, standardConf.Dial)
+		hotLoadDialConf(Default_uuid, standardConf.Dial)
 
 	}
 

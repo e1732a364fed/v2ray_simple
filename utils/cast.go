@@ -44,11 +44,16 @@ func AnyToBool(a any) (v bool, ok bool) {
 			v = true
 		}
 	case string:
-		if StrNegative(value) {
-			v = false
-		} else if StrPositive(value) {
-			v = true
+		if b, e := strconv.ParseBool(value); e == nil {
+			v = b
+		} else {
+			if StrNegative(value) {
+				v = false
+			} else if StrPositive(value) {
+				v = true
+			}
 		}
+
 	default:
 		var i64 int64
 		i64, ok = AnyToInt64(a)

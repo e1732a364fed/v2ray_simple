@@ -276,7 +276,9 @@ func tryDownloadGeositeSource() {
 
 }
 
-func hotLoadDialConfForRuntime(Default_uuid string, conf []*proxy.DialConf) {
+func hotLoadDialConf(Default_uuid string, conf []*proxy.DialConf) (ok bool) {
+	ok = true
+
 	for _, d := range conf {
 
 		if d.Uuid == "" && Default_uuid != "" {
@@ -288,6 +290,7 @@ func hotLoadDialConfForRuntime(Default_uuid string, conf []*proxy.DialConf) {
 			if ce := utils.CanLogErr("can not create outClient: "); ce != nil {
 				ce.Write(zap.Error(err))
 			}
+			ok = false
 			continue
 		}
 
@@ -307,9 +310,11 @@ func hotLoadDialConfForRuntime(Default_uuid string, conf []*proxy.DialConf) {
 			defaultOutClient = vs.DirectClient
 		}
 	}
+	return
 
 }
-func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
+func hotLoadListenConf(conf []*proxy.ListenConf) (ok bool) {
+	ok = true
 
 	if defaultOutClient == nil {
 		defaultOutClient = vs.DirectClient
@@ -319,7 +324,8 @@ func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 		inServer, err := proxy.NewServer(l)
 		if err != nil {
 			log.Println("can not create inServer: ", i, err)
-			return
+			ok = false
+			continue
 		}
 		lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
 		if lis != nil {
@@ -330,6 +336,63 @@ func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 
 	}
 
+	return
+}
+
+func hotLoadDialUrl(theUrlStr string) error {
+	u, sn, creator, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
+	if err != nil {
+		fmt.Printf("parse url failed %v\n", err)
+		return err
+	}
+	dc := &proxy.DialConf{}
+	dc.Protocol = sn
+
+	dc.TLS = okTls
+	err = proxy.URLToDialConf(u, dc)
+	if err != nil {
+		fmt.Printf("parse url failed %v\n", err)
+		return err
+	}
+	dc, err = creator.URLToDialConf(u, dc, proxy.UrlStandardFormat)
+	if err != nil {
+		fmt.Printf("parse url step 2 failed %v\n", err)
+		return err
+	}
+
+	if !hotLoadDialConf("", []*proxy.DialConf{dc}) {
+		return utils.ErrFailed
+	}
+	return nil
+
+}
+
+func hotLoadListenUrl(theUrlStr string) error {
+	u, sn, creator, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
+	if err != nil {
+		fmt.Printf("parse url failed %v\n", err)
+		return err
+	}
+
+	lc := &proxy.ListenConf{}
+	lc.Protocol = sn
+
+	lc.TLS = okTls
+
+	err = proxy.URLToListenConf(u, lc)
+	if err != nil {
+		fmt.Printf("parse url failed %v\n", err)
+		return err
+	}
+	lc, err = creator.URLToListenConf(u, lc, proxy.UrlStandardFormat)
+	if err != nil {
+		fmt.Printf("parse url step 2 failed %v\n", err)
+		return err
+	}
+	if !hotLoadListenConf([]*proxy.ListenConf{lc}) {
+		return utils.ErrFailed
+	}
+	return nil
 }
 
 func loadSimpleServer() (result int, server proxy.Server) {

@@ -251,12 +251,12 @@ func generateConfigFileInteractively() {
 			switch ihot {
 			case 0:
 
-				hotLoadDialConfForRuntime("", confServer.Dial)
-				hotLoadListenConfForRuntime(confServer.Listen)
+				hotLoadDialConf("", confServer.Dial)
+				hotLoadListenConf(confServer.Listen)
 
 			case 1:
-				hotLoadDialConfForRuntime("", confClient.Dial)
-				hotLoadListenConfForRuntime(confClient.Listen)
+				hotLoadDialConf("", confClient.Dial)
+				hotLoadListenConf(confClient.Listen)
 			}
 
 			utils.PrintStr("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
@@ -430,52 +430,11 @@ func interactively_hotLoadUrlConfig() {
 		}
 
 		if i == 0 {
-			u, sn, creator, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
-			if err != nil {
-				fmt.Printf("parse url failed %v\n", err)
-				return
-			}
-			dc := &proxy.DialConf{}
-			dc.Protocol = sn
-
-			dc.TLS = okTls
-			err = proxy.URLToDialConf(u, dc)
-			if err != nil {
-				fmt.Printf("parse url failed %v\n", err)
-				return
-			}
-			dc, err = creator.URLToDialConf(u, dc, proxy.UrlStandardFormat)
-			if err != nil {
-				fmt.Printf("parse url step 2 failed %v\n", err)
-				return
-			}
-
-			hotLoadDialConfForRuntime("", []*proxy.DialConf{dc})
+			hotLoadDialUrl(theUrlStr)
 
 		} else {
+			hotLoadListenUrl(theUrlStr)
 
-			u, sn, creator, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
-			if err != nil {
-				fmt.Printf("parse url failed %v\n", err)
-				return
-			}
-
-			lc := &proxy.ListenConf{}
-			lc.Protocol = sn
-
-			lc.TLS = okTls
-
-			err = proxy.URLToListenConf(u, lc)
-			if err != nil {
-				fmt.Printf("parse url failed %v\n", err)
-				return
-			}
-			lc, err = creator.URLToListenConf(u, lc, proxy.UrlStandardFormat)
-			if err != nil {
-				fmt.Printf("parse url step 2 failed %v\n", err)
-				return
-			}
-			hotLoadListenConfForRuntime([]*proxy.ListenConf{lc})
 		}
 		return
 
@@ -536,12 +495,12 @@ func interactively_hotLoadConfigFile() {
 	switch confMode {
 	case proxy.StandardMode:
 		if len(standardConf.Dial) > 0 {
-			hotLoadDialConfForRuntime("", standardConf.Dial)
+			hotLoadDialConf("", standardConf.Dial)
 
 		}
 
 		if len(standardConf.Listen) > 0 {
-			hotLoadListenConfForRuntime(standardConf.Listen)
+			hotLoadListenConf(standardConf.Listen)
 
 		}
 	case proxy.SimpleMode:
