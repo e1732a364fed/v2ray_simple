@@ -297,9 +297,7 @@ func setupUI() {
 		}
 		filesM.AppendItem("Open github").OnClicked(openUrlFunc(weblink))
 		filesM.AppendItem("Check github releases").OnClicked(openUrlFunc(weblink + "releases"))
-		qi := filesM.AppendItem("Quit App")
-
-		qi.OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+		filesM.AppendItem("Quit App").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
 			syscall.Kill(syscall.Getpid(), syscall.SIGINT) //退出app
 		})
 

@@ -9,6 +9,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//配置iptables
+
 func execCmd(cmdStr string) (err error) {
 	utils.ZapLogger.Info("tproxy run cmd", zap.String("cmd", cmdStr))
 
@@ -81,8 +83,8 @@ iptables -t mangle -X V2RAY_MASK`
 
 var lastPortSet int
 
-//commands from https://toutyrater.github.io/app/tproxy.html
-func SetIPTablesByPort(port int) error {
+// commands from https://toutyrater.github.io/app/tproxy.html
+func SetRouteByPort(port int) error {
 
 	cmd1 := exec.Command("iptables", "-V")
 	if err := cmd1.Run(); err != nil {
@@ -93,19 +95,19 @@ func SetIPTablesByPort(port int) error {
 	return execCmdList(fmt.Sprintf(toutyRaterIptableCmdList, port, port))
 }
 
-//port 12345
+// port 12345
 func SetIPTablesByDefault() error {
 
-	return SetIPTablesByPort(12345)
+	return SetRouteByPort(12345)
 }
 
-//port 12345
+// port 12345
 func CleanupIPTablesByDefault() {
 	execCmdList(fmt.Sprintf(iptableRMCmdList, 12345, 12345))
 }
 
-//clear iptables set by the last SetIPTablesByPort call
-func CleanupIPTables() {
+// clear iptables set by the last SetRouteByPort call
+func CleanupRoutes() {
 	if lastPortSet != 0 {
 		execCmdList(fmt.Sprintf(iptableRMCmdList, lastPortSet, lastPortSet))
 		lastPortSet = 0

@@ -11,12 +11,6 @@
 [9]: https://img.shields.io/github/release/e1732a364fed/v2ray_simple/all.svg?style=flat-square
 [10]: https://img.shields.io/github/go-mod/go-version/e1732a364fed/v2ray_simple?style=flat-square
 
-### 最新消息
-
-最近在开发vsb计划，即verysimple 面板项目，在 https://github.com/e1732a364fed/vsb , 可以看看。
-
-telegram channel: https://t.me/+r5hKQKYyeuowMTcx
-
 # verysimple
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
@@ -658,6 +652,8 @@ verysimple 版本 v1.0.3
 如果你实在找不到群，你不妨自己建一个。希望每一个人都能站出来，自豪地说，“我就是原作者”，并且能够滔滔不绝地讲解自己对verysimple的架构的理解。关键不在于谁是作者，一个作者倒下，千万个作者会站起来。
 
 如果本作作者突然停更，这里允许任何人以 verysimple 作者的名义fork并 接盘。你只要声称自己是原作者，忘记了github和自己邮箱的密码，只好重开，这不就ok了。
+
+telegram channel: https://t.me/+r5hKQKYyeuowMTcx
 
 
 # 免责声明与鸣谢

@@ -1,7 +1,11 @@
 /*
 Package tproxy listens tproxy and setup corresponding iptables for linux.
 
-透明代理只能用于linux。
+vs的透明代理只能用于linux 和 macos
+
+原理上，透明代理与tun/tap不同，透明代理直接工作在传输层第四层tcp/udp上，无需解析ip包
+
+下面的文档首先探讨了linux的tproxy
 
 # About TProxy 关于透明代理
 
@@ -96,6 +100,35 @@ https://toutyrater.github.io/app/tproxy.html
 透明代理与Redir的参考博客：
 
 http://ivo-wang.github.io/2018/02/24/ss-redir/
+
+# 关于mac上的实现
+
+我参考了如下内容
+
+https://penglei.github.io/post/transparent_proxy_on_macosx/
+https://docs.mitmproxy.org/stable/howto-transparent/#macos
+https://github.com/Dreamacro/clash/issues/745
+https://github.com/shadowsocks/go-shadowsocks2
+
+mac上的透明代理使用了pf命令，通过一条命令来将全局流量导向特定端口；
+不过只支持ipv4和tcp
+
+sudo sysctl -w net.inet.ip.forwarding=1
+
+创建一个文件，pf.conf
+
+rdr pass on en0 inet proto tcp to any port {80, 443} -> 127.0.0.1 port 8080
+
+sudo pfctl -f pf.conf
+sudo pfctl -e
+
+查看效果
+sudo pfctl -s nat
+
+如果想停止使用透明代理访问，禁用pf(sudo pfctl -d)或者清空pf规则(sudo pfctl -F all)即可。
+
+我试了，mac12.0 ～ mac13 的 pfctl有问题，设路由不好使。参考
+https://github.com/mitmproxy/mitmproxy/issues/4835
 */
 package tproxy
 
@@ -155,7 +188,7 @@ func (m *Machine) Init() {
 
 func (m *Machine) SetIPTable(port int) {
 	if port > 0 {
-		SetIPTablesByPort(port)
+		SetRouteByPort(port)
 		m.iptablePort = port
 
 	}
@@ -175,19 +208,19 @@ func (m *Machine) Stop() {
 		tCh := time.After(time.Second)
 		select {
 		case <-tCh:
-			log.Println("close tproxy listener timeout")
+			log.Println("tproxy close listener timeout")
 		case <-ch:
 			break
 		}
 
 	}
 	if m.UDPConn != nil {
-		log.Println("closing tproxy udp conn")
+		log.Println("tproxy closing udp conn")
 
 		m.UDPConn.Close()
 
 	}
 	if m.iptablePort > 0 {
-		CleanupIPTables()
+		CleanupRoutes()
 	}
 }

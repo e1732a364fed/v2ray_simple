@@ -5,7 +5,10 @@
 
 # 我们不像v2ray/xray一样 使用 dokodemo的额外配置来处理tproxy，而是单独使用 tproxy作为一个协议.
 
-# tproxy只支持客户端, 且目前只支持linux系统, 一般用于软路由/树莓派等.
+# tproxy只支持客户端, 且目前只支持linux/macos系统
+
+# 在macos中，不需要额外参数，但是仅支持ipv4和tcp。而且macos 12/13 系统上的 pfctl有bug，无法配置路由.
+# 建议mac上还是用tun的方法.
 
 [[listen]]
 protocol = "tproxy"
@@ -16,8 +19,12 @@ port = 12345
 # 不用指明network, 只要指明了tproxy, 就会同时自动监听 tcp和 dup.
 # 但是如果你指明了 network = tcp, 就不会转发udp, 你指明了 network = udp 的话，就不会转发 tcp.
 
-#extra = { auto_iptables = true } # 如果给出了 auto_iptables, 且 【protocol 为 tproxy 的listen】【只有一个】, 则程序会自动在开始监听前配置好iptables，并在程序退出前 清除iptables中被程序改动的部分。
-# auto_iptables 会一字不差地运行 上面 给出的 toutyrater 的教程中的 iptables命令。
+#extra = { auto_iptables = true } 
+# 如果给出了 auto_iptables, 且 【protocol 为 tproxy 的listen】【只有一个】, 
+# 则程序会自动配置路由表
+# linux上，程序会自动在开始监听前配置好iptables，并在程序退出前 清除iptables中被程序改动的部分。
+
+# linux上, auto_iptables 会一字不差地运行 上面 给出的 toutyrater 的教程中的 iptables命令。
 
 
 [[dial]]
@@ -29,6 +36,6 @@ version = 0
 insecure = true
 utls = true
 
-sockopt.mark = 255  #根据上面 toutyrater 给出的 iptables命令，我们这里要设置 mark为255. 看一下 上面 toutyrater的教程吧！
+sockopt.mark = 255  #linux 上, 根据上面 toutyrater 给出的 iptables命令，我们这里要设置 mark为255. 看一下 上面 toutyrater的教程吧！
 
 # sockopt.device = "eth32423"   # vs还支持 bindToDevice功能，可以指定 某一个网卡 来监听 或者拨号.

@@ -1,3 +1,13 @@
+/*
+Packages tun provides utilities for tun.
+tun 工作在第三层 IP层上。
+
+我们监听tun，从中提取出 tcp/udp 流。
+
+我们使用 github.com/eycorsican/go-tun2socks 包
+
+这个包在windows上会使用tap。
+*/
 package tun
 
 import (
@@ -13,6 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// implements netLayer.MsgConn
 type coreUDPConnAdapter struct {
 	core.UDPConn
 	netLayer.EasyDeadline
