@@ -1,7 +1,6 @@
 package tun
 
 import (
-	"fmt"
 	"os/exec"
 	"strings"
 
@@ -12,10 +11,17 @@ import (
 var rememberedRouterIP string
 
 func init() {
+	//经过测试发现，完全一样的路由命令，自动执行和 手动在控制台输入执行，效果竟然不一样; 手动的能正常运行, 自动的就不行, 怪
+	/*
+		netsh interface ip set address name="vs_wintun" source=static addr=192.168.123.1 mask=255.255.255.0 gateway=none
+
+		route add vps_ip router_ip
+		route add 0.0.0.0 mask 0.0.0.0 vps_ip metric 5
+	*/
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
 
-		params := fmt.Sprintf(`interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=%s`, tunDevName, tunIP, tunGateway)
-		_, err := exec.Command("netsh", strings.Split(params, " ")...).Output()
+		params := "netstat -nr"
+		out, err := exec.Command("", params).Output()
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {
 				ce.Write(zap.Error(err))
@@ -23,15 +29,6 @@ func init() {
 			return
 		}
 
-		params = "-nr"
-		out, err := exec.Command("netstat", params).Output()
-		if err != nil {
-			if ce := utils.CanLogErr("auto route failed"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
-			return
-		}
-		//log.Println(string(out))
 		lines := strings.Split(string(out), "\n")
 		startLineIndex := -1
 		for i, l := range lines {
@@ -67,16 +64,16 @@ func init() {
 		}
 		rememberedRouterIP = routerIP
 
-		params1 := "delete 0.0.0.0 mask 0.0.0.0"
-		out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
+		// params1 := "delete 0.0.0.0 mask 0.0.0.0"
+		// out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
 
 		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
 
-	checkErrStep:
-		if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
-		}
+		// if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
+		// 	ce.Write(zap.String("output", string(out1)))
+		// }
 
+		_, err = exec.Command("netsh", "interface", "ip", "set", "address", `name="`+tunGateway+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none").Output()
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {
 				ce.Write(zap.Error(err))
@@ -84,20 +81,28 @@ func init() {
 			return
 		}
 
-		params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunGateway + " metric 6"
-		out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+		out1, err := exec.Command("route", "add", "0.0.0.0", "mask", "0.0.0.0", tunGateway, "metric", "6").Output()
 		if err != nil {
-			goto checkErrStep
+			if err != nil {
+				if ce := utils.CanLogErr("auto route failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				return
+			}
 		}
 		if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
 			ce.Write(zap.String("output", string(out1)))
 		}
 
 		for _, v := range directList {
-			params1 = "add " + v + " " + rememberedRouterIP + " metric 5"
-			out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+			out1, err = exec.Command("route", "add", v, rememberedRouterIP, "metric", "5").Output()
 			if err != nil {
-				goto checkErrStep
+				if err != nil {
+					if ce := utils.CanLogErr("auto route failed"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+					return
+				}
 			}
 			if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
 				ce.Write(zap.String("output", string(out1)))
