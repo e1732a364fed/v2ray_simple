@@ -16,7 +16,6 @@ func init() {
 			utils.Warn("tun auto route called, but no direct list given. auto route will not run.")
 		}
 
-		var ok = false
 		params := "-nr -f inet"
 		out, err := exec.Command("netstat", strings.Split(params, " ")...).Output()
 		if err != nil {
@@ -25,68 +24,74 @@ func init() {
 			}
 			return
 		}
-		//log.Println(string(out))
-		lines := strings.Split(string(out), "\n")
-		for i, l := range lines {
+
+		startLineIndex := -1
+		fields := strings.Split(string(out), "\n")
+		for i, l := range fields {
 			if strings.HasPrefix(l, "Destination") {
-				if i < len(lines)-1 && strings.HasPrefix(lines[i+1], "default") {
-					str := utils.StandardizeSpaces(lines[i+1])
-					lines = strings.Split(str, " ")
-					//log.Println(lines, len(lines))
+				if i < len(fields)-1 && strings.HasPrefix(fields[i+1], "default") {
+					startLineIndex = i + 1
 
-					if len(lines) > 1 {
-						routerIP := lines[1]
-						if ce := utils.CanLogInfo("auto route: Your router's ip should be"); ce != nil {
-							ce.Write(zap.String("ip", routerIP))
-						}
-						rememberedRouterIP = routerIP
-
-						params1 := "delete -host default"
-						out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
-
-						//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
-
-					errStep:
-						if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
-							ce.Write(zap.String("output", string(out1)))
-						}
-
-						if err != nil {
-							if ce := utils.CanLogErr("auto route failed"); ce != nil {
-								ce.Write(zap.Error(err))
-							}
-							return
-						}
-
-						params1 = "add default -interface " + tunDevName
-						out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
-						if err != nil {
-							goto errStep
-						}
-						if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
-							ce.Write(zap.String("output", string(out1)))
-						}
-
-						for _, v := range directList {
-							params1 = "add -host " + v + " " + rememberedRouterIP
-							out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
-							if err != nil {
-								goto errStep
-							}
-							if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
-								ce.Write(zap.String("output", string(out1)))
-							}
-						}
-
-						ok = true
-					}
 				}
 				break
 			}
 		}
-		if !ok {
-			utils.Warn("auto route failed")
+		if startLineIndex < 0 {
+			utils.Warn("auto route failed, parse netstat output failed,1")
+			return
 		}
+		str := utils.StandardizeSpaces(fields[startLineIndex])
+		fields = strings.Split(str, " ")
+
+		if len(fields) <= 1 {
+			utils.Warn("auto route failed, parse netstat output failed,2")
+			return
+
+		}
+		routerIP := fields[1]
+		if ce := utils.CanLogInfo("auto route: Your router's ip should be"); ce != nil {
+			ce.Write(zap.String("ip", routerIP))
+		}
+		rememberedRouterIP = routerIP
+
+		params1 := "delete -host default"
+		out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
+
+		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
+
+	checkErrStep:
+		if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
+			ce.Write(zap.String("output", string(out1)))
+		}
+
+		if err != nil {
+			if ce := utils.CanLogErr("auto route failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return
+		}
+
+		params1 = "add default -interface " + tunDevName
+		out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+		if err != nil {
+			goto checkErrStep
+		}
+		if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
+			ce.Write(zap.String("output", string(out1)))
+		}
+
+		for _, v := range directList {
+			params1 = "add -host " + v + " " + rememberedRouterIP
+			out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+			if err != nil {
+				goto checkErrStep
+			}
+			if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
+				ce.Write(zap.String("output", string(out1)))
+			}
+		}
+
+		utils.Warn("auto route succeed!")
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {

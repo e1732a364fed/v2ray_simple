@@ -12,7 +12,6 @@ var rememberedRouterIP string
 
 func init() {
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
-		var ok = false
 		params := "-nr"
 		out, err := exec.Command("netstat", params).Output()
 		if err != nil {
@@ -23,65 +22,79 @@ func init() {
 		}
 		//log.Println(string(out))
 		lines := strings.Split(string(out), "\n")
+		startLineIndex := -1
 		for i, l := range lines {
 			if strings.HasPrefix(l, "IPv4 Route Table") {
 				if i < len(lines)-3 && strings.HasPrefix(lines[i+3], "Network") {
-					str := utils.StandardizeSpaces(lines[i+4])
-					fields := strings.Split(str, " ")
-
-					if len(fields) > 3 {
-						routerIP := fields[2]
-						if ce := utils.CanLogInfo("auto route: Your router's ip should be"); ce != nil {
-							ce.Write(zap.String("ip", routerIP))
-						}
-						rememberedRouterIP = routerIP
-
-						params1 := "delete 0.0.0.0 mask 0.0.0.0"
-						out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
-
-						//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
-
-					errStep:
-						if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
-							ce.Write(zap.String("output", string(out1)))
-						}
-
-						if err != nil {
-							if ce := utils.CanLogErr("auto route failed"); ce != nil {
-								ce.Write(zap.Error(err))
-							}
-							return
-						}
-
-						params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunGateway + " metric 6"
-						out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
-						if err != nil {
-							goto errStep
-						}
-						if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
-							ce.Write(zap.String("output", string(out1)))
-						}
-
-						for _, v := range directList {
-							params1 = "add " + v + " " + rememberedRouterIP + " metric 5"
-							out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
-							if err != nil {
-								goto errStep
-							}
-							if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
-								ce.Write(zap.String("output", string(out1)))
-							}
-						}
-
-						ok = true
-					}
+					//应该第一行就是默认的路由
+					startLineIndex = i + 4
 				}
 				break
 			}
 		}
-		if !ok {
-			utils.Warn("auto route failed")
+
+		if startLineIndex < 0 {
+			utils.Warn("auto route failed, parse netstat output failed,1")
+			return
 		}
+		str := utils.StandardizeSpaces(lines[startLineIndex])
+		fields := strings.Split(str, " ")
+
+		if len(fields) <= 3 {
+			utils.Warn("auto route failed, parse netstat output failed,2")
+			return
+		}
+
+		routerIP := fields[2]
+		//为了简单起见，只认为192开头的是我们的本地路由地址;
+		if routerIP == "On-link" || !strings.HasPrefix(routerIP, "192") {
+			utils.Warn("auto route failed, routerIP parse failed, got " + routerIP)
+			return
+		}
+		if ce := utils.CanLogInfo("auto route: Your router's ip should be"); ce != nil {
+			ce.Write(zap.String("ip", routerIP))
+		}
+		rememberedRouterIP = routerIP
+
+		params1 := "delete 0.0.0.0 mask 0.0.0.0"
+		out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
+
+		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
+
+	checkErrStep:
+		if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
+			ce.Write(zap.String("output", string(out1)))
+		}
+
+		if err != nil {
+			if ce := utils.CanLogErr("auto route failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return
+		}
+
+		params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunGateway + " metric 6"
+		out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+		if err != nil {
+			goto checkErrStep
+		}
+		if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
+			ce.Write(zap.String("output", string(out1)))
+		}
+
+		for _, v := range directList {
+			params1 = "add " + v + " " + rememberedRouterIP + " metric 5"
+			out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
+			if err != nil {
+				goto checkErrStep
+			}
+			if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
+				ce.Write(zap.String("output", string(out1)))
+			}
+		}
+
+		utils.Warn("auto route succeed!")
+
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
