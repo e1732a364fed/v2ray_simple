@@ -673,7 +673,7 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 				mainM.Start()
 			}
 
-			mainM.PrintAllStateForHuman(os.Stdout)
+			mainM.PrintAllStateForHuman(os.Stdout, false)
 		}
 
 	}

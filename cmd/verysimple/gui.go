@@ -151,7 +151,7 @@ func makeBasicControlsPage() ui.Control {
 
 		printStateBtn := ui.NewButton("打印当前状态")
 		printStateBtn.OnClicked(func(b *ui.Button) {
-			mainM.PrintAllStateForHuman(os.Stdout)
+			mainM.PrintAllStateForHuman(os.Stdout, false)
 		})
 
 		toggleHbox.Append(printStateBtn, false)
@@ -502,6 +502,7 @@ func setupTab() {
 
 	tab.Append("基础控制", makeBasicControlsPage())
 	tab.Append("代理控制", makeConfPage())
+	tab.Append("路由控制", makeRoutePage())
 	tab.Append("app控制", makeAppPage())
 
 	//for i := 0; i < tab.NumPages(); i++ {

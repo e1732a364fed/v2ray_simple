@@ -217,7 +217,7 @@ func (m *M) SetupListenAndRoute() {
 	m.LoadListenConf(m.standardConf.Listen, false)
 
 	if len(m.standardConf.Fallbacks) > 0 {
-		m.ParseFallbacksAtSymbol(m.standardConf.Fallbacks)
+		m.parseFallbacksAtSymbol(m.standardConf.Fallbacks)
 	}
 
 	m.routingEnv = proxy.LoadEnvFromStandardConf(&m.standardConf, myCountryISO_3166)
@@ -227,7 +227,7 @@ func (m *M) SetupDial() {
 	if len(m.standardConf.Dial) < 1 && m.DefaultOutClient == nil {
 		utils.Warn("no dial in config settings, will add 'direct'")
 
-		m.SetDefaultDirectClient()
+		m.setDefaultDirectClient()
 
 		return
 	}

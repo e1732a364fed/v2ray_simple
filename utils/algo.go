@@ -9,6 +9,15 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func GetOneFromMap[T comparable](m map[T]bool, defaultV T) T {
+	for k := range m {
+		return k
+	}
+	return defaultV
+}
+
+// generics ////////////////////////////////////////////////////////////////
+
 func ArrayToPtrArray[T any](a []T) (r []*T) {
 	for _, v := range a {
 		r = append(r, &v)
@@ -61,8 +70,6 @@ func AllSubSets_improve1[T comparable](set []T) (subsets [][]T) {
 	return subsets
 }
 
-// generics ////////////////////////////////////////////////////////////////
-
 func CloneSlice[T any](a []T) (r []T) {
 	r = make([]T, len(a))
 	copy(r, a)
@@ -82,7 +89,7 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 	}
 	return a[:j]
 
-	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以
+	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以, 但是它是范围删除, 多了一个参数
 }
 
 // 根据传入的order来对arr重新排序；order必须长度与arr一致，而且包含所有索引

@@ -41,7 +41,7 @@ func flist(list []*CliCmd) (result []func()) {
 var cliCmdList = []*CliCmd{
 	{
 		"查询当前状态", func() {
-			mainM.PrintAllState(os.Stdout)
+			mainM.PrintAllState(os.Stdout, false)
 		},
 	}, {
 		"打印当前版本所支持的所有协议", printSupportedProtocols,
@@ -290,7 +290,7 @@ func interactively_hotRemoveServerOrClient(m *machine.M) {
 	utils.PrintStr("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
 	utils.PrintStr("【当前所有配置】为：\n")
 	utils.PrintStr(delimiter)
-	m.PrintAllState(os.Stdout)
+	m.PrintAllState(os.Stdout, false)
 
 	var items []string
 	if m.ServerCount() > 0 {
@@ -388,7 +388,7 @@ func interactively_hotRemoveServerOrClient(m *machine.M) {
 
 	utils.PrintStr("删除成功！当前状态：\n")
 	utils.PrintStr(delimiter)
-	m.PrintAllState(os.Stdout)
+	m.PrintAllState(os.Stdout, false)
 }
 
 func interactively_hotLoadUrlConfig(m *machine.M) {
@@ -459,7 +459,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	utils.PrintStr("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
 	utils.PrintStr("【当前所有配置】为：\n")
 	utils.PrintStr(delimiter)
-	m.PrintAllState(os.Stdout)
+	m.PrintAllState(os.Stdout, false)
 
 	utils.PrintStr("请输入你想添加的文件名称\n")
 
@@ -507,7 +507,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 
 	utils.PrintStr("添加成功！当前状态：\n")
 	utils.PrintStr(delimiter)
-	m.PrintAllState(os.Stdout)
+	m.PrintAllState(os.Stdout, false)
 }
 
 func interactively_adjust_loglevel() {

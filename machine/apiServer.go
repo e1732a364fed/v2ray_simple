@@ -127,7 +127,7 @@ func (m *M) runApiServer() {
 	}
 
 	ser.addServerHandle(mux, "allstate", func(w http.ResponseWriter, r *http.Request) {
-		m.PrintAllState(w)
+		m.PrintAllState(w, false)
 	})
 	ser.addServerHandle(mux, "hotDelete", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
