@@ -88,6 +88,12 @@ jobs:
         run: |
           echo "ASSET_NAME=vs_gui_${{ matrix.os }}_${{ matrix.goarch }}" | Out-File -FilePath $env:GITHUB_ENV -Append 
 
+      - if: ${{ matrix.os  == 'macos-latest' }}
+        name: macos gnu-tar extra step
+        run: |
+          sudo brew install gnu-tar
+          sudo mv `which gnu-tar` `which tar`
+
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
