@@ -68,13 +68,16 @@ func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv)
 
 		netLayer.LoadMaxmindGeoipFile("")
 
-		routingEnv.RoutePolicy = netLayer.NewRoutePolicy()
+		rp := netLayer.NewRoutePolicy()
 		if hasAppLevelMyCountry {
-			routingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
+			rp.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
 
 		}
 
-		netLayer.LoadRulesForRoutePolicy(standardConf.Route, routingEnv.RoutePolicy)
+		rp.LoadRulesForRoutePolicy(standardConf.Route)
+
+		routingEnv.RoutePolicy = rp
+
 	}
 
 	return

@@ -97,3 +97,9 @@ sudo systemctl start verysimple
 
 https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
 
+## docker
+
+    docker pull ghcr.io/e1732a364fed/v2ray_simple:latest
+
+## docker-compose
+

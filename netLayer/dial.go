@@ -62,7 +62,10 @@ tcp:
 					Port: a.Port,
 				})
 
-				tcpConn.SetWriteBuffer(utils.MaxPacketLen) //有时不设置writebuffer时，会遇到 write: no buffer space available 错误, 在实现vmess的 ChunkMasking 时 遇到了该问题。
+				if err2 == nil {
+					tcpConn.SetWriteBuffer(utils.MaxPacketLen) //有时不设置writebuffer时，会遇到 write: no buffer space available 错误, 在实现vmess的 ChunkMasking 时 遇到了该问题。
+
+				}
 
 				resultConn, err = tcpConn, err2
 				goto dialedPart
@@ -74,7 +77,10 @@ tcp:
 				Port: a.Port,
 			})
 
-			tcpConn.SetWriteBuffer(utils.MaxPacketLen)
+			if err2 == nil {
+				tcpConn.SetWriteBuffer(utils.MaxPacketLen)
+
+			}
 
 			resultConn, err = tcpConn, err2
 

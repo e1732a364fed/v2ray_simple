@@ -94,21 +94,22 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 # path = "/ohmygod_verysimple_is_very_simple" # ws的path和 grpc的serviceName 都在这个path里填写, 为了防探测这里越长越随机越好
 
 [[dial]]
-tag = "direct"
-protocol = "direct" # direct 这个dial 是不需要特地写出的, 程序会自动创建一个 direct 的 dial. 不过如果是需要控制一下fullcone 的话, 此时就要写出来，因为程序默认的 direct 是不开启 fullcone的。 
+tag = "mydirect"
+protocol = "direct" # direct 这个dial 是不需要特地写出的, 程序会自动创建一个 tag 为 "direct" 的 direct 的 dial. 不过如果是需要控制一下fullcone 的话, 此时就要写出来，因为程序默认的 direct 是不开启 fullcone的。 
 
 # fullcone = true    # 默认的fullcone是关闭状态, 可以取消注释以打开.
 
 
 # route 是在我们代理界是分流的意思。 
 # route 是可选的,如果没给出的话,就不分流;
-# 写了 country 后, 向该国家的ip发送的请求就会直连, 然后其他的过代理
+# 写了 country 后, 向该国家的ip发送的请求就会直连, 然后其他的过代理。country = ["CN"] 配置等价于 v2ray的 "geoip:cn"
 # country的字母必须是两个，而且必须大写。这个也会自动被用于顶级域名的国别分流
-# 同时，必须要一个 GeoLite2-Country.mmdb 文件 放在verysimple的相同目录下. 详情见 README.md
+# 同时，必须要一个 名为 GeoLite2-Country.mmdb 的 文件 放在verysimple的相同目录下. 详情见 README.md
 
 # 具体的其它详细 分流配置请参考 multi.client.toml 和 multi.server.toml 文件, 因为会涉及到多个dial
 
 [[route]]
 country = ["CN"]
 domain = ["geosite:cn"]
+ip = ["private"]        # 所有内网ip，等价于 v2ray的 "geoip:private"
 toTag = "mydirect"
