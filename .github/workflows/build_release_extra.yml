@@ -9,12 +9,12 @@ on:
 
 jobs:
   vsc:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         goarch: [amd64, arm64]
 
+    runs-on: ${{ matrix.os }}
 
     env:
       THEOS: ${{ matrix.os }}
@@ -42,7 +42,7 @@ jobs:
 
       - name: Build
         run: |
-          cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_${{ steps.get_filename.outputs.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
+          cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=${{ steps.get_filename.outputs.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
       
       - name: touch xz archive
         shell: bash
