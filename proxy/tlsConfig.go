@@ -72,7 +72,7 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 	return nil
 }
 
-// use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn.
+// use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn, lc.Extra
 func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	serc := com.GetBase()
@@ -82,16 +82,15 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	alpnList := updateAlpnListByAdvLayer(com, lc.Alpn)
 
-	var minVer uint16 = tlsLayer.GetMinVerFromExtra(lc.Extra)
-
 	tlsserver, err := tlsLayer.NewServer(tlsLayer.Conf{
 		Host: lc.Host,
 		CertConf: &tlsLayer.CertConf{
 			CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
 		},
-		Insecure: lc.Insecure,
-		AlpnList: alpnList,
-		Minver:   minVer,
+		Insecure:         lc.Insecure,
+		AlpnList:         alpnList,
+		Minver:           tlsLayer.GetMinVerFromExtra(lc.Extra),
+		RejectUnknownSni: tlsLayer.GetRejectUnknownSniFromExtra(lc.Extra),
 	})
 
 	if err == nil {

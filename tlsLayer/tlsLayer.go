@@ -7,6 +7,7 @@ package tlsLayer
 
 import (
 	"crypto/tls"
+	"strings"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -16,12 +17,13 @@ import (
 
 type Conf struct {
 	Host     string
+	Insecure bool
+	Minver   uint16
+	AlpnList []string
 	CertConf *CertConf
 
-	Insecure bool
-	Use_uTls bool //only client
-	AlpnList []string
-	Minver   uint16
+	Use_uTls         bool //only client
+	RejectUnknownSni bool //only server
 }
 
 func GetMinVerFromExtra(extra map[string]any) uint16 {
@@ -37,6 +39,43 @@ func GetMinVerFromExtra(extra map[string]any) uint16 {
 	}
 
 	return tls.VersionTLS13
+}
+
+func GetRejectUnknownSniFromExtra(extra map[string]any) bool {
+	if len(extra) > 0 {
+		if thing := extra["rejectUnknownSni"]; thing != nil {
+			if is, ok := utils.AnyToBool(thing); ok && is {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func rejectUnknownGetCertificateFunc(certs []*tls.Certificate) func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		if len(certs) == 0 {
+			return nil, utils.ErrInErr{ErrDesc: "len(certs) == 0", ErrDetail: utils.ErrInvalidData}
+		}
+		sni := strings.ToLower(hello.ServerName)
+
+		gsni := "*"
+		if index := strings.IndexByte(sni, '.'); index != -1 {
+			gsni += sni[index:]
+		}
+		for _, keyPair := range certs {
+			if keyPair.Leaf.Subject.CommonName == sni || keyPair.Leaf.Subject.CommonName == gsni {
+				return keyPair, nil
+			}
+			for _, name := range keyPair.Leaf.DNSNames {
+				if name == sni || name == gsni {
+					return keyPair, nil
+				}
+			}
+		}
+		return nil, utils.ErrInErr{ErrDesc: "rejectUnknownSNI", ErrDetail: utils.ErrInvalidData, Data: sni}
+	}
 }
 
 func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
@@ -82,6 +121,9 @@ func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 			tConf.ClientCAs = certPool
 			tConf.ClientAuth = tls.RequireAndVerifyClientCert
 		}
+	}
+	if conf.RejectUnknownSni {
+		tConf.GetCertificate = rejectUnknownGetCertificateFunc(utils.ArrayToPtrArray(certArray))
 	}
 	return tConf
 }

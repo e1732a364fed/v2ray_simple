@@ -8,6 +8,13 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func ArrayToPtrArray[T any](a []T) (r []*T) {
+	for _, v := range a {
+		r = append(r, &v)
+	}
+	return
+}
+
 //Combinatorics ////////////////////////////////////////////////////////////////
 
 // func AllSubSets edited from https://github.com/mxschmitt/golang-combinations with MIT License
