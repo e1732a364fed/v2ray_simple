@@ -35,7 +35,7 @@ func init() {
 			return false
 		}
 
-		e = utils.ExecCmd("ip link set dev " + tunDevName + "up")
+		e = utils.ExecCmd("ip link set dev " + tunDevName + " up")
 		if e != nil {
 			return false
 		}
@@ -73,7 +73,7 @@ func init() {
 			promptManual(strs)
 		} else {
 			if e := utils.ExecCmdList(strs); e != nil {
-				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+				if ce := utils.CanLogErr("run auto route failed"); ce != nil {
 					ce.Write(zap.Error(e))
 				}
 			}
