@@ -447,11 +447,11 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 							session.Close()
 							return
 						}
+						if ce := iics.CanLogDebug("inServer got inner mux stream"); ce != nil {
+							ce.Write(zap.String("innerProxyName", innerProxyName))
+						}
 
 						go func() {
-							if ce := iics.CanLogDebug("inServer got mux stream"); ce != nil {
-								ce.Write(zap.String("innerProxyName", innerProxyName))
-							}
 
 							wlc1, udp_wlc1, targetAddr1, err1 := innerSer.Handshake(stream)
 

@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 	"hash"
 	"hash/crc32"
 	"io"
@@ -30,7 +31,12 @@ const (
 	kdfSaltConstVMessHeaderPayloadLengthAEADIV  = "VMess Header AEAD Nonce_Length"
 )
 
-const authid_len = 16
+const (
+	authid_len              = 16
+	authID_timeMaxSecondGap = 120
+)
+
+var ErrAuthID_timeBeyondGap = utils.ErrInErr{ErrDesc: fmt.Sprintf("vmess: time gap more than %d second", authID_timeMaxSecondGap), ErrDetail: utils.ErrInvalidData}
 
 func kdf(key []byte, path ...string) []byte {
 	hmacCreator := &hMacCreator{value: []byte(kdfSaltConstVMessAEADKDF)}
@@ -83,34 +89,39 @@ func generateCipherByV2rayUser(u utils.V2rayUser) (cipher.Block, error) {
 	return generateCipher(GetKey(u))
 }
 
-//为0表示匹配成功
-func tryMatchAuthIDByBlock(block cipher.Block, bs []byte) (failReason int) {
+//为0表示匹配成功, 如果不为0，则匹配失败；若为1，则CRC 校验失败（正常地匹配失败，不意味着被攻击）; 若为2，则表明校验成功 但是 时间差距超过 authID_timeMaxSecondGap 秒，如果为3，则表明遇到了重放攻击。
+func tryMatchAuthIDByBlock(now int64, block cipher.Block, encrypted_authID [16]byte, anitReplayMachine *anitReplayMachine) (failReason int) {
 
 	var t int64
-	var rand int32
+	//var rand int32
 	var zero uint32
 
-	if len(bs) < authid_len {
-		return 1
-	}
 	data := utils.GetBytes(authid_len)
-	block.Decrypt(data, bs)
+	block.Decrypt(data, encrypted_authID[:])
 
 	buf := bytes.NewBuffer(data)
 
 	binary.Read(buf, binary.BigEndian, &t)
-	binary.Read(buf, binary.BigEndian, &rand)
+	//binary.Read(buf, binary.BigEndian, &rand)
+
+	buf.Next(4)
 	binary.Read(buf, binary.BigEndian, &zero)
 
 	if zero != crc32.ChecksumIEEE(data[:12]) {
+		return 1
+	}
+
+	if math.Abs(math.Abs(float64(t))-float64(now)) > authID_timeMaxSecondGap {
 		return 2
 	}
 
-	if math.Abs(math.Abs(float64(t))-float64(time.Now().Unix())) > 120 {
-		return 3
+	if anitReplayMachine != nil {
+
+		if !anitReplayMachine.check(encrypted_authID) {
+			return 3
+		}
 	}
 
-	//todo: 用自己的代码 实现 防重放 机制
 	return 0
 }
 

@@ -2,7 +2,7 @@
 
 from github.com/Dreamacro/clash/tree/master/transport/vmess/
 
-本作不支持alterid!=0 的情况. 即 仅支持 使用 aead 方式 进行认证
+本作不支持alterid!=0 的情况. 即 仅支持 使用 aead 方式 进行认证. 即不支持 "MD5 认证信息"
 
 标准:  https://www.v2fly.org/developer/protocols/vmess.html
 
@@ -13,11 +13,7 @@ https://github.com/v2fly/v2fly-github-io/issues/20
 
 Implementation Details
 
-本作在chash 的 vmess 客户端的 基础上，反推出了 对称的 vmess 服务端，不过为了方便，也使用了 v2ray的 OpenVMessAEADHeader 函数.
-
-实际上 clash的 sealAEADHeader 的代码也是 和v2ray的响应代码十分接近的。这倒不重要，因为文档给出的算法是固定的，所以实现代码都是一样的。二者区别主要是读写代码的结构。
-
-vmess 协议是一个很老旧的协议，有很多向前兼容的代码，很多地方都已经废弃了，我们这里只支持最新的aead.
+vmess 协议是一个很老旧的协议，有很多向前兼容的代码，很多地方都已经废弃了. 我们这里只支持最新的aead.
 
 我们所实现的vmess 服务端 力求简单、最新，不求兼容所有老旧客户端。
 

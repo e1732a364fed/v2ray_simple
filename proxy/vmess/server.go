@@ -8,9 +8,11 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"hash/fnv"
 	"io"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -19,14 +21,63 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
+var ErrReplayAttack = errors.New("vmess: we are under replay attack! ")
+
+var ErrReplaySessionAttack = utils.ErrInErr{ErrDesc: "duplicated session id, we are under replay attack! ", ErrDetail: ErrReplayAttack}
+
 func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
+}
+
+type pair struct {
+	utils.V2rayUser
+	cipher.Block
+}
+
+func authUserByAuthPairList(bs []byte, authPairList []pair, anitReplayMachine *anitReplayMachine) (user utils.V2rayUser, err error) {
+	now := time.Now().Unix()
+
+	var encrypted_authid [authid_len]byte
+	copy(encrypted_authid[:], bs)
+
+	for _, p := range authPairList {
+		failreason := tryMatchAuthIDByBlock(now, p.Block, encrypted_authid, anitReplayMachine)
+		switch failreason {
+
+		case 0:
+			return p.V2rayUser, nil
+		case 1:
+			err = utils.ErrInvalidData
+		case 2:
+			err = ErrAuthID_timeBeyondGap
+		case 3:
+			err = ErrReplayAttack
+			return
+
+		}
+	}
+	if err == nil {
+		err = utils.ErrNoMatch
+
+	}
+	return
 }
 
 type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
-	return nil, utils.ErrNotImplemented
+
+	s := NewServer()
+
+	if uuidStr := url.User.Username(); uuidStr != "" {
+		v2rayUser, err := utils.NewV2rayUser(uuidStr)
+		if err != nil {
+			return nil, err
+		}
+		s.addUser(v2rayUser)
+	}
+
+	return s, nil
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
@@ -58,30 +109,26 @@ type Server struct {
 	*utils.MultiUserMap
 
 	authPairList []pair
-}
 
-type pair struct {
-	utils.V2rayUser
-	cipher.Block
-}
+	sessionHistory *sessionHistory
 
-func authUserByAuthPairList(bs []byte, authPairList []pair) (user utils.V2rayUser, ok bool) {
-	for _, p := range authPairList {
-		if tryMatchAuthIDByBlock(p.Block, bs) == 0 {
-			return p.V2rayUser, true
-		}
-	}
-	return
+	anitReplayMachine *anitReplayMachine
 }
 
 func NewServer() *Server {
 	s := &Server{
-		MultiUserMap: utils.NewMultiUserMap(),
+		MultiUserMap:      utils.NewMultiUserMap(),
+		sessionHistory:    NewSessionHistory(),
+		anitReplayMachine: newAntiReplyMachine(),
 	}
 	s.SetUseUUIDStr_asKey()
 	return s
 }
 func (s *Server) Name() string { return Name }
+
+func (s *Server) Stop() {
+	s.anitReplayMachine.stop()
+}
 
 func (s *Server) addUser(u utils.V2rayUser) {
 	s.MultiUserMap.AddUser_nolock(u)
@@ -113,10 +160,12 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 1}
 		return
 	}
-	user, ok := authUserByAuthPairList(data[:authid_len], s.authPairList)
-	if !ok {
-		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 2}
+	user, err := authUserByAuthPairList(data[:authid_len], s.authPairList, s.anitReplayMachine)
+	if err != nil {
+
+		returnErr = err
 		return
+
 	}
 
 	cmdKey := GetKey(user)
@@ -133,7 +182,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		return
 	}
 	if len(aeadData) < 38 {
-		returnErr = errors.New("len(aeadData)<38")
+		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 3}
 		return
 	}
 
@@ -153,16 +202,26 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 
 	paddingLen := int(aeadData[35] >> 4)
 
+	lenBefore := len(aeadData[38:])
+
 	aeadDataBuf := bytes.NewBuffer(aeadData[38:])
 
-	//todo: 防重放
+	var sid sessionID
+	copy(sid.user[:], user.IdentityBytes())
+	sid.key = sc.reqBodyKey
+	sid.nonce = sc.reqBodyIV
+
+	if !s.sessionHistory.addIfNotExits(sid) {
+		returnErr = ErrReplaySessionAttack
+		return
+	}
 
 	switch sc.cmd {
 	//我们 不支持vmess 的 mux.cool
 	case CmdTCP, CmdUDP:
 		ad, err := netLayer.V2rayGetAddrFrom(aeadDataBuf)
 		if err != nil {
-			returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 3}
+			returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 4}
 			return
 		}
 		sc.theTarget = ad
@@ -171,17 +230,24 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 	if paddingLen > 0 {
 		tmpBs := aeadDataBuf.Next(paddingLen)
 		if len(tmpBs) != paddingLen {
-			returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 4}
+			returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 5}
 			return
 		}
 	}
 
-	aeadDataBuf.Next(4)
-	/*
-		F := remainBuf.Next(4)
-		fnv1a := fnv.New32a()
-		fnv1a.Write(F)
-	*/
+	lenAfter := aeadDataBuf.Len()
+	realLen := lenBefore - lenAfter + 38
+
+	fnv1a := fnv.New32a()
+	fnv1a.Write(aeadData[:realLen])
+	actualHash := fnv1a.Sum32()
+
+	expectedHash := binary.BigEndian.Uint32(aeadDataBuf.Next(4))
+
+	if actualHash != expectedHash {
+		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 6}
+		return
+	}
 
 	sc.remainReadBuf = remainBuf
 

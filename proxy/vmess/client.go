@@ -136,11 +136,15 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 
 func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (*ClientConn, error) {
 
-	conn := &ClientConn{V2rayUser: c.V2rayUser, opt: c.opt, security: c.security}
-	conn.Conn = underlay
+	conn := &ClientConn{
+		V2rayUser: c.V2rayUser,
+		Conn:      underlay,
+		opt:       c.opt,
+		security:  c.security,
+		port:      uint16(target.Port),
+	}
 
 	conn.addr, conn.atyp = target.AddressBytes()
-	conn.port = uint16(target.Port)
 
 	randBytes := utils.GetBytes(33)
 	rand.Read(randBytes)
