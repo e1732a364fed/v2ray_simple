@@ -7,6 +7,12 @@ This package imports proxy/socks5 and proxy/http package.
 实际上本包就是先经过http，然后如果不是http代理请求，就会回落到socks5.
 
 所以你可以通过 设计回落的方式来达到 有密码 的 混合端口 的需求。
+
+socks5http 与 clash的 "mixed" 等价。之所以不用 "mixed"这个名称，是因为这容易在本作中引起歧义。
+
+clash是一个客户端，它没有服务端，所以它的监听只是用于内网监听，所以监听协议  只有http和socks5 两种，所以 它 叫 "mixed" 是没有歧义的；
+
+而本作与v2ray一样，是支持多种服务端协议的，如果也叫 mixed 的话，会让人误以为，这是一个 "万能协议", 啥都能监听， 而这显然是误区。 命名为 socks5http, 则清晰地指出了 该协议的功能。
 */
 package socks5http
 
@@ -40,11 +46,7 @@ func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 }
 
 func newServer() *Server {
-	return &Server{
-		hs: http.Server{
-			//OnlyConnect: true,	//之前本以为connect就可以搞定一切，后来实测发现 wget 确实在 非https时 会用 纯http请求的方式 请求代理。
-		},
-	}
+	return &Server{}
 }
 
 type Server struct {

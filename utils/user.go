@@ -63,7 +63,7 @@ func InitV2rayUsers(uc []UserConf) (us []User) {
 	return
 }
 
-//一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口
+//一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口. (其实就是uuid)
 type V2rayUser [16]byte
 
 func (u V2rayUser) IdentityStr() string {

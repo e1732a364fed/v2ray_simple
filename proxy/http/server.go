@@ -86,8 +86,7 @@ type Server struct {
 
 	*utils.MultiUserMap
 
-	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。
-
+	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。之前本以为connect就可以搞定一切，后来实测发现 wget 确实在 非https时 会用 纯http请求的方式 请求代理。所以 一般 OnlyConnect 为 false即可.
 }
 
 func newServer() *Server {
