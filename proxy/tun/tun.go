@@ -135,7 +135,7 @@ type Server struct {
 
 	infoChan       chan<- netLayer.TCPRequestInfo
 	udpRequestChan chan<- netLayer.UDPRequestInfo
-	lwipCloser     io.Closer
+	stackCloser    io.Closer
 	tunDev         device.Device
 
 	devName, realIP, selfip string //selfip 只在 darwin 上用到
@@ -181,7 +181,7 @@ func (s *Server) Stop() {
 
 		close(s.infoChan)
 		close(s.udpRequestChan)
-		s.lwipCloser.Close()
+		s.stackCloser.Close()
 		s.tunDev.Close()
 
 		if s.autoRoute && autoRouteDownAfterCloseFunc != nil {
@@ -242,7 +242,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 	s.infoChan = tcpRequestChan
 	s.udpRequestChan = udpRequestChan
 
-	newTchan, newUchan, closer, err := tun.Listen(tunDev)
+	newTchan, newUchan, stackCloser, err := tun.Listen(tunDev)
 
 	if err != nil {
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
@@ -276,7 +276,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			udpRequestChan <- ur
 		}
 	}()
-	s.lwipCloser = closer
+	s.stackCloser = stackCloser
 	s.tunDev = tunDev
 
 	return s

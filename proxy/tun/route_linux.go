@@ -106,11 +106,7 @@ func init() {
 		if manualRoute {
 			promptManual(strs)
 		} else {
-			// defer func() {
-			// 	//发现在vs退出之前，是无法成功运行 ip tuntap del mode tun 的
-			// 	utils.Warn("please run this command belowmanually after exit vs:\nip tuntap del mode tun dev " + tunDevName)
 
-			// }()
 			if e := utils.LogExecCmdList(strs); e != nil {
 				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
 					ce.Write(zap.Error(e))
