@@ -22,14 +22,19 @@ import (
 	"go.uber.org/zap"
 )
 
-const name = "tun"
+const (
+	name         = "tun"
+	manualPrompt = "Please try run these commands manually(Administrator):"
+)
 
-var AddManualRunCmdsListFunc func([]string)
-var manualRoute bool
-
-const manualPrompt = "Please try run these commands manually(Administrator):"
-
-var rememberedRouterIP string
+var (
+	AddManualRunCmdsListFunc func([]string)
+	rememberedRouterIP       string
+	manualRoute              bool
+	autoRoutePreFunc         func(tunDevName, tunGateway, tunIP string, directlist []string) bool
+	autoRouteFunc            func(tunDevName, tunGateway, tunIP string, directlist []string)
+	autoRouteDownFunc        func(tunDevName, tunGateway, tunIP string, directlist []string)
+)
 
 func promptManual(strs []string) {
 	utils.Warn(manualPrompt)
@@ -47,11 +52,6 @@ func init() {
 }
 
 type ServerCreator struct{ proxy.CreatorCommonStruct }
-
-var (
-	autoRouteFunc     func(tunDevName, tunGateway, tunIP string, directlist []string)
-	autoRouteDownFunc func(tunDevName, tunGateway, tunIP string, directlist []string)
-)
 
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 	if lc == nil {
@@ -192,9 +192,25 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			s.devName = "utun5"
 		case "windows":
 			s.devName = "vs_wintun"
-
+		case "liunx":
+			s.devName = "vs_tun"
 		}
 	}
+
+	//由于我们目前完全使用 xjasonlyu/tun2socks 的 代码，需要注意，xjasonlyu/tun2socks 在
+	// windows 和 darwin 都是用的是 wiregard包来创建 tun, 而 在linux上是采用的 gvisor包创建的
+	// 至于为什么这么做，本作作者暂时不清楚。
+
+	// 不过这就导致了 linux 和其他系统的一点不同，那就是，在linux上我们要先手动用命令创建tun，然后再 运行本程序,
+	// 可以参考 https://github.com/xjasonlyu/tun2socks/wiki/Examples
+
+	//所以这里如果开启了 auto_route, 我们应该自动帮用户提前创建 tun, 减轻用户使用负担
+
+	if s.autoRoute && autoRoutePreFunc != nil {
+		autoRoutePreFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
+
+	}
+
 	tunDev, err := tun.Open(s.devName)
 	if err != nil {
 		if ce := utils.CanLogErr("tun open failed"); ce != nil {
