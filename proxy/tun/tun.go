@@ -187,6 +187,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 	s.stopped = false
 
 	if s.devName == "" {
+		utils.Warn("tun: dev name not given, OS: " + runtime.GOOS)
 		switch runtime.GOOS {
 		case "darwin":
 			s.devName = "utun5"
@@ -194,6 +195,11 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			s.devName = "vs_wintun"
 		case "liunx":
 			s.devName = "vs_tun"
+		}
+
+		if s.devName != "" {
+			utils.Warn("tun: set tun dev name to " + s.devName)
+
 		}
 	}
 
