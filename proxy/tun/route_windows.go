@@ -1,6 +1,7 @@
 package tun
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -17,16 +18,22 @@ func init() {
 
 		route add vps_ip router_ip
 		route add 0.0.0.0 mask 0.0.0.0 vps_ip metric 5
+
+		而且wintun的自动执行行为 和 go-tun2socks 的 tap的行为还是不一样。
+
+		在wintun，如果自动删除原默认路由(0.0.0.0 -> router)，再自动添加新默认路由(0.0.0.0 -> tun)，是添加不上的
+
+		wintun 和 默认路由 都存在时, wintun会优先
 	*/
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
 
-		out, err := utils.LogRunCmd("netstat", "-nr")
+		out, err := exec.Command("netstat", "-nr").Output()
 
 		if err != nil {
 			return
 		}
 
-		lines := strings.Split(out, "\n")
+		lines := strings.Split(string(out), "\n")
 		startLineIndex := -1
 		for i, l := range lines {
 			if strings.HasPrefix(l, "IPv4 Route Table") {
@@ -69,6 +76,9 @@ func init() {
 		// if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
 		// 	ce.Write(zap.String("output", string(out1)))
 		// }
+		var strs = []string{
+			fmt.Sprintf(`netsh interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=none`, tunDevName, tunGateway),
+		}
 
 		_, err = utils.LogRunCmd("netsh", "interface", "ip", "set", "address", `name="`+tunDevName+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none")
 
@@ -83,17 +93,9 @@ func init() {
 			return
 		}
 
-		_, err = utils.LogRunCmd("route", "add", "0.0.0.0", "mask", "0.0.0.0", tunGateway, "metric", "6")
-		if err != nil {
-			if err != nil {
-				if ce := utils.CanLogErr("auto route failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				return
-			}
-		}
-
 		for _, v := range directList {
+			strs = append(strs, fmt.Sprintf("route add %s %s metric 5", v, rememberedRouterIP))
+
 			_, err = utils.LogRunCmd("route", "add", v, rememberedRouterIP, "metric", "5")
 			if err != nil {
 				if err != nil {
@@ -106,7 +108,22 @@ func init() {
 
 		}
 
-		utils.Info("auto route succeed!")
+		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
+
+		_, err = utils.LogRunCmd("route", "add", "0.0.0.0", "mask", "0.0.0.0", tunGateway, "metric", "6")
+		if err != nil {
+			if err != nil {
+				if ce := utils.CanLogErr("auto route failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				return
+			}
+		}
+
+		utils.Info("auto route succeed! If not working somehow, please try run these commands manually:")
+		for _, s := range strs {
+			utils.Info(s)
+		}
 
 	}
 

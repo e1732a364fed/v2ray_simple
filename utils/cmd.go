@@ -9,7 +9,7 @@ import (
 
 // Stdout, Stderr to zap
 func LogRunCmd(name string, arg ...string) (out string, err error) {
-	ZapLogger.Info("run cmd", zap.String("cmd", name))
+	ZapLogger.Info("run cmd", zap.String("cmd", name), zap.Strings("args", arg))
 
 	cmd1 := exec.Command(name, arg...)
 	var sbE strings.Builder
