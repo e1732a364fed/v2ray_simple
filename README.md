@@ -200,11 +200,12 @@ verysimple -c server.toml
 5. 调节日志等级
 6. 调节hy手动挡
 7. 生成一个随机的uuid供你参考
-8. 下载geosite原文件
-9. 打印当前版本所支持的所有协议
-10. 查询当前状态
-11. 为tproxy设置iptables(12345端口)
-12. 为tproxy移除iptables
+8. 下载geosite文件夹
+9. 下载geoip文件(GeoLite2-Country.mmdb)
+10. 打印当前版本所支持的所有协议
+11. 查询当前状态
+12. 为tproxy设置iptables(12345端口)
+13. 为tproxy移除iptables
 
 
 交互生成配置后还可以输出到文件、加载到当前运行环境、生成分享链接。

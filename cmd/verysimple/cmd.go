@@ -111,9 +111,7 @@ func tryDownloadMMDB() {
 		return
 	}
 
-	const mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
-
-	fmt.Printf("No %s found,start downloading from %s\n", netLayer.GeoipFileName, mmdbDownloadLink)
+	fmt.Printf("No %s found,start downloading from %s\n", netLayer.GeoipFileName, netLayer.MMDB_DownloadLink)
 
 	var outClient proxy.Client
 
@@ -138,11 +136,11 @@ func tryDownloadMMDB() {
 		listener = vs.ListenSer(clientEndInServer, outClient, nil)
 		if listener != nil {
 			proxyUrl = proxyurl
-
+			defer listener.Close()
 		}
 	}
 
-	_, resp, err := utils.TryDownloadWithProxyUrl(proxyUrl, mmdbDownloadLink)
+	_, resp, err := utils.TryDownloadWithProxyUrl(proxyUrl, netLayer.MMDB_DownloadLink)
 
 	if err != nil {
 		fmt.Printf("Download mmdb failed %s\n", err.Error())
@@ -220,15 +218,12 @@ func tryDownloadGeositeSource() {
 		listener = vs.ListenSer(clientEndInServer, outClient, nil)
 		if listener != nil {
 			proxyUrl = proxyurl
-
+			defer listener.Close()
 		}
 	}
 
 	netLayer.DownloadCommunity_DomainListFiles(proxyUrl)
 
-	if listener != nil {
-		listener.Close()
-	}
 }
 
 func hotLoadDialConfForRuntime(Default_uuid string, conf []*proxy.DialConf) {

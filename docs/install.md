@@ -91,8 +91,6 @@ sudo systemctl start verysimple
 
 # docker 安装
 
-有待完善。
-
 查看 cmd/verysimple下 的 Dockerfile 和 docker-compose, 以及 
 
 https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
@@ -101,5 +99,33 @@ https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
 
     docker pull ghcr.io/e1732a364fed/v2ray_simple:latest
 
+    docker run -d \
+    --platform linux/amd64 \
+    --name verysimple \
+    -e TZ="Asia/Shanghai" \
+    -v /dev/shm:/dev/shm \
+    -v /etc/verysimple/server.toml:/etc/verysimple/server.toml \
+    -v /etc/verysimple/examples:/etc/verysimple/examples \
+    -v /etc/verysimple/cert.pem:/etc/verysimple/cert.pem \
+    -v /etc/verysimple/cert.key:/etc/verysimple/cert.key \
+    --network host \
+    --restart always \
+    ghcr.io/e1732a364fed/v2ray_simple:latest
+
+这个 -v参数的话，冒号前为宿主机路径，冒号后为容器路径
+
+这里就是映射一些 需要的文件 和 文件夹，自己修改对应的 冒号左侧 的 自己文件夹的位置。
+
+（这个命令我没试过，如果有错误请指正）
+
 ## docker-compose
 
+在 docker-compose.yaml 的目录下，运行 `docker-compose up -d` 来启动；运行 `docker-compose down` 来关闭。
+
+这个docker-compose 设计时，要求你 宿主机有一个 `/etc/verysimple` 文件夹，里面放 一个 `server.toml` 配置文件。 
+
+还要求你宿主机的 `/etc/domain-list-community` 文件夹 为 geosite 文件夹 （内有data文件夹，data文件夹内部有很多文件，文件格式等同于 v2fly/domain-list-community 项目中的 data文件夹 中的 文件 的格式）。
+
+如果你没有这个文件夹或者没有这个文件，则该 docker-compose 肯定运行不了。当然，你可以自行修改 该 `docker-compose.yaml` 文件
+
+（我没试过，如果有错误请指正）

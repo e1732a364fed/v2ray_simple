@@ -11,6 +11,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const MMDB_DownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
+
 var (
 	the_geoipdb *maxminddb.Reader
 	embedGeoip  bool
