@@ -122,6 +122,8 @@ func mainFunc() (result int) {
 	// config params step
 	setupSystemParemeters()
 
+	runPreCommands()
+
 	fpath := utils.GetFilePath(configFileName)
 	if !utils.FileExist(fpath) {
 
@@ -200,7 +202,7 @@ func mainFunc() (result int) {
 		mainM.SetupDial()
 	}
 
-	runPreCommands()
+	runPreCommandsAfterLoadConf()
 
 	stopGorouteCaptureSignalChan := make(chan struct{})
 

@@ -2,10 +2,9 @@ package tun
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
 	"time"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
@@ -35,42 +34,11 @@ func init() {
 			utils.Warn(auto_route_bindToDeviceWarn)
 		}
 
-		out, err := exec.Command("netstat", "-nr").Output()
-
+		routerIP, err := netLayer.GetGateway()
 		if err != nil {
 			return
 		}
 
-		lines := strings.Split(string(out), "\n")
-		startLineIndex := -1
-		for i, l := range lines {
-			if strings.HasPrefix(l, "IPv4 Route Table") {
-				if i < len(lines)-3 && strings.HasPrefix(lines[i+3], "Network") {
-					//应该第一行就是默认的路由
-					startLineIndex = i + 4
-				}
-				break
-			}
-		}
-
-		if startLineIndex < 0 {
-			utils.Warn("auto route failed, parse netstat output failed,1")
-			return
-		}
-		str := utils.StandardizeSpaces(lines[startLineIndex])
-		fields := strings.Split(str, " ")
-
-		if len(fields) <= 3 {
-			utils.Warn("auto route failed, parse netstat output failed,2")
-			return
-		}
-
-		routerIP := fields[2]
-		//为了简单起见，只认为192开头的是我们的本地路由地址;
-		if routerIP == "On-link" || !strings.HasPrefix(routerIP, "192") {
-			utils.Warn("auto route failed, routerIP parse failed, got " + routerIP)
-			return
-		}
 		if ce := utils.CanLogInfo("auto route: Your router's ip should be"); ce != nil {
 			ce.Write(zap.String("ip", routerIP))
 		}

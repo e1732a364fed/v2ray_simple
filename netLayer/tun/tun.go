@@ -45,10 +45,9 @@ type StackCloser struct {
 	*stack.Stack
 }
 
-// Close() and Wait()
 func (sc *StackCloser) Close() error {
 	sc.Stack.Close()
-	sc.Stack.Wait() //这个会卡住
+	//sc.Stack.Wait() //这个会卡住; 经测试，不调用它也不影响什么
 	return nil
 }
 

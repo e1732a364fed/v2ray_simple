@@ -1,73 +1,12 @@
 package tun
 
 import (
-	"errors"
-	"net"
 	"os/exec"
-	"syscall"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
-	"golang.org/x/net/route"
 )
-
-/*
-我们的auto route使用纯命令行方式。
-
-sing-box 使用了另一种系统级别的方式。使用了
-golang.org/x/net/route
-
-下面给出一些参考
-
-https://github.com/libp2p/go-netroute
-
-https://github.com/jackpal/gateway/issues/27
-
-https://github.com/GameXG/gonet/blob/master/route/route_windows.go
-
-除了 GetGateway之外，还可以使用更多其他代码
-*/
-func GetGateway() (ip net.IP, index int, err error) {
-	var rib []byte
-	rib, err = route.FetchRIB(syscall.AF_INET, syscall.NET_RT_DUMP, 0)
-	if err != nil {
-		return
-	}
-	var msgs []route.Message
-	msgs, err = route.ParseRIB(syscall.NET_RT_DUMP, rib)
-	if err != nil {
-		return
-	}
-
-	for _, m := range msgs {
-		switch m := m.(type) {
-		case *route.RouteMessage:
-			switch sa := m.Addrs[syscall.RTAX_GATEWAY].(type) {
-			case *route.Inet4Addr:
-				ip = net.IPv4(sa.IP[0], sa.IP[1], sa.IP[2], sa.IP[3])
-			case *route.Inet6Addr:
-				ip = make(net.IP, net.IPv6len)
-				copy(ip, sa.IP[:])
-			}
-			index = m.Index
-
-			return
-
-		}
-	}
-	err = errors.New("no gateway")
-	return
-}
-
-func GetDeviceNameIndex(idx int) string {
-	intf, err := net.InterfaceByIndex(idx)
-	if err != nil {
-		utils.Error(err.Error())
-	}
-	return intf.Name
-}
-
-var rememberedRouterName string
 
 func init() {
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
@@ -120,7 +59,7 @@ func init() {
 		// }
 		// routerIP := fields[1]
 
-		rip, ridx, err := GetGateway() //oops, accidentally rest in peace
+		rip, ridx, err := netLayer.GetGateway() //oops, accidentally rest in peace
 
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed when get gateway"); ce != nil {
@@ -130,7 +69,7 @@ func init() {
 		}
 
 		rememberedRouterIP = rip.String()
-		rname := GetDeviceNameIndex(ridx)
+		rname := netLayer.GetDeviceNameIndex(ridx)
 		rememberedRouterName = rname
 
 		if ce := utils.CanLogInfo("auto route: Your router should be"); ce != nil {

@@ -13,13 +13,12 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/e1732a364fed/ui"
 	_ "github.com/e1732a364fed/ui/winmanifest"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
-
-	"github.com/e1732a364fed/v2ray_simple/proxy/tun"
 
 	qrcode "github.com/skip2/go-qrcode"
 )
@@ -27,7 +26,6 @@ import (
 var mainwin *ui.Window
 
 var testFunc func()
-var theTunStartCmds []string
 var multilineEntry *ui.MultilineEntry //用于向用户提供一些随机的有用的需要复制的字符串
 var entriesGroup *ui.Group            //父 of multilineEntry
 
@@ -91,13 +89,6 @@ func init() {
 		ui.Main(setupUI)
 	}
 
-	tun.AddManualRunCmdsListFunc = func(s []string) {
-		theTunStartCmds = s
-		if multilineEntry != nil {
-			entriesGroup.Show()
-			multilineEntry.SetText(strings.Join(theTunStartCmds, "\n"))
-		}
-	}
 }
 
 func setupDefaultPref() {
@@ -117,6 +108,7 @@ func setupDefaultPref() {
 func makeBasicControlsPage() ui.Control {
 	vbox := ui.NewVerticalBox()
 	vbox.SetPadded(true)
+	vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
 
 	hbox := ui.NewHorizontalBox()
 	hbox.SetPadded(true)
@@ -131,40 +123,62 @@ func makeBasicControlsPage() ui.Control {
 	hbox.Append(startBtn, false)
 
 	{
-		isR := mainM.IsRunning()
+		var updateState = func(btn, cbx bool) {
+			isR := mainM.IsRunning()
 
-		toggleCheckbox.SetChecked(isR)
-		if isR {
-			startBtn.Disable()
-		} else {
-			stopBtn.Disable()
+			if cbx {
+				toggleCheckbox.SetChecked(isR)
+			}
+			if btn {
+				//这里在darwin发现startBtn在被启用后，显示不出来变化，除非切换一下tab再换回来才能看出。不知何故
+				if isR {
+					startBtn.Disable()
+					stopBtn.Enable()
+				} else {
+					stopBtn.Disable()
+					startBtn.Enable()
+				}
+			}
+
 		}
+
+		updateState(true, true)
 
 		mainM.AddToggleCallback(func(i int) {
 			if mainwin == nil {
 				return
 			}
-			ok := i == 1
-			toggleCheckbox.SetChecked(ok) //SetChecked不会触发OnToggled
-			if ok {
-				stopBtn.Enable()
-				startBtn.Disable()
-			} else {
-				stopBtn.Disable()
-				startBtn.Enable()
-			}
+			updateState(true, true)
 		})
+		var stopF = func() {
+			ch := make(chan struct{})
+			go func() {
+				mainM.Stop()
+				close(ch)
+			}()
+			tCh := time.After(time.Second * 2)
+			select {
+			case <-tCh:
+				log.Println("Close timeout")
+				//os.Exit(-1)
+			case <-ch:
+				break
+			}
+		}
 		toggleCheckbox.OnToggled(func(c *ui.Checkbox) {
 			if c.Checked() {
 				mainM.Start()
 			} else {
-				mainM.Stop()
+				//mainM.Stop()
+
+				stopF()
 
 			}
 		})
 
 		stopBtn.OnClicked(func(b *ui.Button) {
-			mainM.Stop()
+			//mainM.Stop()
+			stopF()
 		})
 
 		startBtn.OnClicked(func(b *ui.Button) {
@@ -172,8 +186,6 @@ func makeBasicControlsPage() ui.Control {
 		})
 
 	}
-
-	vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
 
 	vbox.Append(ui.NewHorizontalSeparator(), false)
 

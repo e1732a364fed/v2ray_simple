@@ -30,8 +30,10 @@ const (
 )
 
 var (
-	AddManualRunCmdsListFunc    func([]string)
-	rememberedRouterIP          string
+	AddManualRunCmdsListFunc func([]string)
+	rememberedRouterIP       string
+	rememberedRouterName     string
+
 	manualRoute                 bool
 	autoRoutePreFunc            func(tunDevName, tunGateway, tunIP string, directlist []string) bool
 	autoRouteFunc               func(tunDevName, tunGateway, tunIP string, directlist []string)
@@ -187,6 +189,12 @@ func (s *Server) Stop() {
 
 			autoRouteDownAfterCloseFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
 		}
+		s.stackCloser = nil
+		s.tunDev = nil
+		s.infoChan = nil
+		s.udpRequestChan = nil
+		rememberedRouterIP = ""
+		rememberedRouterName = ""
 	}
 
 }
@@ -219,7 +227,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 	// 不过这就导致了 linux 和其他系统的一点不同，那就是，在linux上我们要先手动用命令创建tun，然后再 运行本程序,
 	// 可以参考 https://github.com/xjasonlyu/tun2socks/wiki/Examples
 
-	//所以这里如果开启了 auto_route, 我们应该自动帮用户提前创建 tun, 减轻用户使用负担
+	//所以这里 auto_route中, 在此自动帮用户提前创建 tun, 减轻用户使用负担
 
 	if s.autoRoute && autoRoutePreFunc != nil {
 		autoRoutePreFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)

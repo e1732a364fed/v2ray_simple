@@ -29,6 +29,8 @@ var (
 	download bool
 
 	defaultApiServerConf machine.ApiServerConf
+
+	extra_preCommands []func()
 )
 
 func init() {
@@ -68,8 +70,17 @@ func runExitCommands() (atLeastOneCalled bool) {
 	return
 }
 
-// 在开始正式代理前, 先运行一些需要运行的命令与函数
 func runPreCommands() {
+	if len(extra_preCommands) > 0 {
+		for _, f := range extra_preCommands {
+			f()
+		}
+	}
+
+}
+
+// 在开始正式代理前, 先运行一些需要运行的命令与函数
+func runPreCommandsAfterLoadConf() {
 
 	if download {
 		tryDownloadMMDB()
