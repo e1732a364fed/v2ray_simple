@@ -94,7 +94,7 @@ func ReadFromUDP(conn *net.UDPConn, b []byte) (n int, srcAddr *net.UDPAddr, dstA
 	}
 
 	if dstAddr == nil {
-		err = fmt.Errorf("unable to obtain original destination: %s", err)
+		err = fmt.Errorf("unable to obtain original destination: %v", err)
 		return
 	}
 
@@ -188,7 +188,7 @@ func udpAddrFamily(net string, laddr, raddr *net.UDPAddr) int {
 	}
 
 	if (laddr == nil || laddr.IP.To4() != nil) &&
-		(raddr == nil || laddr.IP.To4() != nil) {
+		(raddr == nil || raddr.IP.To4() != nil) { //https://github.com/LiamHaworth/go-tproxy/pull/10/commits/27be77df6d4f2cd145cde56f8b84711600dabbe4
 		return syscall.AF_INET
 	}
 	return syscall.AF_INET6

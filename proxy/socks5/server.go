@@ -478,7 +478,7 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	atyp := bs[3]
 
-	l := 2   //supposed Minimum Remain Data Lenth
+	l := 2   //supposed Minimum Remain Data Lenth, 包含Port的2字节
 	off := 4 //offset from which the addr data really starts
 
 	var theIP net.IP
