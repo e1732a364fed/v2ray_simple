@@ -205,6 +205,12 @@ url:
 	return
 }
 
+func (m *M) tryInitEnv() {
+	if m.routingEnv.ClientsTagMap == nil {
+		m.routingEnv.ClientsTagMap = make(map[string]proxy.Client)
+	}
+}
+
 func (m *M) SetupListenAndRoute() {
 
 	myCountryISO_3166 := m.MyCountryISO_3166

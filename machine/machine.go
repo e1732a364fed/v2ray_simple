@@ -215,6 +215,7 @@ func (m *M) printState_routePolicy(w io.Writer) {
 	}
 }
 
+// 用于gomobile等无法接受复杂参数的情况
 func (m *M) EasyPrintState() {
 	m.PrintAllState(os.Stdout, true)
 }

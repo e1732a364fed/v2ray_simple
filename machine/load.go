@@ -3,6 +3,7 @@ package machine
 import (
 	"fmt"
 
+	"github.com/BurntSushi/toml"
 	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -29,7 +30,7 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 
 		m.allClients = append(m.allClients, outClient)
 		if tag := outClient.GetTag(); tag != "" {
-
+			m.tryInitEnv()
 			m.routingEnv.SetClient(tag, outClient)
 
 		}
@@ -286,4 +287,34 @@ func (m *M) HotLoadListenUrl(theUrlStr string, format int) error {
 		return utils.ErrFailed
 	}
 	return nil
+}
+
+func (m *M) HotLoadListenConfStr(theStr string) error {
+	bs := []byte(theStr)
+	bs = utils.ReplaceBytesSynonyms(bs, proxy.StandardConfBytesSynonyms)
+	var lc proxy.ListenConf
+	err := toml.Unmarshal(bs, &lc)
+	if err != nil {
+		return err
+	}
+	if !m.LoadListenConf([]*proxy.ListenConf{&lc}, true) {
+		return utils.ErrFailed
+	}
+	return nil
+
+}
+
+func (m *M) HotLoadDialConfStr(theStr string) error {
+	bs := []byte(theStr)
+	bs = utils.ReplaceBytesSynonyms(bs, proxy.StandardConfBytesSynonyms)
+	var lc proxy.DialConf
+	err := toml.Unmarshal(bs, &lc)
+	if err != nil {
+		return err
+	}
+	if !m.LoadDialConf([]*proxy.DialConf{&lc}) {
+		return utils.ErrFailed
+	}
+	return nil
+
 }

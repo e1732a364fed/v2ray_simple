@@ -20,5 +20,6 @@ import (
 )
 
 func init() {
+	utils.LogLevel = utils.Log_warning
 	utils.InitLog("init android log")
 }

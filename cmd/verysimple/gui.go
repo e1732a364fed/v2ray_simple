@@ -277,6 +277,8 @@ func makeBasicControlsPage() ui.Control {
 					}
 				} else {
 					lastConfFile = filename
+					mainM.RemoveAllClient()
+					mainM.RemoveAllServer()
 					mainM.SetupListenAndRoute()
 					mainM.SetupDial()
 
