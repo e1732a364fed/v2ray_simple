@@ -84,6 +84,25 @@ func main() {
 	os.Exit(mainFunc())
 }
 
+func stopMachineAndExit(m *machine.M) {
+
+	ch := make(chan struct{})
+	go func() {
+		m.Stop()
+		close(ch)
+	}()
+	tCh := time.After(time.Second * 2)
+	select {
+	case <-tCh:
+		log.Println("Close timeout")
+		os.Exit(-1)
+	case <-ch:
+		break
+	}
+	os.Exit(0)
+
+}
+
 func mainFunc() (result int) {
 	defer func() {
 		//注意，这个recover代码并不是万能的，有时捕捉不到panic。
@@ -107,7 +126,7 @@ func mainFunc() (result int) {
 
 			result = -3
 
-			defaultMachine.Stop()
+			stopMachineAndExit(defaultMachine)
 		}
 	}()
 
@@ -312,8 +331,7 @@ func mainFunc() (result int) {
 		case <-osSignals:
 			utils.Info("Program got close signal.")
 
-			defaultMachine.Stop()
-			os.Exit(-1)
+			stopMachineAndExit(defaultMachine)
 		}
 
 	}()
@@ -375,7 +393,7 @@ func mainFunc() (result int) {
 
 		utils.Info("Program got close signal.")
 
-		defaultMachine.Stop()
+		stopMachineAndExit(defaultMachine)
 	}
 	return
 }

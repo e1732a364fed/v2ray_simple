@@ -26,7 +26,7 @@ func init() {
 		for i, l := range lines {
 			if strings.HasPrefix(l, "IPv4 Route Table") {
 				if i < len(lines)-3 && strings.HasPrefix(lines[i+3], "Network") {
-					str := utils.StandardizeSpaces(lines[i+5])
+					str := utils.StandardizeSpaces(lines[i+4])
 					fields := strings.Split(str, " ")
 
 					if len(fields) > 3 {
