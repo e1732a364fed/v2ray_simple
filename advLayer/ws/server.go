@@ -99,11 +99,24 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	//我们目前只支持 ws on http1.1
 
 	var rp httpLayer.H1RequestParser
-	re := rp.ReadAndParse(underlay)
+	re := rp.ReadAndParse_2(underlay)
 	if re != nil {
 		if errors.Is(re, httpLayer.ErrNotHTTP_Request) {
 
-			return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: httpLayer.ErrNotHTTP_Request}
+			if rp.Failreason == -12 && s.UseEarlyData {
+				//-12 是没有读到http尾部的错误，在earlyData开启时是可能存在的，一次读取到的数据不够长，没法完整表达整个http头时就会有这种情况。
+				//读到的长度可能是1186
+
+				if ce := utils.CanLogDebug("ws, rp.Failreason == -12"); ce != nil {
+					ce.Write(zap.Int("len", rp.WholeRequestBuf.Len()), zap.String("header", rp.WholeRequestBuf.String()))
+				}
+
+			} else {
+				return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: re, ExtraIs: []error{httpLayer.ErrNotHTTP_Request}}
+
+				//return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: re, Data: rp.WholeRequestBuf.String(), ExtraIs: []error{httpLayer.ErrNotHTTP_Request}}
+
+			}
 
 		} else {
 
