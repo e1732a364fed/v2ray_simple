@@ -13,7 +13,8 @@ path = "/very"
 
 # 下面是 http伪装头的 配置
 # 完全兼容v2ray, 可参考 https://www.v2fly.org/config/transport/tcp.html#httprequestobject
-
+# 默认值 完全等同于 v2ray 文档中所描述的默认值
+# 不过，一旦 某一项 header给出之后，所有其它header项将 不在 使用默认值，而是等待你赋值，不赋值就不传递该header。
 
 [listen.header.request]
 version = "1.1"

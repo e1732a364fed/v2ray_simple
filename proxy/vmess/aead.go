@@ -1,11 +1,13 @@
 package vmess
 
 import (
-	"bytes"
 	"crypto/cipher"
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/rand"
+
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 type aeadWriter struct {
@@ -15,125 +17,185 @@ type aeadWriter struct {
 	buf   []byte
 	count uint16
 	iv    []byte
+
+	shakeParser *ShakeSizeParser
 }
 
-// AEADWriter returns a aead writer
-func AEADWriter(w io.Writer, aead cipher.AEAD, iv []byte) io.Writer {
+func AEADWriter(w io.Writer, aead cipher.AEAD, iv []byte, shakeParser *ShakeSizeParser) io.Writer {
 	return &aeadWriter{
-		Writer: w,
-		AEAD:   aead,
-		buf:    make([]byte, lenSize+chunkSize),
-		nonce:  make([]byte, aead.NonceSize()),
-		count:  0,
-		iv:     iv,
+		Writer:      w,
+		AEAD:        aead,
+		buf:         utils.GetPacket(), //make([]byte, lenSize+chunkSize),
+		nonce:       make([]byte, aead.NonceSize()),
+		iv:          iv,
+		shakeParser: shakeParser,
 	}
 }
 
-func (w *aeadWriter) Write(b []byte) (int, error) {
-	n, err := w.ReadFrom(bytes.NewBuffer(b))
-	return int(n), err
-}
+func (w *aeadWriter) Write(b []byte) (n int, err error) {
+	if len(b) == 0 {
+		return
+	}
 
-func (w *aeadWriter) ReadFrom(r io.Reader) (n int64, err error) {
-	for {
+	if w.shakeParser != nil {
+
+		encryptedSize := (len(b) + w.Overhead())
+		paddingSize := int(w.shakeParser.NextPaddingLen())
+		sizeBytes := 2
+		totalSize := 2 + encryptedSize + paddingSize
+
+		eb := w.buf[:totalSize]
+
+		w.shakeParser.Encode(uint16(encryptedSize+paddingSize), eb[:sizeBytes])
+		encryptBuf := eb[sizeBytes : sizeBytes+encryptedSize]
+
+		binary.BigEndian.PutUint16(w.nonce[:2], w.count)
+		copy(w.nonce[2:], w.iv[2:12])
+
+		w.Seal(encryptBuf[:0], w.nonce, b, nil)
+		w.count++
+
+		if paddingSize > 0 {
+			rand.Read(eb[sizeBytes+encryptedSize:])
+		}
+
+		_, err = w.Writer.Write(eb)
+		n = len(b)
+
+	} else {
 		buf := w.buf
-		payloadBuf := buf[lenSize : lenSize+chunkSize-w.Overhead()]
+		//这里默认len(b)不大于 64k, 否则会闪退; 不过因为本作所有缓存最大就是64k，所以应该是不会出现问题的，所以也不加判断了。
+		n = len(b)
+		buf = buf[:lenSize+n+w.Overhead()]
 
-		nr, er := r.Read(payloadBuf)
-		if nr > 0 {
-			n += int64(nr)
-			buf = buf[:lenSize+nr+w.Overhead()]
-			payloadBuf = payloadBuf[:nr]
-			binary.BigEndian.PutUint16(buf[:lenSize], uint16(nr+w.Overhead()))
+		payloadBuf := buf[lenSize : lenSize+n]
+		binary.BigEndian.PutUint16(buf[:lenSize], uint16(n+w.Overhead()))
 
-			binary.BigEndian.PutUint16(w.nonce[:2], w.count)
-			copy(w.nonce[2:], w.iv[2:12])
+		binary.BigEndian.PutUint16(w.nonce[:2], w.count)
+		copy(w.nonce[2:], w.iv[2:12])
 
-			w.Seal(payloadBuf[:0], w.nonce, payloadBuf, nil)
-			w.count++
+		w.Seal(payloadBuf[:0], w.nonce, b, nil)
+		w.count++
 
-			_, ew := w.Writer.Write(buf)
-			if ew != nil {
-				err = ew
-				break
-			}
-		}
-
-		if er != nil {
-			if er != io.EOF { // ignore EOF as per io.ReaderFrom contract
-				err = er
-			}
-			break
-		}
+		_, err = w.Writer.Write(buf)
 	}
 
-	return n, err
+	return
 }
 
 type aeadReader struct {
 	io.Reader
 	cipher.AEAD
-	nonce    []byte
-	buf      []byte
-	leftover []byte
-	count    uint16
-	iv       []byte
+	nonce       []byte
+	buf         []byte
+	leftover    []byte
+	count       uint16
+	iv          []byte
+	shakeParser *ShakeSizeParser
+	done        bool
 }
 
-// AEADReader returns a aead reader
-func AEADReader(r io.Reader, aead cipher.AEAD, iv []byte) io.Reader {
+func AEADReader(r io.Reader, aead cipher.AEAD, iv []byte, shakeParser *ShakeSizeParser) io.Reader {
 	return &aeadReader{
-		Reader: r,
-		AEAD:   aead,
-		buf:    make([]byte, lenSize+chunkSize),
-		nonce:  make([]byte, aead.NonceSize()),
-		count:  0,
-		iv:     iv,
+		Reader:      r,
+		AEAD:        aead,
+		buf:         utils.GetPacket(),
+		nonce:       make([]byte, aead.NonceSize()),
+		iv:          iv,
+		shakeParser: shakeParser,
 	}
 }
 
 func (r *aeadReader) Read(b []byte) (int, error) {
+
 	if len(r.leftover) > 0 {
 		n := copy(b, r.leftover)
 		r.leftover = r.leftover[n:]
 		return n, nil
 	}
 
-	// get length
-	_, err := io.ReadFull(r.Reader, r.buf[:lenSize])
-	if err != nil {
-		return 0, err
+	if r.done {
+		return 0, io.EOF
 	}
 
-	// if length == 0, then this is the end
-	l := binary.BigEndian.Uint16(r.buf[:lenSize])
+	// get length
+
+	var l uint16
+	var padding uint16
+	var err error
+
+	if r.shakeParser == nil {
+
+		_, err = io.ReadFull(r.Reader, r.buf[:lenSize])
+		if err != nil {
+			return 0, err
+		}
+
+		l = binary.BigEndian.Uint16(r.buf[:lenSize])
+	} else {
+		//顺序不要搞错，要先 读padding，然后再 shake 长度，否则会出错. 实测v2ray的vmess的padding默认就是开启状态
+		padding = r.shakeParser.NextPaddingLen()
+
+		var sbA [2]byte
+		sb := sbA[:]
+
+		if _, err = io.ReadFull(r.Reader, sb); err != nil {
+			return 0, err
+		}
+		l, err = r.shakeParser.Decode(sb)
+		if err != nil {
+			return 0, err
+		}
+
+		if l == uint16(r.AEAD.Overhead())+padding {
+			r.done = true
+			return 0, io.EOF
+		}
+
+	}
+
 	if l == 0 {
 		return 0, nil
 	}
-	if l > chunkSize {
-		return 0, fmt.Errorf("l>chunkSize, %d", l) //有可能出现这种情况
+	if l > chunkSize && r.shakeParser == nil {
+		return 0, fmt.Errorf("l>chunkSize(16k), %d", l) //有可能出现这种情况
 	}
 
 	// get payload
 	buf := r.buf[:l]
+
 	_, err = io.ReadFull(r.Reader, buf)
 	if err != nil {
+
 		return 0, err
+	}
+
+	if r.shakeParser != nil {
+		buf = buf[:int(l)-int(padding)]
 	}
 
 	binary.BigEndian.PutUint16(r.nonce[:2], r.count)
 	copy(r.nonce[2:], r.iv[2:12])
 
-	_, err = r.Open(buf[:0], r.nonce, buf, nil)
+	returnedData, err := r.Open(buf[:0], r.nonce, buf, nil)
 	r.count++
 	if err != nil {
 		return 0, err
 	}
 
-	dataLen := int(l) - r.Overhead()
-	m := copy(b, r.buf[:dataLen])
+	var dataLen int
+
+	if r.shakeParser == nil {
+		dataLen = int(l) - r.Overhead()
+
+	} else {
+		dataLen = len(returnedData)
+
+	}
+
+	m := copy(b, buf[:dataLen])
 	if m < int(dataLen) {
-		r.leftover = r.buf[m:dataLen]
+		r.leftover = buf[m:dataLen]
 	}
 
 	return m, err

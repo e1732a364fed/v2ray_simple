@@ -33,6 +33,12 @@ const Name = "vmess"
 const (
 	OptBasicFormat byte = 0 // 基本格式
 	OptChunkStream byte = 1 // 标准格式,实际的请求数据被分割为若干个小块
+
+	OptChunkMasking byte = 4
+
+	OptGlobalPadding byte = 0x08
+
+	//OptAuthenticatedLength byte = 0x10
 )
 
 // Security types

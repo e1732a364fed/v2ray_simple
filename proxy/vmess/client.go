@@ -357,7 +357,7 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 		c.dataWriter = writer
 	}
 
-	if c.opt&OptChunkStream == OptChunkStream {
+	if c.opt&OptChunkStream > 0 {
 		switch c.security {
 		case SecurityNone:
 			c.dataWriter = ChunkedWriter(c.dataWriter)
@@ -365,7 +365,7 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 		case SecurityAES128GCM:
 			block, _ := aes.NewCipher(c.reqBodyKey[:])
 			aead, _ := cipher.NewGCM(block)
-			c.dataWriter = AEADWriter(c.dataWriter, aead, c.reqBodyIV[:])
+			c.dataWriter = AEADWriter(c.dataWriter, aead, c.reqBodyIV[:], nil)
 
 		case SecurityChacha20Poly1305:
 			key := utils.GetBytes(32)
@@ -374,7 +374,7 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 			t = md5.Sum(key[:16])
 			copy(key[16:], t[:])
 			aead, _ := chacha20poly1305.New(key)
-			c.dataWriter = AEADWriter(c.dataWriter, aead, c.reqBodyIV[:])
+			c.dataWriter = AEADWriter(c.dataWriter, aead, c.reqBodyIV[:], nil)
 			utils.PutBytes(key)
 		}
 	}
@@ -405,7 +405,7 @@ func (c *ClientConn) Read(b []byte) (n int, err error) {
 	}
 
 	c.dataReader = c.Conn
-	if c.opt&OptChunkStream == OptChunkStream {
+	if c.opt&OptChunkStream > 0 {
 		switch c.security {
 		case SecurityNone:
 			c.dataReader = ChunkedReader(c.Conn)
@@ -413,7 +413,7 @@ func (c *ClientConn) Read(b []byte) (n int, err error) {
 		case SecurityAES128GCM:
 			block, _ := aes.NewCipher(c.respBodyKey[:])
 			aead, _ := cipher.NewGCM(block)
-			c.dataReader = AEADReader(c.Conn, aead, c.respBodyIV[:])
+			c.dataReader = AEADReader(c.Conn, aead, c.respBodyIV[:], nil)
 
 		case SecurityChacha20Poly1305:
 			key := utils.GetBytes(32)
@@ -422,7 +422,7 @@ func (c *ClientConn) Read(b []byte) (n int, err error) {
 			t = md5.Sum(key[:16])
 			copy(key[16:], t[:])
 			aead, _ := chacha20poly1305.New(key)
-			c.dataReader = AEADReader(c.Conn, aead, c.respBodyIV[:])
+			c.dataReader = AEADReader(c.Conn, aead, c.respBodyIV[:], nil)
 			utils.PutBytes(key)
 		}
 	}

@@ -232,6 +232,9 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 			return
 		}
 		sc.theTarget = ad
+		if sc.cmd == CmdUDP {
+			ad.Network = "udp"
+		}
 		targetAddr = ad
 	}
 	if paddingLen > 0 {
@@ -350,6 +353,19 @@ func (c *ServerConn) Write(b []byte) (n int, err error) {
 	}
 
 	c.dataWriter = writer
+
+	var shakeParser *ShakeSizeParser
+
+	if c.opt&OptChunkMasking == OptChunkMasking {
+
+		shouldPad := false
+		if c.opt&OptGlobalPadding == OptGlobalPadding {
+			shouldPad = true
+
+		}
+		shakeParser = NewShakeSizeParser(c.respBodyIV[:], shouldPad)
+	}
+
 	if c.opt&OptChunkStream == OptChunkStream {
 		switch c.security {
 		case SecurityNone:
@@ -358,7 +374,7 @@ func (c *ServerConn) Write(b []byte) (n int, err error) {
 		case SecurityAES128GCM:
 			block, _ := aes.NewCipher(c.respBodyKey[:])
 			aead, _ := cipher.NewGCM(block)
-			c.dataWriter = AEADWriter(writer, aead, c.respBodyIV[:])
+			c.dataWriter = AEADWriter(writer, aead, c.respBodyIV[:], shakeParser)
 
 		case SecurityChacha20Poly1305:
 			key := utils.GetBytes(32)
@@ -367,7 +383,7 @@ func (c *ServerConn) Write(b []byte) (n int, err error) {
 			t = md5.Sum(key[:16])
 			copy(key[16:], t[:])
 			aead, _ := chacha20poly1305.New(key)
-			c.dataWriter = AEADWriter(writer, aead, c.respBodyIV[:])
+			c.dataWriter = AEADWriter(writer, aead, c.respBodyIV[:], shakeParser)
 			utils.PutBytes(key)
 		}
 	}
@@ -397,8 +413,21 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 		curReader = c.Conn
 
 	}
+	var shakeParser *ShakeSizeParser
 
-	if c.opt&OptChunkStream == OptChunkStream {
+	if c.opt&OptChunkMasking > 0 {
+
+		shouldPad := false
+
+		if c.opt&OptGlobalPadding > 0 {
+			shouldPad = true
+
+		}
+
+		shakeParser = NewShakeSizeParser(c.reqBodyIV[:], shouldPad)
+	}
+
+	if c.opt&OptChunkStream > 0 {
 		switch c.security {
 		case SecurityNone:
 			c.dataReader = ChunkedReader(curReader)
@@ -407,7 +436,7 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 
 			block, _ := aes.NewCipher(c.reqBodyKey[:])
 			aead, _ := cipher.NewGCM(block)
-			c.dataReader = AEADReader(curReader, aead, c.reqBodyIV[:])
+			c.dataReader = AEADReader(curReader, aead, c.reqBodyIV[:], shakeParser)
 
 		case SecurityChacha20Poly1305:
 			key := utils.GetBytes(32)
@@ -416,7 +445,7 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 			t = md5.Sum(key[:16])
 			copy(key[16:], t[:])
 			aead, _ := chacha20poly1305.New(key)
-			c.dataReader = AEADReader(curReader, aead, c.reqBodyIV[:])
+			c.dataReader = AEADReader(curReader, aead, c.reqBodyIV[:], shakeParser)
 			utils.PutBytes(key)
 		}
 	}

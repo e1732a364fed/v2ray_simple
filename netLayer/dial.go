@@ -5,6 +5,8 @@ import (
 	"net"
 	"syscall"
 	"time"
+
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 var (
@@ -55,18 +57,27 @@ tcp:
 				return nil, ErrMachineCantConnectToIpv6
 			} else {
 
-				resultConn, err = net.DialTCP("tcp6", nil, &net.TCPAddr{
+				tcpConn, err2 := net.DialTCP("tcp6", nil, &net.TCPAddr{
 					IP:   a.IP,
 					Port: a.Port,
 				})
+
+				tcpConn.SetWriteBuffer(utils.MaxPacketLen) //有时不设置writebuffer时，会遇到 write: no buffer space available 错误, 在实现vmess的 ChunkMasking 时 遇到了该问题。
+
+				resultConn, err = tcpConn, err2
 				goto dialedPart
 			}
 		} else {
 
-			resultConn, err = net.DialTCP("tcp4", nil, &net.TCPAddr{
+			tcpConn, err2 := net.DialTCP("tcp4", nil, &net.TCPAddr{
 				IP:   a.IP,
 				Port: a.Port,
 			})
+
+			tcpConn.SetWriteBuffer(utils.MaxPacketLen)
+
+			resultConn, err = tcpConn, err2
+
 			goto dialedPart
 		}
 

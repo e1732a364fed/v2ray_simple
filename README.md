@@ -32,7 +32,7 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1)/vmess(客户端), 多用户,
+socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1)/vmess, 多用户,
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
 
@@ -661,7 +661,7 @@ grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件�
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
-来自v2ray的代码有：quic的嗅探，geosite文件的解析(v2fly/domain-list-community)。
+来自v2ray的代码有：quic的嗅探，geosite文件的解析(v2fly/domain-list-community), vmess的 ShakeSizeParser 和 openAEADHeader 等函数。
 
 （grpc参考了v2ray但是没直接拷贝，而是自己写的。代码看起来像 主要因为 protobuf和grpc谷歌包的特点，导致只要代码是兼容的，写出来肯定是很相似的）
 
@@ -669,6 +669,7 @@ tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借�
 
 vmess 的客户端代码 来自 github.com/Dreamacro/clash/transport/vmess, 使用的是 GPLv3协议。该协议我直接 放在 proxy/vmess/ 文件夹下了。
 
+同时我通过该vmess 客户端代码 反推出了 对应的服务端代码。
 
 ## Stargazers over time
 

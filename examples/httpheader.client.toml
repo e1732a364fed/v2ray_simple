@@ -35,7 +35,10 @@ headers.Accept-Encoding = [ "gzip, deflate"  ]
 headers.Pragma = ["no-cache"]
 
 
+# 如果 User-Agent没给出，则golang会主动添加一个 User-Agent: Go-http-client/1.1
+# 所以最好明示给出 User-Agent; 若 服务端没配置 User-Agent, 我们的vs 服务端 会发现 客户端 多了一项 User-Agent项 而认为非法，而关闭连接。
 
+# 我们vs的header验证比v2ray严格，必须所有的header 均匹配才能通过。而v2ray默认只验证path等，不验证header。
 
 [dial.header.response]
 # 如果使用 ws, 则 Connection头不用给出，因为必须是Upgrade; 你给出也是可以的，但是会被无视。
