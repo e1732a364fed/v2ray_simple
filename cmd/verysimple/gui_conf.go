@@ -4,11 +4,14 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/e1732a364fed/ui"
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
@@ -25,9 +28,106 @@ func makeAppPage() ui.Control {
 		vbox.SetPadded(true)
 		group.SetChild(vbox)
 
+		{
+			dtSB := ui.NewSpinbox(2, 60)
+			dtSL := ui.NewSlider(2, 60)
+
+			vbox.Append(ui.NewLabel("dial timeout (seconds)"), false)
+
+			setDTManual := func(num float64) {
+				netLayer.DialTimeout = time.Duration(num * float64(time.Second))
+				if ce := utils.CanLogInfo("Manually Adjust netLayer.DialTimeout"); ce != nil {
+					ce.Write(zap.Int64("seconds", int64(netLayer.DialTimeout/time.Second)))
+				}
+			}
+			dtSB.OnChanged(func(*ui.Spinbox) {
+				v := dtSB.Value()
+				dtSL.SetValue(v)
+				setDTManual(float64(v))
+			})
+			dtSL.OnChanged(func(*ui.Slider) {
+				v := dtSL.Value()
+				dtSB.SetValue(v)
+
+				setDTManual(float64(v))
+
+			})
+			curV := int(netLayer.DialTimeout / time.Second)
+			dtSL.SetValue(curV)
+			dtSB.SetValue(curV)
+			vbox.Append(dtSB, false)
+			vbox.Append(dtSL, false)
+			vbox.Append(ui.NewHorizontalSeparator(), false)
+		}
+
+		{
+			rSB := ui.NewSpinbox(2, 60)
+			rSL := ui.NewSlider(2, 60)
+
+			vbox.Append(ui.NewLabel("read timeout (seconds)"), false)
+
+			setRTManual := func(num float64) {
+				netLayer.CommonReadTimeout = time.Duration(num * float64(time.Second))
+				if ce := utils.CanLogInfo("Manually Adjust netLayer.CommonReadTimeout"); ce != nil {
+					ce.Write(zap.Int64("seconds", int64(netLayer.CommonReadTimeout/time.Second)))
+				}
+			}
+			rSB.OnChanged(func(*ui.Spinbox) {
+				v := rSB.Value()
+				rSL.SetValue(v)
+				setRTManual(float64(v))
+			})
+			rSL.OnChanged(func(*ui.Slider) {
+				v := rSL.Value()
+				rSB.SetValue(v)
+
+				setRTManual(float64(v))
+
+			})
+			curV := int(netLayer.CommonReadTimeout / time.Second)
+			rSL.SetValue(curV)
+			rSB.SetValue(curV)
+			vbox.Append(rSB, false)
+			vbox.Append(rSL, false)
+			vbox.Append(ui.NewHorizontalSeparator(), false)
+		}
+
+		{
+			uSB := ui.NewSpinbox(1, 60)
+			uSL := ui.NewSlider(1, 60)
+
+			vbox.Append(ui.NewLabel("udp timeout (minutes)"), false)
+
+			setUTManual := func(num float64) {
+				netLayer.UDP_timeout = time.Duration(num * float64(time.Minute))
+				if ce := utils.CanLogInfo("Manually Adjust netLayer.UDP_timeout"); ce != nil {
+					ce.Write(zap.Int64("minutes", int64(netLayer.UDP_timeout/time.Minute)))
+				}
+			}
+			uSB.OnChanged(func(*ui.Spinbox) {
+				v := uSB.Value()
+				uSL.SetValue(v)
+				setUTManual(float64(v))
+			})
+			uSL.OnChanged(func(*ui.Slider) {
+				v := uSL.Value()
+				uSB.SetValue(v)
+
+				setUTManual(float64(v))
+
+			})
+			curV := int(netLayer.UDP_timeout / time.Minute)
+			uSL.SetValue(curV)
+			uSB.SetValue(curV)
+			vbox.Append(uSB, false)
+			vbox.Append(uSL, false)
+			vbox.Append(ui.NewHorizontalSeparator(), false)
+		}
+
 		if len(appVboxExtra) > 0 {
 			for _, f := range appVboxExtra {
 				f(vbox)
+				vbox.Append(ui.NewHorizontalSeparator(), false)
 			}
 		}
 	}
@@ -85,7 +185,12 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		allProtocols = proxy.AllClientTypeList()
 	}
 
-	allAdvs := utils.GetMapSortedKeySlice(advLayer.ProtocolsMap)
+	allAdvs := append([]string{""}, utils.GetMapSortedKeySlice(advLayer.ProtocolsMap)...)
+
+	tlsTypes := []string{"tls", "utls", "shadowtls_v2"}
+	if !isDial {
+		utils.Splice(&tlsTypes, 1, 1)
+	}
 
 	newBtn := ui.NewButton("新增")
 	rmBtn := ui.NewButton("删除")
@@ -133,11 +238,30 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 	tlsC := ui.NewCheckbox("tls")
 	form.Append("", tlsC, false)
 
+	tlsCbox := ui.NewCombobox()
+	form.Append("tls type", tlsCbox, false)
+
+	tlsInsC := ui.NewCheckbox("insecure")
+	form.Append("", tlsInsC, false)
+
+	var keyE, certE *ui.Entry
+
+	if !isDial {
+		keyE = ui.NewEntry()
+		form.Append("key", keyE, false)
+
+		certE = ui.NewEntry()
+		form.Append("cert", certE, false)
+	}
+
 	advCbox := ui.NewCombobox()
 	form.Append("adv", advCbox, false)
 
 	pathE := ui.NewEntry()
 	form.Append("path", pathE, false)
+
+	earlyC := ui.NewCheckbox("early")
+	form.Append("", earlyC, false)
 
 	var muxC *ui.Checkbox
 
@@ -200,6 +324,7 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 			} else {
 				sc.Listen[curSelectedTagIdx].Protocol = allProtocols[idx]
 			}
+			update(false)
 		})
 
 		tagE.OnChanged(func(e *ui.Entry) {
@@ -244,6 +369,41 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 			update(false)
 		})
 
+		tlsInsC.OnToggled(func(c *ui.Checkbox) {
+			if isDial {
+				sc.Dial[curSelectedTagIdx].Insecure = tlsInsC.Checked()
+			} else {
+				sc.Listen[curSelectedTagIdx].Insecure = tlsInsC.Checked()
+			}
+		})
+
+		if !isDial {
+			keyE.OnChanged(func(e *ui.Entry) {
+				sc.Listen[curSelectedTagIdx].TLSKey = keyE.Text()
+			})
+
+			certE.OnChanged(func(e *ui.Entry) {
+				sc.Listen[curSelectedTagIdx].TLSCert = certE.Text()
+			})
+		}
+
+		for _, v := range tlsTypes {
+			tlsCbox.Append(v)
+		}
+
+		tlsCbox.OnSelected(func(c *ui.Combobox) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
+			idx := tlsCbox.Selected()
+
+			if isDial {
+				sc.Dial[curSelectedTagIdx].TlsType = tlsTypes[idx]
+			} else {
+				sc.Listen[curSelectedTagIdx].TlsType = tlsTypes[idx]
+			}
+		})
+
 		for _, v := range allAdvs {
 			advCbox.Append(v)
 		}
@@ -259,6 +419,8 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 			} else {
 				sc.Listen[curSelectedTagIdx].AdvancedLayer = allAdvs[idx]
 			}
+
+			update(false)
 		})
 
 		pathE.OnChanged(func(e *ui.Entry) {
@@ -266,6 +428,14 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 				sc.Dial[curSelectedTagIdx].Path = pathE.Text()
 			} else {
 				sc.Listen[curSelectedTagIdx].Path = pathE.Text()
+			}
+		})
+
+		earlyC.OnToggled(func(c *ui.Checkbox) {
+			if isDial {
+				sc.Dial[curSelectedTagIdx].IsEarly = earlyC.Checked()
+			} else {
+				sc.Listen[curSelectedTagIdx].IsEarly = earlyC.Checked()
 			}
 		})
 
@@ -342,6 +512,14 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 				if curSelectedTagIdx >= 0 {
 					curL := sc.Listen[curSelectedTagIdx]
 					cc = curL.CommonConf
+
+					keyE.SetText(curL.TLSKey)
+					certE.SetText(curL.TLSCert)
+
+				} else {
+					keyE.SetText("")
+					certE.SetText("")
+
 				}
 
 			}
@@ -353,9 +531,93 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 			portE.SetValue(cc.Port)
 			uuidE.SetText(cc.UUID)
 			tlsC.SetChecked(cc.TLS)
-			pathE.SetText(cc.Path)
+			tlsInsC.SetChecked(cc.Insecure)
 
+			pathE.SetText(cc.Path)
+			earlyC.SetChecked(cc.IsEarly)
+
+			switch cc.Protocol {
+
+			case "reject", "direct", "tun":
+				randUuidBtn.Disable()
+				hostE.Hide()
+				ipE.Hide()
+				portE.Hide()
+				uuidE.Hide()
+				tlsC.Hide()
+				tlsInsC.Hide()
+
+				pathE.Hide()
+				advCbox.Hide()
+				earlyC.Hide()
+				if isDial {
+					muxC.Hide()
+				} else {
+					keyE.Hide()
+					certE.Hide()
+				}
+			case "tproxy":
+				randUuidBtn.Disable()
+				hostE.Hide()
+				ipE.Show()
+				portE.Show()
+				uuidE.Hide()
+				tlsC.Hide()
+				tlsInsC.Hide()
+				keyE.Hide()
+				certE.Hide()
+
+				pathE.Hide()
+				advCbox.Hide()
+				earlyC.Hide()
+			default:
+				randUuidBtn.Enable()
+				hostE.Show()
+				ipE.Show()
+				portE.Show()
+				uuidE.Show()
+				tlsC.Show()
+				tlsInsC.Show()
+
+				pathE.Show()
+				advCbox.Show()
+				earlyC.Show()
+				if isDial {
+					muxC.Show()
+				} else {
+					keyE.Show()
+					certE.Show()
+				}
+			}
+
+			if cc.TLS {
+				tlsCbox.Show()
+				tlsInsC.Show()
+
+				if !isDial {
+					keyE.Show()
+					certE.Show()
+				}
+			} else {
+				tlsCbox.Hide()
+				tlsInsC.Hide()
+
+				if !isDial {
+					keyE.Hide()
+					certE.Hide()
+				}
+			}
+
+			tlsCbox.SetSelected(slices.Index(tlsTypes, cc.TlsType))
 			advCbox.SetSelected(slices.Index(allAdvs, cc.AdvancedLayer))
+
+			if cc.AdvancedLayer != "" {
+				pathE.Show()
+				earlyC.Show()
+			} else {
+				pathE.Hide()
+				earlyC.Hide()
+			}
 
 		}
 

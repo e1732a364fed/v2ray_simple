@@ -39,6 +39,21 @@ func StrToType(str string) int {
 	}
 }
 
+func TypeToStr(t int) string {
+	switch t {
+	default:
+		fallthrough
+	case Tls_t:
+		return "tls"
+	case UTls_t:
+		return "utls"
+	case ShadowTls_t:
+		return "shadowtls_v1"
+	case ShadowTls2_t:
+		return "shadowtls_v2"
+	}
+}
+
 type Conf struct {
 	Host     string
 	Insecure bool

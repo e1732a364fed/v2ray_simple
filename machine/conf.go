@@ -30,10 +30,10 @@ type AppConf struct {
 
 	NoReadV bool `toml:"noreadv"`
 
-	UDP_timeout *int `toml:"udp_timeout"`
+	UDP_timeout *int `toml:"udp_timeout"` //分钟
 
-	DialTimeoutSeconds *int `toml:"dial_timeout"`
-	ReadTimeoutSeconds *int `toml:"read_timeout"`
+	DialTimeoutSeconds *int `toml:"dial_timeout"` //秒
+	ReadTimeoutSeconds *int `toml:"read_timeout"` //秒
 
 	GeoipFile     *string `toml:"geoip_file"`
 	GeositeFolder *string `toml:"geosite_folder"`
