@@ -22,6 +22,9 @@ type CommonConf struct {
 
 	Extra map[string]any `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
 
+	//tls 的最低版本号配置填在这里：
+	//extra = { tls_minVersion = "1.2" }
+
 	/////////////////// 网络层 ///////////////////
 
 	Host string `toml:"host"` //ip 或域名. 若unix domain socket 则为文件路径
@@ -29,7 +32,9 @@ type CommonConf struct {
 
 	/////////////////// 传输层 ///////////////////
 
-	Network string `toml:"network"` //传输层协议; 默认使用tcp, network可选值为 tcp, udp, unix; 理论上来说应该用 transportLayer，但是怕小白不懂，所以使用 network作为名称。而且也不算错，因为go的net包 也是用 network来指示 传输层/网络层协议的. 比如 net.Listen()第一个参数可以用 ip, tcp, udp 等。
+	Network string `toml:"network"` //传输层协议; 默认使用tcp, network可选值为 tcp, udp, unix;
+	// 理论上来说应该用 transportLayer 作为名称，但是怕小白不懂，所以使用 network作为名称。
+	// 而且也不算错，因为go的net包 也是用 network来指示 传输层/网络层协议的. 比如 net.Listen()第一个参数可以用 ip, tcp, udp 等。
 
 	Sockopt *netLayer.Sockopt `toml:"sockopt"` //可选
 
@@ -41,7 +46,7 @@ type CommonConf struct {
 
 	/////////////////// tls层 ///////////////////
 
-	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
+	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰地标明使用tls
 	Insecure bool     `toml:"insecure"` //tls 是否安全
 	Alpn     []string `toml:"alpn"`
 

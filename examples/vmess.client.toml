@@ -17,3 +17,7 @@ encrypt_algo = "aes-128-gcm"    #最新vs代码 添加了新的 encrypt_algo配�
 # 这里vs为了保护用户，如果不给出内部加密方式，会自动设为auto，而不是zero
 
 # 具体none和zero的区别, 以及 auto 的含义, 详见 https://www.v2fly.org/config/protocols/vmess.html#userobject
+
+# 高级层等用法请参考 multi.client.toml
+
+# 注意，vs不支持v2ray的 "h2" 传输方式。这是故意的，因为我们推荐直接使用grpc。grpc也是基于h2的，而且vs中还可以回落到真实h2服务器。

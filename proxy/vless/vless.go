@@ -41,30 +41,30 @@ func WriteAddrTo(writeBuf utils.ByteWriter, raddr netLayer.Addr) {
 
 }
 
-func GenerateXrayShareURL(dialconf *proxy.DialConf) string {
+func GenerateXrayShareURL(dc *proxy.DialConf) string {
 
 	var u url.URL
 
 	u.Scheme = Name
-	u.User = url.User(dialconf.Uuid)
-	if dialconf.IP != "" {
-		u.Host = dialconf.IP + ":" + strconv.Itoa(dialconf.Port)
+	u.User = url.User(dc.Uuid)
+	if dc.IP != "" {
+		u.Host = dc.IP + ":" + strconv.Itoa(dc.Port)
 	} else {
-		u.Host = dialconf.Host + ":" + strconv.Itoa(dialconf.Port)
+		u.Host = dc.Host + ":" + strconv.Itoa(dc.Port)
 
 	}
 	q := u.Query()
-	if dialconf.TLS {
+	if dc.TLS {
 		q.Add("security", "tls")
-		if dialconf.Host != "" {
-			q.Add("sni", dialconf.Host)
+		if dc.Host != "" {
+			q.Add("sni", dc.Host)
 
 		}
-		if len(dialconf.Alpn) > 0 {
+		if len(dc.Alpn) > 0 {
 			var sb strings.Builder
-			for i, s := range dialconf.Alpn {
+			for i, s := range dc.Alpn {
 				sb.WriteString(s)
-				if i != len(dialconf.Alpn)-1 {
+				if i != len(dc.Alpn)-1 {
 					sb.WriteString(",")
 				}
 			}
@@ -77,28 +77,28 @@ func GenerateXrayShareURL(dialconf *proxy.DialConf) string {
 
 		//}
 	}
-	if dialconf.AdvancedLayer != "" {
-		q.Add("type", dialconf.AdvancedLayer)
+	if dc.AdvancedLayer != "" {
+		q.Add("type", dc.AdvancedLayer)
 
-		switch dialconf.AdvancedLayer {
+		switch dc.AdvancedLayer {
 		case "ws":
-			if dialconf.Path != "" {
-				q.Add("path", dialconf.Path)
+			if dc.Path != "" {
+				q.Add("path", dc.Path)
 			}
-			if dialconf.Host != "" {
-				q.Add("host", dialconf.Host)
+			if dc.Host != "" {
+				q.Add("host", dc.Host)
 
 			}
 		case "grpc":
-			if dialconf.Path != "" {
-				q.Add("serviceName", dialconf.Path)
+			if dc.Path != "" {
+				q.Add("serviceName", dc.Path)
 			}
 		}
 	}
 
 	u.RawQuery = q.Encode()
-	if dialconf.Tag != "" {
-		u.Fragment = dialconf.Tag
+	if dc.Tag != "" {
+		u.Fragment = dc.Tag
 
 	}
 

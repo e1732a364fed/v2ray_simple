@@ -153,6 +153,8 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 
 		_, encerr := io.Copy(encoder, bytes.NewReader(p))
 		if encerr != nil {
+			utils.PutBuf(outBuf)
+
 			close(edc.firstHandshakeOkChan)
 			return 0, utils.ErrInErr{ErrDesc: "Err when encode early data", ErrDetail: encerr}
 		}
@@ -162,6 +164,8 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 
 		br, _, err := edc.dialer.Upgrade(edc.Conn, edc.requestURL)
 		if err != nil {
+			utils.PutBuf(outBuf)
+
 			close(edc.firstHandshakeOkChan)
 			return 0, err
 		}

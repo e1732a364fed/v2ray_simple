@@ -1,17 +1,20 @@
-# 本文件 可 测试socks 的 dial, 以及密码认证 等功能 是否可用；
+# 本文件可测试socks 的 listen/dial, 以及密码认证 等功能 是否可用；
 # 本文件所定义的传导链是： ->socks5->socks5->direct
+# 运行该配置后，浏览器设置好socks5代理指向 my_socks5_1，应可正常上网
 
 # 另外你可以看到，listen、dial和 route的顺序是可以打乱的，
-#  这样 自己可以方便地  把相关联 的配置 放在一起。
+# 这样 自己可以方便地把相关联的配置放在一起。
 
-# vs暂未给出http代理的示例配置，因为完全和socks5类似，只需要把 protocol 改为 http即可
+# vs未给出http代理的示例配置，因为完全和socks5类似，只需要把 protocol 改为 http即可
 
+#无用户密码的情况
 [[listen]]
 tag = "my_socks5_1"
 protocol = "socks5"
 host = "127.0.0.1"
 port = 10800
 
+# 下面的dial 以及listen来测试 用户密码功能
 [[dial]]
 protocol = "socks5"
 tag = "dial1"
