@@ -34,24 +34,29 @@ type pair struct {
 	cipher.Block
 }
 
-func authUserByAuthPairList(bs []byte, authPairList []pair, anitReplayMachine *authid_antiReplayMachine) (user utils.V2rayUser, err error) {
+func authUserByAuthPairList(bs []byte, authPairList []pair, antiReplayMachine *authid_antiReplayMachine) (user utils.V2rayUser, err error) {
 	now := time.Now().Unix()
 
 	var encrypted_authid [authid_len]byte
 	copy(encrypted_authid[:], bs)
 
+	const err_desc = "Vmess AntiReplay Err,"
+
 	for _, p := range authPairList {
-		failreason := tryMatchAuthIDByBlock(now, p.Block, encrypted_authid, anitReplayMachine)
+		failreason := tryMatchAuthIDByBlock(now, p.Block, encrypted_authid, antiReplayMachine)
 		switch failreason {
 
 		case 0:
 			return p.V2rayUser, nil
-		case 1:
-			err = utils.ErrInvalidData
+		case 1: //crc
+			err = utils.ErrInErr{ErrDesc: err_desc, ErrDetail: utils.ErrInvalidData}
+			return
 		case 2:
-			err = ErrAuthID_timeBeyondGap
+			err = utils.ErrInErr{ErrDesc: err_desc, ErrDetail: ErrAuthID_timeBeyondGap}
+			return
+
 		case 3:
-			err = ErrReplayAttack
+			err = utils.ErrInErr{ErrDesc: err_desc, ErrDetail: ErrReplayAttack}
 			return
 
 		}
