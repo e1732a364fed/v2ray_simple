@@ -113,7 +113,7 @@ func (iw *IOWrapper) Close() error {
 	return nil
 }
 
-func (iw *IOWrapper) HasOwnDefaultRejectBehavior() bool {
+func (iw *IOWrapper) RejectBehaviorDefined() bool {
 
 	return iw.Rejecter != nil && iw.Rejecter.RejectBehaviorDefined()
 }
