@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	desc      = "A very simple implementation of V2Ray with some innovation\n"
+	desc      = "A very simple app\n"
 	delimiter = "===============================\n"
 	weblink   = "https://github.com/e1732a364fed/v2ray_simple/"
 )
