@@ -15,22 +15,19 @@
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
 
-verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富，轻量级，极简，用户友好，新手向。以学习编程技术为主要目标。
+只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。
 
-本作的想法是，使用自己的代码，实现v2ray的所有的好的功能（并摒弃差的功能），而且使用自主研发的更简单的架构，结合自主研发的新技术，实现反超。
+verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富，轻量级，极简，用户友好，新手向。
 
-verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
+verysimple 的基本优势是，文件小，占用内存小，速度快，配置文件格式简单容易写。对比v2ray的嵌套json式配置格式，我们的vs的配置格式完全是扁平化的, 没有那么多大括号
 
-只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。本作过于极简，极简得连logo也没有.
-
-规定，编译出的文件名必须以 verysimple 开头.
-
-verysimple 研发了一些新技术，使用自研架构，可以加速，目前基本上是全网最快，且有用户报告内存占用 比v2ray/xray 小1/3。
+vs简化了转发机制，能提高运行速度。且有用户报告内存占用 比v2ray/xray 小1/3。
 
 vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛的utls支持，grpc回落，交互模式等。
 
-总的来说，代理的编写是一个非常简单的事情，属于平民级别。
-只要不涉及复杂的tls、tcp、ip原始协议的解析，不涉及新代理协议的制定，只是制作一款代理是相当容易的。
+本作以学习编程技术为主要目标，使用自己的代码，实现v2ray的所有的好的功能，摒弃差的功能，使用自主研发的更简单的架构，结合自主研发的新技术，实现反超。
+
+vs既不是v2ray/xray的超集，也不是子集，属于并列的内核, 有交集. 因为vs用自己的架构, 并不直接来源于v2ray. 有点类似 unix 和linux的关系。
 
 ## 支持的功能
 
@@ -42,7 +39,7 @@ dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path
 
 tcp/udp(以及fullcone)/unix domain socket, tls(包括生成随机证书;客户端证书验证;rejectUnknownSni), uTls,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听,
 
-cli(**交互模式**)/**gui/vsb计划(flutter写的面板)**/apiServer, Docker, docker-compose.
+cli(**交互模式**)/**gui/[vsb计划](https://github.com/e1732a364fed/vsb)(flutter写的面板)**/apiServer, Docker, docker-compose.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -55,7 +52,9 @@ cli(**交互模式**)/**gui/vsb计划(flutter写的面板)**/apiServer, Docker, 
 
 如果是 linux服务器，可参考指导文章 [install.md](docs/install.md).
 
-电脑客户端的话直接自己到release下载就行。
+电脑客户端的话直接自己到 [release](https://github.com/e1732a364fed/v2ray_simple/releases)下载就行。
+
+本作自v1.2.5开始，还发布 vs_gui系列, 包含gui, tun 等支持，用于电脑客户端。 
 
 #### 客户端的 geoip和 geosite
 
@@ -90,6 +89,7 @@ cd v2ray_simple/cmd/verysimple && go build
 
 注意，本项目自v1.1.9开始，可执行文件的目录在 cmd/verysimple 文件夹内，而根目录 为 v2ray_simple 包。
 
+
 ## 运行方式
 
 本作支持多种运行模式，方便不同需求的同学使用
@@ -121,7 +121,7 @@ verysimple -c server.json
 
 关于url格式的具体写法，见： [url标准定义](docs/url.md)，我们定义了一种通用url格式。
 
-查看 `examples/vs.server.json` 和 `examples/vs.client.json` 就知道了，很简单的。
+查看 [examples/vs.server.json](examples/vs.server.json) 和 [examples/vs.client.json](examples/vs.client.json) 就知道了，很简单的。
 
 目前极简模式配置文件最短情况一共就4行，其中两行还是花括号
 
@@ -134,7 +134,7 @@ verysimple -c server.json
 
 ### 命令行模式
 
-学会了极简模式里的url配置后，还可以用如下命令来运行，无需配置文件
+学会了极简模式里的url配置后，还可以用如下命令来运行，无需配置文件. -D如果不指定，默认为direct
 
 ```sh
 #客户端
@@ -258,6 +258,12 @@ openssl x509 -req -days 365 -sha256  -in client.csr -CA ca.crt -CAkey ca.key -se
 <details>
 
 <summary>技术相关</summary>
+
+verysimple项目。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
+
+总的来说，代理的编写是一个非常简单的事情，属于平民级别。
+只要不涉及复杂的tls、tcp、ip原始协议的解析，不涉及新代理协议的制定，只是制作一款代理是相当容易的。
+
 
 ## 创新点
 
@@ -683,11 +689,11 @@ tproxy借鉴了 [这个](https://github.com/LiamHaworth/go-tproxy/) , （trojan-
 
 以上借鉴的代码都是用的MIT协议。
 
-vmess 的客户端代码 来自 [clash](github.com/Dreamacro/clash/transport/vmess), 使用的是 GPLv3协议。该协议直接 放在 proxy/vmess/ 文件夹下了。
+vmess 的客户端代码 来自 [clash](https://github.com/Dreamacro/clash/transport/vmess), 使用的是 GPLv3协议。该协议直接 放在 proxy/vmess/ 文件夹下了。
 
 同时通过该vmess 客户端代码 反推出了 对应的服务端代码。
 
-tun 的代码 来自 [tun2socks](github.com/xjasonlyu/tun2socks) , 使用的是 GPLv3协议。该协议直接放在 netLayer/tun 文件夹下了。
+tun 的代码 来自 [tun2socks](https://github.com/xjasonlyu/tun2socks) , 使用的是 GPLv3协议。该协议直接放在 netLayer/tun 文件夹下了。
 
 ## Stargazers over time
 

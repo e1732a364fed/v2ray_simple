@@ -4,7 +4,7 @@
 	使用 ip 配置作为 gateway 的ip
 	使用 extra.tun_selfip 作为 tun向外拨号的ip
 
-	mac默认 utun5, windows 默认 vs_wintun
+	tun device name的默认值约定： mac utun5, windows vs_wintun
 
 */
 package tun

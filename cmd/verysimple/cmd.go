@@ -24,6 +24,7 @@ import (
 var (
 	cmdPrintSupportedProtocols bool
 	cmdPrintVer                bool
+	cmdGenerateUUid            bool
 
 	download bool
 
@@ -34,6 +35,7 @@ func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
+	flag.BoolVar(&cmdGenerateUUid, "gu", false, " automatically generate a uuid for you")
 
 	//apiServer stuff
 
@@ -58,7 +60,11 @@ func runExitCommands() (atLeastOneCalled bool) {
 		atLeastOneCalled = true
 		printSupportedProtocols()
 	}
+	if cmdGenerateUUid {
+		atLeastOneCalled = true
 
+		generateAndPrintUUID()
+	}
 	return
 }
 
@@ -70,6 +76,7 @@ func runPreCommands() {
 
 		tryDownloadGeositeSource()
 	}
+
 }
 
 func generateAndPrintUUID() {
