@@ -40,7 +40,7 @@ jobs:
           #run-on-arch-action中，不能使用 GITHUB_PATH; 否则会显示 line 8: GITHUB_PATH: unbound variable
           run: |
             export PATH=$PATH:/usr/local/go/bin
-            cd cmd/verysimple/ && make -f Makefile_r_gui PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
+            cd cmd/verysimple/ && make -f Makefile_r_gui.mk PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
@@ -113,7 +113,6 @@ jobs:
         shell: bash
         run: |
           cd cmd/verysimple
-          rm verysimple*
           touch -mt $(date +%Y01010000) *.tar.xz
       
       - name: Upload binaries to release
