@@ -5,13 +5,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"net"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
 
 // isSrcClient is only for debug logging.
-func CopyTls12Handshake(isSrcClient bool, dst io.Writer, src io.Reader) error {
+func CopyTls12Handshake(isSrcClient bool, dst, src net.Conn) error {
 	var tls_plaintxt [5]byte
 	step := 0
 	thisChangeCipher := false
@@ -23,7 +25,10 @@ func CopyTls12Handshake(isSrcClient bool, dst io.Writer, src io.Reader) error {
 			)
 		}
 
+		netLayer.SetCommonReadTimeout(src)
 		_, err := io.ReadFull(src, tls_plaintxt[:])
+		netLayer.PersistRead(src)
+
 		if err != nil {
 			return err
 		}
@@ -52,7 +57,15 @@ func CopyTls12Handshake(isSrcClient bool, dst io.Writer, src io.Reader) error {
 		}
 
 		length := binary.BigEndian.Uint16(tls_plaintxt[3:])
+
+		netLayer.SetCommonReadTimeout(src)
+		netLayer.SetCommonWriteTimeout(dst)
+
 		_, err = io.Copy(dst, io.MultiReader(bytes.NewReader(tls_plaintxt[:]), io.LimitReader(src, int64(length))))
+
+		netLayer.PersistRead(src)
+		netLayer.PersistWrite(dst)
+
 		if err != nil {
 			return err
 		}

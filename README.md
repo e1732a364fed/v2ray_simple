@@ -37,7 +37,7 @@ ws(以及earlydata)/grpc(以及multiMode,uTls，以及 **支持回落的 grpcSim
 
 dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-[win/mac/linux的sockopt.device(bindToDevice)]/tcp/udp(以及fullcone)/unix domain socket, tls(包括生成随机证书;客户端证书验证;rejectUnknownSni), uTls,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听,
+[win/mac/linux的sockopt.device(bindToDevice)]/tcp/udp(以及fullcone)/unix domain socket, tls(包括生成随机证书;客户端证书验证;rejectUnknownSni), uTls, shadowTls(v1/v2) ,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听, sockopt.device (bindToDevice)
 
 cli(**交互模式**)/**gui/[vsb计划](https://github.com/e1732a364fed/vsb)(flutter写的面板)**/apiServer, Docker, docker-compose.
 

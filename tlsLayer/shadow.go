@@ -145,13 +145,16 @@ func shadowCopyHandshakeClientToFake(fakeConn, clientConn net.Conn, hashW *utils
 		if ce := utils.CanLogDebug("shadowTls2 copy "); ce != nil {
 			ce.Write(zap.Int("step", step))
 		}
+
 		netLayer.SetCommonReadTimeout(clientConn)
 
 		_, err := io.ReadFull(clientConn, header[:])
+
+		netLayer.PersistConn(clientConn)
+
 		if err != nil {
 			return nil, utils.ErrInErr{ErrDetail: err, ErrDesc: "shadowTls2, io.ReadFull err"}
 		}
-		netLayer.PersistConn(clientConn)
 
 		contentType := header[0]
 
@@ -166,7 +169,12 @@ func shadowCopyHandshakeClientToFake(fakeConn, clientConn net.Conn, hashW *utils
 		if contentType == 23 {
 			buf := utils.GetBuf()
 
+			netLayer.SetCommonReadTimeout(clientConn)
+
 			_, err = io.Copy(buf, io.LimitReader(clientConn, int64(length)))
+
+			netLayer.PersistRead(clientConn)
+
 			if err != nil {
 				utils.PutBuf(buf)
 				return nil, utils.ErrInErr{ErrDetail: err, ErrDesc: "shadowTls2, copy err1"}
@@ -190,8 +198,13 @@ func shadowCopyHandshakeClientToFake(fakeConn, clientConn net.Conn, hashW *utils
 				}
 			}
 
+			netLayer.SetCommonWriteTimeout(fakeConn)
+
 			_, err = io.Copy(fakeConn, io.MultiReader(bytes.NewReader(header[:]), buf))
 			utils.PutBuf(buf)
+
+			netLayer.PersistWrite(fakeConn)
+
 			if err != nil {
 				return nil, utils.ErrInErr{ErrDetail: err, ErrDesc: "shadowTls2, copy err2"}
 			}
@@ -199,10 +212,13 @@ func shadowCopyHandshakeClientToFake(fakeConn, clientConn net.Conn, hashW *utils
 		} else {
 
 			netLayer.SetCommonReadTimeout(clientConn)
+			netLayer.SetCommonWriteTimeout(fakeConn)
 
 			_, err = io.Copy(fakeConn, io.MultiReader(bytes.NewReader(header[:]), io.LimitReader(clientConn, int64(length))))
 
-			netLayer.PersistConn(clientConn)
+			netLayer.PersistRead(clientConn)
+			netLayer.PersistWrite(fakeConn)
+
 			if err != nil {
 				return nil, utils.ErrInErr{ErrDetail: err, ErrDesc: "shadowTls2, copy err3"}
 			}

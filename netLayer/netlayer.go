@@ -35,6 +35,14 @@ func PersistConn(c net.Conn) {
 	c.SetDeadline(time.Time{})
 }
 
+func PersistRead(c net.Conn) {
+	c.SetReadDeadline(time.Time{})
+}
+
+func PersistWrite(c net.Conn) {
+	c.SetWriteDeadline(time.Time{})
+}
+
 // default recommended handshake read timeout
 const DefaultCommonReadTimeout = time.Second * 4
 
@@ -43,6 +51,11 @@ var CommonReadTimeout = DefaultCommonReadTimeout
 // set read timeout after CommonReadTimeout
 func SetCommonReadTimeout(c net.Conn) error {
 	return c.SetReadDeadline(time.Now().Add(CommonReadTimeout))
+}
+
+// 暂时也使用 CommonReadTimeout
+func SetCommonWriteTimeout(c net.Conn) error {
+	return c.SetWriteDeadline(time.Now().Add(CommonReadTimeout))
 }
 
 func IsTCP(r any) *net.TCPConn {
