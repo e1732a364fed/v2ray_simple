@@ -130,7 +130,7 @@ func RandPort(mustValid, isudp bool, depth int) (p int) {
 
 //use a new seed each time called
 func RandPortStr_safe(mustValid, isudp bool) string {
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 	return strconv.Itoa(RandPort(mustValid, isudp, 0))
 }
 
