@@ -42,7 +42,7 @@ func bindToDevice(fd int, device string, is6 bool) {
 		}
 	} else {
 
-		//https://github.com/xjasonlyu/tun2socks/pull/192/files
+		//https://github.com/xjasonlyu/tun2socks/pull/192
 
 		// For IPv4, this parameter must be an interface index in network byte order.
 		// Ref: https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options
