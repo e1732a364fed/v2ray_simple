@@ -15,7 +15,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/profile v1.6.0
-	github.com/refraction-networking/utls v1.1.0
+	github.com/refraction-networking/utls v1.1.5
 	github.com/xtaci/smux v1.5.16
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/atomic v1.9.0
@@ -31,6 +31,8 @@ require (
 
 require (
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
+	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 )
 
