@@ -19,6 +19,7 @@ grpcSimple包 是很棒 很有用的 实现，而且支持  grpc的 path 的回�
 grpc虽然是定义 serviceName的，但是实际上和其他http请求一样，是用的一个path，
 
 path就是  /serviceName/Tun
+之所以叫Tun，只不过是为了兼容xray/v2ray，技术上叫啥都行
 
 Fallback
 

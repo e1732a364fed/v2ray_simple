@@ -1,25 +1,23 @@
 package http
 
 import (
+	"github.com/BurntSushi/toml"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
-const tempClientConfStr = `
-[[listen]]
-protocol = "http"
-`
-
 func SetupTmpProxyServer() (clientEndInServer proxy.Server, proxyUrl string, err error) {
+	const tempClientConfStr = `
+	protocol = "http"
+	`
 
-	var clientConf proxy.StandardConf
-
-	clientConf, err = proxy.LoadTomlConfStr(tempClientConfStr)
+	var lc proxy.ListenConf
+	_, err = toml.Decode(tempClientConfStr, &lc)
 	if err != nil {
 		return
 	}
 
-	clientEndInServer, err = proxy.NewServer(clientConf.Listen[0])
+	clientEndInServer, err = proxy.NewServer(&lc)
 	if err != nil {
 		return
 	}

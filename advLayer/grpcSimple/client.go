@@ -175,7 +175,7 @@ func (c *Client) GetCommonConn(underlay net.Conn) (any, error) {
 		if c.cachedTransport != nil {
 			return c.cachedTransport, nil
 		} else {
-			return nil, nil
+			return nil, errors.New("grpcSimple.GetCommonConn: underlay==nil and no cachedTranspot")
 		}
 	} else {
 		return underlay, nil

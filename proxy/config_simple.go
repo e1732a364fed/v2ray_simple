@@ -54,7 +54,7 @@ func LoadSimpleConfigFromStr(str string) (config SimpleConf, hasE bool, E utils.
 	return
 }
 
-func loadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *httpLayer.ClassicFallback, err error) {
+func LoadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *httpLayer.ClassicFallback, err error) {
 	//默认认为所有其他后缀的都是json格式，因为有时会用 server.json.vless 这种写法
 	// 默认所有json格式的文件都为 极简模式
 
@@ -79,7 +79,7 @@ func loadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *h
 }
 
 //listenURL 不可为空。dialURL如果为空，会自动被设为 DirectURL
-func loadSimpleConf_byUrl(listenURL, dialURL string) (simpleConf SimpleConf, err error) {
+func LoadSimpleConf_byUrl(listenURL, dialURL string) (simpleConf SimpleConf, err error) {
 
 	if dialURL == "" {
 		dialURL = DirectURL

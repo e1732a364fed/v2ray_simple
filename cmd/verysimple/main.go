@@ -33,9 +33,6 @@ var (
 	dialURL            string //用于命令行模式
 	//jsonMode       int
 
-	standardConf proxy.StandardConf
-	simpleConf   proxy.SimpleConf
-
 	allServers = make([]proxy.Server, 0, 8) //储存除tproxy之外 所有运行的 inServer
 	allClients = make([]proxy.Client, 0, 8)
 
@@ -201,26 +198,11 @@ func mainFunc() (result int) {
 
 	}
 
-	standardConf, simpleConf, configMode, mainFallback, loadConfigErr = proxy.LoadConfig(configFileName, listenURL, dialURL, 0)
+	configMode, mainFallback, loadConfigErr = LoadConfig(configFileName, listenURL, dialURL, 0)
 
 	if loadConfigErr == nil {
 
-		if appConf := standardConf.App; appConf != nil {
-
-			if appConf.LogFile != nil && utils.GivenFlags["lf"] == nil {
-				utils.LogOutFileName = *appConf.LogFile
-
-			}
-
-			if appConf.LogLevel != nil && utils.GivenFlags["ll"] == nil {
-				utils.LogLevel = *appConf.LogLevel
-
-			}
-			if appConf.NoReadV && utils.GivenFlags["readv"] == nil {
-				netLayer.UseReadv = false
-			}
-
-		}
+		setupByAppConf(appConf)
 
 	}
 
@@ -296,7 +278,7 @@ func mainFunc() (result int) {
 		}
 	case proxy.StandardMode:
 
-		if appConf := standardConf.App; appConf != nil {
+		if appConf != nil {
 			Default_uuid = appConf.DefaultUUID
 		}
 
@@ -350,8 +332,12 @@ func mainFunc() (result int) {
 
 			}
 		}
+		var MyCountryISO_3166 string
+		if appConf != nil {
+			MyCountryISO_3166 = appConf.MyCountryISO_3166
+		}
 
-		routingEnv = proxy.LoadEnvFromStandardConf(&standardConf)
+		routingEnv = proxy.LoadEnvFromStandardConf(&standardConf, MyCountryISO_3166)
 
 	}
 

@@ -137,12 +137,12 @@ protocol = "direct"
 
 	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, version, network)
 
-	clientConf, err := proxy.LoadTomlConfStr(testClientConfStr)
+	clientConf, err := proxy.LoadStandardConfFromTomlStr(testClientConfStr)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
-	serverConf, err := proxy.LoadTomlConfStr(testServerConfStr)
+	serverConf, err := proxy.LoadStandardConfFromTomlStr(testServerConfStr)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()

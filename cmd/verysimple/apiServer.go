@@ -31,8 +31,8 @@ func tryRunApiServer() {
 
 	var thepass string
 
-	if standardConf.App != nil {
-		if ap := standardConf.App.AdminPass; ap != "" {
+	if appConf != nil {
+		if ap := appConf.AdminPass; ap != "" {
 			thepass = ap
 		}
 	} else if apiServerAdminPass != "" {

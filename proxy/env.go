@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"sync"
-	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -38,7 +37,7 @@ func (re *RoutingEnv) DelClient(tag string) {
 	re.clientsTagMapMutex.Unlock()
 }
 
-func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv) {
+func LoadEnvFromStandardConf(standardConf *StandardConf, MyCountryISO_3166 string) (routingEnv RoutingEnv) {
 
 	routingEnv.ClientsTagMap = make(map[string]Client)
 
@@ -50,28 +49,13 @@ func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv)
 		routingEnv.DnsMachine = netLayer.LoadDnsMachine(dnsConf)
 	}
 
-	var hasAppLevelMyCountry bool
-
-	if appConf := standardConf.App; appConf != nil {
-
-		hasAppLevelMyCountry = appConf.MyCountryISO_3166 != ""
-
-		if appConf.UDP_timeout != nil {
-			minutes := *appConf.UDP_timeout
-			if minutes > 0 {
-				netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
-			}
-		}
-	}
-
-	if standardConf.Route != nil || hasAppLevelMyCountry {
+	if standardConf.Route != nil || MyCountryISO_3166 != "" {
 
 		netLayer.LoadMaxmindGeoipFile("")
 
 		rp := netLayer.NewRoutePolicy()
-		if hasAppLevelMyCountry {
-			rp.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
-
+		if MyCountryISO_3166 != "" {
+			rp.AddRouteSet(netLayer.NewRouteSetForMyCountry(MyCountryISO_3166))
 		}
 
 		rp.LoadRulesForRoutePolicy(standardConf.Route)

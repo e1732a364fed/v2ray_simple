@@ -121,25 +121,24 @@ verysimple -c client.json
 verysimple -c server.json
 ```
 
-关于 vlesss 的配置，查看 vs.server.json和 vs.client.json 就知道了，很简单的。
-
-目前极简模式配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
-
 极简模式使用json格式，内部使用链接url的方式，所以非常节省空间;
+
+关于url格式的具体写法，见： [url标准定义](docs/url.md)，我们定义了一种通用url格式。
+
+查看 `examples/vs.server.json` 和 `examples/vs.client.json` 就知道了，很简单的。
+
+目前极简模式配置文件最短情况一共就4行，其中两行还是花括号
 
 极简模式 不支持 复杂分流，dns 等高级特性。极简模式只支持通过 mycountry进行 geoip分流 这一种分流情况。
 
-极简模式暂不支持 ws/grpc 特性.
-
 极简模式继承自 v2simple, 理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
 
-verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
+另外，verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
-关于url格式，见： [url标准定义](docs/url.md)
 
 ### 命令行模式
 
-如果学会了极简模式里的url配置后，还可以用如下命令来运行，无需配置文件
+学会了极简模式里的url配置后，还可以用如下命令来运行，无需配置文件
 
 ```sh
 #客户端
@@ -167,7 +166,9 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
-**本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。**
+**examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。**
+
+我们大部分的toml示例文件都有一定的教学意义，希望用户能都读一下。
 
 ### 兼容模式
 
@@ -175,27 +176,29 @@ verysimple -c server.toml
 
 ### 交互模式
 
-已经推出了交互模式, 可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
+交互模式可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
 
-交互模式有很多好玩的功能，可以试试。
+交互模式有很多好玩的功能，可以试试，使用起来很灵活。
 
-运行 `verysimple -i` 即可进入交互模式
+运行 `verysimple -i` 即可进入交互模式; 你也可以在-c指定了配置文件的同时 指定-i，这样就可以边运行边动态调整了。
 
 目前支持如下功能：
 
 1. 生成随机ssl证书
-2. 交互生成配置，超级强大
-3. 热删除配置
-4. 热加载新配置文件
-5. 调节日志等级
-6. 调节hy手动挡
-7. 生成一个随机的uuid供你参考
-8. 下载geosite文件夹
-9. 下载geoip文件(GeoLite2-Country.mmdb)
-10. 打印当前版本所支持的所有协议
-11. 查询当前状态
-12. 为tproxy设置iptables(12345端口)
-13. 为tproxy移除iptables
+2. 【交互生成配置】，超级强大
+3. 【生成分享链接】<-当前的配置
+4. 热删除配置
+5. 【热加载】新配置文件
+6. 【热加载】新配置url
+7. 调节日志等级
+8. 调节hy手动挡
+9. 生成一个随机的uuid供你参考
+10. 下载geosite文件夹
+11. 下载geoip文件(GeoLite2-Country.mmdb)
+12. 打印当前版本所支持的所有协议
+13. 查询当前状态
+14. 为tproxy设置iptables(12345端口)
+15. 为tproxy移除iptables
 
 
 交互生成配置后还可以输出到文件、加载到当前运行环境、生成分享链接。

@@ -145,9 +145,12 @@ func generateConfigFileInteractively() {
 				Domains: []string{"geosite:cn"},
 			}}
 
-			confClient.App = &proxy.AppConf{MyCountryISO_3166: "CN"}
+			var vsConfClient VSConf = VSConf{
+				AppConf:      &AppConf{MyCountryISO_3166: "CN"},
+				StandardConf: confClient,
+			}
 
-			clientStr, err = utils.GetPurgedTomlStr(confClient)
+			clientStr, err = utils.GetPurgedTomlStr(&vsConfClient)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -504,7 +507,7 @@ func interactively_hotLoadConfigFile() {
 	fmt.Printf("你输入了 %s\n", fpath)
 
 	var confMode int
-	standardConf, simpleConf, confMode, _, err = proxy.LoadConfig(fpath, "", "", 0)
+	confMode, _, err = LoadConfig(fpath, "", "", 0)
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)
