@@ -58,6 +58,7 @@ func (c *clientUDPMsgConn) WriteMsg(bs []byte, addr netLayer.Addr) (err error) {
 // implements netLayer.serverMsgConn, 完全类似tproxy
 type serverMsgConn struct {
 	netLayer.EasyDeadline
+	utils.User
 
 	hash netLayer.HashableAddr
 

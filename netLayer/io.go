@@ -8,6 +8,7 @@ import (
 )
 
 // 选择性从 OptionalReader读取, 直到 RemainFirstBufLen 小于等于0 为止；
+// 该结构 mimic utils.ReadWrapper
 type ReadWrapper struct {
 	net.Conn
 	OptionalReader    io.Reader

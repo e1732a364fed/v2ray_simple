@@ -257,7 +257,8 @@ realPart:
 	}
 
 	if ismux {
-		mm := &proxy.UserMuxMarker{
+		mm := &proxy.UserReadWrapper{
+			Mux:  true,
 			User: utils.V2rayUser(thisUUIDBytes),
 			ReadWrapper: netLayer.ReadWrapper{
 				Conn: underlay,
@@ -285,6 +286,7 @@ realPart:
 		}, targetAddr, nil
 
 	} else {
+		//返回包装过的Conn, 而不是底层underlay, 除了需要读firstpayload之外, 还为了要支持user分流
 		uc := &UserTCPConn{
 			Conn:              underlay,
 			V2rayUser:         thisUUIDBytes,

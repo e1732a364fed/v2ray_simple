@@ -165,6 +165,7 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	return
 }
 
+// 实现 utils.User
 type MethodPass struct {
 	Method, Password string
 }
@@ -185,4 +186,21 @@ func (ph *MethodPass) InitWithStr(str string) (ok bool) {
 
 	}
 	return
+}
+
+func (ph MethodPass) IdentityStr() string {
+	return ph.Password
+}
+
+func (ph MethodPass) IdentityBytes() []byte {
+	return []byte(ph.IdentityStr())
+}
+
+func (ph MethodPass) AuthStr() string {
+	return ph.Method + "\n" + ph.Password
+
+}
+func (ph MethodPass) AuthBytes() []byte {
+	return []byte(ph.AuthStr())
+
 }

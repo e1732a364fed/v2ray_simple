@@ -220,7 +220,8 @@ realPart:
 	}
 
 	if ismux {
-		mh := &proxy.UserMuxMarker{
+		mh := &proxy.UserReadWrapper{
+			Mux:  true,
 			User: theUser.(User),
 			ReadWrapper: netLayer.ReadWrapper{
 				Conn: underlay,
