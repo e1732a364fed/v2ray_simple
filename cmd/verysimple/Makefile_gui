@@ -1,12 +1,12 @@
 # 本文件的一些解释请参考 Makefile_release.
-# 本文件用于编译客户端版本的verysimple。vsc = verysimple client
+# 本文件用于编译客户端版本的verysimple。
 # 该版本使用cgo。
-# vsc因为开启了cgo，是较难交叉编译的，建议在目标平台上编译。或者搜索一下 "xgo"
+# gui因为开启了cgo，是较难交叉编译的，建议在目标平台上编译。或者搜索一下 "xgo"
 
 prefix :=vs_gui
 winsuffix       :=.exe
 
-cmd:=go build -tags "vsc $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
+cmd:=go build -tags "gui $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
 
 
 ifeq ($(OS),Windows_NT) 

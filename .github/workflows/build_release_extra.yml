@@ -8,7 +8,7 @@ on:
         required: true
 
 jobs:
-  vsc_ubuntu_arm64:
+  gui_ubuntu_arm64:
     runs-on: ubuntu-18.04
     env:
       GOARCH: 'arm64'
@@ -40,7 +40,7 @@ jobs:
           #run-on-arch-action中，不能使用 GITHUB_PATH 会显示 line 8: GITHUB_PATH: unbound variable
           run: |
             export PATH=$PATH:/usr/local/go/bin
-            cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
+            cd cmd/verysimple/ && make -f Makefile_r_gui PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
@@ -50,7 +50,7 @@ jobs:
           tag: ${{ github.event.inputs.tagName }}
           file_glob: true
 
-  vsc:
+  gui:
     strategy:
       matrix:
         os: [ubuntu-18.04, windows-latest, macos-latest]
@@ -95,7 +95,7 @@ jobs:
 
       - name: Build
         run: |
-          cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=${{ env.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
+          cd cmd/verysimple/ && make -f Makefile_r_gui PACKNAME=${{ env.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
       
       - name: touch xz archive
         shell: bash

@@ -1,8 +1,8 @@
-//go:build vsc
+//go:build gui
 
 package main
 
-// vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
+// gui界面, 所属计划为 vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
 
 import (
 	"log"
@@ -27,9 +27,10 @@ func makeBasicControlsPage() ui.Control {
 	hbox := ui.NewHorizontalBox()
 	hbox.SetPadded(true)
 	vbox.Append(hbox, false)
+	cb := ui.NewCheckbox("Enable")
+	hbox.Append(cb, false)
 
 	hbox.Append(ui.NewButton("Button"), false)
-	hbox.Append(ui.NewCheckbox("Checkbox"), false)
 
 	vbox.Append(ui.NewLabel("This is a label. Right now, labels can only span one line."), false)
 
