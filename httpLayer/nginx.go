@@ -29,7 +29,7 @@ const (
 		return 403;
 	}
 	*/
-	Err403response_nginx = "HTTP/1.1 403 Forbidden\r\nServer: nginx/1.21.5\r\nDate: Sat, 02 Jan 2006 15:04:05 MST\r\nContent-Type: text/html\r\nContent-Length: 183\r\nConnection: keep-alive\r\n\r\n" + Nginx403_html
+	Err403response_nginx = "HTTP/1.1 403 Forbidden\r\nServer: nginx/1.21.5\r\nDate: Sat, 02 Jan 2006 15:04:05 MST\r\nContent-Type: text/html\r\nContent-Length: 169\r\nConnection: keep-alive\r\n\r\n" + Nginx403_html
 
 	//备注
 	// 1. vim中， "\r" 显示为 ^M, 输入它是用 ctrl + V + M
@@ -76,8 +76,6 @@ func GetNginxResponse(template string) string {
 //mimic GetNginx400Response()
 func SetNginx400Response(rw http.ResponseWriter) {
 
-	//不过发现，给h2 的rw 设置 头部是没用的，不知何故。
-
 	rw.Header().Add("Server", "nginx/1.21.5")
 	rw.Header().Add("Content-Type", "text/html")
 	rw.Header().Add("Connection", "close")
@@ -88,7 +86,9 @@ func SetNginx400Response(rw http.ResponseWriter) {
 
 	rw.Header().Add("Date", tStr)
 
-	rw.Header().Add("Content-Length", strconv.Itoa(len(bs_Nginx400_html)))
+	//rw.Header().Add("Content-Length", strconv.Itoa(len(bs_Nginx400_html)))//真实nginx 400响应里不含 Content-Length
+	// 情况是这样的： 如果 返回的是html，则 Connection 是 keep-alive, 并且 有 Content-Length；
+	// 如果返回的是纯字符串，则Connection 是 Close，并 没有 Content-Length；
 
 	rw.WriteHeader(http.StatusBadRequest)
 
@@ -102,7 +102,7 @@ func SetNginx400Response(rw http.ResponseWriter) {
 func SetNginx403Response(rw http.ResponseWriter) {
 	rw.Header().Add("Server", "nginx/1.21.5")
 	rw.Header().Add("Content-Type", "text/html")
-	rw.Header().Add("Connection", "close")
+	rw.Header().Add("Connection", "keep-alive")
 
 	t := time.Now().UTC().In(nginxTimezone)
 	tStr := t.Format(Nginx_timeFormatStr)
