@@ -75,4 +75,4 @@ protocol = "reject"
 
 [[route]]
 toTag = "my_special_tag_for_this_guy"
-user = ["a684455c-b14f-11ea-bf0d-42010aaa0004"]
+user = ["a684455c-b14f-11ea-bf0d-42010aaa0004"] #通过 listen 所得到 的 user的不同 来分流

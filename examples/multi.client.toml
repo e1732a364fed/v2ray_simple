@@ -42,6 +42,7 @@ port = 1080
 protocol = "socks5"
 host = "127.0.0.1"
 port = 10800
+#fullcone = true
 
 [[listen]]
 protocol = "dokodemo"			# dokodemo协议会指定一个目标，并通过我们的节点来请求
@@ -91,7 +92,7 @@ path = "ohmygod_verysimple_is_very_simple"
 [[dial]]
 tag = "my_direct"
 protocol = "direct"
-fullcone = true
+#fullcone = true
 
 [[dial]]
 tag = "my_reject"
@@ -99,6 +100,8 @@ protocol = "reject"		# reject 和 v2ray的 blackhole 等价.
 # extra = { type = "http" } 	#当 type 为 "http"时, reject 会发回一个简单的 HTTP 403 数据包，然后关闭连接。
 
 # route就是分流规则，分流规则从上到下匹配，匹配到哪一个就用哪一个. 
+
+# 如果没匹配到任何 一个route项，那就会流向默认的 dial，即第一个 给出的 dial
 
 # 下面这个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
 #[[route]]
@@ -110,24 +113,22 @@ protocol = "reject"		# reject 和 v2ray的 blackhole 等价.
 
 
 [[route]]
-
-
-toTag = "my_ws1"
 country = ["US"]    
+toTag = "my_ws1"
 
 # 上面这个规则的 意思就是所有向US国家的ip请求的数据 全都 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
 # country 的含义请阅读 vlesss.client.toml
 
 # 比如下面这个就是 将CN国家的ip 导向自己的grpc节点
 #[[route]]
-#toTag = "my_grpc"
 #country = ["CN"]    
+#toTag = "my_grpc"
 
 
 # 比如下面这个就是 将CN国家的ip进行直连
 #[[route]]
-#toTag = "direct"
 #country = ["CN"]    
+#toTag = "direct"
 
 # 本示例为了测试节点可用性, 默认将直连的路由注释掉了, 如果你在CN国家并想直连CN的ip, 请取消注释上面三行. 并移除其它路由CN的route项
 
@@ -135,8 +136,8 @@ country = ["US"]
 # 下面这种 toTag 传入列表的用法 非常简洁, 可以达到负载均衡的效果,
 # 每次路由US国家的流量都会随机从列表中选一项
 #[[route]]
-#toTag = ["my_vps1","myvps2"]
 #country = ["US"]
+#toTag = ["my_vps1","myvps2"]
 
 
 
@@ -159,8 +160,8 @@ country = ["US"]
 
 # 比如这个就是 将CN国家的域名 导向自己的grpc节点
 [[route]]
-toTag = "my_grpc"
 domain = ["geosite:cn"]
+toTag = "my_grpc"
 
 # 其它匹配:
 # network = ["tcp","udp"]	# 匹配 实际客户数据的 传输层协议

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/cipher"
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -108,6 +109,9 @@ func (r *aeadReader) Read(b []byte) (int, error) {
 	l := binary.BigEndian.Uint16(r.buf[:lenSize])
 	if l == 0 {
 		return 0, nil
+	}
+	if l > chunkSize {
+		return 0, fmt.Errorf("l>chunkSize, %d", l) //有可能出现这种情况
 	}
 
 	// get payload

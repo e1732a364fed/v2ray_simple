@@ -223,7 +223,9 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (leftBuf *bytes.Buffer, er
 			switch key {
 			case "Content-Length", "Date":
 				//go官方包会主动添加 Content-Length
-				// 而 v2ray 会 主动添加 Date
+				// 而 v2ray 会 主动添加 Date, 还会加 User-Agent: Go-http-client/1.1
+
+				//所以最好在配置文件中明示出 自己定义的 User-Agent
 			default:
 
 				err = utils.ErrInErr{ErrDesc: "ReadRequest failed, unknown header", ErrDetail: utils.ErrInvalidData, Data: hs}
