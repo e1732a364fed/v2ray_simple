@@ -10,7 +10,6 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
-	"github.com/e1732a364fed/v2ray_simple/proxy/vless"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -99,11 +98,9 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 			case "socks5":
 				isTlsDirectly = true
 
-			case "vless":
-				vc := proxy_client.(*vless.Client)
-				if vc.Version() > 0 {
-					isTlsDirectly = true
-				}
+			case "vless_1":
+
+				isTlsDirectly = true
 
 			}
 
