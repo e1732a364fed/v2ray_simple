@@ -68,7 +68,13 @@ func (*Client) GetCreator() proxy.ClientCreator {
 func (*Client) Name() string {
 	return Name
 }
-
+func (c *Client) Network() string {
+	if c.TransportLayer == "" {
+		return netLayer.DualNetworkName
+	} else {
+		return c.TransportLayer
+	}
+}
 func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (conn io.ReadWriteCloser, err error) {
 	conn = c.cipher.StreamConn(underlay)
 

@@ -1215,10 +1215,13 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 		}
 
 		var na net.Addr
-		if realTargetAddr.Network == "tcp" {
+		switch realTargetAddr.Network {
+		case "tcp":
 			na = client.LocalTCPAddr()
-		} else if realTargetAddr.Network == "udp" {
+		case "udp":
 			na = client.LocalUDPAddr()
+		case netLayer.DualNetworkName:
+			realTargetAddr.Network = targetAddr.Network
 		}
 
 		clientConn, err = realTargetAddr.Dial(client.GetSockopt(), na)

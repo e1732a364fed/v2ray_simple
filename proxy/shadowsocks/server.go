@@ -57,6 +57,16 @@ func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format in
 
 }
 
+func (ServerCreator) AfterCommonConfServer(ps proxy.Server) (err error) {
+	s := ps.(*Server)
+
+	if s.TransportLayer != "tcp" {
+
+		s.LUA, err = net.ResolveUDPAddr("udp", s.AddrStr())
+	}
+	return
+}
+
 type Server struct {
 	proxy.Base
 
@@ -78,6 +88,14 @@ func newServer(info MethodPass, lc *proxy.ListenConf) *Server {
 }
 func (*Server) Name() string {
 	return Name
+}
+
+func (s *Server) Network() string {
+	if s.TransportLayer == "" {
+		return netLayer.DualNetworkName
+	} else {
+		return s.TransportLayer
+	}
 }
 
 func (s *Server) SelfListen() (is, _, udp bool) {
@@ -151,6 +169,9 @@ func (s *Server) StartListen(_ chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- pr
 	}
 	pc := s.cipher.PacketConn(uc)
 
+	if ce := utils.CanLogInfo("shadowsocks listening udp"); ce != nil {
+		ce.Write(zap.String("listen addr", s.LUA.String()))
+	}
 	//逻辑完全类似tproxy，使用一个map存储不同终端的链接
 	go func() {
 
@@ -200,6 +221,7 @@ func (s *Server) StartListen(_ chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- pr
 				}
 				continue
 			}
+			destAddr.Network = "udp"
 
 			conn.readChan <- netLayer.AddrData{Data: readbuf.Bytes(), Addr: destAddr}
 
