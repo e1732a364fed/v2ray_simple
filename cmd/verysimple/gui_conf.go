@@ -267,6 +267,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 
 	{
 		setUuid := func() {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].UUID = uuidE.Text()
 			} else {
@@ -328,6 +331,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		tagE.OnChanged(func(e *ui.Entry) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].Tag = tagE.Text()
 			} else {
@@ -337,6 +343,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		hostE.OnChanged(func(e *ui.Entry) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].Host = hostE.Text()
 			} else {
@@ -345,6 +354,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		ipE.OnChanged(func(e *ui.Entry) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].IP = ipE.Text()
 			} else {
@@ -353,6 +365,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		portE.OnChanged(func(s *ui.Spinbox) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].Port = portE.Value()
 			} else {
@@ -361,6 +376,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		tlsC.OnToggled(func(c *ui.Checkbox) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].TLS = tlsC.Checked()
 			} else {
@@ -370,6 +388,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		tlsInsC.OnToggled(func(c *ui.Checkbox) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].Insecure = tlsInsC.Checked()
 			} else {
@@ -379,10 +400,16 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 
 		if !isDial {
 			keyE.OnChanged(func(e *ui.Entry) {
+				if curSelectedTagIdx < 0 {
+					return
+				}
 				sc.Listen[curSelectedTagIdx].TLSKey = keyE.Text()
 			})
 
 			certE.OnChanged(func(e *ui.Entry) {
+				if curSelectedTagIdx < 0 {
+					return
+				}
 				sc.Listen[curSelectedTagIdx].TLSCert = certE.Text()
 			})
 		}
@@ -424,6 +451,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		pathE.OnChanged(func(e *ui.Entry) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].Path = pathE.Text()
 			} else {
@@ -432,6 +462,9 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 		})
 
 		earlyC.OnToggled(func(c *ui.Checkbox) {
+			if curSelectedTagIdx < 0 {
+				return
+			}
 			if isDial {
 				sc.Dial[curSelectedTagIdx].IsEarly = earlyC.Checked()
 			} else {
