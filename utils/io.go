@@ -227,3 +227,15 @@ func (cc *MultiCloser) Close() (result error) {
 	})
 	return
 }
+
+type SimpleCloser interface {
+	Close()
+}
+type NilCloserWrapper struct {
+	SimpleCloser
+}
+
+func (nc NilCloserWrapper) Close() error {
+	nc.SimpleCloser.Close()
+	return nil
+}

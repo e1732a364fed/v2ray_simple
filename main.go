@@ -806,9 +806,20 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 				if err != nil {
 
-					if !errors.Is(err, os.ErrDeadlineExceeded) {
+					notTimeout := true
+
+					if errors.Is(err, os.ErrDeadlineExceeded) {
+						notTimeout = false
+					} else if toe, ok := err.(*net.OpError); ok { //在tun中使用gvisor时会遇到这种情况
+						if toe.Timeout() {
+							notTimeout = false
+						}
+					}
+
+					if notTimeout {
 
 						if n <= 0 {
+
 							if ce := iics.CanLogErr("Failed in reading first payload, not because of timeout, will hung up"); ce != nil {
 								ce.Write(
 									zap.String("target", targetAddr.String()),

@@ -16,8 +16,20 @@ func init() {
 			utils.Warn("tun auto route called, but no direct list given. auto route will not run.")
 		}
 
+		out, err := exec.Command("ifconfig", tunDevName, tunIP, tunGateway, "up").Output()
+		if ce := utils.CanLogInfo("auto route setup tun ip"); ce != nil {
+			ce.Write(zap.String("output", string(out)))
+		}
+		if err != nil {
+			if ce := utils.CanLogErr("auto route failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return
+		}
+
 		params := "-nr -f inet"
-		out, err := exec.Command("netstat", strings.Split(params, " ")...).Output()
+		out, err = exec.Command("netstat", strings.Split(params, " ")...).Output()
+
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {
 				ce.Write(zap.Error(err))
@@ -91,7 +103,7 @@ func init() {
 			}
 		}
 
-		utils.Warn("auto route succeed!")
+		utils.Info("auto route succeed!")
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {

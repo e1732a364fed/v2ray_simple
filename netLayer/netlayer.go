@@ -173,3 +173,13 @@ type UDPRequestInfo struct {
 	MsgConn
 	Target Addr
 }
+
+type ChanCloseConn struct {
+	net.Conn
+	CChan chan struct{}
+}
+
+func (c *ChanCloseConn) Close() error {
+	close(c.CChan)
+	return nil
+}

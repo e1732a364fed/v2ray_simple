@@ -11,6 +11,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"runtime"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun"
@@ -165,22 +166,34 @@ func (s *Server) Stop() {
 func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
 	s.stopped = false
 	//log.Println(s.devName, s.selfip, s.realIP, s.mask)
-	realname, tunDev, err := tun.CreateTun(s.devName, s.selfip, s.realIP, s.mask, s.tun_dnsList)
+	if s.devName == "" && runtime.GOOS == "darwin" {
+		s.devName = "utun5"
+	}
+	tunDev, err := tun.Open(s.devName)
+	if err != nil {
+		if ce := utils.CanLogErr("tun open failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		return nil
+	}
+
+	if s.autoRoute && autoRouteFunc != nil {
+		utils.Info("tun running auto table")
+		autoRouteFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
+	}
+	s.infoChan = tcpRequestChan
+	s.udpRequestChan = udpRequestChan
+
+	newTchan, newUchan, closer, err := tun.Listen(tunDev)
+
 	if err != nil {
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return nil
 	}
-	s.devName = realname
-	if s.autoRoute && autoRouteFunc != nil {
-		utils.Info("tun running auto table")
-		autoRouteFunc(realname, s.realIP, s.selfip, s.autoRouteDirectList)
-	}
-	s.infoChan = tcpRequestChan
-	s.udpRequestChan = udpRequestChan
 
-	newTchan, newUchan, lwipcloser := tun.ListenTun(tunDev)
+	//newTchan, newUchan, lwipcloser := tun.Listen(tunDev)
 	go func() {
 		for tr := range newTchan {
 			if s.stopped {
@@ -205,7 +218,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			udpRequestChan <- ur
 		}
 	}()
-	s.lwipCloser = lwipcloser
+	s.lwipCloser = closer
 
 	return s
 }
