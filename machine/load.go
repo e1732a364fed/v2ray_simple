@@ -68,7 +68,7 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 			continue
 		}
 
-		if hot {
+		if hot && m.running {
 			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.routingEnv, &m.GlobalInfo)
 			if lis != nil {
 				m.listenCloserList = append(m.listenCloserList, lis)

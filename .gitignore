@@ -33,3 +33,5 @@ fakeca.crt
 vs_qrcode.png
 wintun/
 wintun.dll
+*.aar
+*.jar

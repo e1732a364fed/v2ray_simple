@@ -11,8 +11,10 @@
 [[listen]]
 protocol = "tun"
 
-# tun Server使用 host 配置作为 tun device name
-# 使用 ip 配置作为 gateway 的ip , 若不给出，默认为 10.1.0.20
+# host = "mydev1"       # 使用 host 配置作为 tun device name, 若不给出, vs会自动分配一个名称
+# ip = "10.1.0.20"      # 使用 ip 配置作为 gateway 的ip , 若不给出，默认为 10.1.0.20
+
+
 # 使用 extra.tun_selfip 作为 tun向外拨号的ip, 若不给出, 默认为 10.1.0.10 （windows上不配置该项）
 
 # 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 目前的自动配置逻辑 完全仿照上面的路由配置指导。
@@ -65,6 +67,7 @@ utls = true
 # 需要管理员权限(sudo)运行vs_gui 才能自动修改路由表 或者创建tun设备
 
 # windows上需要下载 wintun.dll 到vs可执行文件旁边, https://www.wintun.net/builds/wintun-0.14.1.zip
+# 运行 vs加 -d 参数 即可自动下载该dll
 
 ###############################################################
 

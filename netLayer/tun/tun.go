@@ -19,10 +19,12 @@ import (
 	"io"
 	"log"
 	"net"
+	"runtime"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/device"
+	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/device/fdbased"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/device/tun"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/option"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -43,7 +45,13 @@ func Open(name string) (device.Device, error) {
 	if name == "" {
 		return nil, errors.New("tun: dev name can't be empty")
 	}
-	return tun.Open(name, uint32(utils.MTU))
+
+	if runtime.GOOS == "android" {
+		return fdbased.Open(name, uint32(utils.MTU))
+
+	} else {
+		return tun.Open(name, uint32(utils.MTU))
+	}
 }
 
 type StackCloser struct {

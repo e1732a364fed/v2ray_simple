@@ -215,6 +215,10 @@ func (m *M) printState_routePolicy(w io.Writer) {
 	}
 }
 
+func (m *M) EasyPrintState() {
+	m.PrintAllState(os.Stdout, true)
+}
+
 func (m *M) PrintAllState(w io.Writer, printRouteEnv bool) {
 	if w == nil {
 		w = os.Stdout

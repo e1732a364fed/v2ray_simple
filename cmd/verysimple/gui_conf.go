@@ -573,8 +573,14 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 
 			case "reject", "direct", "tun":
 				randUuidBtn.Disable()
-				hostE.Hide()
-				ipE.Hide()
+				if cc.Protocol == "tun" {
+					hostE.Show()
+					ipE.Show()
+				} else {
+					hostE.Hide()
+					ipE.Hide()
+				}
+
 				portE.Hide()
 				uuidE.Hide()
 				tlsC.Hide()

@@ -32,7 +32,7 @@ func Open(name string, mtu uint32) (device.Device, error) {
 
 	fd, err := tun.Open(t.name)
 	if err != nil {
-		return nil, fmt.Errorf("create tun: %w", err)
+		return nil, fmt.Errorf("create tun, %s: %w", name, err)
 	}
 	t.fd = fd
 
