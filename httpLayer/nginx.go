@@ -62,6 +62,15 @@ func GetNginxWeekdayStr(t *time.Time) string {
 	return t.Weekday().String()[:3]
 }
 
+func SetDefaultNginxHeader(rw http.ResponseWriter) {
+	rw.Header().Add("Server", "nginx/1.21.5")
+	t := time.Now().UTC().In(nginxTimezone)
+	tStr := t.Format(Nginx_timeFormatStr)
+	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
+
+	rw.Header().Add("Date", tStr)
+}
+
 //Get real a response that looks like it comes from nginx.
 func GetNginxResponse(template string) string {
 	t := time.Now().UTC().In(nginxTimezone)
@@ -75,20 +84,14 @@ func GetNginxResponse(template string) string {
 
 //mimic GetNginx400Response()
 func SetNginx400Response(rw http.ResponseWriter) {
+	SetDefaultNginxHeader(rw)
 
-	rw.Header().Add("Server", "nginx/1.21.5")
 	rw.Header().Add("Content-Type", "text/html")
 	rw.Header().Add("Connection", "close")
 
-	t := time.Now().UTC().In(nginxTimezone)
-	tStr := t.Format(Nginx_timeFormatStr)
-	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
-
-	rw.Header().Add("Date", tStr)
-
-	//rw.Header().Add("Content-Length", strconv.Itoa(len(bs_Nginx400_html)))//真实nginx 400响应里不含 Content-Length
-	// 情况是这样的： 如果 返回的是html，则 Connection 是 keep-alive, 并且 有 Content-Length；
-	// 如果返回的是纯字符串，则Connection 是 Close，并 没有 Content-Length；
+	//真实nginx 400响应里不含 Content-Length
+	// 情况是这样的： 若 Connection 是 keep-alive, 则 有 Content-Length；
+	// 若 Connection 是 Close，则 没有 Content-Length；
 
 	rw.WriteHeader(http.StatusBadRequest)
 
@@ -100,15 +103,10 @@ func SetNginx400Response(rw http.ResponseWriter) {
 }
 
 func SetNginx403Response(rw http.ResponseWriter) {
-	rw.Header().Add("Server", "nginx/1.21.5")
+	SetDefaultNginxHeader(rw)
+
 	rw.Header().Add("Content-Type", "text/html")
 	rw.Header().Add("Connection", "keep-alive")
-
-	t := time.Now().UTC().In(nginxTimezone)
-	tStr := t.Format(Nginx_timeFormatStr)
-	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
-
-	rw.Header().Add("Date", tStr)
 
 	rw.Header().Add("Content-Length", strconv.Itoa(len(bs_Nginx403_html)))
 
