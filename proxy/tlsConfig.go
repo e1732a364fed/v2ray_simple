@@ -6,6 +6,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 func updateAlpnListByAdvLayer(com BaseInterface, alpnList []string) (result []string) {
@@ -124,13 +125,25 @@ func getTlsMinVerFromExtra(extra map[string]any) uint16 {
 }
 
 func getTlsMaxVerFromExtra(extra map[string]any) uint16 {
+
+	fromStr := func(str string) uint16 {
+		switch str {
+		case "1.2":
+			return tls.VersionTLS12
+		case "1.3":
+			return tls.VersionTLS13
+		default:
+			if ce := utils.CanLogErr("parse tls version failed"); ce != nil {
+				ce.Write(zap.String("given", str))
+			}
+			return tls.VersionTLS13
+		}
+	}
+
 	if len(extra) > 0 {
 		if thing := extra["tls_maxVersion"]; thing != nil {
 			if str, ok := (thing).(string); ok && len(str) > 0 {
-				switch str {
-				case "1.2":
-					return tls.VersionTLS12
-				}
+				return fromStr(str)
 			}
 		}
 	}
@@ -141,6 +154,12 @@ func getTlsMaxVerFromExtra(extra map[string]any) uint16 {
 func getTlsRejectUnknownSniFromExtra(extra map[string]any) bool {
 	if len(extra) > 0 {
 		if thing := extra["tls_rejectUnknownSni"]; thing != nil {
+			if is, ok := utils.AnyToBool(thing); ok && is {
+				return true
+			}
+		}
+
+		if thing := extra["rejectUnknownSni"]; thing != nil {
 			if is, ok := utils.AnyToBool(thing); ok && is {
 				return true
 			}

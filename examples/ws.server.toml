@@ -8,8 +8,10 @@ fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
 advancedLayer = "ws"
-path = "/ohmygod_verysimple_is_very_simple"
+path = "/ohmygod_verysimple_is_very_simple" # 这个path必须要给出，就算你path是默认的 "/", 也要写在这里。
 # early = true 
+
+# 关于ws+ header的配置，请参考 httpheader.client.toml  和 httpheader.server.toml 的注释
 
 [[dial]]
 protocol = "direct"

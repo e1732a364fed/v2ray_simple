@@ -62,6 +62,7 @@ const (
 	CmdUDP                    byte = 2
 	cmd_muxcool_unimplemented byte = 3 //mux.cool的command的定义 在 v2ray源代码的 common/protocol/headers.go 的 RequestCommandMux。
 
+	CMDMux_VS byte = 4 //新定义的值，用于使用我们vs的mux方式
 )
 
 var getkeyBs = []byte("c48619fe-8f02-49e0-b9e9-edf763e17e21")

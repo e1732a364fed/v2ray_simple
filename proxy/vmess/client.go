@@ -74,7 +74,9 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &Client{}
+	c := &Client{
+		use_mux: dc.Mux,
+	}
 	c.V2rayUser = utils.V2rayUser(uuid)
 	c.opt = OptChunkStream
 
@@ -94,10 +96,21 @@ type Client struct {
 
 	opt      byte
 	security byte
+	use_mux  bool
 }
 
 func (*Client) GetCreator() proxy.ClientCreator {
 	return ClientCreator{}
+}
+
+func (c *Client) HasInnerMux() (int, string) {
+	if c.use_mux {
+		return 2, "simplesocks"
+
+	} else {
+		return 0, ""
+
+	}
 }
 
 func (c *Client) specifySecurityByStr(security string) error {
@@ -168,14 +181,19 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 
 	var err error
 
-	// Request
-	if target.IsUDP() {
-		err = conn.handshake(CmdUDP, firstPayload)
-		conn.theTarget = target
+	if c.use_mux {
+		err = conn.handshake(CMDMux_VS, firstPayload)
 
 	} else {
-		err = conn.handshake(CmdTCP, firstPayload)
+		// Request
+		if target.IsUDP() {
+			err = conn.handshake(CmdUDP, firstPayload)
+			conn.theTarget = target
 
+		} else {
+			err = conn.handshake(CmdTCP, firstPayload)
+
+		}
 	}
 
 	if err != nil {

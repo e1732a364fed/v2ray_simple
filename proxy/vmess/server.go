@@ -150,6 +150,10 @@ func (s *Server) addUser(u utils.V2rayUser) {
 	s.authPairList = append(s.authPairList, p)
 }
 
+func (*Server) HasInnerMux() (int, string) {
+	return 1, "simplesocks"
+}
+
 func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := proxy.SetCommonReadTimeout(underlay); err != nil {
 		returnErr = err
@@ -230,6 +234,8 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		return
 	}
 
+	var ismux bool
+
 	switch sc.cmd {
 	case CmdTCP, CmdUDP:
 		ad, err := netLayer.V2rayGetAddrFrom(aeadDataBuf)
@@ -247,6 +253,15 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 
 	case cmd_muxcool_unimplemented:
 		returnErr = utils.ErrInErr{ErrDesc: "Vmess mux.cool is not supported by verysimple ", ErrDetail: utils.ErrInvalidData}
+
+	case CMDMux_VS:
+		ismux = true
+
+		_, err := netLayer.V2rayGetAddrFrom(aeadDataBuf)
+		if err != nil {
+			returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 4}
+			return
+		}
 
 	default:
 
@@ -283,6 +298,22 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 
 	sc.aead_encodeRespHeader(buf)
 	sc.firstWriteBuf = buf
+
+	if ismux {
+
+		mh := &proxy.MuxMarkerConn{
+			ReadWrapper: netLayer.ReadWrapper{
+				Conn: sc,
+			},
+		}
+
+		if l := remainBuf.Len(); l > 0 {
+			mh.RemainFirstBufLen = l
+			mh.OptionalReader = io.MultiReader(remainBuf, underlay)
+		}
+
+		return mh, nil, targetAddr, nil
+	}
 
 	if sc.cmd == CmdTCP {
 		tcpConn = sc
