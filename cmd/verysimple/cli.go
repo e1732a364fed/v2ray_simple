@@ -6,18 +6,37 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 
-	"github.com/asaskevich/govalidator"
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
-	"github.com/e1732a364fed/v2ray_simple/proxy/trojan"
-	"github.com/e1732a364fed/v2ray_simple/proxy/vless"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )
+
+type CliCmd struct {
+	Name string
+	f    func()
+}
+
+func (cc CliCmd) String() string {
+	return cc.Name
+}
+
+func nlist(list []CliCmd) (result []string) {
+	for _, v := range list {
+		result = append(result, v.Name)
+	}
+	return
+}
+
+func flist(list []CliCmd) (result []func()) {
+	for _, v := range list {
+		result = append(result, v.f)
+	}
+	return
+}
 
 var cliCmdList = []CliCmd{
 	{
@@ -55,40 +74,48 @@ var cliCmdList = []CliCmd{
 	},
 }
 
+func getStandardConfFromCurrentState() (sc proxy.StandardConf) {
+	for _, c := range allClients {
+		dc := c.GetBase().DialConf
+		sc.Dial = append(sc.Dial, dc)
+
+	}
+	for _, s := range allServers {
+		lc := s.GetBase().ListenConf
+		sc.Listen = append(sc.Listen, lc)
+
+	}
+
+	return
+}
+
 func init() {
 
 	//cli.go 中定义的 CliCmd都是需进一步交互的命令
-
 	cliCmdList = append(cliCmdList, CliCmd{
+		"对当前引用的配置文件生成分享链接", func() {
+
+			sc := getStandardConfFromCurrentState()
+			interactively_generate_share(&sc)
+		},
+	}, CliCmd{
 		"交互生成配置，超级强大", func() {
 			generateConfigFileInteractively()
 		},
-	})
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"热删除配置", func() {
 			interactively_hotRemoveServerOrClient()
 		},
-	})
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"热加载新配置文件", func() {
 			interactively_hotLoadConfigFile()
 		},
-	})
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"调节日志等级", func() {
 			interactively_adjust_loglevel()
 		},
 	})
 
-}
-
-type CliCmd struct {
-	Name string
-	F    func()
-}
-
-func (cc CliCmd) String() string {
-	return cc.Name
 }
 
 //交互式命令行用户界面
@@ -140,7 +167,7 @@ func runCli() {
 
 		fmt.Printf("你选择了 %s\n", result)
 
-		if f := cliCmdList[i].F; f != nil {
+		if f := cliCmdList[i].f; f != nil {
 			f()
 		}
 	}
@@ -150,12 +177,12 @@ func runCli() {
 func generateConfigFileInteractively() {
 
 	rootLevelList := []string{
-		"打印当前缓存的配置",
-		"开始交互生成配置",
-		"清除此次缓存的配置",
-		"将该缓存的配置写到文件(client.toml和 server.toml)",
-		"以该缓存的配置【生成客户端分享链接url】",
-		"将此次生成的配置投入运行（热加载）",
+		"【打印】当前缓存的配置",
+		"【开始交互生成】配置",
+		"【清除】此次缓存的配置",
+		"【写到文件】<-将该缓存的配置 (client.toml和 server.toml)",
+		"【生成分享】链接url <-该缓存的配置",
+		"【投入运行】（热加载) <-将此次生成的配置",
 	}
 
 	confClient := proxy.StandardConf{}
@@ -216,6 +243,9 @@ func generateConfigFileInteractively() {
 
 			utils.PutBuf(buf)
 
+		case 1:
+			interactively_generateConf(&confClient, &confServer)
+
 		case 2: //clear
 			confClient = proxy.StandardConf{}
 			confServer = proxy.StandardConf{}
@@ -249,17 +279,19 @@ func generateConfigFileInteractively() {
 
 				utils.PrintStr("生成的分享链接如下：\n")
 
-				for _, d := range confClient.Dial {
-					switch d.Protocol {
-					case vless.Name:
-						utils.PrintStr(vless.GenerateXrayShareURL(d))
-						utils.PrintStr("\n")
+				// for _, d := range confClient.Dial {
+				// 	switch d.Protocol {
+				// 	case vless.Name:
+				// 		utils.PrintStr("xray官方链接:\n")
+				// 		utils.PrintStr(vless.GenerateXrayShareURL(d))
+				// 		utils.PrintStr("\n")
 
-					case trojan.Name:
-						utils.PrintStr(trojan.GenerateOfficialDraftShareURL(d))
-						utils.PrintStr("\n")
-					}
-				}
+				// 	case trojan.Name:
+				// 		utils.PrintStr(trojan.GenerateOfficialDraftShareURL(d))
+				// 		utils.PrintStr("\n")
+				// 	}
+				// }
+				interactively_generate_share(&confClient)
 
 			} else {
 				utils.PrintStr("请先进行配置\n")
@@ -295,302 +327,6 @@ func generateConfigFileInteractively() {
 			}
 
 			utils.PrintStr("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
-
-		case 1: //interactively generate
-
-			select0 := promptui.Select{
-				Label: "【提醒】我们交互模式生成的配置都是直接带tls的,且客户端【默认使用utls】模拟chrome指纹",
-				Items: []string{"知道了"},
-			}
-
-			_, _, err := select0.Run()
-			if err != nil {
-				fmt.Printf("Prompt failed %v\n", err)
-				return
-			}
-
-			select2 := promptui.Select{
-				Label: "请选择你客户端想监听的协议",
-				Items: []string{
-					"socks5",
-					"http",
-				},
-			}
-			i2, result, err := select2.Run()
-
-			if err != nil {
-				fmt.Printf("Prompt failed %v\n", err)
-				return
-			}
-
-			fmt.Printf("你选择了 %s\n", result)
-
-			if i2 < 2 {
-				confClient.Listen = append(confClient.Listen, &proxy.ListenConf{})
-			} else {
-				utils.PrintStr("Prompt failed, werid input")
-				return
-			}
-
-			clientlisten := confClient.Listen[0]
-			clientlisten.Protocol = result
-			clientlisten.Tag = "my_" + result
-
-			var theInt int64
-
-			var canLowPort bool
-			validatePort := func(input string) error {
-				theInt, err = strconv.ParseInt(input, 10, 64)
-				if err != nil {
-					return utils.ErrInvalidNumber
-				}
-				if !canLowPort {
-					if theInt <= 1024 {
-						return utils.ErrInvalidNumber
-					}
-				}
-				if theInt > 65535 {
-					return utils.ErrInvalidNumber
-				}
-				return nil
-			}
-
-			utils.PrintStr("请输入你客户端想监听的端口\n")
-
-			promptPort := promptui.Prompt{
-				Label:    "Port Number",
-				Validate: validatePort,
-			}
-
-			result, err = promptPort.Run()
-
-			if err != nil {
-				fmt.Printf("Prompt failed %v\n", err)
-				return
-			}
-
-			fmt.Printf("你输入了 %d\n", theInt)
-
-			clientlisten.Port = int(theInt)
-			clientlisten.IP = "127.0.0.1"
-
-			select3 := promptui.Select{
-				Label: "请选择你客户端想拨号的协议(与服务端监听协议相同)",
-				Items: []string{
-					"vless",
-					"trojan",
-				},
-			}
-			i3, result, err := select3.Run()
-
-			if err != nil || i3 != 0 {
-				fmt.Println("Prompt failed ", err, i3)
-				return
-			}
-
-			fmt.Printf("你选择了 %s\n", result)
-			theProtocol := result
-
-			confClient.Dial = append(confClient.Dial, &proxy.DialConf{})
-			clientDial := confClient.Dial[0]
-
-			utils.PrintStr("请输入你服务端想监听的端口\n")
-			canLowPort = true
-
-			result, err = promptPort.Run()
-
-			if err != nil {
-				fmt.Printf("Prompt failed %v\n", err)
-				return
-			}
-
-			fmt.Printf("你输入了 %d\n", theInt)
-
-			clientDial.Port = int(theInt)
-			clientDial.Protocol = theProtocol
-			clientDial.TLS = true
-			clientDial.Tag = "my_proxy"
-			clientDial.Utls = true
-
-			select4 := promptui.Select{
-				Label: "请选择你客户端拨号想使用的高级层(与服务端监听的高级层相同)",
-				Items: []string{
-					"无",
-					"ws",
-					"grpc",
-					"quic",
-				},
-			}
-			i4, result, err := select4.Run()
-
-			if err != nil {
-				fmt.Println("Prompt failed ", err, i3)
-				return
-			}
-
-			switch i4 {
-			case 0:
-			default:
-				clientDial.AdvancedLayer = result
-				switch i4 {
-				case 1, 2:
-					clientlisten.Tag += "_" + result
-					promptPath := promptui.Prompt{
-						Label: "Path",
-						Validate: func(s string) error {
-							if result == "ws" && !strings.HasPrefix(s, "/") {
-								return errors.New("ws path must start with /")
-							}
-							return nil
-						},
-					}
-
-					result, err = promptPath.Run()
-					if err != nil {
-						fmt.Println("Prompt failed ", err, result)
-						return
-					}
-
-					fmt.Printf("你输入了 %s\n", result)
-
-					clientDial.Path = result
-
-				}
-			}
-
-			utils.PrintStr("请输入你服务端的ip\n")
-
-			promptIP := promptui.Prompt{
-				Label:    "IP",
-				Validate: utils.WrapFuncForPromptUI(govalidator.IsIP),
-			}
-
-			result, err = promptIP.Run()
-			if err != nil {
-				fmt.Println("Prompt failed ", err, result)
-				return
-			}
-
-			fmt.Printf("你输入了 %s\n", result)
-
-			clientDial.IP = result
-
-			utils.PrintStr("请输入你服务端的域名\n")
-
-			promptDomain := promptui.Prompt{
-				Label:    "域名",
-				Validate: func(s string) error { return nil }, //允许不设域名
-			}
-
-			result, err = promptDomain.Run()
-			if err != nil {
-				fmt.Println("Prompt failed ", err, result)
-				return
-			}
-
-			fmt.Printf("你输入了 %s\n", result)
-
-			clientDial.Host = result
-
-			select5 := promptui.Select{
-				Label: "请选择uuid生成方式",
-				Items: []string{
-					"随机",
-					"手动输入(要保证你输入的是格式正确的uuid)",
-				},
-			}
-			i5, result, err := select5.Run()
-
-			if err != nil {
-				fmt.Println("Prompt failed ", err, i3)
-				return
-			}
-			if i5 == 0 {
-				uuid := utils.GenerateUUIDStr()
-				clientDial.Uuid = uuid
-				fmt.Println("随机生成的uuid为", uuid)
-			} else {
-				promptUUID := promptui.Prompt{
-					Label:    "uuid",
-					Validate: utils.WrapFuncForPromptUI(govalidator.IsUUID),
-				}
-
-				result, err = promptUUID.Run()
-				if err != nil {
-					fmt.Println("Prompt failed ", err, result)
-					return
-				}
-
-				fmt.Printf("你输入了 %s\n", result)
-
-				clientDial.Uuid = result
-			}
-
-			var serverListenStruct proxy.ListenConf
-			serverListenStruct.CommonConf = clientDial.CommonConf
-			serverListenStruct.IP = "0.0.0.0"
-
-			confServer.Listen = append(confServer.Listen, &serverListenStruct)
-
-			confServer.Dial = append(confServer.Dial, &proxy.DialConf{
-				CommonConf: proxy.CommonConf{
-					Protocol: "direct",
-				},
-			})
-
-			serverListen := confServer.Listen[0]
-
-			select6 := promptui.Select{
-				Label: "请配置服务端tls证书路径",
-				Items: []string{
-					"默认(cert.pem和cert.key),此时将自动开启 insecure",
-					"手动输入(要保证你输入的是正确的文件路径)",
-				},
-			}
-			i6, result, err := select6.Run()
-
-			if err != nil {
-				fmt.Println("Prompt failed ", err, i3)
-				return
-			}
-			if i6 == 0 {
-				serverListen.TLSCert = "cert.pem"
-				serverListen.TLSKey = "cert.key"
-				serverListen.Insecure = true
-				clientDial.Insecure = true
-
-				utils.PrintStr("你选择了默认自签名证书, 这是不安全的, 我们不推荐. 所以自动生成证书这一步需要你一会再到交互模式里选择相应选项进行生成。 \n")
-
-			} else {
-				utils.PrintStr("请输入 cert路径\n")
-
-				promptCPath := promptui.Prompt{
-					Label:    "path",
-					Validate: utils.IsFilePath,
-				}
-
-				result, err = promptCPath.Run()
-				if err != nil {
-					fmt.Println("Prompt failed ", err, result)
-					return
-				}
-
-				fmt.Printf("你输入了 %s\n", result)
-
-				serverListen.TLSCert = result
-
-				utils.PrintStr("请输入 key 路径\n")
-
-				result, err = promptCPath.Run()
-				if err != nil {
-					fmt.Println("Prompt failed ", err, result)
-					return
-				}
-
-				fmt.Printf("你输入了 %s\n", result)
-
-				serverListen.TLSKey = result
-			}
 
 		} // switch i case 1
 	} //for

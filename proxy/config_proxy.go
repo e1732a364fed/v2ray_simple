@@ -135,7 +135,7 @@ type ListenConf struct {
 }
 
 // config for dialing, user can be called dialer or outClient.
-//  CommonConf.Host , CommonConf.IP, CommonConf.Port  is the addr and port for dialing.
+//  CommonConf.Host , CommonConf.IP, CommonConf.Port  are the addr and port for dialing.
 type DialConf struct {
 	CommonConf
 

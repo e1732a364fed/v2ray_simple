@@ -84,8 +84,7 @@ func TestToClash(t *testing.T) {
 }
 
 func TestToV2rayN(t *testing.T) {
-	t.Log(configAdapter.ToV2rayN(myvmess_wss, true))
-	t.Log(configAdapter.ToV2rayN(myvmess_wss, false))
+	t.Log(configAdapter.ToV2rayN(myvmess_wss))
 }
 
 func TestToSS(t *testing.T) {

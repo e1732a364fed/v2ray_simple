@@ -1,10 +1,8 @@
 package configAdapter
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"io"
 	"strconv"
 	"strings"
 
@@ -392,7 +390,7 @@ type V2rayNConfig struct {
 	Sni      string `json:"sni"`
 }
 
-func ToV2rayN(dc *proxy.DialConf, clearText bool) string {
+func ToV2rayN(dc *proxy.DialConf) string {
 	if dc.Protocol != "vmess" {
 		return "ToV2rayN doesn't support any protocol other than vmess, you give " + dc.Protocol
 	}
@@ -427,21 +425,6 @@ func ToV2rayN(dc *proxy.DialConf, clearText bool) string {
 		return err.Error()
 	}
 
-	if clearText {
-		return "vmess://" + string(bs)
-
-	} else {
-		outBuf := utils.GetBuf()
-		defer utils.PutBuf(outBuf)
-		encoder := base64.NewEncoder(base64.RawURLEncoding, outBuf)
-
-		_, base64Err := io.Copy(encoder, bytes.NewReader(bs))
-		if base64Err != nil {
-			return base64Err.Error()
-		}
-		encoder.Close()
-
-		return "vmess://" + outBuf.String()
-	}
+	return "vmess://" + base64.URLEncoding.EncodeToString(bs)
 
 }
