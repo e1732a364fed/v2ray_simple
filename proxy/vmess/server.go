@@ -23,18 +23,18 @@ import (
 
 var ErrReplayAttack = errors.New("vmess: we are under replay attack! ")
 
-var ErrReplaySessionAttack = utils.ErrInErr{ErrDesc: "duplicated session id, we are under replay attack! ", ErrDetail: ErrReplayAttack}
+var ErrReplaySessionAttack = utils.ErrInErr{ErrDesc: "vmess: duplicated session id, we are under replay attack! ", ErrDetail: ErrReplayAttack}
 
 func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type pair struct {
+type authPair struct {
 	utils.V2rayUser
 	cipher.Block
 }
 
-func authUserByAuthPairList(bs []byte, authPairList []pair, antiReplayMachine *authid_antiReplayMachine) (user utils.V2rayUser, err error) {
+func authUserByAuthPairList(bs []byte, authPairList []authPair, antiReplayMachine *authid_antiReplayMachine) (user utils.V2rayUser, err error) {
 	now := time.Now().Unix()
 
 	var encrypted_authid [authid_len]byte
@@ -112,7 +112,7 @@ type Server struct {
 
 	*utils.MultiUserMap
 
-	authPairList []pair
+	authPairList []authPair
 
 	authid_anitReplayMachine  *authid_antiReplayMachine
 	session_antiReplayMachine *session_antiReplayMachine
@@ -140,7 +140,7 @@ func (s *Server) addUser(u utils.V2rayUser) {
 	if err != nil {
 		panic(err)
 	}
-	p := pair{
+	p := authPair{
 		V2rayUser: u,
 		Block:     b,
 	}
@@ -228,7 +228,6 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 	}
 
 	switch sc.cmd {
-	//verysimple 不支持v2ray中的 vmess 的 mux.cool
 	case CmdTCP, CmdUDP:
 		ad, err := netLayer.V2rayGetAddrFrom(aeadDataBuf)
 		if err != nil {
@@ -240,7 +239,13 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 			ad.Network = "udp"
 		}
 		targetAddr = ad
+
+		//verysimple 不支持v2ray中的 vmess 的 mux.cool
+	default:
+		returnErr = utils.ErrInErr{ErrDesc: "Vmess Invalid command ", ErrDetail: utils.ErrInvalidData, Data: sc.cmd}
+		return
 	}
+
 	if paddingLen > 0 {
 		tmpBs := aeadDataBuf.Next(paddingLen)
 		if len(tmpBs) != paddingLen {
