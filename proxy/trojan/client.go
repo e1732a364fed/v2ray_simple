@@ -74,13 +74,16 @@ func (c *Client) GetUser() utils.User {
 func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 	if len(target.IP) > 0 {
 		if ip4 := target.IP.To4(); ip4 == nil {
-			buf.WriteByte(netLayer.AtypIP6)
+
+			buf.WriteByte(ATypIP6)
 			buf.Write(target.IP)
 		} else {
-			buf.WriteByte(netLayer.AtypIP4)
+
+			buf.WriteByte(ATypIP4)
 			buf.Write(ip4)
 		}
 	} else if l := len(target.Name); l > 0 {
+
 		buf.WriteByte(ATypDomain)
 		buf.WriteByte(byte(l))
 		buf.WriteString(target.Name)

@@ -15,18 +15,18 @@ import (
 // default recommended handshake read timeout
 const CommonReadTimeout = time.Second * 4
 
-//set read timeout after CommonReadTimeout
+// set read timeout after CommonReadTimeout
 func SetCommonReadTimeout(c net.Conn) error {
 	return c.SetReadDeadline(time.Now().Add(CommonReadTimeout))
 }
 
-//规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
+// 规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
 type MuxMarker interface {
 	io.ReadWriteCloser
 	IsMux()
 }
 
-//实现 MuxMarker
+// 实现 MuxMarker
 type MuxMarkerConn struct {
 	netLayer.ReadWrapper
 }
@@ -78,7 +78,7 @@ type UserClient interface {
 type Server interface {
 	BaseInterface
 
-	//ReadWriteCloser is for TCP request, net.PacketConn is for UDP request.
+	//net.Conn is for TCP request, netLayer.MsgConn is for UDP request.
 	// 约定，如果error返回的是 utils.ErrHandled， 则调用代码停止进一步处理。
 	Handshake(underlay net.Conn) (net.Conn, netLayer.MsgConn, netLayer.Addr, error)
 
@@ -95,7 +95,6 @@ type UserServer interface {
 // We think tcp/udp/kcp/raw_socket is FirstName，protocol of the proxy is LastName, and the rest is  MiddleName。
 //
 // An Example of a full name:  tcp+tls+ws+vless.
-// 总之，类似【域名】的规则，只不过分隔符从 点号 变成了加号, 且层级关系是从左到右。
 func GetFullName(pc BaseInterface) string {
 	if n := pc.Name(); n == DirectName {
 		return n
