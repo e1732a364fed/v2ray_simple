@@ -131,7 +131,7 @@ func CreateTun(name, selfaddr, realAddr, mask string) (realname string, tunDev i
 	//在linux上调用时 addr, gw, mask, dnsServers 都会被无视
 
 	//macos 上无法指定tun名称
-	tunDev, err = tun.OpenTunDevice(name, selfaddr, realAddr, mask, []string{"8.8.8.8", "8.8.4.4"}, false)
+	tunDev, err = tun.OpenTunDevice(name, selfaddr, realAddr, mask, []string{"114.114.114.114"}, false)
 	if err == nil {
 		wi, ok := tunDev.(*water.Interface)
 		if ok {
