@@ -105,8 +105,9 @@ func printSupportedProtocols() {
 
 //see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 func tryDownloadMMDB() {
+	fp := utils.GetFilePath(netLayer.GeoipFileName)
 
-	if utils.FileExist(utils.GetFilePath(netLayer.GeoipFileName)) {
+	if utils.FileExist(fp) {
 		return
 	}
 

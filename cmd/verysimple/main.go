@@ -262,8 +262,6 @@ func mainFunc() (result int) {
 
 	}
 
-	runPreCommands()
-
 	var defaultInServer proxy.Server
 	var Default_uuid string
 
@@ -363,6 +361,8 @@ func mainFunc() (result int) {
 		hotLoadDialConfForRuntime(Default_uuid, standardConf.Dial)
 
 	}
+
+	runPreCommands()
 
 	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
 
