@@ -29,6 +29,8 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 vs既不是v2ray/xray的超集，也不是子集，属于并列的内核, 有交集. 因为vs用自己的架构, 并不直接来源于v2ray. 有点类似 unix 和linux的关系。
 
+以前vs的尺寸是很小的，不过随着功能增加，尺寸也大了起来，目前最占用空间的是tun功能, 如果你编译使用 notun 这个tag, 则可以减小 3.5MB大小. 其次是quic功能，取消之也可以减小尺寸
+
 ## 支持的功能
 
 socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy/tun/trojan/simplesocks/vless(v0/**v1**)/vmess/shadowsocks, 多用户, http头
@@ -37,7 +39,7 @@ ws(以及earlydata)/grpc(以及multiMode,uTls，以及 **支持回落的 grpcSim
 
 dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-[win/mac/linux的sockopt.device(bindToDevice)]/tcp/udp(以及fullcone)/unix domain socket, tls(包括生成随机证书;客户端证书验证;rejectUnknownSni), uTls, shadowTls(v1/v2) ,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听, sockopt.device (bindToDevice)
+[win/mac/linux的sockopt.device(bindToDevice)]/tcp/udp(以及fullcone)/unix domain socket, tls(包括生成随机证书;客户端证书验证;rejectUnknownSni), uTls, shadowTls(v1/v2) ,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听
 
 cli(**交互模式**)/**gui/[vsb计划](https://github.com/e1732a364fed/vsb)(flutter写的面板)**/apiServer, Docker, docker-compose.
 
