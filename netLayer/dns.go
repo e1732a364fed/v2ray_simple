@@ -341,14 +341,14 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 			case 0: // no timeout
 			case 1: //strictly follow TTL
 				now := time.Now()
-				newTime := ipRecord.RecordTime.Add(time.Second * time.Duration(ipRecord.TTL))
-				if newTime.After(now) {
+				deadline := ipRecord.RecordTime.Add(time.Second * time.Duration(ipRecord.TTL))
+				if now.After(deadline) {
 					ok = false
 				}
 			default: //customized ttl
 				now := time.Now()
-				newTime := ipRecord.RecordTime.Add(time.Second * time.Duration(dm.TTLStrategy))
-				if newTime.After(now) {
+				deadline := ipRecord.RecordTime.Add(time.Second * time.Duration(dm.TTLStrategy))
+				if now.After(deadline) {
 					ok = false
 				}
 			}
