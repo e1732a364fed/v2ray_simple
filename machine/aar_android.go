@@ -1,4 +1,4 @@
-//go:build android && androidAAR
+//go:build androidAAR
 
 package machine
 
