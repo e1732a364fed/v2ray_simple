@@ -189,6 +189,8 @@ func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWM
 // 不过分离信道只能用于代理，不能用于 direct, 因为direct为了实现fullcone, 对所有rc连接都用的同一个udp端口。
 // 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.
 func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploadByteCount *uint64, dialfunc func(raddr Addr) MsgConn) uint64 {
+	//一般而言，lc为 socks5 的MsgConn，rc 为 vless v1 客户端的 MsgConn
+
 	var lc_mutex sync.RWMutex
 
 	var mainhash HashableAddr
@@ -239,7 +241,6 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 				go func() {
 					_, rcwrong := relayUDP_rc_toLC(rc, lc, downloadByteCount, &lc_mutex)
 					//rc到lc转发结束，一定也是因为读取/写入失败, 如果是rc的错误, 则我们要删掉rc, 释放资源
-					//一般而言，lc为 socks5 的MsgConn，rc 为 vless v1 的 MsgConn
 
 					if rcwrong {
 						lc_mutex.Lock()
@@ -297,65 +298,65 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 	return count2
 }
 
-/*
-relay udp  有两种针对不同通道的技术
+// /*
+// relay udp  有两种针对不同通道的技术
 
-一种是针对单来源通道的技术，通常是udp in tcp的情况，此时，我们用MsgConn + RelayUDP 方法很方便
+// 一种是针对单来源通道的技术，通常是udp in tcp的情况，此时，我们用MsgConn + RelayUDP 方法很方便
 
-另一种是直接读udp的技术，目前我们用很多代码来适配它，也能包装MsgConn里，但是非常不美观，繁琐。
-因为udp是多来源的，我们为了确定单一来源，就要全局读，然后定义一个map, 为每一个来源的地址存储一个MsgConn
+// 另一种是直接读udp的技术，目前我们用很多代码来适配它，也能包装MsgConn里，但是非常不美观，繁琐。
+// 因为udp是多来源的，我们为了确定单一来源，就要全局读，然后定义一个map, 为每一个来源的地址存储一个MsgConn
 
-我们重新定义一个MsgProducer 和 MsgConsumer，就方便很多. 这是针对多来源的转发。
+// 我们重新定义一个MsgProducer 和 MsgConsumer，就方便很多. 这是针对多来源的转发。
 
-如此，一个 UDPConn就相当于一个 MsgProducer, 它的to 可以由 tproxy 或者 msg内部的数据提取出来
+// 如此，一个 UDPConn就相当于一个 MsgProducer, 它的to 可以由 tproxy 或者 msg内部的数据提取出来
 
-不过，这种抽象一样需要map进行记忆，才能区分不同来源的from。针对不同的from，要使用以前对它发信号所使用的端口。
+// 不过，这种抽象一样需要map进行记忆，才能区分不同来源的from。针对不同的from，要使用以前对它发信号所使用的端口。
 
-所以两种技术可能是等价的。
-*/
-func RelayMsg(rc, lc MsgHub, downloadByteCount, uploadByteCount *uint64) uint64 {
-	go CopyMsgFromP2C(lc, rc, uploadByteCount)
+// 所以两种技术可能是等价的。
+// */
+// func RelayMsg(rc, lc MsgHub, downloadByteCount, uploadByteCount *uint64) uint64 {
+// 	go CopyMsgFromP2C(lc, rc, uploadByteCount)
 
-	var dbc uint64
-	CopyMsgFromP2C(rc, lc, &dbc)
+// 	var dbc uint64
+// 	CopyMsgFromP2C(rc, lc, &dbc)
 
-	if downloadByteCount != nil {
-		atomic.AddUint64(downloadByteCount, dbc)
-	}
-	return dbc
+// 	if downloadByteCount != nil {
+// 		atomic.AddUint64(downloadByteCount, dbc)
+// 	}
+// 	return dbc
 
-}
+// }
 
-func CopyMsgFromP2C(p MsgProducer, c MsgConsumer, countPtr *uint64) {
-	var bc uint64
+// func CopyMsgFromP2C(p MsgProducer, c MsgConsumer, countPtr *uint64) {
+// 	var bc uint64
 
-	for {
-		msg, from, to, err := p.ProduceMsg()
-		if err != nil {
-			break
-		}
-		err = c.ConsumeMsg(msg, from, to)
-		if err != nil {
-			break
-		}
-		bc += uint64(len(msg))
-	}
+// 	for {
+// 		msg, from, to, err := p.ProduceMsg()
+// 		if err != nil {
+// 			break
+// 		}
+// 		err = c.ConsumeMsg(msg, from, to)
+// 		if err != nil {
+// 			break
+// 		}
+// 		bc += uint64(len(msg))
+// 	}
 
-	if countPtr != nil {
-		atomic.AddUint64(countPtr, bc)
-	}
+// 	if countPtr != nil {
+// 		atomic.AddUint64(countPtr, bc)
+// 	}
 
-}
+// }
 
-type MsgHub interface {
-	MsgProducer
-	MsgConsumer
-}
+// type MsgHub interface {
+// 	MsgProducer
+// 	MsgConsumer
+// }
 
-type MsgProducer interface {
-	ProduceMsg() (msg []byte, from, to Addr, err error)
-}
+// type MsgProducer interface {
+// 	ProduceMsg() (msg []byte, from, to Addr, err error)
+// }
 
-type MsgConsumer interface {
-	ConsumeMsg(msg []byte, from, to Addr) (err error)
-}
+// type MsgConsumer interface {
+// 	ConsumeMsg(msg []byte, from, to Addr) (err error)
+// }

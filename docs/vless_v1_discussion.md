@@ -169,6 +169,10 @@ CRUMFURS 信道与普通UDP信道一样，要传 udp长度头。
 
 此时从socks5读出的每一个udp链接，视其raddr而定，如果raddr是没遇到过的地址，则我们会新建立一个新信道
 
+### 代码参考
+
+阅读 prox/vless/udpConn.go 以及 netLayer/relay_udp.go 的 RelayUDP_separate 函数
+
 ## 连接池
 
 我们可以通过使用新协议命令来做到 非mux的 连接池技术，可以在每个vless 头部添加 “是否关闭连接”的信息

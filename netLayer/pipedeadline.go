@@ -8,6 +8,8 @@ import (
 // implements NetDeadliner. Must call InitEasyDeadline before use.
 // Can be embed to a struct to make it have SetWriteDeadline, SetReadDeadline and SetDeadline method.
 // And MUST use select and ReadTimeoutChan or WriteTimeoutChan when reading or writing.
+//
+// see IOWrapper for reference.
 type EasyDeadline struct {
 	readDeadline  PipeDeadline
 	writeDeadline PipeDeadline

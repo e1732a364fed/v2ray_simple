@@ -10,6 +10,11 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+const (
+	flag_orig       = 0
+	flag_new_source = 1
+)
+
 type UDPConn struct {
 	net.Conn
 
@@ -56,7 +61,7 @@ func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
 	}
 	defer utils.PutBuf(writeBuf)
 
-	//v0很垃圾，不支持fullcone，而是无视raddr，始终向最开始的raddr发送。
+	//v0设计有问题，不支持fullcone，无视raddr，始终向最开始的raddr发送。
 	if u.version == 0 {
 
 		if !u.isClientEnd && !u.notFirst {
@@ -84,11 +89,11 @@ func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
 				// umfurs信息将会提示客户端 下一次发送到此地址时，拨号一个新的 udp信道.
 
 				if u.raddr.GetHashable() == raddr.GetHashable() {
-					writeBuf.WriteByte(0)
+					writeBuf.WriteByte(flag_orig)
 					return u.writeDataTo(writeBuf, p)
 
 				} else {
-					writeBuf.WriteByte(1)
+					writeBuf.WriteByte(flag_new_source)
 					WriteAddrTo(writeBuf, raddr)
 					return u.writeDataTo(writeBuf, p)
 
@@ -192,10 +197,10 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 				switch b1 {
 				default:
 					return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "Vless udp_multi client read first byte unexpected", ErrDetail: utils.ErrInvalidData, Data: b1}
-				case 0:
+				case flag_orig:
 					bs, err := u.readData_with_len()
 					return bs, u.raddr, err
-				case 1:
+				case flag_new_source:
 					raddr, err := netLayer.V2rayGetAddrFrom(u.bufr)
 					if err != nil {
 						return nil, raddr, err
