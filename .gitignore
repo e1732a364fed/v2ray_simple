@@ -5,6 +5,7 @@ server.toml
 v2ray_simple
 v2ray_simple_*
 cmd/verysimple/verysimple
+cmd/verysimple/*.toml
 verysimple_*
 *.exe
 *.DS_Store

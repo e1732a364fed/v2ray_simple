@@ -146,10 +146,6 @@ func (rs *RouteSet) IsIn(td *TargetDescription) bool {
 		return false
 	}
 
-	if rs.IsNoLimitForNetworkLayer() { //necessary
-		return true
-	}
-
 	return rs.IsAddrIn(td.Addr)
 
 }
@@ -195,6 +191,10 @@ func (rs *RouteSet) IsAddrIn(a Addr) bool {
 
 	if !rs.IsAddrNetworkAllowed(a) {
 		return false
+	}
+
+	if rs.IsNoLimitForNetworkLayer() { //necessary
+		return true
 	}
 
 	//开始网络层判断

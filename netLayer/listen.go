@@ -90,8 +90,10 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 	if network == "" {
 		network = "tcp"
 	}
-	switch network {
-	case "tcp", "tcp4", "tcp6":
+	p := StrToTransportProtocol(network)
+
+	switch p {
+	case TCP:
 		var tcplistener *net.TCPListener
 
 		var ta *net.TCPAddr
@@ -113,7 +115,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 
 		listener = tcplistener
 
-	case "udp", "udp4", "udp6":
+	case UDP:
 
 		//udp 的透明代理等设置sockopt的情况并不使用本函数监听, 而是使用 ListenUDP_withOpt.
 
@@ -129,7 +131,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 		}
 		go loopAccept(listener, xver, acceptFunc)
 
-	case "unix":
+	case UNIX:
 		// 参考 https://eli.thegreenplace.net/2019/unix-domain-sockets-in-go/
 		//监听 unix domain socket后，就会自动创建 相应文件;
 		// 而且程序退出后，该文件不会被删除

@@ -146,9 +146,13 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *RouteSet) {
 		}
 	}
 
-	for _, ns := range rule.Network {
-		tp := StrToTransportProtocol(ns)
-		rs.AllowedTransportLayerProtocols |= tp
+	if len(rule.Network) > 0 {
+		rs.AllowedTransportLayerProtocols = 0 //因为 NewFullRouteSet 默认会同时允许 tcp和udp，所以在自定义网络层规则时，我们不用默认值。
+
+		for _, netStr := range rule.Network {
+			tp := StrToTransportProtocol(netStr)
+			rs.AllowedTransportLayerProtocols |= tp
+		}
 	}
 
 	return rs
