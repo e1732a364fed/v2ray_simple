@@ -9,7 +9,7 @@ on:
 
 jobs:
   vsc_ubuntu_arm64:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     env:
       GOARCH: 'arm64'
       CGO_ENABLED: 1
@@ -27,7 +27,7 @@ jobs:
         id: runcmd
         with:
           arch: aarch64
-          distro: ubuntu_latest
+          distro: ubuntu18.04
 
           githubToken: ${{ github.token }}
 
@@ -37,9 +37,9 @@ jobs:
             wget https://go.dev/dl/go1.19.4.linux-arm64.tar.gz
             tar -C /usr/local -xzf go1.19.4.linux-arm64.tar.gz
 
-          #不能在install里运行 /root/run-on-arch-install.sh， 会显示 line 8: GITHUB_PATH: unbound variable
+          #run-on-arch-action中，不能使用 GITHUB_PATH 会显示 line 8: GITHUB_PATH: unbound variable
           run: |
-            echo "/usr/local/go/bin" >> $GITHUB_PATH
+            export PATH=$PATH:/usr/local/go/bin
             cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release
