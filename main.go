@@ -410,50 +410,34 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 			muxSer := advSer.(advLayer.MuxServer)
 
-			newConnChan := make(chan net.Conn, 10)
-			fallbackChan := make(chan httpLayer.FallbackMeta, 10)
-			muxSer.StartHandle(wrappedConn, newConnChan, fallbackChan)
+			muxSer.StartHandle(wrappedConn, func(newGConn net.Conn) {
+				// newGConn, ok := <-newConnChan
 
-			go func() {
-				for {
-					fallbackMeta, ok := <-fallbackChan
+				// if !ok {
+				// 	if ce := iics.CanLogWarn("Grpc getNewSubConn not ok"); ce != nil {
+				// 		ce.Write()
+				// 	}
 
-					if !ok {
-						if ce := iics.CanLogWarn("Grpc read fallbackChan not ok"); ce != nil {
-							ce.Write()
-						}
-						return
-					}
-
-					newiics := iics
-
-					newiics.fallbackRequestPath = fallbackMeta.Path
-					newiics.fallbackFirstBuffer = fallbackMeta.H1RequestBuf
-					newiics.wrappedConn = fallbackMeta.Conn
-					newiics.isFallbackH2 = fallbackMeta.IsH2
-					newiics.fallbackH2Request = fallbackMeta.H2Request
-
-					passToOutClient(newiics, true, nil, nil, netLayer.Addr{})
-				}
-			}()
-
-			for {
-
-				newGConn, ok := <-newConnChan
-
-				if !ok {
-					if ce := iics.CanLogWarn("Grpc getNewSubConn not ok"); ce != nil {
-						ce.Write()
-					}
-
-					iics.baseLocalConn.Close()
-					return
-				}
+				// 	iics.baseLocalConn.Close()
+				// 	return
+				// }
 
 				iics.wrappedConn = newGConn
 
 				go handshakeInserver_and_passToOutClient(iics)
-			}
+
+			}, func(fallbackMeta httpLayer.FallbackMeta) {
+
+				newiics := iics
+
+				newiics.fallbackRequestPath = fallbackMeta.Path
+				newiics.fallbackFirstBuffer = fallbackMeta.H1RequestBuf
+				newiics.wrappedConn = fallbackMeta.Conn
+				newiics.isFallbackH2 = fallbackMeta.IsH2
+				newiics.fallbackH2Request = fallbackMeta.H2Request
+
+				passToOutClient(newiics, true, nil, nil, netLayer.Addr{})
+			})
 
 		default: //ws
 			singleSer := advSer.(advLayer.SingleServer)

@@ -18,6 +18,7 @@ import (
 	"io"
 	"net"
 	"reflect"
+	"sync"
 	"syscall"
 	"time"
 
@@ -137,4 +138,43 @@ type ChanCloseConn struct {
 func (c *ChanCloseConn) Close() error {
 	close(c.CChan)
 	return nil
+}
+
+// ConnList 是一个 多线程安全 的用于保存Conn的列表
+type ConnList struct {
+	sync.Mutex
+	list []net.Conn
+}
+
+func (cl *ConnList) Insert(c net.Conn) {
+	cl.Lock()
+	cl.list = append(cl.list, c)
+	cl.Unlock()
+}
+
+func (cl *ConnList) Remove(c net.Conn) {
+	cl.Lock()
+
+	index := -1
+	for i, v := range cl.list {
+		if v == c {
+			index = i
+		}
+	}
+	if index == -1 {
+		cl.Unlock()
+		return
+	}
+	utils.Splice(&cl.list, index, 1)
+	cl.Unlock()
+}
+
+func (cl *ConnList) CloseAndRemoveAll() {
+	cl.Lock()
+	for _, conn := range cl.list {
+		conn.Close()
+	}
+	cl.list = nil
+	cl.Unlock()
+
 }

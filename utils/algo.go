@@ -156,8 +156,9 @@ func MoveItem[T any](arr *[]T, fromIndex, toIndex int) {
 	Splice(arr, toIndex, 0, item)
 }
 
-// https://github.com/zzwx/splice/blob/main/splice.go
-func Splice[T any](source *[]T, start int, delete int, item ...T) (removed []T) {
+// items to insert at start, delete deleteCount items at start
+// See https://github.com/zzwx/splice/blob/main/splice.go
+func Splice[T any](source *[]T, start int, deleteCount int, items ...T) (removed []T) {
 	if start > len(*source) {
 		start = len(*source)
 	}
@@ -167,29 +168,29 @@ func Splice[T any](source *[]T, start int, delete int, item ...T) (removed []T) 
 	if start < 0 {
 		start = 0
 	}
-	if delete < 0 {
-		delete = 0
+	if deleteCount < 0 {
+		deleteCount = 0
 	}
-	if delete > 0 {
-		for i := 0; i < delete; i++ {
+	if deleteCount > 0 {
+		for i := 0; i < deleteCount; i++ {
 			if i+start < len(*source) {
 				removed = append(removed, (*source)[i+start])
 			}
 		}
 	}
-	delete = len(removed) // Adjust to actual delete count
-	grow := len(item) - delete
+	deleteCount = len(removed) // Adjust to actual delete count
+	grow := len(items) - deleteCount
 	switch {
 	case grow > 0: // So we grow
 		*source = append(*source, make([]T, grow)...)
-		copy((*source)[start+delete+grow:], (*source)[start+delete:])
+		copy((*source)[start+deleteCount+grow:], (*source)[start+deleteCount:])
 	case grow < 0: // So we shrink
-		from := start + len(item)
-		to := start + delete
+		from := start + len(items)
+		to := start + deleteCount
 		copy((*source)[from:], (*source)[to:])
 		*source = (*source)[:len(*source)+grow]
 	}
-	copy((*source)[start:], item)
+	copy((*source)[start:], items)
 	return
 }
 

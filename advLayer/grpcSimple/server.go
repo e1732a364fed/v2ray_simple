@@ -20,23 +20,15 @@ import (
 // implements advLayer.MuxServer
 type Server struct {
 	Creator
-
 	Config
-
 	http2.Server
+	netLayer.ConnList
 
 	Headers *httpLayer.HeaderPreset
 
 	path string
 
-	newSubConnChan   chan net.Conn
-	fallbackConnChan chan httpLayer.FallbackMeta
-
-	stopOnce sync.Once
-
 	closed bool
-
-	underlay net.Conn //目前仅用于Close
 }
 
 func (s *Server) GetPath() string {
@@ -44,30 +36,24 @@ func (s *Server) GetPath() string {
 }
 
 func (s *Server) Stop() {
-	s.stopOnce.Do(func() {
-		s.closed = true
+	if s.closed {
+		return
+	}
+	s.closed = true
 
-		if s.underlay != nil {
-			s.underlay.Close()
-		}
+	s.CloseAndRemoveAll()
 
-		if s.fallbackConnChan != nil {
-			close(s.fallbackConnChan)
-		}
-		if s.newSubConnChan != nil {
-			close(s.newSubConnChan)
-		}
-	})
 }
 
 var (
 	clientPreface = []byte(http2.ClientPreface)
 )
 
-func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
-	s.underlay = underlay
-	s.fallbackConnChan = fallbackConnChan
-	s.newSubConnChan = newSubConnChan
+// 阻塞
+func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), fallbackFunc func(httpLayer.FallbackMeta)) {
+	s.closed = false
+
+	s.Insert(underlay)
 
 	//先过滤一下h2c 的 preface. 因为不是h2c的话，依然可以试图回落到 h1.
 
@@ -98,21 +84,22 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 			ce.Write()
 		}
 
-		if fallbackConnChan != nil {
+		if fallbackFunc != nil {
 			_, method, path, _, failreason := httpLayer.ParseH1Request(bs, false)
 			if failreason != 0 {
 
-				fallbackConnChan <- httpLayer.FallbackMeta{
+				go fallbackFunc(httpLayer.FallbackMeta{
 					Conn:         underlay,
 					H1RequestBuf: firstBuf,
-				}
+				})
+
 			} else {
-				fallbackConnChan <- httpLayer.FallbackMeta{
+				go fallbackFunc(httpLayer.FallbackMeta{
 					Path:         path,
 					Method:       method,
 					Conn:         underlay,
 					H1RequestBuf: firstBuf,
-				}
+				})
 			}
 		} else {
 			underlay.Write([]byte(httpLayer.Err403response))
@@ -128,7 +115,8 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 		RemainFirstBufLen: n,
 	}
 
-	go s.Server.ServeConn(underlay, &http2.ServeConnOpts{
+	//阻塞
+	s.Server.ServeConn(underlay, &http2.ServeConnOpts{
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request) {
 			if s.closed {
 				return
@@ -170,7 +158,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 			}
 
 			if shouldFallback {
-				if fallbackConnChan == nil {
+				if fallbackFunc == nil {
 					rw.WriteHeader(http.StatusNotFound)
 
 				} else {
@@ -201,7 +189,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 						return
 					}
 
-					fallbackConnChan <- fm
+					go fallbackFunc(fm)
 
 					<-respConn.CloseChan
 
@@ -227,10 +215,13 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 			if s.closed {
 				return
 			}
-			newSubConnChan <- sc
+			go newSubConnFunc(sc)
 			<-sc.closeChan //necessary
 		}),
 	})
+
+	s.Remove(underlay)
+
 }
 
 func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
@@ -289,7 +280,7 @@ type ServerConn struct {
 	closed    bool
 }
 
-// implements netLayer.RejectConn, 模仿nginx响应，参考httpLayer.Err400response_nginx
+// implements netLayer.RejectConn, 模仿nginx响应，参考 httpLayer.SetNginx400Response
 func (sc *ServerConn) Reject() {
 	httpLayer.SetNginx400Response(sc.Writer)
 

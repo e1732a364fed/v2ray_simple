@@ -172,12 +172,11 @@ func (s *Server) GetPath() string {
 }
 
 func (s *Server) Stop() {
-
 	if s.listener != nil {
+		s.listener = nil
+
 		s.listener.Close()
-
 	}
-
 }
 
 func (s *Server) StartListen(newSubConnFunc func(net.Conn)) (baseConn io.Closer) {
@@ -190,9 +189,7 @@ func (s *Server) StartListen(newSubConnFunc func(net.Conn)) (baseConn io.Closer)
 	return
 }
 
-// 非阻塞，不支持回落。
-func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
-	go dealNewConn(underlay.(quic.Connection), func(newc net.Conn) {
-		newSubConnChan <- newc
-	})
+// 阻塞，不支持回落。
+func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), _ func(httpLayer.FallbackMeta)) {
+	dealNewConn(underlay.(quic.Connection), newSubConnFunc)
 }

@@ -112,8 +112,8 @@ type SingleServer interface {
 // like grpc
 type MuxServer interface {
 
-	//non-blocking. if fallbackChan is not nil, then it can serve for fallback feature.
-	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackChan chan httpLayer.FallbackMeta)
+	//blocking. if fallbackFunc != nil, then it can serve for fallback feature.
+	StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), fallbackFunc func(httpLayer.FallbackMeta))
 }
 
 // like quic
