@@ -292,13 +292,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 
 			b := uint64(extensionsBs[cursor])
 			switch b {
-			case 2 << 9:
-				fallthrough
-			case 2 << 10:
-				fallthrough
-			case 2 << 11:
-				fallthrough
-			case 2 << 12:
+			case 2 << 9, 2 << 10, 2 << 11, 2 << 12:
 
 			default:
 				cd.DefinitelyNotTLS = true

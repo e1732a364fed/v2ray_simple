@@ -20,8 +20,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
-github.com/e1732a364fed/ui v0.0.1-alpha.12 h1:XAVcgQlF8l1VCxlMexX0UJkShFBzSI1m1bFDuX9nfOA=
-github.com/e1732a364fed/ui v0.0.1-alpha.12/go.mod h1:uK9ryjwA0+3KdICbeXm5IjhKZ+1ZooMVDdTuLaQHpwM=
+github.com/e1732a364fed/ui v0.0.1-alpha.13 h1:S0f1KDwZjQatrKr6vy35jf9iL1OvHuj4KYWnrO+hqZQ=
+github.com/e1732a364fed/ui v0.0.1-alpha.13/go.mod h1:uK9ryjwA0+3KdICbeXm5IjhKZ+1ZooMVDdTuLaQHpwM=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 h1:p104kn46Q8WdvHunIJ9dAyjPVtrBPhSr3KT2yUst43I=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
 github.com/gobwas/httphead v0.1.0 h1:exrUm0f4YX0L7EBwZHuCF4GDp8aJfVeBrlLQrs6NqWU=
