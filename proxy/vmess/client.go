@@ -109,7 +109,7 @@ func (c *Client) specifySecurityByStr(security string) error {
 		c.security = SecurityAES128GCM
 	case "chacha20-poly1305":
 		c.security = SecurityChacha20Poly1305
-	case "auto":
+	case "auto", "": //这里我们为了保护用户，当字符串为空时，依然设为auto，而不是zero
 		if systemAutoUseAes {
 			c.security = SecurityAES128GCM
 		} else {
@@ -119,7 +119,10 @@ func (c *Client) specifySecurityByStr(security string) error {
 	case "none":
 		c.security = SecurityNone
 
-	case "", "zero", "0": // NOTE: use basic format when no method specified.
+	case "zero", "0":
+
+		// NOTE: use basic format when no method specified.
+		// 注意，BasicFormat 只用于向前兼容，本作的vmess的服务端并不支持 注意，BasicFormat
 
 		c.opt = OptBasicFormat
 		c.security = SecurityNone
