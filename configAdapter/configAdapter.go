@@ -21,8 +21,8 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
-//convert proxy.DialConf to verysimple Official URL format.
-// See https://github.com/e1732a364fed/v2ray_simple/discussions/163
+// convert proxy.DialConf to verysimple Official URL format.
+// See docs/url.md and https://github.com/e1732a364fed/v2ray_simple/discussions/163
 func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
 	var u url.URL
 
@@ -38,6 +38,10 @@ func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
 		u.Host = cc.Host + ":" + strconv.Itoa(cc.Port)
 
 	}
+	if cc.Path != "" {
+		u.Path = cc.Path
+	}
+
 	q := u.Query()
 	if cc.Network != "" {
 		q.Add("network", cc.Network)
@@ -55,10 +59,6 @@ func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
 		if dc != nil && dc.Utls {
 			q.Add("utls", "true")
 		}
-	}
-	if cc.Path != "" {
-		q.Add("path", cc.Path)
-
 	}
 
 	if hh := cc.HttpHeader; hh != nil {

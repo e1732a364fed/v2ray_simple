@@ -59,6 +59,17 @@ socks5://127.0.0.1:1080#my_socks5
 
 就是 主机ip和端口。主机ip也可以用 域名代替。
 
+### path
+
+设置 http头存在时，或者用 ws的 路径 或 grpc的 service name。
+
+举例，vmess+ws：
+
+```
+vmess://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4434/mypath?adv=ws#vmess_ws
+```
+
+那么path就是 /mypath
 ### fragment 
 
 就是一个注释，标注 这个url 对于你来说的 特别含义。这个注释同样会被vs读取为tag，用于分流。
@@ -79,7 +90,6 @@ security=aes-128-gcm  设置 vmess/ss等存在多种加密方式等proxy的 具�
 
 adv=ws  设置使用的高级层，如不给出则没有高级层，如给出，可选 ws, grpc, quic
 
-path=/mypath 设置 http头存在时，或者用 ws的 路径 或 grpc的 service name。
 
 ### http 头相关
 
