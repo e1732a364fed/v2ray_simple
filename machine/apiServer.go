@@ -85,7 +85,7 @@ func (asc *ApiServerConf) SetUnDefault(acref *ApiServerConf) {
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
 func (m *M) TryRunApiServer() {
 
-	m.ApiServerRunning = true
+	m.apiServerRunning = true
 
 	go m.runApiServer()
 
@@ -279,7 +279,7 @@ func (m *M) runApiServer() {
 		srv.ListenAndServeTLS(m.CertFile, m.KeyFile)
 
 	}
-	m.ApiServerRunning = false
+	m.apiServerRunning = false
 }
 
 type auth struct {

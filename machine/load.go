@@ -30,7 +30,7 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 		m.allClients = append(m.allClients, outClient)
 		if tag := outClient.GetTag(); tag != "" {
 
-			m.RoutingEnv.SetClient(tag, outClient)
+			m.routingEnv.SetClient(tag, outClient)
 
 		}
 	}
@@ -69,7 +69,7 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 		}
 
 		if hot {
-			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
+			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.routingEnv, &m.GlobalInfo)
 			if lis != nil {
 				m.listenCloserList = append(m.listenCloserList, lis)
 				m.allServers = append(m.allServers, inServer)
@@ -92,7 +92,7 @@ func (m *M) HotDeleteClient(index int) {
 	}
 	doomedClient := m.allClients[index]
 
-	m.RoutingEnv.DelClient(doomedClient.GetTag())
+	m.routingEnv.DelClient(doomedClient.GetTag())
 	doomedClient.Stop()
 	m.allClients = utils.TrimSlice(m.allClients, index)
 }
@@ -123,7 +123,7 @@ func (m *M) loadUrlConf(hot bool) (result int) {
 	}
 
 	if hot {
-		lis := v2ray_simple.ListenSer(ser, cli, &m.RoutingEnv, &m.GlobalInfo)
+		lis := v2ray_simple.ListenSer(ser, cli, &m.routingEnv, &m.GlobalInfo)
 		if lis != nil {
 			m.listenCloserList = append(m.listenCloserList, lis)
 		} else {
@@ -165,6 +165,14 @@ func (m *M) loadUrlClient(urlConf proxy.UrlConf) (result int, client proxy.Clien
 	}
 
 	m.allClients = append(m.allClients, client)
+	return
+}
+
+func (m *M) GetVSConfFromCurrentState() (vc VSConf) {
+	vc.StandardConf = m.GetStandardConfFromCurrentState()
+	vc.ApiServerConf = &m.ApiServerConf
+	vc.AppConf = &m.AppConf
+
 	return
 }
 

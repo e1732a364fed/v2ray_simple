@@ -4,6 +4,15 @@ default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # 这个除了作为默�
 # 每个listen 可以只配置users来配置用户列表，然后 这个default_uuid 会作为 每个listen 的uuid 的值。
 # 这样作为管理员，每个listen自己都能用自己的 账户连上，不必再额外对每一个listen 添加一遍 自己的账户。
 
+# [apiServer]            # v1.2.5开始, apiServer配置单独在一项中配置
+# enable = true         # 默认为false
+# plain = false         # 是否使用明文http, 默认false
+# admin_pass = "i_love_verysimple"
+# addr = "127.0.0.1:8080"
+# key = "/home/vs/key"  # 若不用明文http, 可配置tls证书, 若不给出, vs会自动生成随机证书
+# cert = "/home/vs/cert"
+# prefix = "/myapi"
+
 [[listen]]
 tag = "my_vlesss1"
 protocol = "vlesss"

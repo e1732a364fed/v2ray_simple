@@ -5,6 +5,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,6 +15,43 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )
+
+func interactively_exportVsConf() {
+	vc := mainM.GetVSConfFromCurrentState()
+
+	bs, e := utils.GetPurgedTomlBytes(vc)
+	if e != nil {
+		utils.PrintStr("转换格式错误\n")
+		utils.PrintStr(e.Error())
+		utils.PrintStr("\n")
+		return
+	}
+
+	utils.PrintStr("请输入生成配置文件的名称(不含.toml后缀)\n")
+
+	promptDomain := promptui.Prompt{
+		Label: "文件名",
+	}
+
+	result, err := promptDomain.Run()
+	if err != nil {
+		fmt.Println("Prompt failed ", err, result)
+		return
+	}
+
+	fmt.Printf("你输入了 %s\n", result)
+
+	e = os.WriteFile(result+".toml", bs, 0666)
+
+	if e != nil {
+		utils.PrintStr("写入文件错误\n")
+		utils.PrintStr(e.Error())
+		utils.PrintStr("\n")
+		return
+	}
+
+	utils.PrintStr("导出成功!\n")
+}
 
 func interactively_generate_share(conf *proxy.StandardConf) {
 
@@ -188,11 +226,12 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 			"vless",
 			"vmess",
 			"trojan",
+			"shadowsocks",
 		},
 	}
 	i3, result, err := select3.Run()
 
-	if err != nil || i3 != 0 {
+	if err != nil {
 		fmt.Println("Prompt failed ", err, i3)
 		return
 	}
@@ -232,7 +271,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	i4, result, err := select4.Run()
 
 	if err != nil {
-		fmt.Println("Prompt failed ", err, i3)
+		fmt.Println("Prompt failed ", err, i4)
 		return
 	}
 
@@ -286,8 +325,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	utils.PrintStr("请输入你服务端的域名\n")
 
 	promptDomain := promptui.Prompt{
-		Label:    "域名",
-		Validate: func(s string) error { return nil }, //允许不设域名
+		Label: "域名",
 	}
 
 	result, err = promptDomain.Run()
@@ -310,7 +348,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	i5, result, err := select5.Run()
 
 	if err != nil {
-		fmt.Println("Prompt failed ", err, i3)
+		fmt.Println("Prompt failed ", err, i5)
 		return
 	}
 	if i5 == 0 {
@@ -358,7 +396,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	i6, result, err := select6.Run()
 
 	if err != nil {
-		fmt.Println("Prompt failed ", err, i3)
+		fmt.Println("Prompt failed ", err, i6)
 		return
 	}
 	if i6 == 0 {

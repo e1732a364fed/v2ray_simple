@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"math/rand"
 	"os"
 	"strings"
@@ -65,5 +66,26 @@ func GetPurgedTomlStr(v any) (string, error) {
 		}
 	}
 	return sb.String(), nil
+
+}
+
+// mimic GetPurgedTomlStr
+func GetPurgedTomlBytes(v any) ([]byte, error) {
+	buf := GetBuf()
+	defer PutBuf(buf)
+	if err := toml.NewEncoder(buf).Encode(v); err != nil {
+		return nil, err
+	}
+	lines := bytes.Split(buf.Bytes(), []byte{'\n'})
+	var sb bytes.Buffer
+
+	for _, l := range lines {
+		if !bytes.HasSuffix(l, []byte(` = ""`)) && !bytes.HasSuffix(l, []byte(` = false`)) && !bytes.HasSuffix(l, []byte(` = 0`)) {
+
+			sb.Write(l)
+			sb.WriteByte('\n')
+		}
+	}
+	return sb.Bytes(), nil
 
 }

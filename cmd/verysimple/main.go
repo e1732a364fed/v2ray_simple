@@ -391,5 +391,5 @@ func NoFuture(m *machine.M) bool {
 }
 
 func NothingRunning(m *machine.M) bool {
-	return !m.HasProxyRunning() && !(interactive_mode || gui_mode || m.ApiServerRunning)
+	return !m.HasProxyRunning() && !(interactive_mode || gui_mode || m.IsApiServerRunning())
 }

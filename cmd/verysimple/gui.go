@@ -278,6 +278,31 @@ func makeBasicControlsPage() ui.Control {
 					return
 				}
 
+				vc := mainM.GetVSConfFromCurrentState()
+
+				bs, e := utils.GetPurgedTomlBytes(vc)
+				if e != nil {
+					if ce := utils.CanLogErr("转换格式错误"); ce != nil {
+						ce.Write(zap.Error(e))
+					}
+
+					return
+				}
+				filename += ".toml"
+				e = os.WriteFile(filename, bs, 0666)
+
+				if e != nil {
+					if ce := utils.CanLogErr("写入文件错误"); ce != nil {
+						ce.Write(zap.Error(e))
+					}
+
+					return
+				}
+
+				if ce := utils.CanLogInfo("导出成功"); ce != nil {
+					ce.Write(zap.String("filename", filename))
+				}
+
 			})
 			fgrid.Append(button,
 				1, 1, 1, 1,

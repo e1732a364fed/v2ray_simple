@@ -145,13 +145,13 @@ func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
 		m.AppConf.Setup()
 	}
 	if vsConf.ApiServerConf != nil {
-		m.TomlApiServerConf = *vsConf.ApiServerConf
+		m.tomlApiServerConf = *vsConf.ApiServerConf
 	}
 
 	return nil
 }
 
-// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf , 否则尝试通过 listenURL, dialURL 参数 创建urlConf
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf , 否则尝试通过 listenURL, dialURL 参数 创建urlConf. 若使用url, 自动加载进机器; 若为toml, 需要手动调用 SetupListenAndRoute 和 SetupDial
 func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
@@ -218,7 +218,7 @@ func (m *M) SetupListenAndRoute() {
 		m.ParseFallbacksAtSymbol(m.standardConf.Fallbacks)
 	}
 
-	m.RoutingEnv = proxy.LoadEnvFromStandardConf(&m.standardConf, myCountryISO_3166)
+	m.routingEnv = proxy.LoadEnvFromStandardConf(&m.standardConf, myCountryISO_3166)
 
 }
 func (m *M) SetupDial() {

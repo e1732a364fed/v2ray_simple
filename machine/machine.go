@@ -18,44 +18,42 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 type M struct {
-	ApiServerConf
-
-	TomlApiServerConf ApiServerConf
-	CmdApiServerConf  ApiServerConf
+	sync.RWMutex
+	v2ray_simple.GlobalInfo
 
 	AppConf
 
+	ApiServerConf
+
+	tomlApiServerConf ApiServerConf
+	CmdApiServerConf  ApiServerConf
+
 	standardConf proxy.StandardConf
 	urlConf      proxy.UrlConf
-	//appConf      *AppConf
 
-	v2ray_simple.GlobalInfo
-	sync.RWMutex
-
-	//DefaultUUID string
-
-	ApiServerRunning bool
+	running          bool
+	apiServerRunning bool
 
 	DefaultOutClient proxy.Client
-	RoutingEnv       proxy.RoutingEnv
-
-	callbacks
+	routingEnv       proxy.RoutingEnv
 
 	allServers []proxy.Server
 	allClients []proxy.Client
 
 	listenCloserList []io.Closer
-	running          bool
+
+	callbacks
 }
 
 func New() *M {
 	m := new(M)
 	m.allClients = make([]proxy.Client, 0, 8)
 	m.allServers = make([]proxy.Server, 0, 8)
-	m.RoutingEnv.ClientsTagMap = make(map[string]proxy.Client)
+	m.routingEnv.ClientsTagMap = make(map[string]proxy.Client)
 	directClient, _ := proxy.ClientFromURL(proxy.DirectURL)
 	m.DefaultOutClient = directClient
 	return m
@@ -83,6 +81,10 @@ func (m *M) IsRunning() bool {
 	return m.running
 }
 
+func (m *M) IsApiServerRunning() bool {
+	return m.apiServerRunning
+}
+
 // 运行配置 以及 apiServer
 func (m *M) Start() {
 	if (m.DefaultOutClient != nil) && (len(m.allServers) > 0) {
@@ -91,20 +93,20 @@ func (m *M) Start() {
 		m.running = true
 		m.callToggleFallback(1)
 		for _, inServer := range m.allServers {
-			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
+			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.routingEnv, &m.GlobalInfo)
 
 			if lis != nil {
 				m.listenCloserList = append(m.listenCloserList, lis)
 			}
 		}
 
-		if dm := m.RoutingEnv.DnsMachine; dm != nil {
+		if dm := m.routingEnv.DnsMachine; dm != nil {
 			dm.StartListen()
 		}
 		m.Unlock()
 	}
 
-	if !m.ApiServerRunning && m.EnableApiServer {
+	if !m.apiServerRunning && m.EnableApiServer {
 		m.TryRunApiServer()
 	}
 
@@ -114,10 +116,11 @@ func (m *M) Start() {
 func (m *M) SetupApiConf() {
 	m.ApiServerConf = NewApiServerConf()
 
-	m.ApiServerConf.SetUnDefault(&m.TomlApiServerConf)
+	m.ApiServerConf.SetUnDefault(&m.tomlApiServerConf)
 	m.ApiServerConf.SetUnDefault(&m.CmdApiServerConf)
 }
 
+// Stop不会停止ApiServer
 func (m *M) Stop() {
 	utils.Info("Stopping...")
 
@@ -135,7 +138,7 @@ func (m *M) Stop() {
 			listener.Close()
 		}
 	}
-	if dm := m.RoutingEnv.DnsMachine; dm != nil {
+	if dm := m.routingEnv.DnsMachine; dm != nil {
 		dm.Stop()
 	}
 	m.Unlock()
@@ -145,7 +148,7 @@ func (m *M) SetDefaultDirectClient() {
 	m.allClients = append(m.allClients, v2ray_simple.DirectClient)
 	m.DefaultOutClient = v2ray_simple.DirectClient
 
-	m.RoutingEnv.SetClient("direct", v2ray_simple.DirectClient)
+	m.routingEnv.SetClient("direct", v2ray_simple.DirectClient)
 }
 
 // 将fallback配置中的@转化成实际对应的server的地址
@@ -157,7 +160,10 @@ func (m *M) ParseFallbacksAtSymbol(fs []*httpLayer.FallbackConf) {
 		if deststr, ok := fbConf.Dest.(string); ok && strings.HasPrefix(deststr, "@") {
 			for _, s := range m.allServers {
 				if s.GetTag() == deststr[1:] {
-					//log.Println("got tag fallback dest, will set to ", s.AddrStr())
+
+					if ce := utils.CanLogDebug("got @tag fallback dest"); ce != nil {
+						ce.Write(zap.String("will set to ", s.AddrStr()), zap.String("tag", deststr[1:]))
+					}
 					fbConf.Dest = s.AddrStr()
 				}
 			}
