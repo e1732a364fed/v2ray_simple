@@ -603,6 +603,10 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 									if us, ok := wlc1.(utils.UserAssigner); ok {
 										us.SetUser(u)
 									}
+								} else if udp_wlc1 != nil {
+									if us, ok := udp_wlc1.(utils.UserAssigner); ok {
+										us.SetUser(u)
+									}
 								}
 							}
 						} else if udp_wlc != nil {
