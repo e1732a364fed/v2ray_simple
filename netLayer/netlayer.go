@@ -27,7 +27,8 @@ import (
 )
 
 var (
-	ErrTimeout = errors.New("timeout")
+	ErrTimeout    = errors.New("timeout")
+	ErrDoNotClose = errors.New("do not close")
 )
 
 // c.SetDeadline(time.Time{})

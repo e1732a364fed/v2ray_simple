@@ -329,7 +329,11 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				)
 
 			}
-			wrappedConn.Close()
+			//see #241
+			if !errors.Is(err, netLayer.ErrDoNotClose) {
+				wrappedConn.Close()
+
+			}
 			return
 		}
 

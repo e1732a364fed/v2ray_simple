@@ -98,7 +98,9 @@ func shadowTls2(servername string, clientConn net.Conn, password string) (result
 	}
 
 	hashW := utils.NewHashWriter(clientConn, []byte(password))
-	go io.Copy(hashW, fakeConn)
+
+	go io.Copy(hashW, fakeConn) //write real server response back to client
+
 	var firstPayload *bytes.Buffer
 	firstPayload, err = shadowCopyHandshakeClientToFake(fakeConn, clientConn, hashW)
 
@@ -123,8 +125,9 @@ func shadowTls2(servername string, clientConn net.Conn, password string) (result
 		}
 
 		hashW.StopHashing()
-		go io.Copy(fakeConn, clientConn)
-		return nil, errors.New("not real shadowTlsClient, fallback")
+		go io.Copy(fakeConn, clientConn) //write client request to real server
+
+		return nil, utils.ErrInErr{ErrDetail: netLayer.ErrDoNotClose, ErrDesc: "not real shadowTlsClient, fallback"}
 	}
 	return nil, err
 

@@ -42,6 +42,41 @@ func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
 	return
 }
 
+// 同ClassicCopy，但给出更详细的err
+func ClassicCopy_detailErr(w io.Writer, r io.Reader) (written int64, err error) {
+	bs := GetPacket()
+	defer PutPacket(bs)
+	for {
+
+		nr, er := r.Read(bs)
+		if nr > 0 {
+			nw, ew := w.Write(bs[0:nr])
+
+			if nw < 0 || nr < nw {
+				nw = 0
+				if ew == nil {
+					ew = ErrInvalidWrite
+				}
+			}
+			written += int64(nw)
+			if ew != nil {
+				err = ErrInErr{ErrDetail: Errs{[]ErrsItem{{Index: 1, E: ErrInErr{ErrDetail: ew, Data: []int{nr, nw}}}, {Index: 2, E: er}}}, ErrDesc: "ew"}
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+
+			err = ErrInErr{ErrDetail: er, ErrDesc: "er"}
+			break
+		}
+	}
+	return
+}
+
 // 一种简单的读写组合, 在ws包中被用到.
 type RW struct {
 	io.Reader

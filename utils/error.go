@@ -165,7 +165,9 @@ func (e Errs) String() string {
 	for _, err := range e.List {
 		sb.WriteString(strconv.Itoa(err.Index))
 		sb.WriteString(", ")
-		sb.WriteString(err.E.Error())
+		if err.E != nil {
+			sb.WriteString(err.E.Error())
+		}
 		sb.WriteString("\n")
 
 	}
