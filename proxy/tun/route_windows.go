@@ -5,6 +5,7 @@ import (
 	"log"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -14,6 +15,7 @@ var rememberedRouterIP string
 
 func init() {
 	//经过测试发现，完全一样的路由命令，自动执行和 手动在控制台输入执行，效果竟然不一样; 手动的能正常运行, 自动的就不行, 怪
+	//似乎是需要等待几秒钟
 	/*
 		netsh interface ip set address name="vs_wintun" source=static addr=192.168.123.1 mask=255.255.255.0 gateway=none
 
@@ -80,15 +82,27 @@ func init() {
 
 		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
 
-		utils.Warn("Please try run these commands manually(Administrator):")
-		for _, s := range strs {
-			utils.Warn(s)
+		// utils.Warn("Please try run these commands manually(Administrator):")
+		// for _, s := range strs {
+		// 	utils.Warn(s)
+		// }
+
+		// if AddManualRunCmdsListFunc != nil {
+		// 	AddManualRunCmdsListFunc(strs)
+		// }
+
+		if e := utils.ExecCmdList(strs[:len(strs)-1]); e != nil {
+			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+				ce.Write(zap.Error(e))
+			}
 		}
 
-		if AddManualRunCmdsListFunc != nil {
-			AddManualRunCmdsListFunc(strs)
+		time.Sleep(time.Second * 2)
+		if e := utils.ExecCmd(strs[len(strs)-1]); e != nil {
+			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+				ce.Write(zap.Error(e))
+			}
 		}
-
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
