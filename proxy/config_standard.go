@@ -1,11 +1,10 @@
 package proxy
 
 import (
-	"strings"
-
 	"github.com/BurntSushi/toml"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 // 配置文件格式
@@ -31,10 +30,24 @@ type StandardConf struct {
 	Fallbacks []*httpLayer.FallbackConf `toml:"fallback"`
 }
 
-// convenient function for loading StandardConf from a string
+// 将一些较长的配置项 以较短的缩写 作为同义词
+var StandardConfSynonyms = [][2]string{
+	{"advancedLayer", "adv"},
+}
+
+var StandardConfBytesSynonyms [][2][]byte
+
+func init() {
+	for _, ss := range StandardConfSynonyms {
+
+		StandardConfBytesSynonyms = append(StandardConfBytesSynonyms, [2][]byte{[]byte(ss[0]), []byte(ss[1])})
+	}
+}
+
+// convenient function for loading StandardConf from a string. Calls utils.ReplaceStringsSynonyms(str, StandardConfSynonyms)
 func LoadStandardConfFromTomlStr(str string) (c StandardConf, err error) {
 
-	str = strings.Replace(str, ("advancedLayer"), ("adv"), -1)
+	str = utils.ReplaceStringsSynonyms(str, StandardConfSynonyms)
 
 	_, err = toml.Decode(str, &c)
 	return

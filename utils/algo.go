@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"regexp"
 	"strings"
 
@@ -203,4 +204,22 @@ func CommonSplit_regex(s, e1, e2 string) (ok bool, v1, v2 string) {
 	v2 = match[4]
 	ok = true
 	return
+}
+
+// the first part of synonyms is the one to be replaced, the last part of synonyms is the persistent one.
+func ReplaceBytesSynonyms(bs []byte, synonyms [][2][]byte) (result []byte) {
+	for _, ss := range synonyms {
+
+		result = bytes.Replace(bs, ss[0], ss[1], -1)
+	}
+	return result
+}
+
+// same as ReplaceBytesSynonyms
+func ReplaceStringsSynonyms(bs string, synonyms [][2]string) (result string) {
+	for _, ss := range synonyms {
+
+		result = strings.Replace(bs, ss[0], ss[1], -1)
+	}
+	return result
 }

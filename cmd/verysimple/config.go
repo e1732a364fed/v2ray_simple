@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"log"
@@ -96,7 +95,7 @@ func setupByAppConf(ac *AppConf) {
 func LoadVSConfFromBs(bs []byte) (sc proxy.StandardConf, ac *AppConf, err error) {
 	var vsConf VSConf
 
-	bs = bytes.Replace(bs, []byte("advancedLayer"), []byte("adv"), -1)
+	bs = utils.ReplaceBytesSynonyms(bs, proxy.StandardConfBytesSynonyms)
 
 	err = toml.Unmarshal(bs, &vsConf)
 
