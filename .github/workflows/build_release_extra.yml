@@ -26,10 +26,12 @@ jobs:
 
           githubToken: ${{ github.token }}
 
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y build-essential libgtk-3-dev
           run: |
             uname -a
             echo ::set-output name=uname::$(uname -a)
-            sudo apt-get install build-essential libgtk-3-dev
             cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release

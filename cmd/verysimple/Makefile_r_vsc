@@ -1,21 +1,6 @@
 # 本文件用于编译release版的vsc, 用于github action中的matrix, 所以不需要在这里指定GOOS
 
-cmd:=go build -tags "vsc $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
-
-define compile
-	$(cmd)
+all:
+	go build -tags "vsc $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
 	tar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
 	rm verysimple*
-endef
-
-
-
-
-all:
-	$(call compile,${THARCH})
-
-clean:
-	rm -f ${prefix}
-	rm -f ${prefix}.exe
-	rm -f ${prefix}_*
-	rm -f *.tar.xz
