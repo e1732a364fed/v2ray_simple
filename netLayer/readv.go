@@ -42,7 +42,9 @@ func init() {
 
 // 缓存 readvMem 以及对应分配的系统相关的 utils.SystemReadver.
 // 使用 readvMem的最大好处就是 buffers 和 mr 都是不需要 释放的.
-//  因为不需释放mr, 所以也就节省了多次 mr.Init 的开销.
+//
+//	因为不需释放mr, 所以也就节省了多次 mr.Init 的开销.
+//
 // 该 readvMem 以及 readvPool 专门服务于 TryCopy 函数.
 type readvMem struct {
 	buffers [][]byte
@@ -73,13 +75,14 @@ func get_readvMem() *readvMem {
 
 }
 
-//将创建好的rm放回 readvPool
+// 将创建好的rm放回 readvPool
 func put_readvMem(rm *readvMem) {
 	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, ReadvSingleBufLen)
 	readvPool.Put(rm)
 }
 
-/* readvFrom 用于读端 为rawRead的情况，如 从socks5或direct读取 数据, 等裸协议的情况。
+/*
+	readvFrom 用于读端 为rawRead的情况，如 从socks5或direct读取 数据, 等裸协议的情况。
 
 rm可为nil，但不建议，因为提供非nil的readvMem 可以节省内存分配开销。
 
@@ -120,12 +123,12 @@ func readvFrom(rawReadConn syscall.RawConn, rm *readvMem) ([][]byte, error) {
 	return allocedBuffers[:nBuf], nil
 }
 
-//依次试图使用 readv、ReadBuffers 以及 原始 Read 读取数据
+// 依次试图使用 readv、ReadBuffers 以及 原始 Read 读取数据
 func ReadBuffersFrom(c io.Reader, rawReadConn syscall.RawConn, mr utils.MultiReader) (buffers [][]byte, err error) {
 
 	if rawReadConn != nil {
 		readv_mem := get_readvMem()
-		defer put_readvMem(readv_mem)
+		//defer put_readvMem(readv_mem)	//因为返回的buffers还需使用, 所以不能立刻放回 readv_mem
 
 		buffers, err = readvFrom(rawReadConn, readv_mem)
 
