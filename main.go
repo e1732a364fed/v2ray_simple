@@ -596,6 +596,17 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 						newiics := *iics
 						newiics.isInner = true
 
+						//试图将user赋值给simplesocks, 使其在内部的对user的分流依旧可用
+						if wlc != nil {
+							if u, ok := wlc.(utils.User); ok {
+								if wlc1 != nil {
+									if us, ok := wlc1.(utils.UserAssigner); ok {
+										us.SetUser(u)
+									}
+								}
+							}
+						}
+
 						passToOutClient(newiics, false, wlc1, udp_wlc1, targetAddr1)
 
 					}

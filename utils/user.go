@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-//User是一个 可确定唯一身份，且可验证该身份的 标识。
+// User是一个 可确定唯一身份，且可验证该身份的 标识。
 type User interface {
 	IdentityStr() string //每个user唯一，通过比较这个string 即可 判断两个User 是否相等。相当于 user name
 
@@ -21,20 +21,20 @@ type UserWithPass interface {
 	GetPassword() []byte
 }
 
-//用户集合，判断用户是否存在并取出
+// 用户集合，判断用户是否存在并取出
 type UserSet interface {
 	HasUserByBytes(bs []byte) User
 	IDBytesLen() int //用户名bytes的最小长度
 }
 
-//通过验证信息 试图取出 一个User
+// 通过验证信息 试图取出 一个User
 type UserAuthenticator interface {
 	AuthUserByStr(authStr string) User
 	AuthUserByBytes(authBytes []byte) User
 	AuthBytesLen() int
 }
 
-//用户容器，可判断是否存在，也可以验证
+// 用户容器，可判断是否存在，也可以验证
 type UserContainer interface {
 	UserSet
 
@@ -45,6 +45,10 @@ type UserContainer interface {
 type UserBus interface {
 	AddUser(User) error
 	DelUser(User)
+}
+
+type UserAssigner interface {
+	SetUser(User)
 }
 
 type UserConf struct {
@@ -72,7 +76,7 @@ func InitRealV2rayUsers(uc []UserConf) (us []V2rayUser) {
 	return
 }
 
-//一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口. (其实就是uuid)
+// 一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口. (其实就是uuid)
 type V2rayUser [UUID_BytesLen]byte
 
 func (u V2rayUser) IdentityStr() string {
@@ -98,7 +102,7 @@ func NewV2rayUser(uuidStr string) (V2rayUser, error) {
 	return V2rayUser(uuid), nil
 }
 
-//used in proxy/socks5 and proxy.http. implements User
+// used in proxy/socks5 and proxy.http. implements User
 type UserPass struct {
 	UserID, Password []byte
 }
@@ -133,7 +137,7 @@ func (ph *UserPass) AuthBytes() []byte {
 	return []byte(ph.AuthStr())
 }
 
-//	return len(ph.User) > 0 && len(ph.Password) > 0
+// return len(ph.User) > 0 && len(ph.Password) > 0
 func (ph *UserPass) Valid() bool {
 	return len(ph.UserID) > 0 && len(ph.Password) > 0
 }
@@ -158,14 +162,14 @@ func (ph *UserPass) AuthUserByBytes(bs []byte) User {
 	return nil
 }
 
-//require "user" and "pass" field. return true if both not empty.
+// require "user" and "pass" field. return true if both not empty.
 func (ph *UserPass) InitWithUrl(u *url.URL) bool {
 	ph.UserID = []byte(u.Query().Get("user"))
 	ph.Password = []byte(u.Query().Get("pass"))
 	return len(ph.UserID) > 0 && len(ph.Password) > 0
 }
 
-//uuid: "user:xxxx\npass:xxxx"
+// uuid: "user:xxxx\npass:xxxx"
 func (ph *UserPass) InitWithStr(str string) (ok bool) {
 	var v1, v2 string
 	ok, v1, v2 = CommonSplit(str, "user", "pass")
@@ -177,7 +181,7 @@ func (ph *UserPass) InitWithStr(str string) (ok bool) {
 	return
 }
 
-//implements UserBus, UserSet, UserGetter; 只能存储同一类型的User.
+// implements UserBus, UserSet, UserGetter; 只能存储同一类型的User.
 // 通过 bytes存储用户id，而不是 str。
 type MultiUserMap struct {
 	IDMap   map[string]User
@@ -220,7 +224,7 @@ func (mu *MultiUserMap) SetUseUUIDStr_asKey() {
 	mu.AuthStrToBytesFunc = StrToUUID_slice
 }
 
-//same as AddUser_nolock but with lock; concurrent safe
+// same as AddUser_nolock but with lock; concurrent safe
 func (mu *MultiUserMap) AddUser(u User) error {
 	mu.Mutex.Lock()
 	mu.AddUser_nolock(u)
@@ -229,7 +233,7 @@ func (mu *MultiUserMap) AddUser(u User) error {
 	return nil
 }
 
-//not concurrent safe, use with caution.
+// not concurrent safe, use with caution.
 func (mu *MultiUserMap) AddUser_nolock(u User) {
 	if mu.StoreKeyByStr {
 
@@ -270,7 +274,7 @@ func (mu *MultiUserMap) LoadUsers(us []User) {
 	}
 }
 
-//通过ID查找
+// 通过ID查找
 func (mu *MultiUserMap) HasUserByStr(str string) bool {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
@@ -285,7 +289,7 @@ func (mu *MultiUserMap) HasUserByStr(str string) bool {
 	}
 }
 
-//通过ID查找
+// 通过ID查找
 func (mu *MultiUserMap) HasUserByBytes(bs []byte) User {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
@@ -309,7 +313,7 @@ func (mu *MultiUserMap) AuthBytesLen() int {
 	return mu.TheAuthBytesLen
 }
 
-//通过Auth查找
+// 通过Auth查找
 func (mu *MultiUserMap) AuthUserByStr(str string) User {
 	mu.Mutex.RLock()
 
@@ -328,7 +332,7 @@ func (mu *MultiUserMap) AuthUserByStr(str string) User {
 	return u
 }
 
-//通过Auth查找
+// 通过Auth查找
 func (mu *MultiUserMap) AuthUserByBytes(bs []byte) User {
 	mu.Mutex.RLock()
 

@@ -22,7 +22,7 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 				zap.String("type", rejectType),
 			)
 		}
-
+	case "":
 		fallthrough
 	case "http":
 		underlay.Write([]byte(httpLayer.Err403response))

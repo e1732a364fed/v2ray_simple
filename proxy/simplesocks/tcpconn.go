@@ -8,6 +8,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+// 实现 utils.User, utils.UserAssigner
 type TCPConn struct {
 	net.Conn
 	optionalReader io.Reader
@@ -17,6 +18,40 @@ type TCPConn struct {
 	underlayIsBasic bool
 
 	isServerEnd bool
+
+	upstreamUser utils.User
+}
+
+// 实现 utils.UserAssigner
+func (c *TCPConn) SetUser(u utils.User) {
+	c.upstreamUser = u
+}
+
+func (c *TCPConn) IdentityStr() string {
+	if c.upstreamUser != nil {
+		return c.upstreamUser.IdentityStr()
+	}
+	return ""
+}
+
+func (c *TCPConn) IdentityBytes() []byte {
+	if c.upstreamUser != nil {
+		return c.upstreamUser.IdentityBytes()
+	}
+	return nil
+}
+
+func (c *TCPConn) AuthStr() string {
+	if c.upstreamUser != nil {
+		return c.upstreamUser.AuthStr()
+	}
+	return ""
+}
+func (c *TCPConn) AuthBytes() []byte {
+	if c.upstreamUser != nil {
+		return c.upstreamUser.AuthBytes()
+	}
+	return nil
 }
 
 func (c *TCPConn) Upstream() net.Conn {
