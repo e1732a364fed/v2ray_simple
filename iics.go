@@ -173,7 +173,7 @@ func (iics *incomingInserverConnState) checkfallback() (targetAddr netLayer.Addr
 	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
 	if iics.routingEnv != nil {
 
-		if mf := iics.routingEnv.MainFallback; mf != nil {
+		if mf := iics.routingEnv.Fallback; mf != nil {
 
 			var thisFallbackType byte
 

@@ -9,7 +9,7 @@ import (
 	"github.com/yl2chen/cidranger"
 )
 
-//用于 HasFullOrSubDomain函数
+// 用于 HasFullOrSubDomain函数
 type DomainHaser interface {
 	HasDomain(string) bool
 }
@@ -21,7 +21,7 @@ func (mdh MapDomainHaser) HasDomain(d string) bool {
 	return found
 }
 
-//会以点号分裂domain判断每一个子域名是否被包含，最终会试图匹配整个字符串.
+// 会以点号分裂domain判断每一个子域名是否被包含，最终会试图匹配整个字符串.
 func HasFullOrSubDomain(domain string, ds DomainHaser) bool {
 	lastDotIndex := len(domain)
 
@@ -51,11 +51,13 @@ type TargetDescription struct {
 }
 
 // Set 是 “集合” 的意思, 是一组相同类型的数据放到一起。
-//  这里的相同点，就是它们同属于 将发往一个方向, 即同属一个路由策略。
+//
+//	这里的相同点，就是它们同属于 将发往一个方向, 即同属一个路由策略。
+//
 // 任意一个参数匹配后，都将发往相同的方向，由该方向OutTag 指定。
 // RouteSet 只负责把一些属性相同的 “网络层/传输层 特征” 放到一起。
 //
-//这里主要通过 ip，域名 和 inTag 进行分流。域名的匹配又分多种方式。
+// 这里主要通过 ip，域名 和 inTag 进行分流。域名的匹配又分多种方式。
 type RouteSet struct {
 	//网络层
 	NetRanger cidranger.Ranger    //一个范围
@@ -88,6 +90,7 @@ type RouteSet struct {
 
 }
 
+// 对于我的country，直接直连
 func NewRouteSetForMyCountry(iso string) *RouteSet {
 	if len(iso) != 2 {
 		return nil
@@ -266,7 +269,7 @@ func (rs *RouteSet) IsAddrIn(a Addr) bool {
 	return false
 }
 
-//一个完整的 所有RouteSet的列表，进行路由时，直接遍历即可。
+// 一个完整的 所有RouteSet的列表，进行路由时，直接遍历即可。
 // 所谓的路由实际上就是分流。
 type RoutePolicy struct {
 	List []*RouteSet

@@ -12,10 +12,12 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 type M struct {
@@ -23,62 +25,83 @@ type M struct {
 	DefaultUUID string
 
 	v2ray_simple.GlobalInfo
+	sync.RWMutex
 
-	DirectClient proxy.Client
+	ApiServerRunning bool
 
-	AllServers       []proxy.Server
-	AllClients       []proxy.Client
 	DefaultOutClient proxy.Client
 	RoutingEnv       proxy.RoutingEnv
 
-	ListenCloserList []io.Closer
+	allServers []proxy.Server
+	allClients []proxy.Client
 
-	ApiServerRunning bool
-	EnableApiServer  bool
+	listenCloserList []io.Closer
 }
 
 func New() *M {
 	m := new(M)
-	m.AllClients = make([]proxy.Client, 0, 8)
-	m.AllServers = make([]proxy.Server, 0, 8)
+	m.allClients = make([]proxy.Client, 0, 8)
+	m.allServers = make([]proxy.Server, 0, 8)
 	m.RoutingEnv.ClientsTagMap = make(map[string]proxy.Client)
-	m.DirectClient, _ = proxy.ClientFromURL(proxy.DirectURL)
-	m.DefaultOutClient = m.DirectClient
+	directClient, _ := proxy.ClientFromURL(proxy.DirectURL)
+	m.DefaultOutClient = directClient
 	return m
 }
 
+// 具有 DefaultOutClient 且不是direct也不是reject; 一般表明该通向一个外界代理
+func (defaultMachine *M) DefaultClientUsable() bool {
+	dc := defaultMachine.DefaultOutClient
+	if dc == nil {
+		return false
+	}
+	n := dc.Name()
+	return n != proxy.DirectName && n != proxy.RejectName
+}
+
+func (m *M) ServerCount() int {
+	return len(m.allServers)
+}
+
+func (m *M) ClientCount() int {
+	return len(m.allClients)
+}
+
 func (m *M) Start() {
-	if (m.DefaultOutClient != nil) && (len(m.AllServers) > 0) {
-		for _, inServer := range m.AllServers {
+	if (m.DefaultOutClient != nil) && (len(m.allServers) > 0) {
+		utils.Info("Starting...")
+		m.Lock()
+		for _, inServer := range m.allServers {
 			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
 
 			if lis != nil {
-				m.ListenCloserList = append(m.ListenCloserList, lis)
+				m.listenCloserList = append(m.listenCloserList, lis)
 			}
 		}
-
+		m.Unlock()
 	}
 
 }
 
 func (m *M) Stop() {
+	utils.Info("Stopping...")
 
-	for _, ser := range m.AllServers {
+	m.Lock()
+	for _, ser := range m.allServers {
 		if ser != nil {
 			ser.Stop()
 		}
 	}
 
-	for _, listener := range m.ListenCloserList {
+	for _, listener := range m.listenCloserList {
 		if listener != nil {
 			listener.Close()
 		}
 	}
-
+	m.Unlock()
 }
 
 func (m *M) SetDefaultDirectClient() {
-	m.AllClients = append(m.AllClients, v2ray_simple.DirectClient)
+	m.allClients = append(m.allClients, v2ray_simple.DirectClient)
 	m.DefaultOutClient = v2ray_simple.DirectClient
 
 	m.RoutingEnv.SetClient("direct", v2ray_simple.DirectClient)
@@ -91,7 +114,7 @@ func (m *M) ParseFallbacksAtSymbol(fs []*httpLayer.FallbackConf) {
 			continue
 		}
 		if deststr, ok := fbConf.Dest.(string); ok && strings.HasPrefix(deststr, "@") {
-			for _, s := range m.AllServers {
+			for _, s := range m.allServers {
 				if s.GetTag() == deststr[1:] {
 					//log.Println("got tag fallback dest, will set to ", s.AddrStr())
 					fbConf.Dest = s.AddrStr()
@@ -104,7 +127,7 @@ func (m *M) ParseFallbacksAtSymbol(fs []*httpLayer.FallbackConf) {
 }
 
 func (m *M) HasProxyRunning() bool {
-	return len(m.ListenCloserList) > 0
+	return len(m.listenCloserList) > 0
 }
 
 func (m *M) PrintAllState(w io.Writer) {
@@ -115,11 +138,11 @@ func (m *M) PrintAllState(w io.Writer) {
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", m.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", m.AllUploadBytesSinceStart)
 
-	for i, s := range m.AllServers {
+	for i, s := range m.allServers {
 		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
 
 	}
-	for i, c := range m.AllClients {
+	for i, c := range m.allClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
 	}
 

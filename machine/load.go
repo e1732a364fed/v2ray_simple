@@ -28,7 +28,7 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 			continue
 		}
 
-		m.AllClients = append(m.AllClients, outClient)
+		m.allClients = append(m.allClients, outClient)
 		if tag := outClient.GetTag(); tag != "" {
 
 			m.RoutingEnv.SetClient(tag, outClient)
@@ -37,8 +37,8 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 	}
 
 	if m.DefaultOutClient == nil {
-		if len(m.AllClients) > 0 {
-			m.DefaultOutClient = m.AllClients[0]
+		if len(m.allClients) > 0 {
+			m.DefaultOutClient = m.allClients[0]
 
 		} else {
 			m.DefaultOutClient = v2ray_simple.DirectClient
@@ -74,14 +74,14 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 		if hot {
 			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
 			if lis != nil {
-				m.ListenCloserList = append(m.ListenCloserList, lis)
-				m.AllServers = append(m.AllServers, inServer)
+				m.listenCloserList = append(m.listenCloserList, lis)
+				m.allServers = append(m.allServers, inServer)
 
 			} else {
 				ok = false
 			}
 		} else {
-			m.AllServers = append(m.AllServers, inServer)
+			m.allServers = append(m.allServers, inServer)
 		}
 	}
 
@@ -90,29 +90,51 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 
 // delete and stop the client
 func (m *M) HotDeleteClient(index int) {
-	if index < 0 || index >= len(m.AllClients) {
+	if index < 0 || index >= len(m.allClients) {
 		return
 	}
-	doomedClient := m.AllClients[index]
+	doomedClient := m.allClients[index]
 
 	m.RoutingEnv.DelClient(doomedClient.GetTag())
 	doomedClient.Stop()
-	m.AllClients = utils.TrimSlice(m.AllClients, index)
+	m.allClients = utils.TrimSlice(m.allClients, index)
 }
 
 // delete and close the server
 func (m *M) HotDeleteServer(index int) {
-	if index < 0 || index >= len(m.ListenCloserList) {
+	if index < 0 || index >= len(m.listenCloserList) {
 		return
 	}
 
-	m.ListenCloserList[index].Close()
-	m.AllServers[index].Stop()
+	m.listenCloserList[index].Close()
+	m.allServers[index].Stop()
 
-	m.AllServers = utils.TrimSlice(m.AllServers, index)
-	m.ListenCloserList = utils.TrimSlice(m.ListenCloserList, index)
+	m.allServers = utils.TrimSlice(m.allServers, index)
+	m.listenCloserList = utils.TrimSlice(m.listenCloserList, index)
 }
 
+func (m *M) HotLoadSimpleConf(simpleConf proxy.SimpleConf) (result int) {
+	var ser proxy.Server
+	result, ser = m.LoadSimpleServer(simpleConf)
+	if result < 0 {
+		return
+	}
+	var cli proxy.Client
+	result, cli = m.LoadSimpleClient(simpleConf)
+	if result < 0 {
+		return
+	}
+
+	lis := v2ray_simple.ListenSer(ser, cli, &m.RoutingEnv, &m.GlobalInfo)
+	if lis != nil {
+		m.listenCloserList = append(m.listenCloserList, lis)
+	} else {
+		result = -1
+	}
+	return
+}
+
+// load failed if result <0,
 func (m *M) LoadSimpleServer(simpleConf proxy.SimpleConf) (result int, server proxy.Server) {
 	var e error
 	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
@@ -124,7 +146,7 @@ func (m *M) LoadSimpleServer(simpleConf proxy.SimpleConf) (result int, server pr
 		return
 	}
 
-	m.AllServers = append(m.AllServers, server)
+	m.allServers = append(m.allServers, server)
 
 	if !server.CantRoute() && simpleConf.Route != nil {
 
@@ -151,16 +173,16 @@ func (m *M) LoadSimpleClient(simpleConf proxy.SimpleConf) (result int, client pr
 		return
 	}
 
-	m.AllClients = append(m.AllClients, client)
+	m.allClients = append(m.allClients, client)
 	return
 }
 
 func (m *M) GetStandardConfFromCurrentState() (sc proxy.StandardConf) {
-	for i := range m.AllClients {
+	for i := range m.allClients {
 		sc.Dial = append(sc.Dial, m.getDialConfFromCurrentState(i))
 
 	}
-	for i := range m.AllServers {
+	for i := range m.allServers {
 		sc.Listen = append(sc.Listen, m.getListenConfFromCurrentState(i))
 
 	}
@@ -169,14 +191,14 @@ func (m *M) GetStandardConfFromCurrentState() (sc proxy.StandardConf) {
 }
 
 func (m *M) getDialConfFromCurrentState(i int) (dc *proxy.DialConf) {
-	c := m.AllClients[i]
+	c := m.allClients[i]
 	dc = c.GetBase().DialConf
 
 	return
 }
 
 func (m *M) getListenConfFromCurrentState(i int) (lc *proxy.ListenConf) {
-	c := m.AllServers[i]
+	c := m.allServers[i]
 	lc = c.GetBase().ListenConf
 
 	return

@@ -7,11 +7,11 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
-//used in real relay progress. See source code of v2ray_simple for details.
+// used in real relay progress. See source code of v2ray_simple for details.
 type RoutingEnv struct {
-	RoutePolicy  *netLayer.RoutePolicy
-	MainFallback *httpLayer.ClassicFallback
-	DnsMachine   *netLayer.DNSMachine
+	RoutePolicy *netLayer.RoutePolicy
+	Fallback    *httpLayer.ClassicFallback
+	DnsMachine  *netLayer.DNSMachine
 
 	ClientsTagMap      map[string]Client //ClientsTagMap 存储 tag 对应的 Client；因为分流时，需要通过某个tag找到Client对象。 若要访问map，请用 Get*, Set*, Del* 方法
 	clientsTagMapMutex sync.RWMutex
@@ -37,25 +37,25 @@ func (re *RoutingEnv) DelClient(tag string) {
 	re.clientsTagMapMutex.Unlock()
 }
 
-func LoadEnvFromStandardConf(standardConf *StandardConf, MyCountryISO_3166 string) (routingEnv RoutingEnv) {
+func LoadEnvFromStandardConf(standardConf *StandardConf, myCountryISO_3166 string) (routingEnv RoutingEnv) {
 
 	routingEnv.ClientsTagMap = make(map[string]Client)
 
 	if len(standardConf.Fallbacks) != 0 {
-		routingEnv.MainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
+		routingEnv.Fallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
 	}
 
 	if dnsConf := standardConf.DnsConf; dnsConf != nil {
 		routingEnv.DnsMachine = netLayer.LoadDnsMachine(dnsConf)
 	}
 
-	if standardConf.Route != nil || MyCountryISO_3166 != "" {
+	if standardConf.Route != nil || myCountryISO_3166 != "" {
 
 		netLayer.LoadMaxmindGeoipFile("")
 
 		rp := netLayer.NewRoutePolicy()
-		if MyCountryISO_3166 != "" {
-			rp.AddRouteSet(netLayer.NewRouteSetForMyCountry(MyCountryISO_3166))
+		if myCountryISO_3166 != "" {
+			rp.AddRouteSet(netLayer.NewRouteSetForMyCountry(myCountryISO_3166))
 		}
 
 		rp.LoadRulesForRoutePolicy(standardConf.Route)

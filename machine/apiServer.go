@@ -21,13 +21,13 @@ curl -k https://127.0.0.1:48345/api/allstate
 */
 
 type ApiServerConf struct {
-	Enable     bool
-	PlainHttp  bool
-	KeyFile    string
-	CertFile   string
-	PathPrefix string
-	AdminPass  string
-	Addr       string
+	EnableApiServer bool
+	PlainHttp       bool
+	KeyFile         string
+	CertFile        string
+	PathPrefix      string
+	AdminPass       string
+	Addr            string
 }
 
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
@@ -179,7 +179,7 @@ func (m *M) runApiServer() {
 			}
 
 			ind, err := strconv.Atoi(indexStr)
-			if err != nil || ind < 0 || (isDial && ind >= len(m.AllClients)) || (!isDial && ind >= len(m.AllServers)) {
+			if err != nil || ind < 0 || (isDial && ind >= len(m.allClients)) || (!isDial && ind >= len(m.allServers)) {
 				failBadRequest(err, eIllegalParameter, w)
 
 				w.Write([]byte(eIllegalParameter))

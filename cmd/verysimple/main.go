@@ -159,7 +159,7 @@ func mainFunc() (result int) {
 	}
 
 	var configMode int
-	var mainFallback *httpLayer.ClassicFallback
+	var fallback *httpLayer.ClassicFallback
 
 	var loadConfigErr error
 
@@ -178,7 +178,7 @@ func mainFunc() (result int) {
 
 	var simpleConf proxy.SimpleConf
 
-	configMode, simpleConf, mainFallback, loadConfigErr = LoadConfig(configFileName, listenURL, dialURL)
+	configMode, simpleConf, fallback, loadConfigErr = LoadConfig(configFileName, listenURL, dialURL)
 
 	if loadConfigErr == nil {
 
@@ -238,8 +238,8 @@ func mainFunc() (result int) {
 		fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
 	}
 
-	if mainFallback != nil {
-		defaultMachine.RoutingEnv.MainFallback = mainFallback
+	if fallback != nil {
+		defaultMachine.RoutingEnv.Fallback = fallback
 	}
 
 	//load inServers and RoutingEnv

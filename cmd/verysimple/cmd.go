@@ -127,7 +127,7 @@ func tryDownloadMMDB() {
 
 	var outClient proxy.Client
 
-	if defaultMachine.DefaultOutClient != nil && defaultMachine.DefaultOutClient.Name() != proxy.DirectName && defaultMachine.DefaultOutClient.Name() != proxy.RejectName {
+	if defaultMachine.DefaultClientUsable() {
 		outClient = defaultMachine.DefaultOutClient
 		utils.PrintStr("trying to download mmdb through your proxy dial\n")
 	} else {
@@ -191,7 +191,7 @@ func tryDownloadGeositeSource() {
 
 	var outClient proxy.Client
 
-	if defaultMachine.DefaultOutClient != nil && defaultMachine.DefaultOutClient.Name() != proxy.DirectName && defaultMachine.DefaultOutClient.Name() != proxy.RejectName {
+	if defaultMachine.DefaultClientUsable() {
 		outClient = defaultMachine.DefaultOutClient
 		utils.PrintStr("trying to download geosite through your proxy dial\n")
 	} else {

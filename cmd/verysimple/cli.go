@@ -10,7 +10,6 @@ import (
 	"os"
 	"strconv"
 
-	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -310,10 +309,10 @@ func interactively_hotRemoveServerOrClient(m *machine.M) {
 	m.PrintAllState(os.Stdout)
 
 	var items []string
-	if len(m.AllServers) > 0 {
+	if m.ServerCount() > 0 {
 		items = append(items, "listen")
 	}
-	if len(m.AllClients) > 0 {
+	if m.ClientCount() > 0 {
 		items = append(items, "dial")
 	}
 	if len(items) == 0 {
@@ -340,15 +339,15 @@ func interactively_hotRemoveServerOrClient(m *machine.M) {
 	fmt.Printf("你选择了 %s\n", result)
 	switch i {
 	case 0:
-		if len(m.AllServers) > 0 {
+		if m.ServerCount() > 0 {
 			will_delete_listen = true
 
-		} else if len(m.AllClients) > 0 {
+		} else if m.ClientCount() > 0 {
 			will_delete_dial = true
 		}
 
 	case 1:
-		if len(m.AllServers) > 0 {
+		if m.ServerCount() > 0 {
 			will_delete_dial = true
 
 		}
@@ -356,7 +355,7 @@ func interactively_hotRemoveServerOrClient(m *machine.M) {
 
 	var theInt int64
 
-	if (will_delete_dial && len(m.AllClients) > 1) || (will_delete_listen && len(m.AllServers) > 1) {
+	if (will_delete_dial && m.ClientCount() > 1) || (will_delete_listen && m.ServerCount() > 1) {
 
 		validateFunc := func(input string) error {
 			theInt, err = strconv.ParseInt(input, 10, 64)
@@ -364,11 +363,11 @@ func interactively_hotRemoveServerOrClient(m *machine.M) {
 				return utils.ErrInvalidNumber
 			}
 
-			if will_delete_dial && int(theInt) >= len(m.AllClients) {
+			if will_delete_dial && int(theInt) >= m.ClientCount() {
 				return errors.New("must with in len of dial array")
 			}
 
-			if will_delete_listen && int(theInt) >= len(m.AllServers) {
+			if will_delete_listen && int(theInt) >= m.ServerCount() {
 				return errors.New("must with in len of listen array")
 			}
 
@@ -525,28 +524,22 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	switch confMode {
 	case proxy.StandardMode:
 		if len(standardConf.Dial) > 0 {
-			defaultMachine.LoadDialConf(standardConf.Dial)
+			m.LoadDialConf(standardConf.Dial)
 
 		}
 
 		if len(standardConf.Listen) > 0 {
-			defaultMachine.LoadListenConf(standardConf.Listen, true)
+			m.LoadListenConf(standardConf.Listen, true)
 
 		}
 	case proxy.SimpleMode:
-		r, ser := defaultMachine.LoadSimpleServer(simpleConf)
-		if r < 0 {
-			return
-		}
+		result := m.HotLoadSimpleConf(simpleConf)
+		if result < 0 {
+			utils.PrintStr("添加失败！当前状态：\n")
+			utils.PrintStr(delimiter)
+			m.PrintAllState(os.Stdout)
 
-		r, cli := defaultMachine.LoadSimpleClient(simpleConf)
-		if r < 0 {
 			return
-		}
-
-		lis := vs.ListenSer(ser, cli, &m.RoutingEnv, &m.GlobalInfo)
-		if lis != nil {
-			m.ListenCloserList = append(m.ListenCloserList, lis)
 		}
 
 	}
