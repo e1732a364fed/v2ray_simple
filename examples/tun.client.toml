@@ -44,7 +44,9 @@
 
 ###############################################################
 
-
+# linux 上的路由，可参考 https://github.com/xjasonlyu/tun2socks/wiki/Examples
+# 注意，因为我们完全使用 xjasonlyu/tun2socks 的方案，所以 如果你不使用 auto_route，那么
+# 你就要在运行vs之前先手动根据上面 链接的指导 来建立tun设备。如果你使用了auto_route功能，则无须操作。
 
 [[listen]]
 protocol = "tun"
@@ -61,7 +63,7 @@ protocol = "tun"
 
 # 目前的自动配置逻辑 完全仿照上面的路由配置指导。
 
-# 如果你在linux上，则也可以不用配置direct_list, 而是直接用linux的 bindToDevice功能 给dial绑定自己拨号网卡, 这就可以轻松防回环了。
+# 不过也可以不用配置direct_list, 而是直接用vs的 bindToDevice功能 给dial绑定自己拨号网卡, 这就可以轻松防回环了。
 
 extra.tun_auto_route = true
 extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
