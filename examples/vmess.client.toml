@@ -21,3 +21,4 @@ encrypt_algo = "aes-128-gcm"    #最新vs代码 添加了新的 encrypt_algo配�
 # 高级层等用法请参考 multi.client.toml
 
 # 注意，vs不支持v2ray的 "h2" 传输方式。这是故意的，因为我们推荐直接使用grpc。grpc也是基于h2的，而且vs中还可以回落到真实h2服务器。
+# mux = true

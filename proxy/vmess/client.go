@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -179,6 +180,7 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 
 	if c.use_mux {
 		err = conn.handshake(CMDMux_VS, firstPayload)
+		conn.use_mux = true
 
 	} else {
 		// Request
@@ -223,6 +225,10 @@ type ClientConn struct {
 	dataWriter io.Writer
 
 	vmessout []byte
+
+	use_mux bool
+	RM      sync.Mutex //用于mux，因为可能同一时间多个写入发生
+	WM      sync.Mutex
 }
 
 func (c *ClientConn) CloseConnWithRaddr(_ netLayer.Addr) error {
@@ -354,6 +360,10 @@ func (vc *ClientConn) aead_decodeRespHeader() error {
 }
 
 func (c *ClientConn) Write(b []byte) (n int, err error) {
+	if c.use_mux {
+		c.WM.Lock()
+		defer c.WM.Unlock()
+	}
 	if c.dataWriter != nil {
 		return c.dataWriter.Write(b)
 	}
@@ -416,6 +426,12 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 }
 
 func (c *ClientConn) Read(b []byte) (n int, err error) {
+
+	if c.use_mux {
+		c.RM.Lock()
+		defer c.RM.Unlock()
+	}
+
 	if c.dataReader != nil {
 		return c.dataReader.Read(b)
 	}
