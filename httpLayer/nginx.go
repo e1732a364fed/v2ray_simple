@@ -2,6 +2,7 @@ package httpLayer
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -35,7 +36,12 @@ const (
 	// 2. vim 在显示 末尾 有 \n 的文件 时， 会 直接省略这个 \n
 )
 
-var nginxTimezone = time.FixedZone("GMT", 0)
+var (
+	nginxTimezone = time.FixedZone("GMT", 0)
+
+	bs_Nginx403_html = []byte(Nginx403_html)
+	bs_Nginx400_html = []byte(Nginx400_html)
+)
 
 //Get real a 400 response that looks like it comes from nginx.
 func GetNginx400Response() string {
@@ -81,9 +87,12 @@ func SetNginx400Response(rw http.ResponseWriter) {
 	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
 
 	rw.Header().Add("Date", tStr)
+
+	rw.Header().Add("Content-Length", strconv.Itoa(len(bs_Nginx400_html)))
+
 	rw.WriteHeader(http.StatusBadRequest)
 
-	rw.Write([]byte(Nginx400_html))
+	rw.Write(bs_Nginx400_html)
 	if flusher, ok := rw.(http.Flusher); ok {
 		flusher.Flush()
 	}
@@ -100,9 +109,12 @@ func SetNginx403Response(rw http.ResponseWriter) {
 	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
 
 	rw.Header().Add("Date", tStr)
+
+	rw.Header().Add("Content-Length", strconv.Itoa(len(bs_Nginx403_html)))
+
 	rw.WriteHeader(http.StatusForbidden)
 
-	rw.Write([]byte(Nginx403_html))
+	rw.Write(bs_Nginx403_html)
 	if flusher, ok := rw.(http.Flusher); ok {
 		flusher.Flush()
 	}
