@@ -39,7 +39,7 @@ func NewServer() *Server {
 	return s
 }
 
-type ServerCreator struct{}
+type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 // true
 func (ServerCreator) MultiTransportLayer() bool {

@@ -33,7 +33,7 @@ import (
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/vmess"
 )
 
-//statistics
+// statistics
 var (
 	ActiveConnectionCount      int32
 	AllDownloadBytesSinceStart uint64
@@ -46,7 +46,7 @@ var (
 	DirectClient, _ = proxy.ClientFromURL(proxy.DirectURL)
 )
 
-//用于回落到h2c
+// 用于回落到h2c
 var (
 	fallback_h2c_transport = &http2.Transport{
 		DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
@@ -59,7 +59,8 @@ var (
 	fb_h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
 )
 
-/*ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
+/*
+ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
 监听 inServer, 然后试图转发到一个 proxy.Client。如果env没给出，则会转发到 defaultOutClient。
 若 env 不为 nil, 则会 进行分流或回落。具有env的情况下，可能会转发到 非 defaultOutClient 的其他 proxy.Client.
 
@@ -382,7 +383,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	handshakeInserver_and_passToOutClient(iics)
 }
 
-//被 handshakeInserver_and_passToOutClient 调用
+// 被 handshakeInserver_and_passToOutClient 调用
 func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	inServer := iics.inServer
 	if inServer == nil {
@@ -522,7 +523,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 //
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
 //
-//被 handleNewIncomeConnection 和 ListenSer 调用。
+// 被 handleNewIncomeConnection 和 ListenSer 调用。
 func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	wlc, udp_wlc, targetAddr, err := handshakeInserver(&iics)
@@ -558,7 +559,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 }
 
-//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 以及 tproxy 调用。 iics.inServer可能为nil。
+// 被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 以及 tproxy 调用。 iics.inServer可能为nil。
 // 本函数 可能是 本文件中 最长的 函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy，最终转发到 某个 outClient。
 //
 // 最终会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
@@ -982,7 +983,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	dialClient_andRelay(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc)
 }
 
-//dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手。
+// dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手。
 // result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux ); -10 标识 因为 client为reject 而关闭了连接。
 // 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到.
 func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
@@ -1104,13 +1105,12 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var dialedCommonConn any
 
-	not_direct := !(client.Name() == proxy.DirectName)
+	not_udpSpecial := !(realTargetAddr.Network == "udp" && client.GetCreator().UseUDPAsMsgConn())
 
 	/*
-		direct 的udp 是自己拨号的,因为要考虑到fullcone。
-		direct 的tcp也是自己拨号，因为还考虑到 sockopt
+		shadowsocks的udp是自己拨号的，因为它用到了udp的包特性
 
-		不是direct的udp的话，也要分情况:
+		不是shadowsocks的udp的话，也要分情况:
 		如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
 		Instead, 我们要试图 取出已经拨号好了的 连接
 	*/
@@ -1120,7 +1120,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var muxC advLayer.MuxClient
 
-	if not_direct {
+	if not_udpSpecial {
 
 		if adv != "" && advClient.IsMux() {
 
@@ -1150,7 +1150,14 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			}
 		}
 
-		clientConn, err = realTargetAddr.Dial(client.GetSockopt(), client.LocalAddr())
+		var na net.Addr
+		if realTargetAddr.Network == "tcp" {
+			na = client.LocalTCPAddr()
+		} else if realTargetAddr.Network == "udp" {
+			na = client.LocalUDPAddr()
+		}
+
+		clientConn, err = realTargetAddr.Dial(client.GetSockopt(), na)
 
 		if err != nil {
 			if err == netLayer.ErrMachineCantConnectToIpv6 {
@@ -1175,6 +1182,8 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			return
 		}
 
+	} else {
+		goto shakeStep
 	}
 
 	if xver := iics.fallbackXver; xver > 0 && xver < 3 {
@@ -1340,6 +1349,7 @@ advLayerHandshakeStep:
 		}
 	}
 
+shakeStep:
 	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
 
 	if !isudp || hasInnerMux {
@@ -1405,7 +1415,7 @@ advLayerHandshakeStep:
 	return
 } //dialClient
 
-//在 dialClient 中调用。 如果调用不成功，则result < 0. 若成功, 则 result == 0.
+// 在 dialClient 中调用。 如果调用不成功，则result < 0. 若成功, 则 result == 0.
 func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, iics incomingInserverConnState, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
 
 	smuxSession := client.GetClientInnerMuxSession(wrc)

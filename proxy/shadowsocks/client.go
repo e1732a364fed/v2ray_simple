@@ -15,10 +15,13 @@ func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
 }
 
-type ClientCreator struct{}
+type ClientCreator struct{ proxy.CreatorCommonStruct }
 
+func (ClientCreator) UseUDPAsMsgConn() bool {
+	return true
+}
 func (ClientCreator) MultiTransportLayer() bool {
-	return false
+	return true
 }
 func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 	if format != proxy.UrlStandardFormat {
@@ -59,7 +62,9 @@ func newClient(mp MethodPass) *Client {
 		cipher: initShadowCipher(mp),
 	}
 }
-
+func (*Client) GetCreator() proxy.ClientCreator {
+	return ClientCreator{}
+}
 func (*Client) Name() string {
 	return Name
 }
@@ -83,25 +88,34 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 }
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (mc netLayer.MsgConn, err error) {
+	var ok bool
+	var pc net.PacketConn
 
-	pc, ok := underlay.(net.PacketConn)
-	if ok {
-		if c.cipher != nil {
-			pc = c.cipher.PacketConn(pc)
-		}
-
-		mc = &shadowUDPPacketConn{
-			PacketConn: pc,
-			raddr:      underlay.RemoteAddr(),
-			taddr:      target.ToUDPAddr(),
-		}
-
-		if firstPayload != nil {
-			err = mc.WriteMsgTo(firstPayload, target)
-		}
-
-		return
+	if underlay != nil {
+		pc, ok = underlay.(net.PacketConn)
 	}
 
-	return nil, utils.ErrUnImplemented
+	if !ok {
+		pc, err = c.Base.DialUDP(target)
+		if err != nil {
+			return
+		}
+	}
+
+	if c.cipher != nil {
+		pc = c.cipher.PacketConn(pc)
+	}
+
+	mc = &shadowUDPPacketConn{
+		PacketConn: pc,
+		raddr:      underlay.RemoteAddr(),
+		taddr:      target.ToUDPAddr(),
+	}
+
+	if firstPayload != nil {
+		err = mc.WriteMsgTo(firstPayload, target)
+	}
+
+	return
+
 }

@@ -40,7 +40,7 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type ServerCreator struct{}
+type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 // true
 func (ServerCreator) MultiTransportLayer() bool {

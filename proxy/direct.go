@@ -16,8 +16,13 @@ const (
 )
 
 // implements ClientCreator for direct
-type DirectCreator struct{}
+type DirectCreator struct{ CreatorCommonStruct }
 
+func (DirectCreator) UseUDPAsMsgConn() bool {
+	return true
+}
+
+// true
 func (DirectCreator) MultiTransportLayer() bool {
 	return true
 }
@@ -40,27 +45,17 @@ func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 		dc.Network = netLayer.DualNetworkName
 	}
 
-	if dc.SendThrough != "" {
-		st, err := netLayer.StrToNetAddr(netLayer.DualNetworkName, dc.SendThrough)
-		if err != nil {
-			return nil, err
-		}
-		d.localTCPAddr = st.(*netLayer.TCPUDPAddr).TCPAddr
-		d.localUDPAddr = st.(*netLayer.TCPUDPAddr).UDPAddr
-
-	}
-
 	return d, nil
 }
 
 type DirectClient struct {
 	Base
-
-	localTCPAddr *net.TCPAddr
-	localUDPAddr *net.UDPAddr
 }
 
 func (*DirectClient) Name() string { return DirectName }
+func (*DirectClient) GetCreator() ClientCreator {
+	return DirectCreator{}
+}
 
 // 若 underlay 为nil，则会对target进行拨号, 否则返回underlay本身
 func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
@@ -70,23 +65,7 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 
 	if underlay == nil {
 
-		if d.Sockopt != nil {
-			if d.localTCPAddr == nil {
-				result, err = target.DialWithOpt(d.Sockopt, nil) //避免把nil的 *net.TCPAddr 装箱到 net.Addr里
-
-			} else {
-				result, err = target.DialWithOpt(d.Sockopt, d.localTCPAddr)
-
-			}
-		} else {
-			if d.localTCPAddr == nil {
-				result, err = target.Dial(nil, nil)
-
-			} else {
-				result, err = target.Dial(nil, d.localTCPAddr)
-
-			}
-		}
+		result, err = d.Base.DialTCP(target)
 
 	} else {
 		result = underlay
@@ -114,10 +93,10 @@ func (d *DirectClient) EstablishUDPChannel(_ net.Conn, firstPayload []byte, targ
 
 	if len(firstPayload) == 0 {
 
-		return netLayer.NewUDPMsgConn(d.localUDPAddr, d.IsFullcone, false, d.Sockopt)
+		return d.Base.DialUDP(target)
 
 	} else {
-		mc, err := netLayer.NewUDPMsgConn(d.localUDPAddr, d.IsFullcone, false, d.Sockopt)
+		mc, err := d.Base.DialUDP(target)
 		if err != nil {
 			return nil, err
 		}

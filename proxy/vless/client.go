@@ -16,11 +16,12 @@ func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
 }
 
-type ClientCreator struct{}
+type ClientCreator struct{ proxy.CreatorCommonStruct }
 
-func (ClientCreator) MultiTransportLayer() bool {
+func (ClientCreator) UseUDPAsMsgConn() bool {
 	return false
 }
+
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
@@ -87,6 +88,9 @@ type Client struct {
 	use_mux   bool
 }
 
+func (*Client) GetCreator() proxy.ClientCreator {
+	return ClientCreator{}
+}
 func (c *Client) Name() string {
 	if c.version == 0 {
 		return Name

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"net"
 	"net/url"
 	"strings"
 
@@ -35,6 +36,13 @@ func PrintAllClientNames() {
 	}
 }
 
+type CreatorCommonStruct struct{}
+
+func (CreatorCommonStruct) MultiTransportLayer() bool {
+	return false
+}
+func (CreatorCommonStruct) AfterCommonConfServer(Server) {}
+
 type CreatorCommon interface {
 	//若为true，则表明该协议可同时使用tcp和udp来传输数据。direct, socks5 和 shadowsocks 都为true。
 	//此时，是否开启udp取决于Network(), 如果为dual, 则均支持; 如果仅为tcp或者udp，则不支持。
@@ -52,6 +60,9 @@ type ClientCreator interface {
 	//iv: initial value, can be nil.
 	URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error)
 	//DialConfToURL(url *DialConf, format int) (*url.URL, error)
+
+	UseUDPAsMsgConn() bool //默认情况下，UDP会被包装成流式协议，除非指出需要利用udp的固定包长度特性; direct 和 shadowsocks会返回true.
+
 }
 
 // 可通过标准配置或url 来初始化。
@@ -59,6 +70,7 @@ type ServerCreator interface {
 	CreatorCommon
 
 	NewServer(*ListenConf) (Server, error)
+	AfterCommonConfServer(Server)
 
 	URLToListenConf(url *url.URL, iv *ListenConf, format int) (*ListenConf, error)
 	//ListenConfToURL(url *ListenConf, format int) (*url.URL, error)
@@ -111,24 +123,31 @@ func newClient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, erro
 		e = prepareTLS_forClient(c, dc)
 	}
 	if dc.SendThrough != "" {
-
-		if c.Network() == netLayer.DualNetworkName {
-			//多个传输层的话，完全由proxy自行配置 localAddr。
-		} else {
-			st, err := netLayer.StrToNetAddr(c.Network(), dc.SendThrough)
-
-			if err != nil {
-				return nil, utils.ErrInErr{ErrDesc: "parse sendthrough addr failed", ErrDetail: err}
-
-			} else {
-				c.GetBase().LA = st
-
-			}
-		}
-
+		setSendThroughByNetwork(c.GetBase(), dc.SendThrough)
 	}
 	return c, e
 
+}
+
+func setSendThroughByNetwork(b *Base, throughStr string) error {
+
+	st, err := netLayer.StrToNetAddr(netLayer.DualNetworkName, throughStr)
+	if err != nil {
+		return utils.ErrInErr{ErrDesc: "parse sendthrough addr failed", ErrDetail: err}
+	}
+
+	switch b.Network() {
+	case netLayer.DualNetworkName:
+
+		b.LTA = st.(*netLayer.TCPUDPAddr).TCPAddr
+		b.LUA = st.(*netLayer.TCPUDPAddr).UDPAddr
+	case "tcp":
+		b.LTA = st.(*net.TCPAddr)
+	case "udp":
+		b.LUA = st.(*net.UDPAddr)
+	}
+
+	return nil
 }
 
 // SetAddrStr,  ConfigCommon
@@ -183,6 +202,7 @@ func newServer(creator ServerCreator, lc *ListenConf, knownTls bool) (Server, er
 
 		}
 	}
+	creator.AfterCommonConfServer(ser)
 	return ser, nil
 
 }

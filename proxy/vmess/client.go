@@ -47,11 +47,12 @@ func GetEncryptAlgo(dc *proxy.DialConf) (result string) {
 	return result
 }
 
-type ClientCreator struct{}
+type ClientCreator struct{ proxy.CreatorCommonStruct }
 
-func (ClientCreator) MultiTransportLayer() bool {
+func (ClientCreator) UseUDPAsMsgConn() bool {
 	return false
 }
+
 func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 	if format != proxy.UrlStandardFormat {
 		return dc, utils.ErrUnImplemented
@@ -93,6 +94,10 @@ type Client struct {
 
 	opt      byte
 	security byte
+}
+
+func (*Client) GetCreator() proxy.ClientCreator {
+	return ClientCreator{}
 }
 
 func (c *Client) specifySecurityByStr(security string) error {

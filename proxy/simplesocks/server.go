@@ -15,11 +15,7 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type ServerCreator struct{}
-
-func (ServerCreator) MultiTransportLayer() bool {
-	return false
-}
+type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	s := &Server{}

@@ -45,11 +45,7 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type ServerCreator struct{}
-
-func (ServerCreator) MultiTransportLayer() bool {
-	return false
-}
+type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 	if format != proxy.UrlStandardFormat {

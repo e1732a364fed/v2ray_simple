@@ -14,14 +14,14 @@ const (
 
 )
 
-//若字符串无法被解析为网络类型，则返回 UnknownNetwork
+// 若字符串无法被解析为网络类型，则返回 UnknownNetwork
 func StrToTransportProtocol(s string) uint16 {
 	switch s {
 	case "tcp", "tcp4", "tcp6", "TCP", "TCP4", "TCP6":
 		return TCP
 	case "udp", "udp4", "udp6", "UDP", "UDP4", "UDP6":
 		return UDP
-	case "dual", "mix", "mixed", "Mix", "MIX":
+	case DualNetworkName, "mix", "mixed", "Mix", "MIX":
 		return Dual
 	case "unix", "Unix", "UNIX":
 		return UNIX

@@ -56,12 +56,11 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 }
 
 // implements ClientCreator and ServerCreator for reject
-type RejectCreator struct{}
+type RejectCreator struct{ CreatorCommonStruct }
 
-func (RejectCreator) MultiTransportLayer() bool {
+func (RejectCreator) UseUDPAsMsgConn() bool {
 	return false
 }
-
 func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	r := &RejectClient{}
 
@@ -130,6 +129,10 @@ RejectClient implements Client, optionally response a 403 and close the underlay
 */
 type RejectClient struct {
 	rejectCommon
+}
+
+func (*RejectClient) GetCreator() ClientCreator {
+	return RejectCreator{}
 }
 
 // optionally response 403 and close the underlay, return io.EOF.

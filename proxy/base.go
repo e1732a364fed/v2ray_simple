@@ -88,7 +88,6 @@ type Base struct {
 	DialConf   *DialConf
 
 	Addr           string
-	LA             net.Addr //for client's LocalAddr
 	TLS            bool
 	Tag            string //可用于路由, 见 netLayer.route.go
 	TransportLayer string
@@ -115,18 +114,25 @@ type Base struct {
 	Innermux *smux.Session //用于存储 client的已拨号的mux连接
 
 	sync.Mutex
+
+	//用于sendthrough
+	LTA *net.TCPAddr
+	LUA *net.UDPAddr
 }
 
 func (b *Base) GetBase() *Base {
 	return b
 }
 
-func (b *Base) Network() string {
-	return b.TransportLayer
+func (b *Base) LocalTCPAddr() *net.TCPAddr {
+	return b.LTA
+}
+func (b *Base) LocalUDPAddr() *net.UDPAddr {
+	return (b.LUA)
 }
 
-func (b *Base) LocalAddr() net.Addr {
-	return b.LA
+func (b *Base) Network() string {
+	return b.TransportLayer
 }
 
 func (b *Base) GetXver() int {
@@ -444,4 +450,32 @@ func (b *Base) InitAdvLayer() {
 
 		b.AdvS = advSer
 	}
+}
+
+func (d *Base) DialTCP(target netLayer.Addr) (result net.Conn, err error) {
+	if d.Sockopt != nil {
+		if d.LTA == nil {
+			result, err = target.DialWithOpt(d.Sockopt, nil) //避免把nil的 *net.TCPAddr 装箱到 net.Addr里
+
+		} else {
+			result, err = target.DialWithOpt(d.Sockopt, d.LTA)
+
+		}
+	} else {
+		if d.LTA == nil {
+			result, err = target.Dial(nil, nil)
+
+		} else {
+			result, err = target.Dial(nil, d.LTA)
+
+		}
+	}
+	return
+}
+
+func (d *Base) DialUDP(target netLayer.Addr) (mc *netLayer.UDPMsgConn, err error) {
+
+	mc, err = netLayer.NewUDPMsgConn(d.LUA, d.IsFullcone, false, d.Sockopt)
+	return
+
 }

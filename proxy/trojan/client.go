@@ -18,11 +18,12 @@ func init() {
 
 //作为对照，可以参考 https://github.com/p4gefau1t/trojan-go/blob/master/tunnel/trojan/client.go
 
-type ClientCreator struct{}
+type ClientCreator struct{ proxy.CreatorCommonStruct }
 
-func (ClientCreator) MultiTransportLayer() bool {
+func (ClientCreator) UseUDPAsMsgConn() bool {
 	return false
 }
+
 func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 	switch format {
 	case proxy.UrlStandardFormat:
@@ -56,6 +57,9 @@ type Client struct {
 	use_mux bool
 }
 
+func (*Client) GetCreator() proxy.ClientCreator {
+	return ClientCreator{}
+}
 func (*Client) Name() string {
 	return Name
 }

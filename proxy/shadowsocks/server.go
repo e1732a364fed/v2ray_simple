@@ -16,10 +16,10 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type ServerCreator struct{}
+type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 func (ServerCreator) MultiTransportLayer() bool {
-	return false
+	return true
 }
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
@@ -31,7 +31,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 	var mp MethodPass
 	if mp.InitWithStr(uuidStr) {
-		return newServer(mp), nil
+		return newServer(mp, lc), nil
 
 	}
 
@@ -54,6 +54,38 @@ func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format in
 
 }
 
+// loop read udp
+// func (ServerCreator) AfterCommonConfServer(s proxy.Server) {
+// 	if s.Network() == "udp" || s.Network() == netLayer.DualNetworkName {
+// 		ss := s.(*Server)
+// 		uc, err := net.ListenUDP("udp", ss.LUA)
+// 		if err != nil {
+// 			log.Panicln("shadowsocks listen udp failed", err)
+// 		}
+// 		pc := ss.cipher.PacketConn(uc)
+// 		for {
+// 			buf := utils.GetPacket()
+// 			defer utils.PutPacket(buf)
+// 			n, saddr, err := pc.ReadFrom(buf)
+// 			if err != nil {
+// 				if ce := utils.CanLogErr("shadowsocks read udp failed"); ce != nil {
+// 					ce.Write(zap.Error(err))
+// 				}
+// 				return
+// 			}
+// 			r := bytes.NewBuffer(buf[:n])
+// 			taddr, err := GetAddrFrom(r)
+// 			if err != nil {
+// 				if ce := utils.CanLogErr("shadowsocks GetAddrFrom failed"); ce != nil {
+// 					ce.Write(zap.Error(err))
+// 				}
+// 				return
+// 			}
+
+// 		}
+// 	}
+// }
+
 type Server struct {
 	proxy.Base
 
@@ -62,10 +94,12 @@ type Server struct {
 	cipher core.Cipher
 }
 
-func newServer(info MethodPass) *Server {
-	return &Server{
+func newServer(info MethodPass, lc *proxy.ListenConf) *Server {
+	s := &Server{
 		cipher: initShadowCipher(info),
 	}
+
+	return s
 }
 func (*Server) Name() string {
 	return Name

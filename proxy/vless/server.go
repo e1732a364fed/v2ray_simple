@@ -18,11 +18,7 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type ServerCreator struct{}
-
-func (ServerCreator) MultiTransportLayer() bool {
-	return false
-}
+type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 // 如果 lc.Version==0, 则只支持 v0.
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {

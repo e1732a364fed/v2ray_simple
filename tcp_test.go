@@ -3,7 +3,7 @@ package v2ray_simple_test
 import (
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -26,7 +26,7 @@ func TestTCP_trojan_mux(t *testing.T) {
 	testTCP(t, "trojan", 0, "tcp", true)
 }
 
-//tcp测试我们直接使用http请求来测试
+// tcp测试我们直接使用http请求来测试
 func testTCP(t *testing.T, protocol string, version int, network string, innermux bool) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog("")
@@ -157,7 +157,7 @@ func tryGetHttp(t *testing.T, client *http.Client, path string) {
 
 	t.Log("Got response, start read")
 
-	bs, err := ioutil.ReadAll(resp.Body)
+	bs, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Log("get http failed read", err)
 		t.FailNow()

@@ -15,7 +15,11 @@ func init() {
 	proxy.RegisterClient(Name, &ClientCreator{})
 }
 
-type ClientCreator struct{}
+type ClientCreator struct{ proxy.CreatorCommonStruct }
+
+func (ClientCreator) UseUDPAsMsgConn() bool {
+	return false
+}
 
 // true
 func (ClientCreator) MultiTransportLayer() bool {
@@ -50,6 +54,9 @@ type Client struct {
 	utils.UserPass
 }
 
+func (*Client) GetCreator() proxy.ClientCreator {
+	return ClientCreator{}
+}
 func (*Client) Name() string {
 	return Name
 }
