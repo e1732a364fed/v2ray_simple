@@ -17,7 +17,9 @@ var (
 	ErrNoMatch             = errors.New("no matched")
 	ErrInvalidNumber       = errors.New("invalid number")
 
-	ErrShortRead = errors.New("short read")
+	ErrInvalidWrite = errors.New("readfrom, invalid write result")
+
+	ErrShortRead = errors.New("short read") //io包有ErrShortWrite，却没有ShortRead
 	ErrHandled   = errors.New("handled")
 	ErrFailed    = errors.New("failed") //最无脑的Err, 在能描述清楚错误时不要使用 ErrFailed
 )

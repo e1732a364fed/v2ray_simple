@@ -5,6 +5,43 @@ import (
 	"sync"
 )
 
+// 摘自 io.CopyBuffer。 因为原始的 CopyBuffer会又调用ReadFrom, 如果splice调用的话会产生无限递归。
+//
+//	这里删掉了ReadFrom, 直接进行经典拷贝
+func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
+	bs := GetPacket()
+	defer PutPacket(bs)
+	for {
+
+		nr, er := r.Read(bs)
+		if nr > 0 {
+			nw, ew := w.Write(bs[0:nr])
+
+			if nw < 0 || nr < nw {
+				nw = 0
+				if ew == nil {
+					ew = ErrInvalidWrite
+				}
+			}
+			written += int64(nw)
+			if ew != nil {
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+
+			err = er
+			break
+		}
+	}
+	return
+}
+
 // 一种简单的读写组合, 在ws包中被用到.
 type RW struct {
 	io.Reader

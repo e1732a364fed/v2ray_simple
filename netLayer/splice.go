@@ -1,7 +1,6 @@
 package netLayer
 
 import (
-	"errors"
 	"io"
 	"net"
 	"runtime"
@@ -9,14 +8,12 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-var ErrInvalidWrite = errors.New("readfrom, invalid write result")
-
 var SystemCanSplice = runtime.GOARCH != "wasm" && runtime.GOOS != "windows"
 
 // Splicer 是一个 可以进行Write时使用splice的接口。
 type Splicer interface {
 	EverPossibleToSpliceWrite() bool      //是否有机会splice, 如果这个返回false，则永远无法splice; 主要审视自己能否向裸连接写入数据; 读不用splicer担心。
-	CanSpliceWrite() (bool, *net.TCPConn) //当前状态是否可以splice
+	CanSpliceWrite() (bool, *net.TCPConn) //当前状态是否可以splice写入，即是否会暴露出 net.TCPConn
 }
 
 // tcp, unix
@@ -107,7 +104,7 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceW io.Writer, r io.
 					if nw < 0 || nr < nw {
 						nw = 0
 						if ew == nil {
-							ew = ErrInvalidWrite
+							ew = utils.ErrInvalidWrite
 						}
 					}
 					written += int64(nw)
@@ -161,44 +158,7 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceW io.Writer, r io.
 
 		//所以我们只能单独把纯粹的经典拷贝代码拿出来使用
 
-		return ClassicCopy(classicWriter, r)
+		return utils.ClassicCopy(classicWriter, r)
 	}
 
-}
-
-// 拷贝自 io.CopyBuffer。 因为原始的 CopyBuffer会又调用ReadFrom, 如果splice调用的话会产生无限递归。
-//
-//	这里删掉了ReadFrom, 直接进行经典拷贝
-func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
-	buf := utils.GetPacket()
-	defer utils.PutPacket(buf)
-	for {
-
-		nr, er := r.Read(buf)
-		if nr > 0 {
-			nw, ew := w.Write(buf[0:nr])
-
-			if nw < 0 || nr < nw {
-				nw = 0
-				if ew == nil {
-					ew = ErrInvalidWrite
-				}
-			}
-			written += int64(nw)
-			if ew != nil {
-				err = ew
-				break
-			}
-			if nr != nw {
-				err = io.ErrShortWrite
-				break
-			}
-		}
-		if er != nil {
-
-			err = er
-			break
-		}
-	}
-	return
 }
