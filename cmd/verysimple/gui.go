@@ -27,6 +27,10 @@ var multilineEntry *ui.MultilineEntry //用于向用户提供一些随机的有�
 var entriesGroup *ui.Group            //父 of multilineEntry
 
 type GuiPreference struct {
+	HttpAddr   string `toml:"proxy_http_addr"`
+	HttpPort   string `toml:"proxy_http_port"`
+	Socks5Addr string `toml:"proxy_socks5_addr"`
+	Socks5Port string `toml:"proxy_socks5_port"`
 }
 
 func init() {
@@ -56,6 +60,12 @@ func init() {
 		}()
 
 		loadPreferences()
+		setupDefaultPref()
+
+		utils.PrintStr("Gui Mode entered. \n")
+		if ce := utils.CanLogInfo("Gui Mode entered"); ce != nil {
+			ce.Write()
+		}
 
 		ui.Main(setupUI)
 	}
@@ -67,6 +77,20 @@ func init() {
 			multilineEntry.SetText(strings.Join(theTunStartCmds, "\n"))
 		}
 	}
+}
+
+func setupDefaultPref() {
+
+	if gp := currentUserPreference.Gui; gp == nil {
+		gp = new(GuiPreference)
+		currentUserPreference.Gui = gp
+
+		gp.HttpAddr = "127.0.0.1"
+		gp.Socks5Addr = "127.0.0.1"
+		gp.HttpPort = "10800"
+		gp.Socks5Port = "10800"
+	}
+
 }
 
 func makeBasicControlsPage() ui.Control {
@@ -140,19 +164,38 @@ func makeBasicControlsPage() ui.Control {
 	proxyForm.SetPadded(true)
 	systemProxyGroup.SetChild(proxyForm)
 
-	const defaultPort = "10800"
-	const defaultAddr = "127.0.0.1"
-
 	var newProxyToggle = func(form *ui.Form, isSocks5 bool) {
+		gp := currentUserPreference.Gui
+		var port = gp.HttpPort
+		var addr = gp.HttpAddr
+
 		str := "http"
+
 		if isSocks5 {
 			str = "socks5"
+			port = gp.Socks5Port
+			addr = gp.Socks5Addr
 		}
 
 		addrE := ui.NewEntry()
-		addrE.SetText(defaultPort)
+		addrE.SetText(addr)
+		addrE.OnChanged(func(e *ui.Entry) {
+			if isSocks5 {
+				gp.Socks5Addr = e.Text()
+			} else {
+				gp.HttpAddr = e.Text()
+			}
+		})
+
 		portE := ui.NewEntry()
-		portE.SetText(defaultAddr)
+		portE.SetText(port)
+		portE.OnChanged(func(e *ui.Entry) {
+			if isSocks5 {
+				gp.Socks5Port = e.Text()
+			} else {
+				gp.HttpPort = e.Text()
+			}
+		})
 
 		cb := ui.NewCheckbox("系统" + str)
 		cb.OnToggled(func(c *ui.Checkbox) {
