@@ -88,6 +88,8 @@ type ResponseHeader struct {
 type HeaderPreset struct {
 	Request  *RequestHeader  `toml:"request"`
 	Response *ResponseHeader `toml:"response"`
+
+	Strict bool `toml:"strict"`
 }
 
 // 将Header改为首字母大写
@@ -200,57 +202,60 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (leftBuf *bytes.Buffer, er
 	}
 	headerBytes := rp.WholeRequestBuf.Next(indexOfEnding)
 
-	indexOfFirstCRLF := bytes.Index(allbytes, []byte(CRLF))
+	if h.Strict {
+		indexOfFirstCRLF := bytes.Index(allbytes, []byte(CRLF))
 
-	headerBytes = headerBytes[indexOfFirstCRLF+2:]
+		headerBytes = headerBytes[indexOfFirstCRLF+2:]
 
-	headerBytesList := bytes.Split(headerBytes, []byte(CRLF))
-	matchCount := 0
-	for _, header := range headerBytesList {
-		//log.Println("ReadRequest read header", string(h))
-		hs := string(header)
-		ss := strings.SplitN(hs, ":", 2)
-		if len(ss) != 2 {
-			err = utils.ErrInvalidData
-			return
-		}
-		key := strings.TrimLeft(ss[0], " ")
-		value := strings.TrimLeft(ss[1], " ")
-
-		thisList := h.Request.Headers[key]
-		if len(thisList) == 0 {
-
-			switch key {
-			case "Content-Length", "Date":
-				//go官方包会主动添加 Content-Length
-				// 而 v2ray 会 主动添加 Date, 还会加 User-Agent: Go-http-client/1.1
-
-				//所以最好在配置文件中明示出 自己定义的 User-Agent
-			default:
-
-				err = utils.ErrInErr{ErrDesc: "ReadRequest failed, unknown header", ErrDetail: utils.ErrInvalidData, Data: hs}
+		headerBytesList := bytes.Split(headerBytes, []byte(CRLF))
+		matchCount := 0
+		for _, header := range headerBytesList {
+			//log.Println("ReadRequest read header", string(h))
+			hs := string(header)
+			ss := strings.SplitN(hs, ":", 2)
+			if len(ss) != 2 {
+				err = utils.ErrInvalidData
 				return
 			}
+			key := strings.TrimLeft(ss[0], " ")
+			value := strings.TrimLeft(ss[1], " ")
 
-		} else {
-			var ok bool
-			for _, v := range thisList {
-				if value == strings.TrimLeft(v, " ") {
-					ok = true
-					matchCount++
-					break
+			thisList := h.Request.Headers[key]
+			if len(thisList) == 0 {
+
+				switch key {
+				case "Content-Length", "Date":
+					//go官方包会主动添加 Content-Length
+					// 而 v2ray 会 主动添加 Date, 还会加 User-Agent: Go-http-client/1.1
+
+					//所以最好在配置文件中明示出 自己定义的 User-Agent
+				default:
+
+					err = utils.ErrInErr{ErrDesc: "ReadRequest failed, unknown header", ErrDetail: utils.ErrInvalidData, Data: hs}
+					return
+				}
+
+			} else {
+				var ok bool
+				for _, v := range thisList {
+					if value == strings.TrimLeft(v, " ") {
+						ok = true
+						matchCount++
+						break
+					}
+				}
+				if !ok {
+					err = utils.ErrInErr{ErrDesc: "ReadRequest failed, header content not match", ErrDetail: utils.ErrInvalidData, Data: hs}
+					return
 				}
 			}
-			if !ok {
-				err = utils.ErrInErr{ErrDesc: "ReadRequest failed, header content not match", ErrDetail: utils.ErrInvalidData, Data: hs}
-				return
-			}
+
+		} //for headerBytesList
+		if diff := len(h.Request.Headers) - matchCount; diff > 0 {
+			err = utils.ErrInErr{ErrDesc: "ReadRequest failed, not all headers given", ErrDetail: utils.ErrInvalidData, Data: diff}
+			return
 		}
 
-	} //for headerBytesList
-	if diff := len(h.Request.Headers) - matchCount; diff > 0 {
-		err = utils.ErrInErr{ErrDesc: "ReadRequest failed, not all headers given", ErrDetail: utils.ErrInvalidData, Data: diff}
-		return
 	}
 
 	rp.WholeRequestBuf.Next(4)

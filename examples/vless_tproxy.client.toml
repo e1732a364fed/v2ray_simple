@@ -9,7 +9,7 @@
 
 [[listen]]
 protocol = "tproxy" # tproxy只支持客户端, 且只支持linux系统, 一般用于软路由/树莓派等.
-host = "127.0.0.1"
+host = "0.0.0.0"    # 这里不要填 127.0.0.1了，否则只会转发本机流量，而一般作为透明代理都是为了转发局域网内其它设备的流量的。
 port = 12345
 # sockopt.tproxy = true # 不需要明示指明 tproxy这个 sockopt, 因为protocol指出tproxy后就会自动配置该项.
 
