@@ -13,15 +13,14 @@ import (
 	"github.com/e1732a364fed/ui"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	qrcode "github.com/skip2/go-qrcode"
 	"go.uber.org/zap"
+	"rsc.io/qr"
 )
 
 func setMenu() {
 
 	var filesM = ui.NewMenu("Files")
 	{
-		filesM.AppendPreferencesItem()
 		filesM.AppendAboutItem().OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
 			ui.MsgBox(mainwin,
 				"verysimple, a very simple proxy",
@@ -49,6 +48,15 @@ func setMenu() {
 			} else {
 				p.Signal(syscall.SIGINT) //这个方法在windows上不好使
 			}
+		})
+		filesM.AppendSeparator()
+
+		filesM.AppendItem("Download Geoip( GeoLite2-Country.mmdb)").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+			tryDownloadMMDB()
+		})
+
+		filesM.AppendItem("Download Geosite folder(v2fly/domain-list-community)").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+			tryDownloadGeositeSource()
 		})
 
 	}
@@ -95,15 +103,16 @@ func debugMenu() {
 	})
 
 	debugM.AppendItem("test2").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-		qr, err := qrcode.New("https://example.org", qrcode.Medium)
+		c, err := qr.Encode("https://example.org", qr.L)
 		if err != nil {
 			return
 		}
+
 		nw := ui.NewWindow("img", 320, 320, false)
 		uiimg := ui.NewImage(320, 320)
 		rect := image.Rect(0, 0, 320, 320)
 		rgbaImg := image.NewRGBA(rect)
-		draw.Draw(rgbaImg, rect, qr.Image(256), image.Point{}, draw.Over)
+		draw.Draw(rgbaImg, rect, c.Image(), image.Point{}, draw.Over)
 		uiimg.Append(rgbaImg)
 
 		mh := newImgTableHandler()

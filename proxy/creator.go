@@ -19,6 +19,14 @@ var (
 	}
 )
 
+func AllClientTypeList() []string {
+	return utils.GetMapSortedKeySlice(clientCreatorMap)
+}
+
+func AllServerTypeList() []string {
+	return utils.GetMapSortedKeySlice(serverCreatorMap)
+}
+
 func PrintAllServerNames() {
 	utils.PrintStr("===============================\nSupported Proxy Listen protocols:\n")
 	for _, v := range utils.GetMapSortedKeySlice(serverCreatorMap) {

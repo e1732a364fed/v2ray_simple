@@ -93,6 +93,14 @@ func (m *M) RemoveAllClient() {
 	}
 }
 
+func (m *M) RemoveAllServer() {
+	count := m.ServerCount()
+
+	for i := 0; i < count; i++ {
+		m.HotDeleteServer(0)
+	}
+}
+
 // delete and stop the client
 func (m *M) HotDeleteClient(index int) {
 	if index < 0 || index >= len(m.allClients) {

@@ -20,11 +20,13 @@ import (
 	"rsc.io/qr"
 )
 
-var mainwin *ui.Window
-
-var testFunc func()
-var multilineEntry *ui.MultilineEntry //用于向用户提供一些随机的有用的需要复制的字符串
-var entriesGroup *ui.Group            //父 of multilineEntry
+var (
+	mainwin        *ui.Window
+	testFunc       func()
+	multilineEntry *ui.MultilineEntry //用于向用户提供一些随机的有用的需要复制的字符串
+	entriesGroup   *ui.Group          //父 of multilineEntry
+	lastConfFile   string
+)
 
 type GuiPreference struct {
 	HttpAddr   string `toml:"proxy_http_addr"`
@@ -145,6 +147,15 @@ func makeBasicControlsPage() ui.Control {
 
 		loglvl_cbox := ui.NewCombobox()
 
+		toggleHbox.Append(ui.NewVerticalSeparator(), false)
+
+		printStateBtn := ui.NewButton("打印当前状态")
+		printStateBtn.OnClicked(func(b *ui.Button) {
+			mainM.PrintAllStateForHuman(os.Stdout)
+		})
+
+		toggleHbox.Append(printStateBtn, false)
+
 		{
 			grid.Append(loglvl_cbox,
 				1, 0, 1, 1,
@@ -238,10 +249,26 @@ func makeBasicControlsPage() ui.Control {
 			confE.SetReadOnly(true)
 			button.OnClicked(func(*ui.Button) {
 				filename := ui.OpenFile(mainwin)
+				notok := false
 				if filename == "" {
-					filename = "(cancelled)"
+					notok = true
+				} else if !utils.FileExist(filename) {
+					notok = true
+				}
+
+				if notok {
+					return
 				}
 				confE.SetText(filename)
+
+				shouldStart := false
+				if mainM.IsRunning() {
+					mainM.Stop()
+					mainM.RemoveAllClient()
+					mainM.RemoveAllServer()
+
+					shouldStart = true
+				}
 
 				_, loadConfigErr := mainM.LoadConfig(filename, "", "")
 				if loadConfigErr != nil {
@@ -249,13 +276,22 @@ func makeBasicControlsPage() ui.Control {
 						ce.Write(zap.Error(loadConfigErr))
 					}
 				} else {
+					lastConfFile = filename
 					mainM.SetupListenAndRoute()
 					mainM.SetupDial()
+
+					if shouldStart {
+						mainM.Start()
+					}
+
+					setupTab()
 				}
 
 			})
 
-			if len(configFiles) == 1 {
+			if lastConfFile != "" {
+				confE.SetText(lastConfFile)
+			} else if len(configFiles) == 1 {
 				confE.SetText(configFiles[0])
 			}
 
@@ -426,6 +462,8 @@ func windowClose(*ui.Window) bool {
 	return true
 }
 
+var tab *ui.Tab
+
 func setupUI() {
 
 	setMenu()
@@ -444,20 +482,31 @@ func setupUI() {
 		})
 	}
 
-	tab := ui.NewTab()
+	setupTab()
+
+	mainwin.Show()
+
+}
+
+func setupTab() {
+	if tab != nil {
+		mainwin.SetChild(nil)
+		c := tab.NumPages()
+		for i := 0; i < c; i++ {
+			tab.Delete(0)
+		}
+	}
+	tab = ui.NewTab()
 	mainwin.SetChild(tab)
 	mainwin.SetMargined(true)
 
 	tab.Append("基础控制", makeBasicControlsPage())
 	tab.Append("代理控制", makeConfPage())
 	tab.Append("app控制", makeAppPage())
-	//tab.Append("Data Choosers", makeDataChoosersPage())
 
 	for i := 0; i < tab.NumPages(); i++ {
 		tab.SetMargined(i, true)
 	}
-	mainwin.Show()
-
 }
 
 type imgTableH struct {

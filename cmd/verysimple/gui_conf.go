@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/e1732a364fed/ui"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"golang.org/x/exp/slices"
 )
 
 var appVboxExtra []func(*ui.Box)
@@ -21,10 +23,6 @@ func makeAppPage() ui.Control {
 		vbox.SetPadded(true)
 		group.SetChild(vbox)
 
-		// ip := ui.NewProgressBar()
-		// ip.SetValue(-1)
-		// vbox.Append(ip, false)
-
 		if len(appVboxExtra) > 0 {
 			for _, f := range appVboxExtra {
 				f(vbox)
@@ -36,7 +34,9 @@ func makeAppPage() ui.Control {
 }
 
 func makeConfPage() ui.Control {
+
 	result := ui.NewHorizontalBox()
+
 	group1 := ui.NewGroup("Listen")
 	group2 := ui.NewGroup("Dial")
 
@@ -78,6 +78,7 @@ func makeConfPage() ui.Control {
 
 	hbox2 = ui.NewHorizontalBox()
 	vbox2.Append(hbox2, false)
+	vbox2.Append(ui.NewHorizontalSeparator(), false)
 
 	hbox2.Append(ui.NewLabel("Dial"), false)
 
@@ -103,18 +104,31 @@ func makeConfPage() ui.Control {
 		update(false)
 	})
 
-	muxC := ui.NewCheckbox("mux")
-	if curSelectedDial >= 0 {
-		muxC.SetChecked(sc.Dial[curSelectedDial].Mux)
+	dialPCbox := ui.NewCombobox()
+	vbox2.Append(dialPCbox, false)
+
+	allDialPs := proxy.AllClientTypeList()
+
+	for _, p := range allDialPs {
+		dialPCbox.Append(p)
 	}
-	vbox2.Append(muxC, false)
-	muxC.OnToggled(func(c *ui.Checkbox) {
-		sc.Dial[curSelectedDial].Mux = muxC.Checked()
-		update(true)
+
+	dialPCbox.OnSelected(func(c *ui.Combobox) {
+		idx := dialPCbox.Selected()
+
+		sc.Dial[curSelectedDial].Protocol = allDialPs[idx]
 	})
 
+	muxC := ui.NewCheckbox("mux")
+	muxC.OnToggled(func(c *ui.Checkbox) {
+		sc.Dial[curSelectedDial].Mux = muxC.Checked()
+	})
+	vbox2.Append(muxC, false)
+
 	update = func(shouldChange bool) {
-		muxC.SetChecked(sc.Dial[curSelectedDial].Mux)
+		curD := sc.Dial[curSelectedDial]
+		muxC.SetChecked(curD.Mux)
+		dialPCbox.SetSelected(slices.Index(allDialPs, curD.Protocol))
 
 		if shouldChange {
 			var shouldStart = false
@@ -135,6 +149,14 @@ func makeConfPage() ui.Control {
 		}
 
 	}
+	update(false)
+
+	applyBtn := ui.NewButton("提交修改")
+	vbox2.Append(ui.NewHorizontalBox(), true)
+	vbox2.Append(applyBtn, false)
+	applyBtn.OnClicked(func(b *ui.Button) {
+		update(true)
+	})
 
 	// ecbox := ui.NewEditableCombobox()
 	// vbox.Append(ecbox, false)
