@@ -304,7 +304,7 @@ func setupUI() {
 			if p, err := os.FindProcess(os.Getpid()); err != nil {
 
 			} else {
-				p.Signal(syscall.SIGINT)
+				p.Signal(syscall.SIGINT) //不过这个方法在windows上还是不好使
 			}
 		})
 

@@ -9,6 +9,8 @@
 # 在macos上, 配置路由表还需要在tun设备建立之后才能进行，因为tun设备的名称是无法自定义的
 # 在macos上, 需要管理员权限(sudo)运行vs_gui 才能 成功自动创建tun设备
 
+###############################################################
+
 # 下面给出macos上的路由表配置指导
 
 # 首先删除默认路由，然后将路由指向 utun3 (用户自己运行的到的名称可能不同)
@@ -27,6 +29,17 @@
 
 # 你还可以参考 https://github.com/yangchuansheng/love-gfw/blob/master/docs/gotun2socks-macos.md
 
+###############################################################
+
+# 下面给出windows上的路由表配置指导
+
+# route delete 0.0.0.0 mask 0.0.0.0
+# route add 0.0.0.0 mask 0.0.0.0 10.1.0.20 metric 6
+
+# 移除：
+# route delete 0.0.0.0 mask 0.0.0.0
+# route add 0.0.0.0 mask 0.0.0.0 192.168.1.1 metric 50
+
 
 [[listen]]
 protocol = "tun"
@@ -38,8 +51,9 @@ protocol = "tun"
 
 
 # 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 
-# 此时必须额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址; 如果不给出, 则不会自动配置路由表
-# 目前的自动配置逻辑 完全仿照上面的路由示例。
+# 此时如果是在macos上, 则必须额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址; 如果不给出, 则不会自动配置路由表
+
+# 目前的自动配置逻辑 完全仿照上面的路由配置指导。
 
 extra.tun_auto_route = true
 extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
