@@ -68,7 +68,7 @@ sudo cp examples/vlesss.server.toml server.toml
 如果你不愿意使用linux的“后台服务”，只是想手动去令它在后台运行，那么实际上，在verysimple所在位置运行如下一段命令即可。
 
 ```
-nohup ./verysimple_linux_amd64 -c server.toml >/dev/null &
+nohup ./verysimple -c server.toml >/dev/null &
 ```
 
 这里将它的标准输出舍弃了，因为一般来说我们会在toml配置文件中 配置好日志文件名称；如果不舍弃输出的话，就会多一个输出（到控制台），增加系统负担。

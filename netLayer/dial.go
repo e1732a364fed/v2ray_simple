@@ -147,6 +147,29 @@ func (a Addr) DialWithOpt(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error
 	}
 	if localAddr != nil {
 		dialer.LocalAddr = localAddr
+
+		//localAddr一般用于指定ipv4或者ipv6出站，所以我们这里标注一下。
+		switch a.Network {
+		case "tcp":
+			if ta, ok := localAddr.(*net.TCPAddr); ok {
+
+				//ipv6
+				if ta.IP.To4() == nil {
+					a.Network = "tcp6"
+				} else {
+					a.Network = "tcp4"
+				}
+			}
+		case "udp":
+			if ta, ok := localAddr.(*net.UDPAddr); ok {
+
+				if ta.IP.To4() == nil {
+					a.Network = "udp6"
+				} else {
+					a.Network = "udp4"
+				}
+			}
+		}
 	}
 	if sockopt != nil {
 		dialer.Control = func(network, address string, c syscall.RawConn) error {
