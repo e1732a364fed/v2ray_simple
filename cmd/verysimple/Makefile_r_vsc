@@ -1,7 +1,7 @@
 # 本文件的一些解释请参考 Makefile_release.
 # 本文件用于编译客户端版本的verysimple。vsc = verysimple client
 # 该版本使用cgo。
-# vsc因为开启了cgo，是较难交叉编译的，建议在目标平台上编译。
+# vsc因为开启了cgo，是较难交叉编译的，建议在目标平台上编译。或者搜索一下 "xgo"
 
 prefix :=vsc
 
@@ -26,7 +26,7 @@ else
 ifeq ($(detected_OS),Windows)
 
 define compile
-	set CGO_ENABLED=1&& set GOOS=$(2)&& set GOARCH=$(3)&& $(cmd) $(1)$(4)
+	set CGO_ENABLED=1&& set GOOS=$(2)&& set GOARCH=$(3)&& $(cmd) ${prefix}_$(1)$(4)
 endef
 
 else

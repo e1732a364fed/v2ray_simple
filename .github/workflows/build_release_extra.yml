@@ -8,6 +8,42 @@ on:
         required: true
 
 jobs:
+  xgo:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Build vsc(verysimple client)
+        uses: crazy-max/ghaction-xgo@v2
+        with:
+          xgo_version: latest
+          go_version: 1.19
+          dest: build
+          prefix: vsc
+          targets: windows/amd64,windows/arm64,linux/amd64,linux/arm64,darwin/amd64,darwin/arm64
+          v: true
+          x: false
+          race: false
+          ldflags: -s -w -ldflags "-X 'main.Version=${{ github.event.inputs.tagName }}' -buildid="
+          buildmode: default
+          trimpath: true
+          working_dir: cmd/verysimple
+          tags: "vcs"
+
+      - name: create xz archive
+        shell: bash
+        run: |
+          cd cmd/verysimple/ && for i in vsc*; do tar -cJf $i.tar.xz $i -C ../../ examples/; done && touch -mt $(date +%Y01010000) *.tar.xz
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: cmd/verysimple/vsc*.tar.xz
+          tag: ${{ github.event.inputs.tagName }}
+          file_glob: true
 
   build:
     runs-on: ubuntu-latest
