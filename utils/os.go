@@ -77,7 +77,7 @@ func ToggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
 		const inetSettings = `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
 		if enable {
 
-			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f", addr, port)
+			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f")
 			addr = addr + ":" + port
 
 			if isSocks5 {
@@ -96,7 +96,7 @@ func ToggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
 
 			LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "", "/f")
 
-			LogRunCmd("reg", "delete", inetSettings, "/v", "ProxyOverride", "/v", "ProxyOverride", "/f")
+			LogRunCmd("reg", "delete", inetSettings, "/v", "ProxyOverride", "/f")
 		}
 
 	}
