@@ -355,7 +355,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	}
 	if i5 == 0 {
 		uuid := utils.GenerateUUIDStr()
-		clientDial.Uuid = uuid
+		clientDial.UUID = uuid
 		fmt.Println("随机生成的uuid为", uuid)
 	} else {
 		promptUUID := promptui.Prompt{
@@ -371,7 +371,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 
 		fmt.Printf("你输入了 %s\n", result)
 
-		clientDial.Uuid = result
+		clientDial.UUID = result
 	}
 
 	var serverListenStruct proxy.ListenConf

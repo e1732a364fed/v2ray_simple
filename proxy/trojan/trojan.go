@@ -218,7 +218,7 @@ func GenerateOfficialDraftShareURL(dialconf *proxy.DialConf) string {
 	var u url.URL
 
 	u.Scheme = Name
-	u.User = url.User(dialconf.Uuid)
+	u.User = url.User(dialconf.UUID)
 	if dialconf.IP != "" {
 		u.Host = dialconf.IP + ":" + strconv.Itoa(dialconf.Port)
 	} else {

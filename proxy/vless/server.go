@@ -22,7 +22,7 @@ type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 // 如果 lc.Version==0, 则只支持 v0.
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-	uuidStr := lc.Uuid
+	uuidStr := lc.UUID
 	onlyV0 := lc.Version == 0
 
 	var s *Server
@@ -54,7 +54,7 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 			lc = &proxy.ListenConf{}
 
 			uuidStr := url.User.Username()
-			lc.Uuid = uuidStr
+			lc.UUID = uuidStr
 		}
 
 		return lc, nil

@@ -31,9 +31,10 @@ func (s *Server) GetPath() string {
 
 func (s *Server) Stop() {
 	if s.listener != nil {
+		l := s.listener
 		s.listener = nil
 
-		s.listener.Close()
+		l.Close()
 	}
 }
 

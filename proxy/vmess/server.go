@@ -77,7 +77,7 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 			lc = &proxy.ListenConf{}
 
 			uuidStr := url.User.Username()
-			lc.Uuid = uuidStr
+			lc.UUID = uuidStr
 		}
 
 		return lc, nil
@@ -88,7 +88,7 @@ func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format 
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-	uuidStr := lc.Uuid
+	uuidStr := lc.UUID
 
 	s := NewServer()
 

@@ -131,6 +131,26 @@ func GetVSI_url(pc BaseInterface, targetNetwork string) string {
 		sb.WriteString(pc.AddrStr())
 	}
 
+	path := ""
+
+	if lc := pc.GetBase().ListenConf; lc != nil {
+		if lc.Path != "" {
+			path = lc.Path
+		}
+	} else if dc := pc.GetBase().DialConf; dc != nil {
+		if dc.Path != "" {
+			path = dc.Path
+		}
+	}
+
+	if path != "" {
+		if !strings.HasPrefix(path, "/") {
+			sb.WriteString("/")
+
+		}
+		sb.WriteString(path)
+	}
+
 	if t := pc.GetTag(); t != "" {
 		sb.WriteByte('#')
 		sb.WriteString(t)
@@ -142,8 +162,14 @@ func GetVSI_url(pc BaseInterface, targetNetwork string) string {
 func getFullNameBuilder(pc BaseInterface, n string) *strings.Builder {
 
 	var sb strings.Builder
-	sb.WriteString(pc.Network())
-	sb.WriteString(pc.MiddleName())
+	ne := pc.Network()
+	sb.WriteString(ne)
+
+	mn := pc.MiddleName()
+	if ne == "" {
+		mn = strings.TrimLeft(mn, "+")
+	}
+	sb.WriteString(mn)
 	sb.WriteString(n)
 
 	if i, innerProxyName := pc.HasInnerMux(); i == 2 {

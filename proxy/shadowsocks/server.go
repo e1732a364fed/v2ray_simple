@@ -30,7 +30,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 		lc.Network = netLayer.DualNetworkName
 	}
 
-	uuidStr := lc.Uuid
+	uuidStr := lc.UUID
 
 	var mp MethodPass
 	if mp.InitWithStr(uuidStr) {
@@ -50,7 +50,7 @@ func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format in
 	}
 
 	if p, set := u.User.Password(); set {
-		lc.Uuid = "method:" + u.User.Username() + "\npass:" + p
+		lc.UUID = "method:" + u.User.Username() + "\npass:" + p
 	}
 
 	return lc, nil

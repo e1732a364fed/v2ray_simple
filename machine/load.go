@@ -14,14 +14,14 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 
 	for _, d := range conf {
 
-		if d.Uuid == "" && m.DefaultUUID != "" {
-			d.Uuid = m.DefaultUUID
+		if d.UUID == "" && m.DefaultUUID != "" {
+			d.UUID = m.DefaultUUID
 		}
 
 		outClient, err := proxy.NewClient(d)
 		if err != nil {
 			if ce := utils.CanLogErr("can not create outClient: "); ce != nil {
-				ce.Write(zap.Error(err))
+				ce.Write(zap.Error(err), zap.Any("raw", d))
 			}
 			ok = false
 			continue
@@ -54,15 +54,15 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 	}
 
 	for _, l := range conf {
-		if l.Uuid == "" && m.DefaultUUID != "" {
-			l.Uuid = m.DefaultUUID
+		if l.UUID == "" && m.DefaultUUID != "" {
+			l.UUID = m.DefaultUUID
 		}
 
 		inServer, err := proxy.NewServer(l)
 		if err != nil {
 
 			if ce := utils.CanLogErr("Can not create listen server"); ce != nil {
-				ce.Write(zap.Error(err))
+				ce.Write(zap.Error(err), zap.Any("raw", l))
 			}
 			ok = false
 			continue

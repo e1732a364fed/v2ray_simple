@@ -31,7 +31,7 @@ func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (
 	}
 
 	if p, set := u.User.Password(); set {
-		dc.Uuid = "user:" + u.User.Username() + "\npass:" + p
+		dc.UUID = "user:" + u.User.Username() + "\npass:" + p
 	}
 
 	return dc, nil
@@ -39,7 +39,7 @@ func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (
 
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	c := &Client{}
-	if str := dc.Uuid; str != "" {
+	if str := dc.UUID; str != "" {
 		c.InitWithStr(str)
 	}
 	return c, nil

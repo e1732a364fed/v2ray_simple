@@ -13,7 +13,7 @@ var myvmess_wss = &proxy.DialConf{
 	CommonConf: proxy.CommonConf{
 		Protocol:      "vmess",
 		EncryptAlgo:   "aes-128-gcm",
-		Uuid:          utils.ExampleUUID,
+		UUID:          utils.ExampleUUID,
 		TLS:           true,
 		AdvancedLayer: "ws",
 		Path:          "/path1",
@@ -28,7 +28,7 @@ var myss_http = &proxy.DialConf{
 	CommonConf: proxy.CommonConf{
 		Protocol:    "shadowsocks",
 		EncryptAlgo: "chacha20",
-		Uuid:        "method:chacha20\npass:" + utils.ExampleUUID,
+		UUID:        "method:chacha20\npass:" + utils.ExampleUUID,
 		HttpHeader: &httpLayer.HeaderPreset{
 			Request: &httpLayer.RequestHeader{
 				Path: []string{"/pathx"},
@@ -48,7 +48,7 @@ var myss_wss = &proxy.DialConf{
 	CommonConf: proxy.CommonConf{
 		Protocol:    "shadowsocks",
 		EncryptAlgo: "chacha20",
-		Uuid:        "method:chacha20\npass:" + utils.ExampleUUID,
+		UUID:        "method:chacha20\npass:" + utils.ExampleUUID,
 		HttpHeader: &httpLayer.HeaderPreset{
 			Request: &httpLayer.RequestHeader{
 				Path: []string{"/pathx"},
@@ -67,7 +67,7 @@ var myss_wss = &proxy.DialConf{
 	},
 }
 
-//unexhaustive
+// unexhaustive
 func TestToQX(t *testing.T) {
 
 	if configAdapter.ToQX(myvmess_wss) != "vmess=1.1.1.1:443, method=aes-128-gcm, password=a684455c-b14f-11ea-bf0d-42010aaa0003, obfs=wss, obfs-host=example.com, obfs-uri=/path1, tag=myvmess_wss" {

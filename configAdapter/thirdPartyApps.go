@@ -56,7 +56,7 @@ func ToQX(dc *proxy.DialConf) string {
 		//vs 中，ss的 加密方法可以在两个地方指定，一个是uuid中的method部分，一个是 EncryptAlgo
 		//其中，uuid的method部分是必须要给出的
 
-		ok, m, p := utils.CommonSplit(dc.Uuid, "method", "pass")
+		ok, m, p := utils.CommonSplit(dc.UUID, "method", "pass")
 		if !ok {
 			return "parsing error when split uuid to get method and pass"
 		}
@@ -120,7 +120,7 @@ func ToQX(dc *proxy.DialConf) string {
 		}
 		sb.WriteString(strings.ToLower(ea))
 		sb.WriteString(", password=")
-		sb.WriteString(dc.Uuid)
+		sb.WriteString(dc.UUID)
 
 		var hasObfs bool
 
@@ -155,8 +155,8 @@ func ToQX(dc *proxy.DialConf) string {
 		}
 
 	case "http":
-		if dc.Uuid != "" {
-			ok, u, p := utils.CommonSplit(dc.Uuid, "user", "pass")
+		if dc.UUID != "" {
+			ok, u, p := utils.CommonSplit(dc.UUID, "user", "pass")
 			if !ok {
 				return "parsing error when split uuid to get user and pass"
 			}
@@ -169,7 +169,7 @@ func ToQX(dc *proxy.DialConf) string {
 		trojan_or_http_tlsFunc()
 	case "trojan":
 		sb.WriteString(", password=")
-		sb.WriteString(dc.Uuid)
+		sb.WriteString(dc.UUID)
 		trojan_or_http_tlsFunc()
 	} //switch
 
@@ -216,7 +216,7 @@ func FromQX(str string) (dc proxy.DialConf) {
 			case "method":
 				dc.EncryptAlgo = v
 			case "password":
-				dc.Uuid = v
+				dc.UUID = v
 			case "tag":
 				dc.Tag = v
 			case "obfs-uri":
@@ -256,8 +256,8 @@ func FromQX(str string) (dc proxy.DialConf) {
 	}
 
 	if dc.Protocol == "shadowsocks" {
-		if dc.Uuid != "" && dc.EncryptAlgo != "" {
-			dc.Uuid = "method:" + dc.EncryptAlgo + "\n" + "pass:" + dc.Uuid
+		if dc.UUID != "" && dc.EncryptAlgo != "" {
+			dc.UUID = "method:" + dc.EncryptAlgo + "\n" + "pass:" + dc.UUID
 		}
 	}
 	if dc.Extra == nil {
@@ -348,7 +348,7 @@ func ToClash(dc *proxy.DialConf) string {
 
 	switch dc.Protocol {
 	case "shadowsocks":
-		ok, m, p := utils.CommonSplit(dc.Uuid, "method", "pass")
+		ok, m, p := utils.CommonSplit(dc.UUID, "method", "pass")
 		if !ok {
 			return "parsing error when split uuid to get method and pass"
 		}
@@ -382,7 +382,7 @@ func ToClash(dc *proxy.DialConf) string {
 	case "vmess":
 		if dc.Protocol == "vmess" {
 			sb.WriteString("\n    uuid: ")
-			sb.WriteString(dc.Uuid)
+			sb.WriteString(dc.UUID)
 			sb.WriteString("\n    alterId: 0")
 			sb.WriteString("\n    cipher: ")
 			if dc.EncryptAlgo != "" {
@@ -393,7 +393,7 @@ func ToClash(dc *proxy.DialConf) string {
 
 		} else {
 			sb.WriteString("\n    password: ")
-			sb.WriteString(dc.Uuid)
+			sb.WriteString(dc.UUID)
 		}
 
 		if dc.TLS {
@@ -447,7 +447,7 @@ func ToClash(dc *proxy.DialConf) string {
 	case "http":
 		fallthrough
 	case "socks5":
-		ok, u, p := utils.CommonSplit(dc.Uuid, "user", "pass")
+		ok, u, p := utils.CommonSplit(dc.UUID, "user", "pass")
 		if !ok {
 			return "parsing error when split uuid to get user and pass"
 		}
@@ -493,7 +493,7 @@ func ToV2rayN(dc *proxy.DialConf) string {
 		PS:       dc.Tag,
 		Add:      dc.IP,
 		Port:     strconv.Itoa(dc.Port),
-		ID:       dc.Uuid,
+		ID:       dc.UUID,
 		Security: dc.EncryptAlgo,
 		Host:     dc.Host,
 		Sni:      dc.Host,

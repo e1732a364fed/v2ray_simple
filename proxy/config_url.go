@@ -177,7 +177,7 @@ func URLToCommonConf(u *url.URL, conf *CommonConf) error {
 
 	conf.Network = q.Get("network")
 
-	conf.Uuid = u.User.Username()
+	conf.UUID = u.User.Username()
 
 	conf.Fullcone = utils.QueryPositive(q, "fullcone")
 	conf.Tag = u.Fragment
@@ -320,7 +320,7 @@ func ToStandardUrl(cc *CommonConf, dc *DialConf, lc *ListenConf) string {
 		u.Scheme += "s"
 	}
 
-	u.User = url.User(cc.Uuid)
+	u.User = url.User(cc.UUID)
 	if cc.IP != "" {
 		u.Host = cc.IP + ":" + strconv.Itoa(cc.Port)
 	} else {

@@ -68,7 +68,7 @@ func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format in
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	s := NewServer()
-	if str := lc.Uuid; str != "" {
+	if str := lc.UUID; str != "" {
 
 		var userPass utils.UserPass
 		if userPass.InitWithStr(str) {

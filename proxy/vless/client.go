@@ -20,7 +20,7 @@ type ClientCreator struct{ proxy.CreatorCommonStruct }
 
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
-	uuidStr := dc.Uuid
+	uuidStr := dc.UUID
 	id, err := utils.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 		if dc == nil {
 			dc = &proxy.DialConf{}
 			uuidStr := url.User.Username()
-			dc.Uuid = uuidStr
+			dc.UUID = uuidStr
 
 		}
 

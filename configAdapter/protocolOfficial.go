@@ -35,7 +35,7 @@ func ToSS(cc *proxy.CommonConf, lc *proxy.ListenConf, plain_userinfo bool, sip i
 
 	u.Scheme = cc.Protocol
 
-	ok, m, p := utils.CommonSplit(cc.Uuid, "method", "pass")
+	ok, m, p := utils.CommonSplit(cc.UUID, "method", "pass")
 	if !ok {
 		return "parsing error when split uuid to get method and pass"
 
@@ -156,7 +156,7 @@ func ToXray(dc *proxy.DialConf) string {
 	var u url.URL
 
 	u.Scheme = dc.Protocol
-	u.User = url.User(dc.Uuid)
+	u.User = url.User(dc.UUID)
 	if dc.IP != "" {
 		u.Host = dc.IP + ":" + strconv.Itoa(dc.Port)
 	} else {

@@ -159,7 +159,8 @@ func MoveItem[T any](arr *[]T, fromIndex, toIndex int) {
 // splices 包在  Nov 10, 2022 添加了Replace函数, 就不用我们自己的实现了
 // v0.0.0-20221110155412-d0897a79cd37, 不过我们为了代码兼容依然保存该代码,直到2.x.x版本.
 //
-// items to insert at start, delete deleteCount items at start
+// items to insert at start, delete deleteCount items at start.
+//
 // See https://github.com/zzwx/splice/blob/main/splice.go
 func Splice[T any](source *[]T, start int, deleteCount int, items ...T) (removed []T) {
 	if start > len(*source) {
