@@ -29,7 +29,10 @@ dokodemo://?target.ip=1.1.1.1&target.port=80#my_doko
 
 shadowsocks://aes-128-gcm:mypasswordxxxxx@127.0.0.1:8000#my_ss
 
-socks5://myusername:mypassword@127.0.0.1:1080#my_socks5
+socks5://myusername:mypassword@127.0.0.1:1080#my_socks5_safe
+
+socks5://127.0.0.1:1080#my_socks5 
+
 ```
 
 ## 基础部分

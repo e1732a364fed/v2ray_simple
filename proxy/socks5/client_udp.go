@@ -23,29 +23,31 @@ type ClientUDPConn struct {
 }
 
 func (cpc *ClientUDPConn) Associate() (err error) {
-	if !cpc.associated {
-		var tc *net.TCPConn
-		tc, err = net.DialTCP("tcp", nil, cpc.ServerAddr)
-		if err != nil {
-			return
-		}
-		cpc.ServerUDPPort_forMe, err = Client_EstablishUDPAssociate(tc)
-		if err != nil {
-			return
-		}
-
-		ua := net.UDPAddr{
-			IP:   cpc.ServerAddr.IP,
-			Port: cpc.ServerUDPPort_forMe,
-		}
-		cpc.UDPConn, err = net.DialUDP("udp", nil, &ua)
-		if err != nil {
-			return
-		}
-
-		cpc.associated = true
-
+	if cpc.associated {
+		return
 	}
+
+	var tc *net.TCPConn
+	tc, err = net.DialTCP("tcp", nil, cpc.ServerAddr)
+	if err != nil {
+		return
+	}
+	cpc.ServerUDPPort_forMe, err = Client_EstablishUDPAssociate(tc)
+	if err != nil {
+		return
+	}
+
+	ua := net.UDPAddr{
+		IP:   cpc.ServerAddr.IP,
+		Port: cpc.ServerUDPPort_forMe,
+	}
+	cpc.UDPConn, err = net.DialUDP("udp", nil, &ua)
+	if err != nil {
+		return
+	}
+
+	cpc.associated = true
+
 	return
 }
 
@@ -148,7 +150,7 @@ func (cpc *ClientUDPConn) Fullcone() bool {
 	return cpc.fullcone
 }
 
-//传入 conn必须非nil，否则panic
+// 传入 conn必须非nil，否则panic
 func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 
 	if conn == nil {
@@ -195,25 +197,73 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 		return
 	}
 
-	n, err = conn.Read(ba[:])
+	var bigBs = utils.GetBytes(100)
+	defer utils.PutBytes(bigBs)
+
+	n, err = conn.Read(bigBs)
 	if err != nil {
 		return
 	}
-	if n != 10 || ba[0] != Version5 || ba[1] != 0 || ba[2] != 0 || ba[3] != 1 || ba[4] != 0 || ba[5] != 0 || ba[6] != 0 || ba[7] != 0 {
+
+	//原代码未考虑服务端可能发来ipv6的情况, 也未考虑服务端发来的addr可能不是0的情况
+	// if n != 10 || ba[0] != Version5 || ba[1] != 0 || ba[2] != 0 || ba[3] != 1 || ba[4] != 0 || ba[5] != 0 || ba[6] != 0 || ba[7] != 0 {
+	// 	return 0, utils.NumStrErr{Prefix: "EstablishUDPAssociate,protocol err", N: 2}
+	// }
+
+	// port = int(ba[8])<<8 | int(ba[9])
+	if n < 3 || bigBs[0] != Version5 || bigBs[1] != 0 || bigBs[2] != 0 {
 		return 0, utils.NumStrErr{Prefix: "EstablishUDPAssociate,protocol err", N: 2}
 	}
+	atyp := bigBs[3]
 
-	port = int(ba[8])<<8 | int(ba[9])
+	l := 2   //supposed Minimum Remain Data Lenth, 包含Port的2字节
+	off := 4 //offset from which the addr data really starts
+
+	var theIP net.IP
+	switch atyp {
+	case ATypIP4:
+		l += net.IPv4len
+		theIP = make(net.IP, net.IPv4len)
+	case ATypIP6:
+		l += net.IPv6len
+		theIP = make(net.IP, net.IPv6len)
+	case ATypDomain:
+		l += int(bigBs[4])
+		off = 5
+	default:
+
+		return 0, utils.ErrInErr{ErrDesc: "socks5 handshake UDP unknown atype", Data: atyp}
+
+	}
+
+	if len(bigBs[off:]) < l {
+
+		return 0, utils.ErrInErr{ErrDesc: "socks5 handshake UDP short command request", Data: atyp}
+
+	}
+
+	//var theName string
+
+	if theIP != nil {
+		copy(theIP, bigBs[off:]) //本实现暂时不保存ip，因为理论上该ip肯定就是服务器的地址，是已知的
+	} else {
+		return 0, utils.ErrInErr{ErrDesc: "socks5 handshake UDP, domain server addr not implemented", Data: atyp}
+
+		//theName = string(bigBs[off : off+l-2])
+	}
+
+	port = int(bigBs[off+l-2])<<8 | int(bigBs[off+l-1])
+
 	return
 
 }
 
 // RequestUDP 向一个 socks5服务器监听的 udp端口发送一次udp请求
-//在udp associate结束后，就已经知道了服务器给我们专用的port了，向这个端口发送一个udp请求.
+// 在udp associate结束后，就已经知道了服务器给我们专用的port了，向这个端口发送一个udp请求.
 //
 // 另外的备忘是, 服务器返回的数据使用了相同的结构。
 //
-//传入 conn必须非nil，否则panic
+// 传入 conn必须非nil，否则panic
 func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte) error {
 
 	if udpConn == nil {
@@ -221,9 +271,9 @@ func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte)
 	}
 
 	buf := &bytes.Buffer{}
-	buf.WriteByte(0)
-	buf.WriteByte(0)
-	buf.WriteByte(0)
+	buf.WriteByte(0) //RSV[0]
+	buf.WriteByte(0) //RSV[1]
+	buf.WriteByte(0) //FRAG
 
 	abs, atype := target.AddressBytes()
 
@@ -256,8 +306,8 @@ func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte)
 	return err
 }
 
-//从 一个 socks5服务器的udp端口 读取一次 udp回应。
-//传入 conn必须非nil，否则panic
+// 从 一个 socks5服务器的udp端口 读取一次 udp回应。
+// 传入 conn必须非nil，否则panic
 func Client_ReadUDPResponse(udpConn *net.UDPConn, supposedServerAddr *net.UDPAddr) (target netLayer.Addr, data []byte, e error) {
 
 	if udpConn == nil {
