@@ -1,10 +1,10 @@
 
 [[listen]]
-protocol = "trojans"
+protocol = "trojans"    #注意末尾的s, 这在vs中意味着使用tls.
 tag = "t"
-host = "cloud.tecent.com"
+host = "cloud.tecent.com"   #假域名, 两端要配置为一致的。 一般用 www.microsoft.com 等常见大型公司的
 ip = "127.0.0.1"
-port = 443 #我们这里为了测试使用4433端口，你如果实际用，改成443 更隐蔽
+port = 4433 #我们这里为了测试使用4433端口，你如果实际用，改成443 更隐蔽
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 tls_type = "shadowTls2" # v1 写成 shadowTls1 ，但有2了谁用1呢
 
@@ -14,6 +14,7 @@ extra.shadowtls_password = "a684455c-b14f-11ea-bf0d-42010aaa0003"  # 用于 shad
 
 # 回落测试命令: curl -vik --resolve cloud.tecent.com:443:127.0.0.1 https://cloud.tecent.com
 
+# 当然，你要把上面的port 配置改为443，同时确保本机没有其他程序在使用443, 然后用 sudo 运行 vs.
+
 extra.tls_rejectUnknownSni = true # 这个开启了的话，防御效果更佳, vs已经做了针对性优化。
 
-# vs的 shadowTls v2中，自动使用了 uTls，使用了chrome指纹，无需配置。

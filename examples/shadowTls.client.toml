@@ -7,12 +7,14 @@ port = 10800
 protocol = "trojans"
 tag = "t"
 host = "cloud.tecent.com"
-ip = "127.0.0.1"
+ip = "127.0.0.1"    #这里为了本机测试, 设成了127.0.0.1 , 你改成你vps的ip.
 port = 4433
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 tls_type = "shadowTls2"
 #extra = { tls_minVersion = "1.2",tls_maxVersion = "1.2" }   # 用于 shadowTls v1
 extra = { shadowtls_password = "a684455c-b14f-11ea-bf0d-42010aaa0003"}  # 用于 shadowTls v2
+
+# vs的 shadowTls v2中，自动使用了 uTls，使用了chrome指纹,无需配置. 强强联合, 更爽.
 
 
 # [dns]

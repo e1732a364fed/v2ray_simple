@@ -30,11 +30,13 @@ type StandardConf struct {
 	Fallbacks []*httpLayer.FallbackConf `toml:"fallback"`
 }
 
-// 将一些较长的配置项 以较短的缩写 作为同义词. 然后代码读取时 只使用短的词.
+// 第一种情况是 将一些较长的配置项 以较短的缩写 作为同义词. 然后代码读取时 只使用短的词.
+// 第二种情况是 为了向后兼容，将已经不存在的配置替换为新配置
 var StandardConfSynonyms = [][2]string{
 	{"advancedLayer", "adv"},
 	{"tls_rejectUnknownSni", "rejectUnknownSni"},
 	{"utls = true", `tls_type = "utls"`},
+	{"use_mux = true", "mux = true"},
 }
 
 var StandardConfBytesSynonyms [][2][]byte

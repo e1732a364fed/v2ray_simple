@@ -144,7 +144,7 @@ type DialConf struct {
 	CommonConf
 
 	SendThrough string `toml:"sendThrough"` //可选，用于发送数据的 IP 地址, 可以是ip:port, 或者 tcp:ip:port\nudp:ip:port
-	Mux         bool   `toml:"use_mux"`     //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
+	Mux         bool   `toml:"mux"`         //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
 }
 
 type SniffConf struct {

@@ -35,7 +35,7 @@ func NewClient(conf Conf) *Client {
 	case ShadowTls2_t:
 		fallthrough
 	case ShadowTls_t:
-		//fallthrough
+		//tls和utls配置都设一遍，以备未来支持调节 shadowTls 所使用的 到底是utls还是tls
 		c.tlsConfig = GetTlsConfig(false, conf)
 		c.shadowTlsPassword = getShadowTlsPasswordFromExtra(conf.Extra)
 		fallthrough
@@ -83,15 +83,8 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 			tlsType: Tls_t,
 		}
 	case ShadowTls_t:
-		// configCopy := c.uTlsConfig
-		// utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
-		// err = utlsConn.Handshake()
-		// if err != nil {
-		// 	return
-		// }
 
-		officialConn := tls.Client(underlay, c.tlsConfig)
-		err = officialConn.Handshake()
+		err = tls.Client(underlay, c.tlsConfig).Handshake()
 		if err != nil {
 			return
 		}
