@@ -19,8 +19,8 @@ github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMn
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/e1732a364fed/ui v0.0.1-alpha.3 h1:wd2JGFnbRuHiMLq6rbbhe/Ke5sLs+MTfwwpjg4FPlV8=
-github.com/e1732a364fed/ui v0.0.1-alpha.3/go.mod h1:uK9ryjwA0+3KdICbeXm5IjhKZ+1ZooMVDdTuLaQHpwM=
+github.com/e1732a364fed/ui v0.0.1-alpha.4 h1:Phf9sArsbf61XohgOmVSmTJ8GLTJddteAK88c7Ei8cA=
+github.com/e1732a364fed/ui v0.0.1-alpha.4/go.mod h1:uK9ryjwA0+3KdICbeXm5IjhKZ+1ZooMVDdTuLaQHpwM=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 h1:p104kn46Q8WdvHunIJ9dAyjPVtrBPhSr3KT2yUst43I=
 github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0/go.mod h1:fyg7847qk6SyHyPtNmDHnmrv/HOrqktSC+C9fM+CJOE=
 github.com/gobwas/httphead v0.1.0 h1:exrUm0f4YX0L7EBwZHuCF4GDp8aJfVeBrlLQrs6NqWU=
