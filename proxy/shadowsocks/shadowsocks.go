@@ -7,13 +7,24 @@ https://github.com/shadowsocks/shadowsocks-org/wiki/Protocol
 
 https://github.com/shadowsocks/shadowsocks-org/wiki/AEAD-Ciphers
 
-我参考gost的实现。gost中，Connector就相当于 client，Handler就相当于 Server
+这里vs参考了gost的实现。gost中，Connector就相当于 client，Handler就相当于 Server
 
 但是发现，似乎没法一个server同时处理tcp和udp？ 也就是说，只能预先指定服务端要处理的协议；
 
 而且我看ss的标准，也没有提及哪一项 可以指定 tcp/udp
 
-总之没搞懂。目前我们ss只支持单传输层协议。
+后重新阅读上面Protocol页面，参考阅读 http://overtalk.site/2020/02/25/network-shadowsocks/
+
+似乎意识到，ss好似不像vmess等协议一样，只使用一种传输层协议来传输 tcp和udp数据；而是：用tcp传tcp，用udp传udp。
+如此的话，特征必很明显。
+
+还有一个重要的问题，就是，我们vs的架构，在设计之初，就是为vmess/vless/trojan等 只需要一种传输层协议 来获取 多种传输层协议的客户端等数据的；
+
+而为了支持ss，以目前的vs架构来说，要同时写两个listen，一个监听tcp，一个监听udp，如此才能做到。
+
+而且对于client来说也比较棘手，因为我们的架构只认为需要dial单一的传输层协议就可以与一个服务端完整通信，所以配置文件里需要配置network指明使用的是哪个传输层协议；而如果是ss的模式的话，则客户端对tcp和udp都要拨号，也十分麻烦。
+
+
 
 另外，本包是普通的ss AEAD Ciphers ，不过似乎它还是有问题。所以还要以后研究ss-2022
 

@@ -19,7 +19,7 @@ import (
 )
 
 // 2048 /3 = 682.6666...  (682 又 三分之二),
-// 683 * 4 = 2732, 若你不信，运行 we_test.go中的 TestBase64Len
+// 683 * 4 = 2732, 你若不信，运行 we_test.go中的 TestBase64Len
 const MaxEarlyDataLen_Base64 = 2732
 
 var (
