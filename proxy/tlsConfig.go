@@ -153,12 +153,6 @@ func getTlsMaxVerFromExtra(extra map[string]any) uint16 {
 
 func getTlsRejectUnknownSniFromExtra(extra map[string]any) bool {
 	if len(extra) > 0 {
-		if thing := extra["tls_rejectUnknownSni"]; thing != nil {
-			if is, ok := utils.AnyToBool(thing); ok && is {
-				return true
-			}
-		}
-
 		if thing := extra["rejectUnknownSni"]; thing != nil {
 			if is, ok := utils.AnyToBool(thing); ok && is {
 				return true
