@@ -60,7 +60,7 @@ func ClassicCopy_detailErr(w io.Writer, r io.Reader) (written int64, err error) 
 			}
 			written += int64(nw)
 			if ew != nil {
-				err = ErrInErr{ErrDetail: ErrList{[]ErrItem{{Index: 1, E: ErrInErr{ErrDetail: ew}}, {Index: 2, E: er}}}, ErrDesc: "ew", Data: []int{nr, nw}}
+				err = ErrInErr{ErrDetail: ErrList{[]ErrItem{{Index: 1, E: ew}, {Index: 2, E: er}}}, ErrDesc: "ew", Data: []int{nr, nw}}
 				break
 			}
 			if nr != nw {
