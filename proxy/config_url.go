@@ -192,6 +192,17 @@ func URLToCommonConf(u *url.URL, conf *CommonConf) error {
 	if utils.QueryPositive(q, "http") {
 		conf.HttpHeader = &httpLayer.HeaderPreset{}
 	}
+
+	for k, list := range q {
+		if strings.HasPrefix(k, "extra.") && len(list) > 0 {
+			k = strings.TrimPrefix(k, "extra.")
+			if conf.Extra == nil {
+				conf.Extra = make(map[string]any)
+			}
+			conf.Extra[k] = list[0]
+		}
+	}
+
 	return nil
 }
 
@@ -208,6 +219,9 @@ func setHeaders(rawq, headers map[string][]string) {
 //setup conf with vs standard URL format
 func URLToDialConf(u *url.URL, conf *DialConf) error {
 	e := URLToCommonConf(u, &conf.CommonConf)
+	if e != nil {
+		return e
+	}
 
 	q := u.Query()
 
@@ -235,6 +249,9 @@ func URLToDialConf(u *url.URL, conf *DialConf) error {
 //setup conf with vs standard URL format
 func URLToListenConf(u *url.URL, conf *ListenConf) error {
 	e := URLToCommonConf(u, &conf.CommonConf)
+	if e != nil {
+		return e
+	}
 
 	q := u.Query()
 

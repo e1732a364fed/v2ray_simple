@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -59,7 +59,7 @@ func LoadTomlConfFile(fileNamePath string) (StandardConf, error) {
 
 	if cf, err := os.Open(fileNamePath); err == nil {
 		defer cf.Close()
-		bs, _ := ioutil.ReadAll(cf)
+		bs, _ := io.ReadAll(cf)
 		return LoadTomlConfStr(string(bs))
 	} else {
 		return StandardConf{}, utils.ErrInErr{ErrDesc: "can't open config file", ErrDetail: err}

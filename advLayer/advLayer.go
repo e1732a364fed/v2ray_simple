@@ -1,6 +1,6 @@
 /*Package advLayer contains definitions and subpackages for Advanced Layer in VSI model.
 
-An advanced layer is based on http layer. It can be websocket, http2, grpc, quic or other customized protocols that based on http and can relay arbitrary length raw []byte data.
+An advanced layer is based on http layer. It can be websocket, http2, grpc, quic or other customized protocols that based on http and can relay raw []byte data with arbitrary length.
 
 If a protocol is not based on http layer, then maybe it should be on Proxy Layer, rather than Advanced Layer.
 */
@@ -33,9 +33,8 @@ func PrintAllProtocolNames() {
 //Creator represents supported features of a advLayer sub-package, and it can create New Client and Server.
 type Creator interface {
 	ProtocolName() string
-	PackageID() string //unique for each package, sub packages in v2ray_simple don't need to apply prefix, but if you want to implement your own package, you should use full git path, like github.com/somebody/mypackage
+	PackageID() string //unique for each package. Sub packages included in v2ray_simple don't need to apply any prefix, but if you want to implement your own package, you should use full git path, like github.com/somebody/mypackage. This is for distinguishing different packages.
 
-	//NewClientFromURL(url *url.URL) (Client, error)	//todo: support url
 	NewClientFromConf(conf *Conf) (Client, error)
 	NewServerFromConf(conf *Conf) (Server, error)
 

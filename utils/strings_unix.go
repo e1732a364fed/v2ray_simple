@@ -4,7 +4,7 @@
 package utils
 
 import (
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"os"
 	"strings"
@@ -35,7 +35,7 @@ func readAvailableDictionary() (words []string) {
 		return
 	}
 
-	bytes, err := ioutil.ReadAll(file)
+	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return
 	}

@@ -9,6 +9,8 @@ import (
 const UUID_BytesLen int = 16
 const ExampleUUID = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
+type UUID [UUID_BytesLen]byte
+
 func StrToUUID_slice(s string) []byte {
 	bs, err := StrToUUID(s)
 	if err != nil {
@@ -17,7 +19,7 @@ func StrToUUID_slice(s string) []byte {
 	return bs[:]
 }
 
-func StrToUUID(s string) (uuid [UUID_BytesLen]byte, err error) {
+func StrToUUID(s string) (uuid UUID, err error) {
 	if len(s) != 36 {
 		return uuid, ErrInErr{ErrDesc: "invalid UUID Str", ErrDetail: ErrInvalidData, Data: s}
 	}
@@ -47,7 +49,7 @@ func UUIDToStr(u []byte) string {
 }
 
 //生成完全随机的uuid,不包含任何uuid版本信息 (即不符合rfc，但是更安全)
-func GenerateUUID() (r [UUID_BytesLen]byte) {
+func GenerateUUID() (r UUID) {
 	rand.Reader.Read(r[:])
 	return
 }

@@ -142,7 +142,7 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 
 	var tConf tls.Config
 	if conf.TlsConf != nil {
-		tConf = *conf.TlsConf
+		tConf = *conf.TlsConf //tls.Config是包含RWMutex的，正常是不宜直接复制的; 不过这个Config我们只用在quic包中，而该包内部是会直接调用Clone的，并不会直接使用我们的Config，所以没关系。
 
 	}
 	tConf.NextProtos = alpn

@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -25,7 +25,7 @@ func LoadSimpleConfigFile(fileNamePath string) (config SimpleConf, hasError bool
 
 	if cf, err := os.Open(fileNamePath); err == nil {
 		defer cf.Close()
-		bs, _ := ioutil.ReadAll(cf)
+		bs, _ := io.ReadAll(cf)
 		if err = json.Unmarshal(bs, &config); err != nil {
 			hasError = true
 			E = utils.ErrInErr{

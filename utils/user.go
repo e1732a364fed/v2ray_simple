@@ -73,7 +73,7 @@ func InitRealV2rayUsers(uc []UserConf) (us []V2rayUser) {
 }
 
 //一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口. (其实就是uuid)
-type V2rayUser [16]byte
+type V2rayUser [UUID_BytesLen]byte
 
 func (u V2rayUser) IdentityStr() string {
 	return UUIDToStr(u[:])
@@ -95,7 +95,7 @@ func NewV2rayUser(uuidStr string) (V2rayUser, error) {
 		return V2rayUser{}, err
 	}
 
-	return uuid, nil
+	return V2rayUser(uuid), nil
 }
 
 //used in proxy/socks5 and proxy.http. implements User
