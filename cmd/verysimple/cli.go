@@ -544,7 +544,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 			return
 		}
 
-		lis := vs.ListenSer(ser, cli, &m.RoutingEnv)
+		lis := vs.ListenSer(ser, cli, &m.RoutingEnv, &m.GlobalInfo)
 		if lis != nil {
 			m.ListenCloserList = append(m.ListenCloserList, lis)
 		}

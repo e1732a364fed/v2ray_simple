@@ -1102,7 +1102,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 					)
 				}
 
-				wrc1, realudp_wrc, result1 := dialInnerProxy(client, wlc, nil, iics, innerProxyName, targetAddr, isudp)
+				wrc1, realudp_wrc, result1 := dialInnerProxy(iics, client, wlc, nil, innerProxyName, targetAddr, isudp)
 
 				if result1 == 0 {
 					if wrc1 != nil {
@@ -1492,14 +1492,14 @@ shakeStep:
 	if hasInnerMux {
 		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan的实现。
 
-		wrc, udp_wrc, result = dialInnerProxy(client, wlc, wrc, iics, innerProxyName, targetAddr, isudp)
+		wrc, udp_wrc, result = dialInnerProxy(iics, client, wlc, wrc, innerProxyName, targetAddr, isudp)
 	}
 
 	return
 } //dialClient
 
 // 在 dialClient 中调用。 如果调用不成功，则result < 0. 若成功, 则 result == 0.
-func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, iics incomingInserverConnState, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
+func dialInnerProxy(iics incomingInserverConnState, client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
 
 	smuxSession := client.GetClientInnerMuxSession(wrc)
 	if smuxSession == nil {
