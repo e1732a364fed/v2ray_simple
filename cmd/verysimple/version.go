@@ -1,19 +1,19 @@
-/*Package main 读取配置文件，然后进行代理转发, 并选择性运行 交互模式和 apiServer.
+/*
+Package main 读取配置文件，然后进行代理转发, 并选择性运行 交互模式和 apiServer.
 
 命令行参数请使用 --help查看详情，配置文件示例请参考 ../../examples/ .
 
 如果一个命令行参数无法在标准配置中进行配置，那么它就属于高级/开发者选项，or 不推荐的选项，or 正在开发中的功能.
-
 */
 package main
 
 import (
 	"fmt"
+	"io"
 	"runtime"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
-	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 const (
@@ -33,22 +33,22 @@ func versionStr() string {
 	return fmt.Sprintf("verysimple %s, %s %s %s, with advLayer packages: %v \n", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH, advList)
 }
 
-func printVersion_simple() {
-	utils.PrintStr(versionStr())
+func printVersion_simple(w io.StringWriter) {
+	w.WriteString(versionStr())
 }
 
-//printVersion 返回的信息 可以唯一确定一个编译文件的 版本以及 build tags.
-func printVersion() {
+// printVersion 返回的信息 可以唯一确定一个编译文件的 版本以及 build tags.
+func printVersion(w io.StringWriter) {
 
-	utils.PrintStr(delimiter)
-	printVersion_simple()
-	utils.PrintStr(delimiter)
+	w.WriteString(delimiter)
+	printVersion_simple(w)
+	w.WriteString(delimiter)
 
-	utils.PrintStr(desc)
+	w.WriteString(desc)
 
 	if netLayer.HasEmbedGeoip() {
-		utils.PrintStr("Contains embedded Geoip file\n")
+		w.WriteString("Contains embedded Geoip file\n")
 	}
-	utils.PrintStr(delimiter)
+	w.WriteString(delimiter)
 
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpcSimple"
 	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
 
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"

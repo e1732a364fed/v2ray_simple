@@ -85,7 +85,7 @@ func init() {
 func runExitCommands() (atLeastOneCalled bool) {
 	if cmdPrintVer {
 		atLeastOneCalled = true
-		printVersion_simple()
+		printVersion_simple(os.Stdout)
 	}
 
 	if cmdPrintSupportedProtocols {

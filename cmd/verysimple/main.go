@@ -136,7 +136,8 @@ func mainFunc() (result int) {
 	if runExitCommands() {
 		return
 	} else {
-		printVersion()
+
+		printVersion(os.Stdout)
 
 	}
 
@@ -214,6 +215,8 @@ func mainFunc() (result int) {
 
 	utils.InitLog("Program started")
 	defer utils.Info("Program exited")
+
+	utils.Info(versionStr())
 
 	{
 		wdir, err := os.Getwd()

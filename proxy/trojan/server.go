@@ -88,7 +88,9 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 	}
 	defer netLayer.PersistConn(underlay)
 
-	readbs := utils.GetBytes(utils.MTU)
+	const readMaxLen = utils.MTU
+
+	readbs := utils.GetBytes(readMaxLen)
 
 	var wholeReadLen int
 
@@ -112,7 +114,7 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 
 		index_crlf := bytes.Index(readbs[lastTail:wholeReadLen], crlf)
 
-		if index_crlf > 0 {
+		if index_crlf > 0 || wholeReadLen >= readMaxLen {
 			break
 		}
 	}
