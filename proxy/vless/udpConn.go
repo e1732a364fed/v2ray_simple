@@ -30,13 +30,15 @@ type UDPConn struct {
 	raddr    netLayer.Addr
 
 	handshakeBuf *bytes.Buffer
+
+	fullcone bool
 }
 
 func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
 func (u *UDPConn) Fullcone() bool {
-	return u.version != 0
+	return u.fullcone && u.version != 0
 }
 
 func (u *UDPConn) GetProtocolVersion() int {

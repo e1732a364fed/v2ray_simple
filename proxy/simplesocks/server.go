@@ -99,7 +99,9 @@ realPart:
 	}
 
 	if isudp {
-		return nil, NewUDPConn(underlay, io.MultiReader(readbuf, underlay)), targetAddr, nil
+		x := NewUDPConn(underlay, io.MultiReader(readbuf, underlay))
+		x.fullcone = s.IsFullcone
+		return nil, x, targetAddr, nil
 
 	} else {
 		return &TCPConn{

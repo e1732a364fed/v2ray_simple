@@ -202,7 +202,7 @@ realPart:
 	}
 
 	if isudp {
-		uc := NewUDPConn(underlay, io.MultiReader(readbuf, underlay))
+		uc := NewUDPConn(underlay, io.MultiReader(readbuf, underlay), s.IsFullcone)
 		uc.User = theUser.(User)
 		return nil, uc, targetAddr, nil
 

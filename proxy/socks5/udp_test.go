@@ -9,12 +9,14 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy/socks5"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //tcp就不测了，我们实践直接测试完全好使，这里重点测试UDP
 // 因为chrome也是无法通过 socks5去申请udp链接的，所以没法自己用浏览器测试
 
 func TestUDP(t *testing.T) {
+	utils.InitLog("")
 
 	s := socks5.NewServer()
 

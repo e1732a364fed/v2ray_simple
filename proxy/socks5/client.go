@@ -159,6 +159,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 		ServerAddr: &net.TCPAddr{
 			IP: ua.IP,
 		},
+		fullcone: c.IsFullcone,
 	}
 	cpc.UDPConn, err = net.DialUDP("udp", nil, ua)
 	if err != nil {

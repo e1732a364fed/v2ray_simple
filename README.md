@@ -40,7 +40,7 @@ dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path
 
 tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,【tls lazy encrypt】, http伪装头,PROXY protocol v1/v2 监听,
 
-cli(交互模式)/apiServer, Docker.
+cli(交互模式)/apiServer, Docker, docker-compose.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)

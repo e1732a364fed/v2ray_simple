@@ -18,11 +18,14 @@ type UDPConn struct {
 	bufr *bufio.Reader
 
 	handshakeBuf *bytes.Buffer
+
+	isfullcone bool
 }
 
-func NewUDPConn(conn net.Conn, optionalReader io.Reader) (uc *UDPConn) {
+func NewUDPConn(conn net.Conn, optionalReader io.Reader, fullcone bool) (uc *UDPConn) {
 	uc = new(UDPConn)
 	uc.Conn = conn
+	uc.isfullcone = fullcone
 	if optionalReader != nil {
 		uc.optionalReader = optionalReader
 		uc.bufr = bufio.NewReader(optionalReader)
@@ -32,8 +35,8 @@ func NewUDPConn(conn net.Conn, optionalReader io.Reader) (uc *UDPConn) {
 	return
 }
 
-func (*UDPConn) Fullcone() bool {
-	return true
+func (u *UDPConn) Fullcone() bool {
+	return u.isfullcone
 }
 func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()

@@ -91,6 +91,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 
 	uc := NewUDPConn(underlay, nil)
 	uc.handshakeBuf = buf
+	uc.fullcone = c.IsFullcone
 
 	if len(firstPayload) == 0 {
 		return uc, nil

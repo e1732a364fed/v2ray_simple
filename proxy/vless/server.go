@@ -267,6 +267,7 @@ realPart:
 			raddr:             targetAddr,
 			remainFirstBufLen: readbuf.Len(),
 			udp_multi:         use_udp_multi,
+			fullcone:          s.IsFullcone,
 		}, targetAddr, nil
 
 	} else {

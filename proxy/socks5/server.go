@@ -44,6 +44,7 @@ func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	if userPass.InitWithUrl(u) {
 		s.AddUser(&userPass)
 	}
+
 	return s, nil
 }
 
@@ -280,7 +281,12 @@ For:
 	// 更不用说这样 的 udp associate 会重复使用很多 随机udp端口，特征很明显。
 	// 总之 udp associate 只能用于内网环境。
 
+	//旧代码每次遇到 associate都会返回一个新的随机端口，而实际上这应该是有问题的
+	//如果一些不良的socks5客户端 每次 udp请求都使用 associate的话，会造成端口数量无限增长，最后产生 too many open files 错误。
+
 	if cmd == CmdUDPAssociate {
+
+		utils.Debug("socks5 got CmdUDPAssociate")
 
 		//这里我们serverAddr直接返回0.0.0.0即可，也实在想不到谁会返回 另一个ip地址出来。肯定应该和原ip相同的。
 
@@ -323,6 +329,7 @@ For:
 		uc := &ServerUDPConn{
 			clientSupposedAddr: clientFutureAddr.ToUDPAddr(), //这里为了解析域名, 就用了 netLayer.Addr 作为中介的方式
 			UDPConn:            udpRC,
+			fullcone:           s.IsFullcone,
 		}
 		return nil, uc, clientFutureAddr, nil
 
@@ -355,6 +362,7 @@ For:
 type ServerUDPConn struct {
 	*net.UDPConn
 	clientSupposedAddr *net.UDPAddr //客户端指定的客户端自己未来将使用的公网UDP的Addr
+	fullcone           bool
 }
 
 func (u *ServerUDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
@@ -362,7 +370,7 @@ func (u *ServerUDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 }
 
 func (u *ServerUDPConn) Fullcone() bool {
-	return true
+	return u.fullcone
 }
 
 //将远程地址发来的响应 传给客户端

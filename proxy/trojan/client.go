@@ -137,7 +137,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 	buf.WriteByte(CmdUDPAssociate)
 	WriteAddrToBuf(target, buf)
 
-	uc := NewUDPConn(underlay, nil)
+	uc := NewUDPConn(underlay, nil, c.IsFullcone)
 	uc.User = c.User
 	uc.handshakeBuf = buf
 	if len(firstPayload) == 0 {

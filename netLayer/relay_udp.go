@@ -113,11 +113,8 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 
 			count += uint64(len(bs))
 		}
-		if !rc.Fullcone() {
+		if !(rc.Fullcone() && lc.Fullcone()) {
 			rc.Close()
-		}
-
-		if !lc.Fullcone() {
 			lc.Close()
 		}
 
@@ -161,11 +158,8 @@ func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWM
 		}
 		count += uint64(len(bs))
 	}
-	if !rc.Fullcone() {
+	if !(rc.Fullcone() && lc.Fullcone()) {
 		rc.Close()
-	}
-
-	if !lc.Fullcone() {
 		lc.Close()
 	}
 

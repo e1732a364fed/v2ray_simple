@@ -29,6 +29,8 @@ type CommonConf struct {
 
 	Xver int `toml:"xver"` //可选，只能为0/1/2. 若不为0, 则使用 PROXY protocol 协议头.
 
+	Fullcone bool `toml:"fullcone"` //在direct会用到, fullcone的话因为不能关闭udp连接, 所以 时间长后, 可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
+
 	/////////////////// tls层 ///////////////////
 
 	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
@@ -121,8 +123,7 @@ type ListenConf struct {
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  is the addr and port for dialing.
 type DialConf struct {
 	CommonConf
-	Utls     bool `toml:"utls"`     //是否使用 uTls 库 替换 go官方tls库
-	Fullcone bool `toml:"fullcone"` //在direct会用到, fullcone的话因为不能关闭udp连接, 所以可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
+	Utls bool `toml:"utls"` //是否使用 uTls 库 替换 go官方tls库
 
 	Mux bool `toml:"use_mux"` //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
 }

@@ -92,6 +92,8 @@ type Base struct {
 	Sockopt *netLayer.Sockopt
 	Xver    int
 
+	IsFullcone bool
+
 	Tls_s *tlsLayer.Server
 	Tls_c *tlsLayer.Client
 
@@ -302,6 +304,7 @@ func (b *Base) ConfigCommon(cc *CommonConf) {
 	b.Xver = cc.Xver
 	b.Tag = cc.Tag
 	b.Sockopt = cc.Sockopt
+	b.IsFullcone = cc.Fullcone
 
 	if cc.HttpHeader != nil {
 		cc.HttpHeader.AssignDefaultValue()

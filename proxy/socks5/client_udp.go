@@ -19,6 +19,7 @@ type ClientUDPConn struct {
 	ServerUDPPort_forMe int          //socks5服务会为每一个socks5客户端留一个专用的udp端口
 
 	WriteUDP_Target *net.UDPAddr
+	fullcone        bool
 }
 
 func (cpc *ClientUDPConn) Associate() (err error) {
@@ -144,7 +145,7 @@ func (cpc *ClientUDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 }
 
 func (cpc *ClientUDPConn) Fullcone() bool {
-	return true
+	return cpc.fullcone
 }
 
 //传入 conn必须非nil，否则panic

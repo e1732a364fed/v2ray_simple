@@ -211,6 +211,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 		raddr:        target,
 		udp_multi:    c.udp_multi,
 		handshakeBuf: buf,
+		fullcone:     c.IsFullcone,
 	}
 	if len(firstPayload) == 0 {
 		return uc, nil
