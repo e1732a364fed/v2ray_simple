@@ -1,6 +1,7 @@
 package netLayer
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -33,12 +34,12 @@ var (
 
 //本文件内含 一些 转发 udp 数据的 接口与方法
 
-//MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装.
+// MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装.
 // 实现 MsgConn接口 的类型 可以被用于 RelayUDP 进行转发。
 //
-//ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝。
+// ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝。
 //
-//使用Addr，是因为有可能请求地址是个域名，而不是ip; 而且通过Addr, MsgConn实际上有可能支持通用的情况,
+// 使用Addr，是因为有可能请求地址是个域名，而不是ip; 而且通过Addr, MsgConn实际上有可能支持通用的情况,
 // 即可以用于 客户端 一会 请求tcp，一会又请求udp，一会又请求什么其它网络层 这种奇葩情况.
 type MsgConn interface {
 	NetDeadliner
@@ -99,7 +100,8 @@ udp是无连接的，所以需要考虑超时问题。
 	但是, vless v1虽然是分离信道, 但还有可能读到 umfurs信息, 所以还是不应设置超时.
 */
 
-/* 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后，如不为fullcone，则自动关闭双端连接.
+/*
+	阻塞. 返回从 rc 下载的总字节数. 拷贝完成后，如不为fullcone，则自动关闭双端连接.
 
 若为fullcone，则 rc错误时，rc可以关闭，而 lc 则不可以随意关闭; 若lc错误时，则两端都可关闭
 */
@@ -163,7 +165,8 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 	return count2
 }
 
-/*循环从rc读取数据，并写入lc，直到错误发生。若 downloadByteCount 给出，会更新 下载总字节数。
+/*
+循环从rc读取数据，并写入lc，直到错误发生。若 downloadByteCount 给出，会更新 下载总字节数。
 返回此次所下载的字节数。如果是rc读取产生了错误导致的退出, 返回的bool为true。若mutex给出，则 内部调用 lc.WriteMsgTo 时会进行 锁定。
 */
 func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWMutex) (uint64, bool) {
@@ -346,7 +349,7 @@ func (u UniTargetMsgConn) Close() error {
 	return u.Conn.Close()
 }
 
-//UDPMsgConn 实现 MsgConn。 可满足fullcone/symmetric. 在proxy/direct 被用到.
+// UDPMsgConn 实现 MsgConn 和 net.PacketConn。 可满足fullcone/symmetric. 在proxy/direct 被用到.
 type UDPMsgConn struct {
 	*net.UDPConn
 	IsServer, fullcone, closed bool
@@ -539,4 +542,31 @@ func (u *UDPMsgConn) Close() error {
 	}
 
 	return nil
+}
+
+// 实现 net.PacketConn
+func (uc *UDPMsgConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	var bs []byte
+	var a Addr
+	bs, a, err = uc.ReadMsgFrom()
+	if err == nil {
+		n = copy(p, bs)
+		addr = a.ToUDPAddr()
+	}
+	return
+}
+
+// 实现 net.PacketConn
+func (uc *UDPMsgConn) WriteTo(p []byte, raddr net.Addr) (n int, err error) {
+	if ua, ok := raddr.(*net.UDPAddr); ok {
+		err = uc.WriteMsgTo(p, NewAddrFromUDPAddr(ua))
+		if err == nil {
+			n = len(p)
+		}
+
+	} else {
+		err = errors.New("UDPMsgConn.WriteTo, raddr can't cast to *net.UDPAddr")
+	}
+	return
+
 }

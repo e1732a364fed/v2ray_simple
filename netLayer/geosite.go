@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -128,7 +127,7 @@ type GeositeAttr struct {
 	Value any //bool or int64
 }
 
-//GeositeList 用于内存中匹配使用
+// GeositeList 用于内存中匹配使用
 type GeositeList struct {
 	//Name实际上就是v2fly Community的protobuf里的 CountryCode. Geosite本意是给一个国家的域名分类, 但是实际上功能越来越多，绝大部分Name现在实际上都是网站名称，只有 CN, GEOLOCATION-CN 的是国家名. 其它的还有很多分类名称，比如 CATEGORY-ECOMMERCE
 	// 在parse过后，可以发现所有的Name都被转换成了大写字符的形式
@@ -149,9 +148,9 @@ func (mdh MapGeositeDomainHaser) HasDomain(d string) bool {
 	return found
 }
 
-//从 geosite/data 文件夹中读取所有文件并加载到 GeositeListMap 中.
+// 从 geosite/data 文件夹中读取所有文件并加载到 GeositeListMap 中.
 //
-//该 geosite/data 就是 github.com/v2fly/domain-list-community 项目的 data文件夹.
+// 该 geosite/data 就是 github.com/v2fly/domain-list-community 项目的 data文件夹.
 func LoadGeositeFiles() (err error) {
 
 	if !HasGeositeFolder() {
@@ -209,7 +208,7 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 		fmt.Println("http get failed", err)
 		return
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		fmt.Println("http read failed", err)
@@ -257,7 +256,7 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 	}
 }
 
-//把tar.gz内容解压出来, 并返回根文件夹名称
+// 把tar.gz内容解压出来, 并返回根文件夹名称
 func untarGeositeSourceFiles(fr io.Reader) (rootFolderName string, err error) {
 
 	gr, err := gzip.NewReader(fr)
