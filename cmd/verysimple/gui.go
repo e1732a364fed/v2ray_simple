@@ -278,7 +278,7 @@ func makeBasicControlsPage() ui.Control {
 					return
 				}
 
-				vc := mainM.GetVSConfFromCurrentState()
+				vc := mainM.DumpVSConf()
 
 				bs, e := utils.GetPurgedTomlBytes(vc)
 				if e != nil {

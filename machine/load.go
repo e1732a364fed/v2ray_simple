@@ -168,35 +168,37 @@ func (m *M) loadUrlClient(urlConf proxy.UrlConf) (result int, client proxy.Clien
 	return
 }
 
-func (m *M) GetVSConfFromCurrentState() (vc VSConf) {
-	vc.StandardConf = m.GetStandardConfFromCurrentState()
+// 从当前内存中的配置 导出 VSConf
+func (m *M) DumpVSConf() (vc VSConf) {
+	vc.StandardConf = m.DumpStandardConf()
 	vc.ApiServerConf = &m.ApiServerConf
 	vc.AppConf = &m.AppConf
 
 	return
 }
 
-func (m *M) GetStandardConfFromCurrentState() (sc proxy.StandardConf) {
+// 从当前内存中的配置 导出 proxy.StandardConf
+func (m *M) DumpStandardConf() (sc proxy.StandardConf) {
 	for i := range m.allClients {
-		sc.Dial = append(sc.Dial, m.getDialConfFromCurrentState(i))
+		sc.Dial = append(sc.Dial, m.dumpDialConf(i))
 
 	}
 	for i := range m.allServers {
-		sc.Listen = append(sc.Listen, m.getListenConfFromCurrentState(i))
+		sc.Listen = append(sc.Listen, m.dumpListenConf(i))
 
 	}
 
 	return
 }
 
-func (m *M) getDialConfFromCurrentState(i int) (dc *proxy.DialConf) {
+func (m *M) dumpDialConf(i int) (dc *proxy.DialConf) {
 	c := m.allClients[i]
 	dc = c.GetBase().DialConf
 
 	return
 }
 
-func (m *M) getListenConfFromCurrentState(i int) (lc *proxy.ListenConf) {
+func (m *M) dumpListenConf(i int) (lc *proxy.ListenConf) {
 	c := m.allServers[i]
 	lc = c.GetBase().ListenConf
 

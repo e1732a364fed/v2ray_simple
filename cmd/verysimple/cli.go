@@ -63,7 +63,7 @@ func init() {
 
 	cliCmdList = append(cliCmdList, &CliCmd{
 		"【生成分享链接】<-当前的配置", func() {
-			sc := mainM.GetStandardConfFromCurrentState()
+			sc := mainM.DumpStandardConf()
 			interactively_generate_share(&sc)
 		},
 	}, &CliCmd{

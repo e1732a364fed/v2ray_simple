@@ -7,6 +7,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -238,15 +239,62 @@ func (m *M) runApiServer() {
 				return
 			}
 			if isDial {
-				dc := m.getDialConfFromCurrentState(ind)
+				dc := m.dumpDialConf(ind)
 				url := proxy.ToStandardUrl(&dc.CommonConf, dc, nil)
 				w.Write([]byte(url))
 			} else {
-				lc := m.getListenConfFromCurrentState(ind)
+				lc := m.dumpListenConf(ind)
 				url := proxy.ToStandardUrl(&lc.CommonConf, nil, lc)
 				w.Write([]byte(url))
 			}
 
+		}
+
+	})
+
+	//保存所有配置到标准配置文件. 如果是GET, 直接将文件打印给客户, 如果是POST, 接收name参数并导出到文件
+	ser.addServerHandle(mux, "dump", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+
+		fn := q.Get("name")
+		if fn == "" && r.Method == "POST" {
+			if ce := utils.CanLogWarn("api server got dump request but no file name given"); ce != nil {
+				ce.Write()
+			}
+			return
+		}
+		vc := m.DumpVSConf()
+
+		bs, e := utils.GetPurgedTomlBytes(vc)
+		if e != nil {
+			if ce := utils.CanLogErr("api server: 转换格式错误"); ce != nil {
+				ce.Write(zap.Error(e))
+			}
+			w.WriteHeader(500)
+			w.Write([]byte("failed"))
+
+			return
+		}
+
+		if r.Method == "GET" {
+			w.Write(bs)
+		} else {
+			e = os.WriteFile(fn, bs, 0666)
+
+			if e != nil {
+				if ce := utils.CanLogErr("写入文件错误"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+				w.WriteHeader(500)
+				w.Write([]byte("failed"))
+
+				return
+			}
+
+			if ce := utils.CanLogInfo("导出成功"); ce != nil {
+				ce.Write(zap.String("filename", fn))
+			}
+			w.Write([]byte("ok"))
 		}
 
 	})

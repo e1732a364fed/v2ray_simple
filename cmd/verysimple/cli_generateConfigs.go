@@ -17,7 +17,7 @@ import (
 )
 
 func interactively_exportVsConf() {
-	vc := mainM.GetVSConfFromCurrentState()
+	vc := mainM.DumpVSConf()
 
 	bs, e := utils.GetPurgedTomlBytes(vc)
 	if e != nil {
@@ -90,6 +90,15 @@ func interactively_generate_share(conf *proxy.StandardConf) {
 			},
 		},
 		{
+			Name: "v2rayN分享链接 (vmess://base64)",
+			f: func() {
+				for _, v := range conf.Dial {
+					url := configAdapter.ToV2rayN(v)
+					fmt.Println(url)
+				}
+			},
+		},
+		{
 			Name: "xray分享链接标准提案 (#716)",
 			f: func() {
 				for _, v := range conf.Dial {
@@ -107,15 +116,7 @@ func interactively_generate_share(conf *proxy.StandardConf) {
 				}
 			},
 		},
-		{
-			Name: "v2rayN分享链接 (vmess://base64)",
-			f: func() {
-				for _, v := range conf.Dial {
-					url := configAdapter.ToV2rayN(v)
-					fmt.Println(url)
-				}
-			},
-		},
+
 		{
 			Name: "Quantumult X (圈叉的配置的 [server_local] 部分)",
 			f: func() {
@@ -160,6 +161,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 		Items: []string{
 			"socks5",
 			"http",
+			"socks5http",
 		},
 	}
 	i2, result, err := select2.Run()
@@ -171,7 +173,7 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 
 	fmt.Printf("你选择了 %s\n", result)
 
-	if i2 < 2 {
+	if i2 < 3 {
 		confClient.Listen = append(confClient.Listen, &proxy.ListenConf{})
 	} else {
 		utils.PrintStr("Prompt failed, werid input")
