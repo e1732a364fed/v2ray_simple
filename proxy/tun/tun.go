@@ -135,7 +135,7 @@ type Server struct {
 	udpRequestChan chan<- netLayer.UDPRequestInfo
 	lwipCloser     io.Closer
 
-	devName, realIP, selfip string
+	devName, realIP, selfip string //selfip 只在 darwin 上用到
 	autoRoute               bool
 	autoRouteDirectList     []string
 }
