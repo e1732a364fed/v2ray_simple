@@ -1,5 +1,7 @@
 /*
 Package machine 包装运行代理所需的方法，被设计为可轻易被外部程序或库调用, 而无需理解其内部细节
+
+一般而言，本包被命名为 engine 可能更恰当. 不过无所谓
 */
 package machine
 
@@ -47,7 +49,8 @@ type M struct {
 
 	callbacks
 
-	stateReportTicker *time.Ticker
+	enablePeriodicallyReportState bool
+	stateReportTicker             *time.Ticker
 }
 
 func New() *M {
@@ -105,20 +108,23 @@ func (m *M) Start() {
 			dm.StartListen()
 		}
 
-		if m.stateReportTicker == nil {
-			m.stateReportTicker = time.NewTicker(time.Minute * 5) //每隔五分钟输出一次目前状态
+		if m.enablePeriodicallyReportState {
+			if m.stateReportTicker == nil {
+				m.stateReportTicker = time.NewTicker(time.Minute * 5) //每隔五分钟输出一次目前状态
 
-			var sw = utils.PrefixWriter{
-				Writer: os.Stdout,
-			}
-			go func() {
-				for range m.stateReportTicker.C {
-					sw.Prefix = []byte(time.Now().Format("2006-01-02 15:04:05.999 "))
-					sw.Write([]byte("Current state:\n"))
-					m.PrintAllStateForHuman(os.Stdout, false)
+				var sw = utils.PrefixWriter{
+					Writer: os.Stdout,
 				}
-			}()
+				go func() {
+					for range m.stateReportTicker.C {
+						sw.Prefix = []byte(time.Now().Format("2006-01-02 15:04:05.999 "))
+						sw.Write([]byte("Current state:\n"))
+						m.PrintAllStateForHuman(os.Stdout, false)
+					}
+				}()
+			}
 		}
+
 		m.Unlock()
 	}
 

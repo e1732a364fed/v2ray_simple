@@ -37,6 +37,8 @@ type AppConf struct {
 
 	GeoipFile     *string `toml:"geoip_file"`
 	GeositeFolder *string `toml:"geosite_folder"`
+
+	EnablePeriodicallyReportState bool `toml:"enable_periodically_report_state"`
 }
 
 func LoadVSConfFromBs(bs []byte) (vsConf VSConf, err error) {
@@ -82,6 +84,7 @@ func GetAppConfByCurrentState() (ac AppConf) {
 	return
 }
 
+// 配置一些不需要machine的app级配置
 func (ac *AppConf) Setup() {
 	if ac == nil {
 		return
@@ -142,6 +145,9 @@ func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
 		m.AppConf = *vsConf.AppConf
 
 		m.AppConf.Setup()
+		if m.AppConf.EnablePeriodicallyReportState {
+			m.enablePeriodicallyReportState = true
+		}
 	}
 	if vsConf.ApiServerConf != nil {
 		m.tomlApiServerConf = *vsConf.ApiServerConf
