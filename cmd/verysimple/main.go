@@ -29,8 +29,10 @@ var (
 	disableSplice      bool
 	startPProf         bool
 	startMProf         bool
-	listenURL          string //用于命令行模式
-	dialURL            string //用于命令行模式
+	gui_mode           bool
+
+	listenURL string //用于命令行模式
+	dialURL   string //用于命令行模式
 	//jsonMode       int
 	dialTimeoutSecond int
 
@@ -44,6 +46,7 @@ var (
 	routingEnv proxy.RoutingEnv
 
 	runCli func()
+	runGui func()
 )
 
 const (
@@ -395,6 +398,13 @@ func mainFunc() (result int) {
 		interactive_mode = false
 	}
 
+	if gui_mode {
+		if runGui != nil {
+			runGui()
+			gui_mode = false
+		}
+	}
+
 	if nothingRunning() {
 		utils.Warn(willExitStr)
 		return
@@ -418,7 +428,7 @@ func hasProxyRunning() bool {
 
 // 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
 func isFlexible() bool {
-	return interactive_mode || enableApiServer
+	return interactive_mode || enableApiServer || gui_mode
 }
 
 func noFuture() bool {
@@ -426,5 +436,5 @@ func noFuture() bool {
 }
 
 func nothingRunning() bool {
-	return !hasProxyRunning() && !(interactive_mode || apiServerRunning)
+	return !hasProxyRunning() && !(interactive_mode || apiServerRunning || gui_mode)
 }
