@@ -510,6 +510,7 @@ func setupTab() {
 	//}
 }
 
+/*
 type imgTableH struct {
 	img *ui.Image
 }
@@ -540,3 +541,4 @@ func (mh *imgTableH) CellValue(m *ui.TableModel, row, column int) ui.TableValue 
 func (mh *imgTableH) SetCellValue(m *ui.TableModel, row, column int, value ui.TableValue) {
 
 }
+*/

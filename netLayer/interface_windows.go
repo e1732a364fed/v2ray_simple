@@ -61,8 +61,8 @@ func GetGateway() (routerIP, selfIP string, err error) {
 		err = utils.ErrFailed
 		return
 	}
-	str := utils.StandardizeSpaces(lines[startLineIndex])
-	fields := strings.Split(str, " ")
+
+	fields := strings.Fields(lines[startLineIndex])
 
 	if len(fields) <= 3 {
 		utils.Warn("auto route failed, parse netstat output failed,2")
