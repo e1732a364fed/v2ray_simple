@@ -11,14 +11,12 @@ jobs:
   xgo:
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.tagName }}
-          
-      -
-        name: Build vsc(verysimple client)
+
+      - name: Build vsc(verysimple client)
         uses: crazy-max/ghaction-xgo@v2
         with:
           xgo_version: latest
@@ -32,7 +30,7 @@ jobs:
           ldflags: -s -w -ldflags "-X 'main.Version=${{ github.event.inputs.tagName }}' -buildid="
           buildmode: default
           trimpath: true
-          working_dir: cmd/verysimple
+          working_dir: ${{ github.workspace }}/cmd/verysimple
           tags: "vcs"
 
       - name: create xz archive
