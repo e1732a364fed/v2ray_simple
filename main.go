@@ -623,6 +623,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 		iics.fallbackXver = fbResult
 
+	} else {
+		iics.fallbackXver = -1
 	}
 
 	// inServer 握手失败，且 没有任何回落可用时的情况, 在这里我们直接退出。
@@ -1029,11 +1031,31 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	if ce := iics.CanLogInfo("Request"); ce != nil {
 
-		ce.Write(
-			zap.String("from", iics.cachedRemoteAddr),
-			zap.String("target", targetAddr.UrlString()),
-			zap.String("through", proxy.GetVSI_url(client)),
-		)
+		if iics.fallbackXver >= 0 {
+			if iics.fallbackXver > 0 {
+				ce.Write(
+					zap.String("fallback from", iics.cachedRemoteAddr),
+					zap.String("target", targetAddr.UrlString()),
+					zap.String("through", proxy.GetVSI_url(client)),
+					zap.Int("with xver", iics.fallbackXver),
+				)
+
+			} else {
+				ce.Write(
+					zap.String("fallback from", iics.cachedRemoteAddr),
+					zap.String("target", targetAddr.UrlString()),
+					zap.String("through", proxy.GetVSI_url(client)),
+				)
+
+			}
+		} else {
+			ce.Write(
+				zap.String("from", iics.cachedRemoteAddr),
+				zap.String("target", targetAddr.UrlString()),
+				zap.String("through", proxy.GetVSI_url(client)),
+			)
+		}
+
 	}
 
 	if client.AddrStr() != "" {
@@ -1129,9 +1151,23 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 	if xver := iics.fallbackXver; xver > 0 && xver < 3 {
 		if clientConn == nil {
 			clientConn, err = realTargetAddr.Dial(nil, nil)
+
+			if err != nil {
+				result = -1
+				return
+			}
 		}
 
-		netLayer.WritePROXYprotocol(xver, wlc, clientConn)
+		_, err = netLayer.WritePROXYprotocol(xver, wlc, clientConn)
+
+		if err != nil {
+			if ce := iics.CanLogErr("Failed in WritePROXYprotocol"); ce != nil {
+				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
+			}
+
+			result = -1
+			return
+		}
 	}
 
 	////////////////////////////// tls握手阶段 /////////////////////////////////////
