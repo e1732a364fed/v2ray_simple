@@ -218,7 +218,7 @@ func (iics *incomingInserverConnState) checkfallback() (targetAddr netLayer.Addr
 
 		}
 
-	}
+	} //if iics.routingEnv != nil {
 
 	//默认回落, 每个listen配置 都 有一个自己独享的默认回落配置 (fallback = 80 这种)
 
