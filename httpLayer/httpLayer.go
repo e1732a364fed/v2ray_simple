@@ -49,6 +49,8 @@ const (
 	HeaderENDING = CRLF + CRLF
 
 	//我们不使用v2ray的8k的最大header长度限制，因为这反倒会探测出特殊性。http标准是最大1MB。
+
+	XForwardStr = "X-Forwarded-For"
 )
 
 var (

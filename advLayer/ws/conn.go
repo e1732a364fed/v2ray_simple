@@ -27,6 +27,8 @@ type Conn struct {
 	underlayIsBasic bool
 
 	bigHeaderEverUsed bool
+
+	realRaddr *net.TCPAddr //可从 X-Forwarded-For 读取用户真实ip，用于反代等情况
 }
 
 //Read websocket binary frames
@@ -293,4 +295,11 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 		return
 	*/
 
+}
+
+func (c *Conn) RemoteAddr() net.Addr {
+	if c.realRaddr != nil {
+		return c.realRaddr
+	}
+	return c.Conn.RemoteAddr()
 }

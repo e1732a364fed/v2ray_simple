@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -155,23 +156,44 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 	requestHeaderNotGivenCount := s.requestHeaderCheckCount
 
+	var realAddr *net.TCPAddr
+
 	var theUpgrader *ws.Upgrader = &ws.Upgrader{
 
 		//因为我们vs的架构，先统一监听tcp；然后再调用Handshake函数
 		// 所以我们不能直接用http.Handle, 这也彰显了 用 gobwas/ws 包的好处
-		// 给Upgrader提供的 OnRequest 专门用于过滤 path, 也不一定 需要我们的 httpLayer 去过滤
 
-		// 我们的 httpLayer 的 过滤方法仍然是最安全的，可以杜绝 所有非法数据；
+		// 给Upgrader提供的 OnRequest 成员 是 专门用于过滤 path 的, 也不一定 需要我们的 httpLayer 去过滤
+
+		// 但是 我们的 httpLayer 的 过滤方法仍然是最安全的，可以杜绝 所有非法数据；
 		// 而 ws.Upgrader.Upgrade 使用了 readLine 函数。如果客户提供一个非法的超长的一行的话，它就会陷入泥淖
 
 		//我们这里就是先用 httpLayer 过滤 再和 buffer一起传入 ws 包
 		// ReadBufferSize默认是 4096，已经够大
 
 		OnHeader: func(key, value []byte) error {
+			sk := string(key)
+
+			if sk == httpLayer.XForwardStr {
+				realV := string(value)
+				xffs := strings.SplitN(realV, ",", 2)
+
+				if len(xffs) > 0 {
+					ta, e := net.ResolveTCPAddr("tcp", strings.TrimLeft(xffs[0], " "))
+					if e == nil {
+						realAddr = ta
+					} else {
+						if ce := utils.CanLogErr("ws parse X-Forwarded-For failed, which is weird"); ce != nil {
+							ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
+						}
+					}
+				}
+
+			}
 			if s.noNeedToCheckRequestHeaders {
 				return nil
 			}
-			vs := s.RequestHeaders[string(key)]
+			vs := s.RequestHeaders[sk]
 			if len(vs) > 0 {
 				for _, v := range vs {
 					if v == (string(value)) {
@@ -253,6 +275,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 		underlayIsBasic: netLayer.IsBasicConn(underlay),
 		state:           ws.StateServerSide,
 		r:               wsutil.NewServerSideReader(underlay),
+		realRaddr:       realAddr,
 	}
 	//不想客户端；服务端是不怕客户端在握手阶段传来任何多余数据的
 	// 因为我们还没实现 0-rtt

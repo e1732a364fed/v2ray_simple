@@ -249,6 +249,27 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 		if ce := utils.CanLogErr("grpcSimple parse addr failed, which is weird"); ce != nil {
 			ce.Write(zap.String("raddr", rq.RemoteAddr), zap.Error(e))
 		}
+
+		/*
+			根据 issue #106， 如果是从 nginx回落到的 grpcSimple，则这个rq.RemoteAddr 会为 "@" 导致无法转成TCPAddr,
+			所以可以读一下 X-Forwarded-For
+
+			https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
+
+		*/
+
+		xffs := rq.Header.Values(httpLayer.XForwardStr)
+
+		if len(xffs) > 0 {
+			ta, e := net.ResolveTCPAddr("tcp", xffs[0])
+			if e == nil {
+				sc.ra = ta
+			} else {
+				if ce := utils.CanLogErr("grpcSimple parse X-Forwarded-For failed, which is weird"); ce != nil {
+					ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
+				}
+			}
+		}
 	}
 
 	sc.timeouter = timeouter{

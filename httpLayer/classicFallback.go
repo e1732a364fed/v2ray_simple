@@ -6,17 +6,20 @@ import (
 	"go.uber.org/zap"
 )
 
-//实现 Fallback,支持 path, alpn, sni 分流。
-// 内部 map 我们使用通用的集合办法, 而不是多层map嵌套;
-//虽然目前就三个fallback类型，但是谁知道以后会加几个？所以这样更通用.
-// 目前3种fallback性能是没问题的，不过如果 fallback继续增加的话，
-// 最差情况下集合的子集总数会急剧上升,导致最差情况下性能不如多重 map;不过一般没人那么脑残会给出那种配置.
+/*实现 Fallback,支持 path, alpn, sni 分流。
+ 内部 map 我们使用通用的集合办法, 而不是多层map嵌套;
+虽然目前就三个fallback类型，但是谁知道以后会加几个？所以这样更通用.
+ 目前3种fallback性能是没问题的，不过如果 fallback继续增加的话，
+ 最差情况下集合的子集总数会急剧上升,导致最差情况下性能不如多重 map;不过一般没人会给出那种配置.
+
+ TODO: 预先计算所有的子集，这样就不用每次匹配都算一遍
+*/
 type ClassicFallback struct {
 	Default *FallbackResult
 
 	supportedTypeMask byte
 
-	Map map[string]map[FallbackConditionSet]*FallbackResult
+	Map map[string]map[FallbackConditionSet]*FallbackResult //第一层key为 inTag，若为 "" 则表示 来自所有inServer 的 都会被匹配
 }
 
 func NewClassicFallback() *ClassicFallback {
@@ -163,25 +166,6 @@ func (cfb *ClassicFallback) GetFallback(fromServerTag string, ftype byte, ss ...
 		result = cd.TestAllSubSets(cfb.supportedTypeMask, realMap)
 
 	}
-
-	/*
-
-		addr := theMap[cd]
-		if addr == nil {
-
-			ass := cd.GetAllSubSets()
-			for _, v := range ass {
-				//log.Println("will check ", v)
-				if !HasFallbackType(cfb.supportedTypeMask, v.GetType()) {
-					continue
-				}
-
-				addr = theMap[v]
-				if addr != nil {
-					break
-				}
-			}
-		}*/
 
 	if result == nil {
 		if ftype == Fallback_path {
