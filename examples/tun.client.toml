@@ -1,54 +1,12 @@
 # tun
 
-###############################################################
-
 # 你要配置好路由表才能让tun正常使用。 
-# 路由表不是那么好配置，见下面指导
+# 路由表不是那么好配置，见最下方指导
 
-# 对于小白来说，下面的指导太过于高级，难以看懂，因此对于小白来说推荐全自动化的方案，跳过这一大段内容
-
-# 需要管理员权限(sudo)运行vs_gui 才能自动修改路由表 或者创建tun设备
-
-# windows上需要下载 wintun.dll 到vs可执行文件旁边, https://www.wintun.net/builds/wintun-0.14.1.zip
-
-###############################################################
-
-# 下面给出macos上的路由表配置指导
-
-# 首先删除默认路由，然后将路由指向 utun3 (用户自己运行的到的名称可能不同)
-# 最后将自己的服务器的ip (我们的例子是 vlesss 的 127.0.0.1，请你改成实际服务器ip) 的路由指向原来的 路由器地址
-
-# sudo route delete -host default
-# sudo route add default -interface utun3
-# sudo route add -host 127.0.0.1 192.168.1.1
-
-# 关闭vs后，要将原来的路由添回。不会的话，重启可以复原。
-
-# sudo route delete -host default
-# sudo route add default 192.168.1.1
-
-# 这个方案只适用于 不直连，全经过代理的情况。如果要分流直连，则需要更高级的 路由方案才行，否则会导致本地回环
-
-# 你还可以参考 https://github.com/yangchuansheng/love-gfw/blob/master/docs/gotun2socks-macos.md
-
-###############################################################
-
-# 下面给出windows上的路由表配置指导
-
-# route delete 0.0.0.0 mask 0.0.0.0
-# route add 0.0.0.0 mask 0.0.0.0 10.1.0.20 metric 6
-
-# 移除：
-# route delete 0.0.0.0 mask 0.0.0.0
-# route add 0.0.0.0 mask 0.0.0.0 192.168.1.1 metric 50
-
-# 参考 https://tachyondevel.medium.com/%E6%95%99%E7%A8%8B-%E5%9C%A8-windows-%E4%B8%8A%E4%BD%BF%E7%94%A8-tun2socks-%E8%BF%9B%E8%A1%8C%E5%85%A8%E5%B1%80%E4%BB%A3%E7%90%86-aa51869dd0d
-
-###############################################################
-
-# linux 上的路由，可参考 https://github.com/xjasonlyu/tun2socks/wiki/Examples
 # 注意，因为我们完全使用 xjasonlyu/tun2socks 的方案，所以 如果你不使用 auto_route，那么
-# 你就要在运行vs之前先手动根据上面 链接的指导 来建立tun设备。如果你使用了auto_route功能，则无须操作。
+# 你就要在运行vs之前先手动根据最下方指导 来建立tun设备。如果你使用了auto_route功能，则无须操作。
+
+###############################################################
 
 [[listen]]
 protocol = "tun"
@@ -97,6 +55,53 @@ utls = true
 
 # sockopt.device = "WLAN"   
 # sockopt.device = "Ethernet"   
+
+
+
+###############################################################
+
+# 对于小白来说，下面的指导太过于高级，难以看懂，因此对于小白来说推荐全自动化的方案，跳过这一大段内容
+
+# 需要管理员权限(sudo)运行vs_gui 才能自动修改路由表 或者创建tun设备
+
+# windows上需要下载 wintun.dll 到vs可执行文件旁边, https://www.wintun.net/builds/wintun-0.14.1.zip
+
+###############################################################
+
+# 下面给出macos上的路由表配置指导
+
+# 首先删除默认路由，然后将路由指向 utun3 (用户自己运行的到的名称可能不同)
+# 最后将自己的服务器的ip (我们的例子是 vlesss 的 127.0.0.1，请你改成实际服务器ip) 的路由指向原来的 路由器地址
+
+# sudo route delete -host default
+# sudo route add default -interface utun3
+# sudo route add -host 127.0.0.1 192.168.1.1
+
+# 关闭vs后，要将原来的路由添回。不会的话，重启可以复原。
+
+# sudo route delete -host default
+# sudo route add default 192.168.1.1
+
+# 这个方案只适用于 不直连，全经过代理的情况。如果要分流直连，则需要更高级的 路由方案才行，否则会导致本地回环
+
+# 你还可以参考 https://github.com/yangchuansheng/love-gfw/blob/master/docs/gotun2socks-macos.md
+
+###############################################################
+
+# 下面给出windows上的路由表配置指导
+
+# route delete 0.0.0.0 mask 0.0.0.0
+# route add 0.0.0.0 mask 0.0.0.0 10.1.0.20 metric 6
+
+# 移除：
+# route delete 0.0.0.0 mask 0.0.0.0
+# route add 0.0.0.0 mask 0.0.0.0 192.168.1.1 metric 50
+
+# 参考 https://tachyondevel.medium.com/%E6%95%99%E7%A8%8B-%E5%9C%A8-windows-%E4%B8%8A%E4%BD%BF%E7%94%A8-tun2socks-%E8%BF%9B%E8%A1%8C%E5%85%A8%E5%B1%80%E4%BB%A3%E7%90%86-aa51869dd0d
+
+###############################################################
+
+# linux 上的路由，可参考 https://github.com/xjasonlyu/tun2socks/wiki/Examples
 
 
 ###############################################################

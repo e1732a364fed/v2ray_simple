@@ -11,7 +11,7 @@ host = "127.0.0.1"
 port = 4434
 version = 0
 insecure = true
-#utls = true
+#tls_type = "utls"
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" 
 

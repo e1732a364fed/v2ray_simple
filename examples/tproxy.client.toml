@@ -34,7 +34,7 @@ host = "127.0.0.1"
 port = 4433
 version = 0
 insecure = true
-utls = true
+tls_type = "utls"
 
 sockopt.mark = 255  #linux 上, 根据上面 toutyrater 给出的 iptables命令，我们这里要设置 mark为255. 看一下 上面 toutyrater的教程吧！
 

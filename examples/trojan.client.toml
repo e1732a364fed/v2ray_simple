@@ -11,7 +11,7 @@ ip = "127.0.0.1"
 host = "your-domain-name.com"   # trojan-go的 服务端 要求 客户端 指定一个sni 并与服务端的配置相匹配, 否则trojan-go的服务端 会拒绝连接
 port = 4434
 insecure = true
-utls = true
+tls_type = "utls"
 #lazy = true
 
 

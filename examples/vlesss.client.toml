@@ -85,7 +85,7 @@ host = "127.0.0.1"     # 同listen对应配置, 可填ip或域名；如果 netwo
 port = 4433     # 必填
 version = 0     # 协议版本, 可省略, 省略则默认为最老版本
 insecure = true # 我们示例使用自签名证书，所以要开启 insecure. 实际场合请使用真证书并关闭 insecure
-utls = true     #是否使用 utls 来应用 chrome指纹进行伪装, 仅用于dial ; vs 1.2.5及以后版本建议这么写: tls_type = "utls" 
+tls_type = "utls"     #是否使用 utls 来应用 chrome指纹进行伪装, 仅用于dial ; vs 1.2.5及以后版本建议这么写: tls_type = "utls" , 而不是 utls = "true"
 
 # alpn=["http/1.1"]     # 在开启tls时有效，如果服务端和客户端都配置了alpn，则 服务端和客户端 必须都有相同的alpn项才能建立tls连接
 

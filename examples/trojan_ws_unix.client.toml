@@ -10,7 +10,7 @@ uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "/dev/shm/ws.sock"   # 文件不需要实际存在，只需要 该目录存在，且 vs具有对应目录的权限
 network = "unix"    # 别忘了标network 为 unix (unix domain socket 的 golang的简称)
 insecure = true
-utls = true
+tls_type = "utls"
 
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple"

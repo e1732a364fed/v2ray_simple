@@ -12,7 +12,7 @@ host = "127.0.0.1"
 port = 4433      
 version = 1
 insecure = true  
-utls = true
+tls_type = "utls"
 extra = { vless1_udp_multi = true } 
 
 # 用 vless1_udp_multi 选项 开启vless v1的 分离信道传输udp功能. udp分离信道发送 性能会比默认的 多路复用 发送性能要高。
