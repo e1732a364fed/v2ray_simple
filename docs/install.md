@@ -55,9 +55,7 @@ sudo cp examples/vlesss.server.toml server.toml
 
 如果你没有证书，想要先用自签名证书试试，可以运行 `verysimple -i` 进入交互模式，然后根据提示自行生成自签名ssl证书
 
-生成的证书会为 yourcert.pem 和 yourcert.key
-
-你可以重命名为 cert.pem 和 cert.key 来匹配示例文件，或反过来，修改示例文件里的证书名称以匹配 yourcert这个名称.
+生成的证书会为 cert.pem 和 cert.key
 
 当然，你也可以通过README.md 里的指导自行使用openssl生成证书。
 
