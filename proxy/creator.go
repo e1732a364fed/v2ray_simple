@@ -94,14 +94,21 @@ func newclient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, erro
 		e = prepareTLS_forClient(c, dc)
 	}
 	if dc.SendThrough != "" {
-		st, err := netLayer.StrToNetAddr(c.Network(), dc.SendThrough)
-		if err != nil {
-			return nil, utils.ErrInErr{ErrDesc: "parse sendthrough ip failed", ErrDetail: err}
 
+		if c.MultiTransportLayer() {
+			//多个传输层的话，完全由proxy自行配置 localAddr。
 		} else {
-			c.GetBase().LA = st
+			st, err := netLayer.StrToNetAddr(c.Network(), dc.SendThrough)
 
+			if err != nil {
+				return nil, utils.ErrInErr{ErrDesc: "parse sendthrough addr failed", ErrDetail: err}
+
+			} else {
+				c.GetBase().LA = st
+
+			}
 		}
+
 	}
 	return c, e
 

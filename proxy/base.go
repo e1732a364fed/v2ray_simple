@@ -39,6 +39,8 @@ type BaseInterface interface {
 
 	/////////////////// 传输层 ///////////////////
 
+	MultiTransportLayer() bool
+
 	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc. 这里叫做Network而不是transport, 是遵循 golang 标准包 net包的用法。我们兼容 net的Listen等方法, 可把Network直接作为 net.Listen等方法的 network 参数。
 	GetXver() int
 
@@ -122,6 +124,10 @@ func (b *Base) GetBase() *Base {
 
 func (b *Base) Network() string {
 	return b.TransportLayer
+}
+
+func (b *Base) MultiTransportLayer() bool {
+	return false
 }
 
 func (b *Base) LocalAddr() net.Addr {

@@ -634,6 +634,20 @@ func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
 	return
 }
 
+const MixNetworkName = "tcp/udp"
+
+type TCP_or_UDPAddr struct {
+	*net.TCPAddr
+	*net.UDPAddr
+}
+
+func (tu *TCP_or_UDPAddr) Network() string {
+	return MixNetworkName
+}
+func (tu *TCP_or_UDPAddr) String() string {
+	return tu.TCPAddr.String() + " / " + tu.UDPAddr.String()
+}
+
 func StrToNetAddr(network, s string) (net.Addr, error) {
 	if network == "" {
 		network = "tcp"
@@ -647,11 +661,26 @@ func StrToNetAddr(network, s string) (net.Addr, error) {
 			s += ":0"
 		}
 		return net.ResolveTCPAddr(network, s)
+
 	case UDP:
 		if !strings.Contains(s, ":") {
 			s += ":0"
 		}
 		return net.ResolveUDPAddr(network, s)
+
+	case Mix:
+		ta, e := StrToNetAddr("tcp", s)
+		if e != nil {
+			return nil, e
+		}
+
+		ua, e := StrToNetAddr("udp", s)
+		if e != nil {
+			return nil, e
+		}
+
+		return &TCP_or_UDPAddr{TCPAddr: ta.(*net.TCPAddr), UDPAddr: ua.(*net.UDPAddr)}, nil
+
 	case UNIX:
 		return net.ResolveUnixAddr(network, s)
 	default:

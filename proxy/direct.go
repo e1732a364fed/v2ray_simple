@@ -25,23 +25,42 @@ func (DirectCreator) NewClientFromURL(url *url.URL) (Client, error) {
 
 func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 	d := &DirectClient{}
+
+	if dc.SendThrough != "" {
+		st, err := netLayer.StrToNetAddr(netLayer.MixNetworkName, dc.SendThrough)
+		if err != nil {
+			return nil, err
+		}
+		d.localTCPAddr = st.(*netLayer.TCP_or_UDPAddr).TCPAddr
+		d.localUDPAddr = st.(*netLayer.TCP_or_UDPAddr).UDPAddr
+
+	}
+
 	return d, nil
 }
 
 type DirectClient struct {
 	Base
+
+	localTCPAddr *net.TCPAddr
+	localUDPAddr *net.UDPAddr
 }
 
 func (*DirectClient) Name() string { return DirectName }
+
+func (*DirectClient) MultiTransportLayer() bool {
+	return true
+}
 
 //若 underlay 为nil，则会对target进行拨号, 否则返回underlay本身
 func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {
+
 		if d.Sockopt != nil {
-			result, err = target.DialWithOpt(d.Sockopt, d.LA)
+			result, err = target.DialWithOpt(d.Sockopt, d.localTCPAddr)
 		} else {
-			result, err = target.Dial(nil, d.LA)
+			result, err = target.Dial(nil, d.localTCPAddr)
 		}
 
 	} else {
@@ -65,20 +84,12 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 // 这是因为要考虑到fullcone.
 func (d *DirectClient) EstablishUDPChannel(_ net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
 
-	var la *net.UDPAddr
-	if d.LA != nil {
-		tmpla, ok := d.LA.(*net.UDPAddr)
-		if ok {
-			la = tmpla
-		}
-	}
-
 	if len(firstPayload) == 0 {
 
-		return netLayer.NewUDPMsgConn(la, d.IsFullcone, false, d.Sockopt)
+		return netLayer.NewUDPMsgConn(d.localUDPAddr, d.IsFullcone, false, d.Sockopt)
 
 	} else {
-		mc, err := netLayer.NewUDPMsgConn(la, d.IsFullcone, false, d.Sockopt)
+		mc, err := netLayer.NewUDPMsgConn(d.localUDPAddr, d.IsFullcone, false, d.Sockopt)
 		if err != nil {
 			return nil, err
 		}

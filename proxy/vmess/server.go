@@ -244,7 +244,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 	default:
 		//mux.cool的command的定义 在 v2ray源代码的 common/protocol/headers.go 的 RequestCommandMux。
 
-		if sc.cmd == 3 {
+		if sc.cmd == cmd_muxcool_unimplemented {
 			returnErr = utils.ErrInErr{ErrDesc: "Vmess mux.cool is not supported by verysimple ", ErrDetail: utils.ErrInvalidData}
 
 		} else {
