@@ -114,6 +114,7 @@ func main() {
 
 func mainFunc() (result int) {
 	defer func() {
+		//注意，这个recover代码并不是万能的，有时捕捉不到panic。
 		if r := recover(); r != nil {
 			if ce := utils.CanLogErr("Captured panic!"); ce != nil {
 

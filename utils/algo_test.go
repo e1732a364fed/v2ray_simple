@@ -8,14 +8,38 @@ import (
 	"gonum.org/v1/gonum/stat/combin"
 )
 
+const realv1 = "v1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+const realv2 = "v2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+const e1 = "eeeeeeeeeeeeeeeeeeeee1"
+const e2 = "eeeeeeeeeeeeeeeeeeeeeee2"
+
+const testSplitStr = e1 + ":" + realv1 + "\n" + e2 + ":" + realv2
+
 func TestCommonSpit(t *testing.T) {
-	realv1 := "v1"
-	realv2 := "v2"
-	s := "e1:" + realv1 + "\ne2:" + realv2
-	ok, v1, v2 := utils.CommonSplit(s, "e1", "e2")
+
+	ok, v1, v2 := utils.CommonSplit(testSplitStr, e1, e2)
 
 	if !ok || realv1 != v1 || realv2 != v2 {
 		t.FailNow()
+	}
+
+	ok, v1, v2 = utils.CommonSplit_regex(testSplitStr, e1, e2)
+
+	if !ok || realv1 != v1 || realv2 != v2 {
+		t.FailNow()
+	}
+
+}
+
+func BenchmarkCommonSplit_strings(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		utils.CommonSplit_strings(testSplitStr, "e1", "e2")
+	}
+}
+
+func BenchmarkCommonSplit_regex(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		utils.CommonSplit_regex(testSplitStr, "e1", "e2")
 	}
 }
 
@@ -34,6 +58,7 @@ func TestSplice(t *testing.T) {
 }
 
 /*
+
 BenchmarkAllSubSets_4-8                       	  969097	      1198 ns/op
 BenchmarkAllSubSets_3-8                       	 2340783	       514.6 ns/op
 BenchmarkAllSubSets_2-8                       	 5716852	       210.4 ns/op
