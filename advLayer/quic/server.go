@@ -13,6 +13,45 @@ import (
 	"go.uber.org/zap"
 )
 
+// implements advLayer.SuperMuxServer
+type Server struct {
+	Creator
+
+	addr    string
+	tlsConf tls.Config
+	args    arguments
+
+	listener io.Closer
+}
+
+// quic 没path配置；return ""
+func (s *Server) GetPath() string {
+	return ""
+}
+
+func (s *Server) Stop() {
+	if s.listener != nil {
+		s.listener = nil
+
+		s.listener.Close()
+	}
+}
+
+func (s *Server) StartListen(newSubConnFunc func(net.Conn)) (baseConn io.Closer) {
+
+	baseConn = ListenInitialLayers(s.addr, s.tlsConf, s.args, newSubConnFunc)
+	if baseConn != nil {
+		s.listener = baseConn
+
+	}
+	return
+}
+
+// 阻塞，不支持回落。
+func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), _ func(httpLayer.FallbackMeta)) {
+	dealNewConn(underlay.(quic.Connection), newSubConnFunc)
+}
+
 // non-blocking
 func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments, newSubConnFunc func(net.Conn)) (returnCloser io.Closer) {
 
@@ -154,42 +193,4 @@ func dealNewConn(conn quic.Connection, newSubConnFunc func(net.Conn)) {
 		// theChan <- &StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false}
 		go newSubConnFunc(&StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false})
 	}
-}
-
-// implements advLayer.SuperMuxServer
-type Server struct {
-	Creator
-
-	addr    string
-	tlsConf tls.Config
-	args    arguments
-
-	listener io.Closer
-}
-
-func (s *Server) GetPath() string {
-	return ""
-}
-
-func (s *Server) Stop() {
-	if s.listener != nil {
-		s.listener = nil
-
-		s.listener.Close()
-	}
-}
-
-func (s *Server) StartListen(newSubConnFunc func(net.Conn)) (baseConn io.Closer) {
-
-	baseConn = ListenInitialLayers(s.addr, s.tlsConf, s.args, newSubConnFunc)
-	if baseConn != nil {
-		s.listener = baseConn
-
-	}
-	return
-}
-
-// 阻塞，不支持回落。
-func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), _ func(httpLayer.FallbackMeta)) {
-	dealNewConn(underlay.(quic.Connection), newSubConnFunc)
 }
