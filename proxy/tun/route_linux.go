@@ -41,7 +41,8 @@ func init() {
 		return true
 	}
 
-	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+	//暂未实现linux 上配置dns的功能
+	autoRouteFunc = func(tunDevName, tunGateway, tunIP, dns string, directList []string) {
 		routerip, routerName, err := netLayer.GetGateway()
 		if err != nil {
 			utils.Error(err.Error())

@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+	autoRouteFunc = func(tunDevName, tunGateway, tunIP, dns string, directList []string) {
 		if len(directList) == 0 {
 			utils.Warn(auto_route_bindToDeviceWarn)
 		}
@@ -65,6 +65,14 @@ func init() {
 			}
 		}
 
+		if dns != "" {
+			rdns := netLayer.GetSystemDNS()
+			if rdns != "" {
+				rememberedRouterDns = rdns
+				netLayer.SetSystemDNS(dns)
+			}
+		}
+
 		utils.Info("auto route succeed!")
 	}
 
@@ -88,6 +96,11 @@ func init() {
 					ce.Write(zap.Error(e))
 				}
 			}
+		}
+
+		if rememberedRouterDns != "" {
+			netLayer.SetSystemDNS(rememberedRouterDns)
+
 		}
 	}
 }

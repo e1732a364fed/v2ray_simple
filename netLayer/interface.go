@@ -69,12 +69,20 @@ var SetSystemDNS = func(dns string) {
 	if ce := utils.CanLogErr("SetSystemDNS: not implemented"); ce != nil {
 		ce.Write(zap.String("platform", runtime.GOOS))
 	}
+
+	//https://www.linuxfordevices.com/tutorials/linux/change-dns-on-linux
+	//linux 的 dns配置 看起来似乎不按网卡分 ，这个和 win/darwin 不同
 }
 
 var ToggleSystemProxy = func(isSocks5 bool, addr, port string, enable bool) {
 	if ce := utils.CanLogErr("ToggleSystemProxy: not implemented"); ce != nil {
 		ce.Write(zap.String("platform", runtime.GOOS))
 	}
+	//linux 中，就是设置环境变量 HTTP_PROXY, HTTPS_PROXY, 就算在ubuntu的设置界面里设置，其实也是配置的这两个变量
+	// 它还同时设置了小写的 http_proxy https_proxy
+
+	//https://linuxstans.com/how-to-set-up-proxy-ubuntu/
+	//https://github.com/nityanandagohain/proxy_configuration/blob/master/proxy.py
 }
 
 var GetSystemProxyState = func(isSocks5 bool) (ok, enabled bool, addr, port string) {

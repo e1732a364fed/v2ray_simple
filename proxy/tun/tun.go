@@ -33,10 +33,11 @@ var (
 	AddManualRunCmdsListFunc func([]string)
 	rememberedRouterIP       string
 	rememberedRouterName     string
+	rememberedRouterDns      string
 
 	manualRoute                 bool
 	autoRoutePreFunc            func(tunDevName, tunGateway, tunIP string, directlist []string) bool
-	autoRouteFunc               func(tunDevName, tunGateway, tunIP string, directlist []string)
+	autoRouteFunc               func(tunDevName, tunGateway, tunIP, dns string, directlist []string)
 	autoRouteDownFunc           func(tunDevName, tunGateway, tunIP string, directlist []string)
 	autoRouteDownAfterCloseFunc func(tunDevName, tunGateway, tunIP string, directlist []string)
 )
@@ -78,6 +79,21 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 			}
 		}
 
+		if thing := lc.Extra["tun_dns"]; thing != nil {
+			if str, ok := thing.(string); ok {
+				ip := net.ParseIP(str)
+				if ip == nil {
+					if ce := utils.CanLogErr("tun tun_dns config error, not a valid ip string."); ce != nil {
+						ce.Write(zap.String("value", str))
+					}
+				} else {
+					s.dns = str
+
+				}
+			}
+
+		}
+
 		if thing := lc.Extra["tun_auto_route"]; thing != nil {
 			if auto, autoOk := utils.AnyToBool(thing); autoOk && auto {
 
@@ -93,7 +109,10 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 				}
 
 				if len(s.autoRouteDirectList) == 0 {
-					utils.Warn("tun auto route set, but no direct list given. Don't forget to set sockopt.device (bindToDevice) for your dial config.")
+					if ce := utils.CanLogWarn("tun auto route set, but no direct list given. Don't forget to set sockopt.device (bindToDevice) for your dial config."); ce != nil {
+						ce.Write()
+					}
+
 				}
 				s.autoRoute = true
 
@@ -137,9 +156,9 @@ type Server struct {
 	stackCloser io.Closer
 	tunDev      device.Device
 
-	devName, realIP, selfip string //selfip 只在 darwin 上用到
-	autoRoute               bool
-	autoRouteDirectList     []string
+	devName, realIP, selfip, dns string //selfip 只在 darwin 上用到
+	autoRoute                    bool
+	autoRouteDirectList          []string
 }
 
 func (*Server) Name() string { return name }
@@ -189,6 +208,7 @@ func (s *Server) Stop() {
 		s.tunDev = nil
 		rememberedRouterIP = ""
 		rememberedRouterName = ""
+		rememberedRouterDns = ""
 	}
 
 }
@@ -249,7 +269,11 @@ func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func
 
 	if s.autoRoute && autoRouteFunc != nil {
 		utils.Info("tun running auto table")
-		autoRouteFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
+		dns := s.dns
+		if dns == "" {
+			dns = "8.8.8.8"
+		}
+		autoRouteFunc(s.devName, s.realIP, s.selfip, dns, s.autoRouteDirectList)
 	}
 
 	newTcpFunc := func(info netLayer.TCPRequestInfo) {

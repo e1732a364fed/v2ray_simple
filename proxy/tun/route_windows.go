@@ -28,7 +28,7 @@ func init() {
 
 		wintun 和 默认路由 都存在时, wintun会优先
 	*/
-	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+	autoRouteFunc = func(tunDevName, tunGateway, tunIP, dns string, directList []string) {
 
 		if len(directList) == 0 {
 			utils.Warn(auto_route_bindToDeviceWarn)
@@ -47,7 +47,7 @@ func init() {
 		var strs = []string{
 			fmt.Sprintf(`netsh interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=none`, tunDevName, tunGateway),
 
-			fmt.Sprintf(`netsh interface ip set dns name="%s" static 8.8.8.8`, tunDevName), //windows上，wintun的dns要单独配置一下，如果为空的话，就会走默认路由器，那样就会遭到dns污染
+			fmt.Sprintf(`netsh interface ip set dns name="%s" static %s`, tunDevName, dns), //windows上，wintun的dns要单独配置一下，如果为空的话，就会走默认路由器，那样就会遭到dns污染
 
 			//https://tweaks.com/windows/40339/configure-ip-address-and-dns-from-command-line/
 
