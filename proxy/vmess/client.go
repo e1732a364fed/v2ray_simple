@@ -40,9 +40,6 @@ func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	query := url.Query()
 
 	security := query.Get("security")
-	if security == "" {
-		security = "none"
-	}
 
 	c := &Client{}
 	c.user = utils.V2rayUser(uuid)
@@ -73,6 +70,8 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 			}
 		}
+	} else {
+		c.specifySecurityByStr("")
 	}
 
 	return c, nil
