@@ -6,7 +6,14 @@ tun 工作在第三层 IP层上。
 
 我们使用 github.com/eycorsican/go-tun2socks 包
 
+# Problem 问题
+
 这个包在windows上会使用tap。
+
+目前测试在windows上效果非常不好，响应很慢，似乎和udp或者dns有一定关联.
+它总在访问组播地址 239.255.255.250
+
+eycorsican/go-tun2socks 包问题不小，不仅有平台间不一致的问题，而且tun关闭后无法再重新开启
 */
 package tun
 

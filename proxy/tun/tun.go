@@ -163,6 +163,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
+	s.stopped = false
 	//log.Println(s.devName, s.selfip, s.realIP, s.mask)
 	realname, tunDev, err := tun.CreateTun(s.devName, s.selfip, s.realIP, s.mask, s.tun_dnsList)
 	if err != nil {
