@@ -106,6 +106,12 @@ func (*Server) Name() string {
 }
 
 func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
+
+	if err = proxy.SetCommonReadTimeout(underlay); err != nil {
+		return
+	}
+	defer netLayer.PersistConn(underlay)
+
 	var bs = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
 
 	n := 0

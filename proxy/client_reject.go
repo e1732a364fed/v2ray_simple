@@ -63,7 +63,7 @@ func (c *RejectClient) tryResponseAndClose(underlay net.Conn) {
 	case "http":
 		underlay.Write([]byte(httpLayer.Err403response))
 	case "nginx":
-		SetHandshakeTimeout(underlay)
+		SetCommonReadTimeout(underlay)
 		bs := utils.GetPacket()
 		n, err := underlay.Read(bs)
 

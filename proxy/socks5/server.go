@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/url"
-	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -26,6 +25,8 @@ func init() {
 type Server struct {
 	proxy.Base
 	*utils.MultiUserMap
+
+	TrustClient bool //如果为true，则每次握手读取客户端响应前, 不设置deadline. 这能减少一些开销, 但要保证客户端确实可信，不是坏蛋。如果客户端无法被信任，比如在公网或者 不止你一个人使用，则一定要为false，否则会被攻击，导致Server卡住, 造成大量悬垂连接。
 }
 
 func NewServer() *Server {
@@ -71,6 +72,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 func (*Server) Name() string { return Name }
 
+//若没有IDMap，则直接写入AuthNone响应，否则返回错误
 func (s *Server) authNone(underlay net.Conn) (returnErr error) {
 	var err error
 	if len(s.IDMap) == 0 {
@@ -88,12 +90,13 @@ func (s *Server) authNone(underlay net.Conn) (returnErr error) {
 
 // 处理tcp收到的请求. 注意, udp associate后的 udp请求并不 直接 通过此函数处理, 而是由 UDPConn 处理
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
-	// Set handshake timeout 4 seconds
-	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
-		returnErr = err
-		return
+	if !s.TrustClient {
+		if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+			returnErr = err
+			return
+		}
+		defer netLayer.PersistConn(underlay)
 	}
-	defer underlay.SetReadDeadline(time.Time{})
 
 	bs := utils.GetMTU()
 	defer utils.PutBytes(bs)
@@ -111,12 +114,14 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLa
 		return
 	}
 	nmethods := int(bs[1])
-	if nmethods == 0 || nmethods > 2 {
+	if nmethods == 0 || n < 2+nmethods {
 		underlay.Write([]byte{Version5, AuthNoACCEPTABLE})
-		returnErr = fmt.Errorf("nmethods==0||nmethods>2, %d", nmethods)
+		returnErr = fmt.Errorf("nmethods==0||n < 2+nmethods, %d, n=%d", nmethods, n)
 		return
 	}
 	authed := false
+
+	netLayer.PersistConn(underlay)
 
 	var dealtNone, dealtPass bool //所有method只能给出一次，否则就是非法。
 For:
@@ -165,7 +170,19 @@ For:
 			var authBs []byte
 
 			if n == 2+nmethods {
+				if !s.TrustClient {
+					if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+						returnErr = err
+						return
+					}
+				}
+
 				n, err = underlay.Read(bs)
+
+				if !s.TrustClient {
+					netLayer.PersistConn(underlay)
+				}
+
 				if err != nil {
 					returnErr = fmt.Errorf("read socks5 auth failed: %w", err)
 					continue
@@ -223,8 +240,20 @@ For:
 		returnErr = nil
 	}
 
+	if !s.TrustClient {
+		if err := proxy.SetCommonReadTimeout(underlay); err != nil {
+			returnErr = err
+			return
+		}
+	}
+
 	// Read command message，
 	n, err = underlay.Read(bs)
+
+	if !s.TrustClient {
+		netLayer.PersistConn(underlay)
+	}
+
 	if err != nil || n < 7 { // Shortest length is 7
 		returnErr = fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
 		return

@@ -100,7 +100,7 @@ func (s *Server) Name() string { return Name }
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 
-	if err := proxy.SetHandshakeTimeout(underlay); err != nil {
+	if err := proxy.SetCommonReadTimeout(underlay); err != nil {
 		returnErr = err
 		return
 	}

@@ -73,7 +73,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 	//可以参考 golang.org/x/net/http2/server.go 里的 readPreface 方法.
 
 	bs := utils.GetPacket()
-	proxy.SetHandshakeTimeout(underlay)
+	proxy.SetCommonReadTimeout(underlay)
 
 	var notH2c bool
 	n, err := underlay.Read(bs)

@@ -12,11 +12,11 @@ import (
 )
 
 // default recommended handshake timeout
-const HandshakeTimeout = time.Second * 4
+const CommonReadTimeout = time.Second * 4
 
 //set read timeout after HandshakeTimeout
-func SetHandshakeTimeout(c net.Conn) error {
-	return c.SetReadDeadline(time.Now().Add(HandshakeTimeout))
+func SetCommonReadTimeout(c net.Conn) error {
+	return c.SetReadDeadline(time.Now().Add(CommonReadTimeout))
 }
 
 //规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
