@@ -4,9 +4,72 @@ import (
 	"testing"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"golang.org/x/exp/slices"
 
 	"gonum.org/v1/gonum/stat/combin"
 )
+
+func TestSortByOrder(t *testing.T) {
+	checkResult := func(good, suspect []int) bool {
+		if len(suspect) != len(good) {
+			return false
+		}
+		m := make(map[int]bool)
+		for _, v := range suspect {
+			if m[v] {
+				return false
+			}
+			if !slices.Contains(good, v) {
+				return false
+			}
+			m[v] = true
+		}
+		return true
+	}
+	x1 := []int{1, 2, 3, 4, 5}
+	order := []int{5, 4, 1, 2, 3}
+	result, newo, ei := utils.SortByOrder(x1, order)
+	t.Log(result, newo, ei)
+	if !checkResult(x1, result) {
+		t.Fail()
+	}
+
+	order = []int{4, 1, 2, 3, 0}
+	result, newo, ei = utils.SortByOrder(x1, order)
+	t.Log(result, newo, ei)
+	if !checkResult(x1, result) {
+		t.Fail()
+	}
+
+	order = []int{4, 1, 2, 2, 0}
+	result, newo, ei = utils.SortByOrder(x1, order)
+	t.Log(result, newo, ei)
+	if !checkResult(x1, result) {
+		t.Fail()
+	}
+
+	order = []int{4, 1, 2, 0}
+	result, newo, ei = utils.SortByOrder(x1, order)
+	t.Log(result, newo, ei)
+	if !checkResult(x1, result) {
+		t.Fail()
+	}
+
+	order = []int{0, 4, 1, 2, 3, 3}
+	result, newo, ei = utils.SortByOrder(x1, order)
+	t.Log(result, newo, ei)
+	if !checkResult(x1, result) {
+		t.Fail()
+	}
+
+	order = []int{0, 0, 1, 2, 3, 3}
+	result, newo, ei = utils.SortByOrder(x1, order)
+	t.Log(result, newo, ei)
+	if !checkResult(x1, result) {
+		t.Fail()
+	}
+
+}
 
 const realv1 = "v1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 const realv2 = "v2xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

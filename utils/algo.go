@@ -85,13 +85,66 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以
 }
 
-func SortByOrder[T any](arr []T, order []int) []T {
-	var result = make([]T, len(arr))
+func SortByOrder[T any](arr []T, order []int) (result []T, neworder []int, erri int) {
+	//检查长度
+	if len(order) != len(arr) {
+		if len(order) > len(arr) { //这种是有问题的，不应传入;不过，我们整理出一个新的order列表
+
+			erri = 1
+			neworder = make([]int, 0, len(arr))
+
+			//填上已有的
+			for _, v := range order {
+				if v >= 0 && v < len(arr) && !slices.Contains(neworder, v) {
+					neworder = append(neworder, v)
+				}
+			}
+
+			//补全没有的
+			for i := 0; i < len(arr); i++ {
+				if !slices.Contains(neworder, i) {
+					neworder = append(neworder, i)
+				}
+			}
+
+			order = neworder
+		} else {
+			erri = 2
+
+			//补全没有的
+
+			for i := 0; i < len(arr); i++ {
+				if !slices.Contains(order, i) {
+					order = append(order, i)
+				}
+			}
+			neworder = order
+		}
+	}
+	//检查重复或索引不正确
+	for i, v := range order {
+		order[i] = -1
+		if slices.Contains(order, v) || v >= len(arr) || v < 0 {
+			//有重复，证明该序列无效，重建顺序序列
+			erri = 3
+
+			neworder = make([]int, 0, len(arr))
+
+			for i := 0; i < len(arr); i++ {
+				neworder = append(neworder, i)
+			}
+			order = neworder
+			break
+		}
+		order[i] = v
+	}
+
+	result = make([]T, len(arr))
 	for i, v := range order {
 		result[i] = arr[v]
 	}
 
-	return result
+	return
 }
 
 func MoveItem[T any](arr *[]T, fromIndex, toIndex int) {

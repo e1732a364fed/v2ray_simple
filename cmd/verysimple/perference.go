@@ -108,8 +108,19 @@ func loadPreferences() {
 		return
 	}
 	doWhenUpdateAutoRearrange()
+	if len(currentUserPreference.CliCmdOrder) == 0 {
+		return
+	}
 	if len(currentUserPreference.CliCmdOrder) <= len(cliCmdList) {
-		cliCmdList = utils.SortByOrder(cliCmdList, currentUserPreference.CliCmdOrder)
+		var neworder []int
+		var ei int
+		cliCmdList, neworder, ei = utils.SortByOrder(cliCmdList, currentUserPreference.CliCmdOrder)
+		if ei != 0 {
+			fmt.Println("utils.SortByOrder got ei", ei)
+		}
+		if neworder != nil {
+			currentUserPreference.CliCmdOrder = neworder
+		}
 
 	} else {
 		initOrderList()
