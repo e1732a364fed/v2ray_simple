@@ -145,6 +145,9 @@ func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
 	}
 	if vsConf.ApiServerConf != nil {
 		m.tomlApiServerConf = *vsConf.ApiServerConf
+
+		m.setupApiConf()
+
 	}
 
 	return nil

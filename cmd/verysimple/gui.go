@@ -504,9 +504,9 @@ func setupTab() {
 	tab.Append("代理控制", makeConfPage())
 	tab.Append("app控制", makeAppPage())
 
-	for i := 0; i < tab.NumPages(); i++ {
-		tab.SetMargined(i, true)
-	}
+	//for i := 0; i < tab.NumPages(); i++ {
+	//tab.SetMargined(i, true)
+	//}
 }
 
 type imgTableH struct {

@@ -146,8 +146,8 @@ func makeConfPage() ui.Control {
 	result.Append(group2, true)
 
 	result.SetPadded(true)
-	group1.SetMargined(true)
-	group2.SetMargined(true)
+	// group1.SetMargined(true)
+	// group2.SetMargined(true)
 
 	vbox1 := ui.NewVerticalBox()
 	group1.SetChild(vbox1)
@@ -216,10 +216,6 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 	pCbox := ui.NewCombobox()
 	form.Append("protocol", pCbox, false)
 
-	curSelectedTagIdx := -1
-
-	var update func(shouldChange bool)
-
 	tagE := ui.NewEntry()
 	form.Append("tag", tagE, false)
 
@@ -264,6 +260,10 @@ func addConfControls(sc proxy.StandardConf, vb *ui.Box, isDial bool) {
 	form.Append("", earlyC, false)
 
 	var muxC *ui.Checkbox
+
+	curSelectedTagIdx := -1
+
+	var update func(shouldChange bool)
 
 	{
 		setUuid := func() {

@@ -240,11 +240,11 @@ func (m *M) runApiServer() {
 			}
 			if isDial {
 				dc := m.dumpDialConf(ind)
-				url := proxy.ToStandardUrl(&dc.CommonConf, dc, nil)
+				url := proxy.ToStandardUrl(&dc.CommonConf, &dc, nil)
 				w.Write([]byte(url))
 			} else {
 				lc := m.dumpListenConf(ind)
-				url := proxy.ToStandardUrl(&lc.CommonConf, nil, lc)
+				url := proxy.ToStandardUrl(&lc.CommonConf, nil, &lc)
 				w.Write([]byte(url))
 			}
 

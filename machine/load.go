@@ -116,15 +116,23 @@ func (m *M) HotDeleteClient(index int) {
 
 // delete and close the server
 func (m *M) HotDeleteServer(index int) {
-	if index < 0 || index >= len(m.listenCloserList) {
+	if index < 0 || index >= len(m.allServers) {
 		return
 	}
+	running := m.IsRunning()
+	if running {
+		if index >= len(m.listenCloserList) {
+			return
+		}
+	}
 
-	m.listenCloserList[index].Close()
 	m.allServers[index].Stop()
-
 	m.allServers = utils.TrimSlice(m.allServers, index)
-	m.listenCloserList = utils.TrimSlice(m.listenCloserList, index)
+
+	if running {
+		m.listenCloserList[index].Close()
+		m.listenCloserList = utils.TrimSlice(m.listenCloserList, index)
+	}
 }
 
 func (m *M) loadUrlConf(hot bool) (result int) {
@@ -197,27 +205,29 @@ func (m *M) DumpVSConf() (vc VSConf) {
 // 从当前内存中的配置 导出 proxy.StandardConf
 func (m *M) DumpStandardConf() (sc proxy.StandardConf) {
 	for i := range m.allClients {
-		sc.Dial = append(sc.Dial, m.dumpDialConf(i))
+		dc := m.dumpDialConf(i)
+		sc.Dial = append(sc.Dial, &dc)
 
 	}
 	for i := range m.allServers {
-		sc.Listen = append(sc.Listen, m.dumpListenConf(i))
+		lc := m.dumpListenConf(i)
+		sc.Listen = append(sc.Listen, &lc)
 
 	}
 
 	return
 }
 
-func (m *M) dumpDialConf(i int) (dc *proxy.DialConf) {
+func (m *M) dumpDialConf(i int) (dc proxy.DialConf) {
 	c := m.allClients[i]
-	dc = c.GetBase().DialConf
+	dc = *c.GetBase().DialConf
 
 	return
 }
 
-func (m *M) dumpListenConf(i int) (lc *proxy.ListenConf) {
+func (m *M) dumpListenConf(i int) (lc proxy.ListenConf) {
 	c := m.allServers[i]
-	lc = c.GetBase().ListenConf
+	lc = *c.GetBase().ListenConf
 
 	return
 }

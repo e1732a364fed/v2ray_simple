@@ -224,8 +224,6 @@ func mainFunc() (result int) {
 		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
 	}
 
-	mainM.SetupApiConf()
-
 	if loadConfigErr != nil && !IsFlexible(mainM) {
 
 		if ce := utils.CanLogErr(willExitStr); ce != nil {
@@ -277,10 +275,6 @@ func mainFunc() (result int) {
 	}()
 
 	mainM.Start()
-
-	// if defaultApiServerConf.EnableApiServer {
-	// 	mainM.ApiServerConf = defaultApiServerConf
-	// }
 
 	//没可用的listen/dial，而且还无法动态更改配置
 	if NoFuture(mainM) {

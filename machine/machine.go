@@ -131,8 +131,8 @@ func (m *M) Start() {
 
 }
 
-// 融合 CmdApiServerConf 和 TomlApiServerConf, CmdApiServerConf 的值会覆盖 TomlApiServerConf
-func (m *M) SetupApiConf() {
+// 融合 CmdApiServerConf 和 tomlApiServerConf, CmdApiServerConf 的值会覆盖 tomlApiServerConf
+func (m *M) setupApiConf() {
 	m.ApiServerConf = NewApiServerConf()
 
 	m.ApiServerConf.SetNonDefault(&m.tomlApiServerConf)

@@ -23,8 +23,6 @@ import (
 var (
 	download bool
 
-	//defaultApiServerConf machine.ApiServerConf
-
 	extra_preCommands []func()
 
 	exitCmds = []exitCmd{
@@ -44,12 +42,7 @@ type exitCmd struct {
 }
 
 func init() {
-
 	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
-
-	//apiServer stuff
-
-	//defaultApiServerConf.SetupFlags()
 }
 
 func initExitCmds() {
@@ -62,7 +55,6 @@ func initExitCmds() {
 
 		}
 	}
-
 }
 
 // 运行一些 执行后立即退出程序的 命令
@@ -110,7 +102,9 @@ func runPreCommandsAfterLoadConf() {
 }
 
 func generateAndPrintUUID() {
-	fmt.Printf("New random uuid : %s\n", utils.GenerateUUIDStr())
+	utils.PrintStr("New random uuid : ")
+	utils.PrintStr(utils.GenerateUUIDStr())
+	utils.PrintStr("\n")
 }
 
 func generateRandomSSlCert() {
