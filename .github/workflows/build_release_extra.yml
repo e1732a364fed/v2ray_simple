@@ -97,17 +97,17 @@ jobs:
       - name: Build
         run: |
           cd cmd/verysimple
-          make -f Makefile_r_gui build BUILD_VERSION=${{ github.event.inputs.tagName }}
+          make -f Makefile_r_gui.mk build BUILD_VERSION=${{ github.event.inputs.tagName }}
 
       - if: ${{ matrix.os  != 'macos-latest' }}
         name: tar (!macos)
         run: |
-          cd cmd/verysimple && make -f Makefile_r_gui pack PACKNAME=${{ env.ASSET_NAME }}
+          cd cmd/verysimple && make -f Makefile_r_gui.mk pack PACKNAME=${{ env.ASSET_NAME }}
       
       - if: ${{ matrix.os  == 'macos-latest' }}
         name: gtar (macos)
         run: |
-          cd cmd/verysimple && make -f Makefile_r_gui pack_gtar PACKNAME=${{ env.ASSET_NAME }}
+          cd cmd/verysimple && make -f Makefile_r_gui.mk pack_gtar PACKNAME=${{ env.ASSET_NAME }}
 
       - name: touch xz archive
         shell: bash

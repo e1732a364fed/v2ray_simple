@@ -6,9 +6,9 @@ build:
 	go build -tags "gui $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
 	
 pack:
-    tar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
+	tar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
 	rm verysimple*
 
 pack_gtar:
-    gtar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
-    rm verysimple*
+	gtar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
+	rm verysimple*
