@@ -501,7 +501,7 @@ func interactively_hotLoadConfigFile() {
 	fmt.Printf("你输入了 %s\n", fpath)
 
 	var confMode int
-	confMode, _, err = LoadConfig(fpath, "", "", 0)
+	confMode, _, err = LoadConfig(fpath, "", "")
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)

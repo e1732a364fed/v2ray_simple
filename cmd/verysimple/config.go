@@ -109,7 +109,7 @@ func LoadVSConfFromBs(bs []byte) (sc proxy.StandardConf, ac *AppConf, err error)
 
 // 先检查configFileName是否存在，存在就尝试加载文件到 standardConf or simpleConf，否则尝试 listenURL, dialURL 参数.
 // 若 返回的是 simpleConf, 则还可能返回 mainFallback.
-func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (confMode int, mainFallback *httpLayer.ClassicFallback, err error) {
+func LoadConfig(configFileName, listenURL, dialURL string) (confMode int, mainFallback *httpLayer.ClassicFallback, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
 	if fpath != "" {
