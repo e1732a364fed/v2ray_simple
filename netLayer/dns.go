@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/miekg/dns"
@@ -52,7 +53,7 @@ func Is_DNSQuery_returnType_ReadFatalErr(err error) bool {
 //
 // 如果从conn中Read后成功返回, 则可能返回如下几种错误 os.ErrNotExist (表示查无此记录), dns.ErrRcode (表示dns返回的 Rcode 不是 dns.RcodeSuccess), ErrRecursion,
 // 如果不是这三个error, 那就是 从 该 conn 读取数据时出错了.
-func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex, recursionCount int) (net.IP, error) {
+func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex, recursionCount int) (ip net.IP, ttl uint32, err error) {
 	m := new(dns.Msg)
 	m.SetQuestion((domain), dns_type) //为了更快，不使用 dns.Fqdn, 请调用之前先确保ok
 	c := new(dns.Client)
@@ -63,7 +64,8 @@ func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex
 
 	theMux.Lock()
 
-	r, _, err := c.ExchangeWithConn(m, conn)
+	var r *dns.Msg
+	r, _, err = c.ExchangeWithConn(m, conn)
 
 	theMux.Unlock()
 
@@ -71,7 +73,7 @@ func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex
 		if ce := utils.CanLogErr("dns query read err"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
-		return nil, err
+		return
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
@@ -79,20 +81,25 @@ func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex
 			//dns查不到的情况是很有可能的，所以还是放在debug日志里
 			ce.Write(zap.Error(err), zap.Int("rcode", r.Rcode), zap.String("value", r.String()))
 		}
-		return nil, dns.ErrRcode
+		err = dns.ErrRcode
+		return
 	}
 
 	switch dns_type {
 	case dns.TypeA:
 		for _, a := range r.Answer {
 			if aa, ok := a.(*dns.A); ok {
-				return aa.A, nil
+				ip = aa.A
+				ttl = aa.Hdr.Ttl
+				return
 			}
 		}
 	case dns.TypeAAAA:
 		for _, a := range r.Answer {
 			if aa, ok := a.(*dns.AAAA); ok {
-				return aa.AAAA, nil
+				ip = aa.AAAA
+				ttl = aa.Hdr.Ttl
+				return
 			}
 		}
 	}
@@ -110,13 +117,15 @@ func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex
 				if ce := utils.CanLogDebug("dns query got cname but recursionCount>2"); ce != nil {
 					ce.Write(zap.String("query", domain), zap.String("cname", aa.Target))
 				}
-				return nil, ErrRecursion
+				err = ErrRecursion
+				return
 			}
 			return DNSQuery(dns.Fqdn(aa.Target), dns_type, conn, theMux, recursionCount+1)
 		}
 	}
 
-	return nil, os.ErrNotExist
+	err = os.ErrNotExist
+	return
 }
 
 // 给 miekg/dns.Conn 加一个互斥锁, 可保证同一时间仅有一个请求发生.
@@ -130,19 +139,26 @@ type DnsConn struct {
 	garbageMark bool
 }
 
+type IPRecord struct {
+	IP         net.IP
+	TTL        uint32 //seconds
+	RecordTime time.Time
+}
+
 //dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求。
 // 会缓存dns记录; 该设施是一个状态机, 所以叫 DNSMachine。
 // SpecialIPPollicy 用于指定特殊的 域名-ip 映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip。
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询。
 type DNSMachine struct {
 	TypeStrategy int64 // 0, 4, 6, 40, 60
+	TTLStrategy  int64 // 0, 1, arbitrary
 	defaultConn  DnsConn
 	conns        map[string]*DnsConn
-	cache        map[string]net.IP //cache的key统一为 未经 Fqdn包装过的域名. 即尾部没有点号
+	cache        map[string]IPRecord //cache的key统一为 未经 Fqdn包装过的域名. 即尾部没有点号
 
 	SpecialIPPollicy map[string][]netip.Addr
 
-	SpecialServerPollicy map[string]string //domain -> dns server name
+	SpecialServerPolicy map[string]string //domain -> dns server name
 
 	mutex sync.RWMutex //读写 conns, cache, SpecialIPPollicy, SpecialServerPollicy 时所使用的 mutex
 
@@ -254,6 +270,7 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 	var generalCacheHit bool // 若读到了 cache 或 SpecialIPPollicy 的项, 则 generalCacheHit 为 true
 
 	var theDNSServerConn *DnsConn
+	var ttl uint32
 
 	defer func() {
 		if theDNSServerConn != nil && theDNSServerConn.garbageMark {
@@ -296,35 +313,62 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 			dm.mutex.Lock()
 			if dm.cache == nil {
 
-				dm.cache = make(map[string]net.IP)
+				dm.cache = make(map[string]IPRecord)
 			}
 
-			dm.cache[domain] = ip
+			dm.cache[domain] = IPRecord{IP: ip, TTL: ttl, RecordTime: time.Now()}
 			dm.mutex.Unlock()
 		}
 	}()
 
-	//golang的defer原理: 多个defer 调用顺序是LIFO（后入先出），defer后的操作可以理解为压入栈中
-	//所以实际是会先 dm.mutex.RUnlock(), 再调用 上面的 RLock, RUnlock, 所以不存在死锁导致无法return的问题
-
-	dm.mutex.RLock()
-	defer dm.mutex.RUnlock()
-
 	// 查找步骤:
-	//先从 cache找，有就直接返回
-	//然后，
-	//先查 specialIPPollicy，类似cache，有就直接返回
+	//先从 cache找，有的话，若符合TTL策略，就直接返回；不符合策略或者找不到的话，进入下面步骤：
 	//
-	// 查不到再找 specialServerPollicy 看有没有特殊的dns服务器
+	//查 specialIPPollicy，类似cache，有就直接返回
+	//
+	// 查不到再找 specialServerPolicy 看有没有特殊的dns服务器
 	// 如果有指定服务器，用指定服务器查dns，若没有，用默认服务器查
 
 	if dm.cache != nil {
-		if ip = dm.cache[domain]; ip != nil {
-			generalCacheHit = true
 
-			return
+		dm.mutex.RLock()
+		ipRecord, ok := dm.cache[domain]
+		dm.mutex.RUnlock()
+
+		if ok {
+
+			switch dm.TTLStrategy {
+			case 0: // no timeout
+			case 1: //strictly follow TTL
+				now := time.Now()
+				newTime := ipRecord.RecordTime.Add(time.Second * time.Duration(ipRecord.TTL))
+				if newTime.After(now) {
+					ok = false
+				}
+			default: //customized ttl
+				now := time.Now()
+				newTime := ipRecord.RecordTime.Add(time.Second * time.Duration(dm.TTLStrategy))
+				if newTime.After(now) {
+					ok = false
+				}
+			}
+
+			if ok {
+				ip = ipRecord.IP
+				generalCacheHit = true
+
+				return
+
+			} else {
+				dm.mutex.Lock()
+				delete(dm.cache, domain)
+				dm.mutex.Unlock()
+			}
 		}
 	}
+
+	dm.mutex.RLock()
+	defer dm.mutex.RUnlock()
 
 	if dm.SpecialIPPollicy != nil {
 		if na := dm.SpecialIPPollicy[domain]; len(na) > 0 {
@@ -353,9 +397,9 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 	}
 
 	theDNSServerConn = &dm.defaultConn
-	if len(dm.conns) > 0 && len(dm.SpecialServerPollicy) > 0 {
+	if len(dm.conns) > 0 && len(dm.SpecialServerPolicy) > 0 {
 
-		if dnsServerName := dm.SpecialServerPollicy[domain]; dnsServerName != "" {
+		if dnsServerName := dm.SpecialServerPolicy[domain]; dnsServerName != "" {
 
 			if serConn := dm.conns[dnsServerName]; serConn != nil {
 				theDNSServerConn = serConn
@@ -376,8 +420,10 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 	if ce := utils.CanLogDebug("[DNSMachine] start querying"); ce != nil {
 		ce.Write(zap.String("domain", domain), zap.String("through", theDNSServerConn.Name))
 	}
+	var err error
 
-	ip, err := DNSQuery(domain, dns_type, theDNSServerConn.Conn, &theDNSServerConn.mutex, 0)
+	ip, ttl, err = DNSQuery(domain, dns_type, theDNSServerConn.Conn, &theDNSServerConn.mutex, 0)
+
 	if Is_DNSQuery_returnType_ReadFatalErr(err) {
 		//如果是读取的、非timeout的错误，那么我们直接认为底层连接出故障了, 我们需要重新dial
 		//因为 miekg/dns 包会设置4秒的timeout，所以确实要筛除timeout的情况
@@ -396,5 +442,5 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 		//我们只是重新Dial，并不再次查询，否则就又递归了
 
 	}
-	return ip
+	return
 }

@@ -9,9 +9,10 @@ import (
 )
 
 type DnsConf struct {
-	Strategy int64          `toml:"strategy"` //0表示默认(和4含义相同), 4表示先查ip4后查ip6, 6表示先查6后查4; 40表示只查ipv4, 60 表示只查ipv6
-	Hosts    map[string]any `toml:"hosts"`    //用于强制指定哪些域名会被解析为哪些具体的ip；可以为一个ip字符串，or a []string, 内可以是A,AAAA或CNAME
-	Servers  []any          `toml:"servers"`  //可以为一个地址url字符串，or a SpecialDnsServerConf; 如果第一个元素是url字符串形式，则此第一个元素将会被用作默认dns服务器
+	Strategy    int64          `toml:"strategy"`     //0表示默认(和4含义相同), 4表示先查ip4后查ip6, 6表示先查6后查4; 40表示只查ipv4, 60 表示只查ipv6
+	TTLStrategy int64          `toml:"ttl_strategy"` //0表示默认(记录永不过期), 1表示严格按照dns查询到的TTL, 其他值则为自定义的秒数，然后程序会按这个时间周期性清理缓存。
+	Hosts       map[string]any `toml:"hosts"`        //用于强制指定哪些域名会被解析为哪些具体的ip；可以为一个ip字符串，or a []string, 内可以是A,AAAA或CNAME
+	Servers     []any          `toml:"servers"`      //可以为一个地址url字符串，or a SpecialDnsServerConf; 如果第一个元素是url字符串形式，则此第一个元素将会被用作默认dns服务器
 }
 
 type SpecialDnsServerConf struct {
@@ -70,7 +71,7 @@ func loadSpecialDnsServerConf_fromTomlUnmarshalledMap(m map[string]any) *Special
 }
 
 func LoadDnsMachine(conf *DnsConf) *DNSMachine {
-	var dm = &DNSMachine{TypeStrategy: conf.Strategy}
+	var dm = &DNSMachine{TypeStrategy: conf.Strategy, TTLStrategy: conf.TTLStrategy}
 
 	var ok = false
 
@@ -78,7 +79,7 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 		ok = true
 		servers := conf.Servers
 
-		dm.SpecialServerPollicy = make(map[string]string)
+		dm.SpecialServerPolicy = make(map[string]string)
 
 		for _, ser := range servers {
 			switch server := ser.(type) {
@@ -135,7 +136,7 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 				}
 
 				for _, thisdomain := range realServer.Domains {
-					dm.SpecialServerPollicy[thisdomain] = realServer.AddrUrlStr
+					dm.SpecialServerPolicy[thisdomain] = realServer.AddrUrlStr
 				}
 
 			}

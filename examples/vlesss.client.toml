@@ -89,7 +89,8 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 # 如果要使用 websocket/grpc ，则 客户端和服务端 都要配置 advancedLayer 和 path
 
-# 下面cert和key用于 "客户端证书", 小白可以无视，高级玩家可以用. 证书的生成命令 详见 README.md
+# 下面cert和key用于 "客户端证书" (因为这个cert和key是在dial中，而不是在listen中)。 小白可以无视，高级玩家可以用. 
+# 客户端证书的生成命令 详见 README.md
 #cert = "client.crt"
 #key = "client.key" 
 
@@ -100,7 +101,7 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 tag = "mydirect"
 protocol = "direct" # direct 这个dial 是不需要特地写出的, 程序会自动创建一个 tag 为 "direct" 的 direct 的 dial. 不过如果是需要控制一下fullcone 的话, 此时就要写出来，因为程序默认的 direct 是不开启 fullcone的。 
 
-# fullcone = true    # 默认的fullcone是关闭状态, 可以取消注释以打开.
+# fullcone = true    # 默认的fullcone是关闭状态, 可以取消注释以打开. 一般我们不建议打开fullcone
 
 
 # route 是在我们代理界是分流的意思。 
