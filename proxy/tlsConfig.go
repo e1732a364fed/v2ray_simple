@@ -1,8 +1,11 @@
 package proxy
 
 import (
+	"crypto/tls"
+
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 func updateAlpnListByAdvLayer(com BaseInterface, alpnList []string) (result []string) {
@@ -59,15 +62,16 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 			KeyFile:  dc.TLSKey,
 		}
 	}
-	var minVer uint16 = tlsLayer.GetMinVerFromExtra(dc.Extra)
 
 	clic.Tls_c = tlsLayer.NewClient(tlsLayer.Conf{
-		Host:     dc.Host,
-		Insecure: dc.Insecure,
-		Use_uTls: dc.Utls,
-		AlpnList: alpnList,
-		CertConf: certConf,
-		Minver:   minVer,
+		Host:         dc.Host,
+		Insecure:     dc.Insecure,
+		Use_uTls:     dc.Utls,
+		AlpnList:     alpnList,
+		CertConf:     certConf,
+		Minver:       getTlsMinVerFromExtra(dc.Extra),
+		Maxver:       getTlsMaxVerFromExtra(dc.Extra),
+		CipherSuites: getTlsCipherSuitesFromExtra(dc.Extra),
 	})
 	return nil
 }
@@ -87,10 +91,13 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 		CertConf: &tlsLayer.CertConf{
 			CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
 		},
-		Insecure:         lc.Insecure,
-		AlpnList:         alpnList,
-		Minver:           tlsLayer.GetMinVerFromExtra(lc.Extra),
-		RejectUnknownSni: tlsLayer.GetRejectUnknownSniFromExtra(lc.Extra),
+		Insecure: lc.Insecure,
+		AlpnList: alpnList,
+		Minver:   getTlsMinVerFromExtra(lc.Extra),
+		Maxver:   getTlsMaxVerFromExtra(lc.Extra),
+
+		RejectUnknownSni: getTlsRejectUnknownSniFromExtra(lc.Extra),
+		CipherSuites:     getTlsCipherSuitesFromExtra(lc.Extra),
 	})
 
 	if err == nil {
@@ -98,5 +105,71 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 	} else {
 		return err
 	}
+	return nil
+}
+
+func getTlsMinVerFromExtra(extra map[string]any) uint16 {
+	if len(extra) > 0 {
+		if thing := extra["tls_minVersion"]; thing != nil {
+			if str, ok := (thing).(string); ok && len(str) > 0 {
+				switch str {
+				case "1.2":
+					return tls.VersionTLS12
+				}
+			}
+		}
+	}
+
+	return tls.VersionTLS13
+}
+
+func getTlsMaxVerFromExtra(extra map[string]any) uint16 {
+	if len(extra) > 0 {
+		if thing := extra["tls_maxVersion"]; thing != nil {
+			if str, ok := (thing).(string); ok && len(str) > 0 {
+				switch str {
+				case "1.2":
+					return tls.VersionTLS12
+				}
+			}
+		}
+	}
+
+	return tls.VersionTLS13
+}
+
+func getTlsRejectUnknownSniFromExtra(extra map[string]any) bool {
+	if len(extra) > 0 {
+		if thing := extra["tls_rejectUnknownSni"]; thing != nil {
+			if is, ok := utils.AnyToBool(thing); ok && is {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func getTlsCipherSuitesFromExtra(extra map[string]any) []uint16 {
+	if len(extra) > 0 {
+		if thing := extra["tls_cipherSuites"]; thing != nil {
+			if is, ok := utils.AnyToUInt16Array(thing); ok && len(is) > 0 {
+				return is
+			}
+			if strs, ok := thing.([]string); ok {
+				var v []uint16
+				for _, s := range strs {
+					cs := tlsLayer.StrToCipherSuite(s)
+					if cs > 0 {
+						v = append(v, cs)
+					}
+				}
+				if len(v) > 0 {
+					return v
+				}
+			}
+		}
+	}
+
 	return nil
 }

@@ -375,14 +375,15 @@ func (b *Base) InitAdvLayer() {
 					KeyFile:  dc.TLSKey,
 				}
 			}
-			minVer := tlsLayer.GetMinVerFromExtra(dc.Extra)
 
 			tConf = tlsLayer.GetTlsConfig(false, tlsLayer.Conf{
-				Insecure: dc.Insecure,
-				AlpnList: dc.Alpn,
-				Host:     dc.Host,
-				CertConf: certConf,
-				Minver:   minVer,
+				Insecure:     dc.Insecure,
+				AlpnList:     dc.Alpn,
+				Host:         dc.Host,
+				CertConf:     certConf,
+				Minver:       getTlsMinVerFromExtra(dc.Extra),
+				Maxver:       getTlsMaxVerFromExtra(dc.Extra),
+				CipherSuites: getTlsCipherSuitesFromExtra(dc.Extra),
 			})
 
 		}
@@ -434,8 +435,6 @@ func (b *Base) InitAdvLayer() {
 
 		if creator.IsSuper() {
 
-			minVer := tlsLayer.GetMinVerFromExtra(lc.Extra)
-
 			aConf.TlsConf = tlsLayer.GetTlsConfig(true, tlsLayer.Conf{
 				Insecure: lc.Insecure,
 				AlpnList: lc.Alpn,
@@ -443,7 +442,9 @@ func (b *Base) InitAdvLayer() {
 				CertConf: &tlsLayer.CertConf{
 					CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
 				},
-				Minver: minVer,
+				Minver:       getTlsMinVerFromExtra(lc.Extra),
+				Maxver:       getTlsMaxVerFromExtra(lc.Extra),
+				CipherSuites: getTlsCipherSuitesFromExtra(lc.Extra),
 			})
 		}
 

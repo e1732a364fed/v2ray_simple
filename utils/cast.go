@@ -136,3 +136,66 @@ func AnyToFloat64(a any) (float64, bool) {
 	}
 	return 0, false
 }
+
+func AnyToUInt16Array(a any) ([]uint16, bool) {
+	switch value := a.(type) {
+
+	case []uint16:
+		return value, true
+	case []uint32:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []uint64:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []uint8:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []uint:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []int:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []int8:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []int16:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []int32:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	case []int64:
+		var vv []uint16
+		for _, v := range value {
+			vv = append(vv, uint16(v))
+		}
+		return vv, true
+	}
+	return nil, false
+}

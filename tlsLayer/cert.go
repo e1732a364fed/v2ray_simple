@@ -2,7 +2,6 @@ package tlsLayer
 
 import (
 	"errors"
-	"io/ioutil"
 	mathrand "math/rand"
 
 	"crypto/ecdsa"
@@ -34,7 +33,7 @@ func LoadCA(caFile string) (cp *x509.CertPool, err error) {
 		return
 	}
 	cp = x509.NewCertPool()
-	data, err := ioutil.ReadFile(caFile)
+	data, err := os.ReadFile(caFile)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func LoadCA(caFile string) (cp *x509.CertPool, err error) {
 	return
 }
 
-//使用 ecc p256 方式生成证书
+// 使用 ecc p256 方式生成证书
 func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
 
 	//可参考 https://blog.ideawand.com/2017/11/22/build-certificate-that-support-Subject-Alternative-Name-SAN/
@@ -143,7 +142,7 @@ func GenerateRandomCertKeyFiles(cfn, kfn string) error {
 	return nil
 }
 
-//若 certFile, keyFile 有一项没给出，则会自动生成随机证书
+// 若 certFile, keyFile 有一项没给出，则会自动生成随机证书
 func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate, err error) {
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))

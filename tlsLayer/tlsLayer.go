@@ -19,38 +19,13 @@ type Conf struct {
 	Host     string
 	Insecure bool
 	Minver   uint16
+	Maxver   uint16
 	AlpnList []string
 	CertConf *CertConf
 
 	Use_uTls         bool //only client
 	RejectUnknownSni bool //only server
-}
-
-func GetMinVerFromExtra(extra map[string]any) uint16 {
-	if len(extra) > 0 {
-		if thing := extra["tls_minVersion"]; thing != nil {
-			if str, ok := (thing).(string); ok && len(str) > 0 {
-				switch str {
-				case "1.2":
-					return tls.VersionTLS12
-				}
-			}
-		}
-	}
-
-	return tls.VersionTLS13
-}
-
-func GetRejectUnknownSniFromExtra(extra map[string]any) bool {
-	if len(extra) > 0 {
-		if thing := extra["rejectUnknownSni"]; thing != nil {
-			if is, ok := utils.AnyToBool(thing); ok && is {
-				return true
-			}
-		}
-	}
-
-	return false
+	CipherSuites     []uint16
 }
 
 func rejectUnknownGetCertificateFunc(certs []*tls.Certificate) func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
@@ -110,6 +85,8 @@ func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 		ServerName:         conf.Host,
 		Certificates:       certArray,
 		MinVersion:         conf.Minver,
+		MaxVersion:         conf.Maxver,
+		CipherSuites:       conf.CipherSuites,
 	}
 	if conf.CertConf != nil && conf.CertConf.CA != "" {
 		certPool, err := LoadCA(conf.CertConf.CA)
@@ -156,6 +133,8 @@ func GetUTlsConfig(conf Conf) utls.Config {
 		ServerName:         conf.Host,
 		Certificates:       certArray,
 		MinVersion:         conf.Minver,
+		MaxVersion:         conf.Maxver,
+		CipherSuites:       conf.CipherSuites,
 	}
 	if conf.CertConf != nil && conf.CertConf.CA != "" {
 		certPool, err := LoadCA(conf.CertConf.CA)
