@@ -9,6 +9,8 @@
 
 # 需要管理员权限(sudo)运行vs_gui 才能自动修改路由表 或者创建tun设备
 
+# windows上需要下载 wintun.dll 到vs可执行文件旁边, https://www.wintun.net/builds/wintun-0.14.1.zip
+
 ###############################################################
 
 # 下面给出macos上的路由表配置指导
@@ -55,18 +57,16 @@ protocol = "tun"
 # 使用 ip 配置作为 gateway 的ip , 若不给出，默认为 10.1.0.20
 # 使用 extra.tun_selfip 作为 tun向外拨号的ip, 若不给出, 默认为 10.1.0.10 （windows上不配置该项）
 
-# 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 
+# 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 目前的自动配置逻辑 完全仿照上面的路由配置指导。
+
 # 此时必须通过 tun_auto_route_direct_list 额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址 (替换掉127.0.0.1); 
-# 如果不给出, 则不会自动配置路由表
 
 # 这是为了防回环。
-
-# 目前的自动配置逻辑 完全仿照上面的路由配置指导。
 
 # 不过也可以不用配置direct_list, 而是直接用vs的 bindToDevice功能 给dial绑定自己拨号网卡, 这就可以轻松防回环了。
 
 extra.tun_auto_route = true
-extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
+#extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
 
 # extra.tun_auto_route_manual = true # 若这项开启，则生成路由命令但不执行，由你自行拷贝到终端并执行。
 
@@ -78,6 +78,13 @@ port = 4433
 version = 0
 insecure = true
 utls = true
+
+# sockopt.device = "eth32423"   
+
+# 上面的一行配置是 bindToDevice功能，可以指定 某一个网卡 来监听 或者拨号, 
+#  这样就不用配置listen中tun的 tun_auto_route_direct_list了
+# 之所以注释掉，是因为每个人的deivce名称可能都不一样，需要自行确认
+
 
 ###############################################################
 # 其他
@@ -92,3 +99,16 @@ utls = true
 # 二、实现相关
 # 最佳实践应该是通过dial的地址直接自动配置 tun中的直连列表；
 # 但是受限于vs的架构， 配置listen和dial的过程是独立分开互不影响的，导致listen的代码读不到dial的内容
+
+# 三、（技术相关）关于 xjasonlyu/tun2socks 给出的路由命令指导 
+
+# 我们可以明显看到，他给的路由命令在不同平台上，逻辑是不一样的，这是因为它在不同平台上的实现有所不同
+
+# 1. linux和macOS 都在命令行参数中给出了 interface，而windows没有，而且windows要单独配置 vps的ip的路由
+#   这是因为，xjasonlyu/tun2socks 没有在windows上实现 bindToDevice, 而在另外两个平台上实现了
+#   所以在windows上配置多一步； 
+#    不过本作最新代码已经linux，mac和windows 都支持了 bindToDevice,
+
+# 2. linux 上它需要手动启动tun设备，而其他两个平台不需要
+#   这是因为它在linux上和在其他平台上开启tun设备的逻辑不同。本作作者也不清楚原因，但是还是觉得原作者肯定对，就模仿了。
+#   不过在本作如果你开启 auto_route, 会自动帮你开启tun设备，无需额外操作。
