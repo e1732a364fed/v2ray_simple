@@ -88,7 +88,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		newConnChan, closer = superSer.StartListen()
 		if newConnChan == nil {
-			utils.Error("superSer.StartListen failed ")
+			utils.Error("Failed in SuperMuxServer StartListen ")
 			return
 		}
 
@@ -219,7 +219,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		tlsConn, err := inServer.GetTLS_Server().Handshake(wrappedConn)
 		if err != nil {
 
-			if ce := iics.CanLogErr("tls handshake failed"); ce != nil {
+			if ce := iics.CanLogErr("Failed in TLS handshake"); ce != nil {
 				ce.Write(
 					zap.String("inServer", inServer.AddrStr()),
 					zap.Error(err),
@@ -282,7 +282,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 					fallbackMeta, ok := <-fallbackChan
 
 					if !ok {
-						if ce := iics.CanLogWarn("grpc read fallbackChan not ok"); ce != nil {
+						if ce := iics.CanLogWarn("Grpc read fallbackChan not ok"); ce != nil {
 							ce.Write()
 						}
 						return
@@ -305,7 +305,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				newGConn, ok := <-newConnChan
 
 				if !ok {
-					if ce := iics.CanLogWarn("grpc getNewSubConn not ok"); ce != nil {
+					if ce := iics.CanLogWarn("Grpc getNewSubConn not ok"); ce != nil {
 						ce.Write()
 					}
 
@@ -375,7 +375,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	inServer := iics.inServer
 	if inServer == nil {
-		err = utils.ErrInErr{ErrDesc: "handshakeInserver failed, nil inServer", ErrDetail: utils.ErrNilParameter}
+		err = utils.ErrInErr{ErrDesc: "Failed handshakeInserver, nil inServer"}
 		return
 	}
 
@@ -383,7 +383,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 
 	if err != nil {
 
-		if ce := iics.CanLogWarn("handshake inServer failed"); ce != nil {
+		if ce := iics.CanLogWarn("Failed handshakeInserver"); ce != nil {
 			ce.Write(zap.String("client RemoteAddr", iics.getRealRAddr()))
 		}
 
@@ -395,7 +395,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 
 		firstSocks5RequestData, firstSocks5RequestAddr, err2 := udp_wlc.ReadMsgFrom()
 		if err2 != nil {
-			if ce := iics.CanLogWarn("failed in socks5 read"); ce != nil {
+			if ce := iics.CanLogWarn("Failed in socks5 read"); ce != nil {
 				ce.Write(
 					zap.String("handler", inServer.AddrStr()),
 					zap.Error(err2),
@@ -426,7 +426,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 
 		innerSer, err2 := proxy.NewServer(&innerSerConf)
 		if err2 != nil {
-			if ce := iics.CanLogDebug("mux inner proxy server creation failed"); ce != nil {
+			if ce := iics.CanLogDebug("Failed mux inner proxy server creation"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 			err = err2
@@ -445,13 +445,13 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 		go func() {
 
 			for {
-				if ce := iics.CanLogDebug("inServer try accept smux stream "); ce != nil {
+				if ce := iics.CanLogDebug("Try inServer accept smux stream "); ce != nil {
 					ce.Write()
 				}
 
 				stream, err := session.AcceptStream()
 				if err != nil {
-					if ce := iics.CanLogDebug("mux inServer try accept stream failed"); ce != nil {
+					if ce := iics.CanLogDebug("Failed try mux inServer accept stream "); ce != nil {
 						ce.Write(zap.Error(err))
 					}
 
@@ -467,7 +467,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 					wlc1, udp_wlc1, targetAddr1, err1 := innerSer.Handshake(stream)
 
 					if err1 != nil {
-						if ce := iics.CanLogDebug("inServer mux inner proxy handshake failed"); ce != nil {
+						if ce := iics.CanLogDebug("Failed inServer mux inner proxy handshake"); ce != nil {
 							ce.Write(zap.Error(err1))
 						}
 						newiics := *iics
@@ -479,7 +479,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 
 					} else {
 
-						if ce := iics.CanLogDebug("inServer mux stream handshake ok"); ce != nil {
+						if ce := iics.CanLogDebug("OK in inServer mux stream handshake "); ce != nil {
 							ce.Write(zap.String("targetAddr", targetAddr1.String()))
 						}
 
@@ -602,7 +602,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				defer wlc.Close()
 
 				if err != nil {
-					if ce := iics.CanLogErr("fallback h2 RoundTrip failed"); ce != nil {
+					if ce := iics.CanLogErr("Failed in fallback h2 RoundTrip"); ce != nil {
 						ce.Write(zap.Error(err), zap.String("url", urlStr))
 					}
 
@@ -618,10 +618,10 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 		}
 	}
 
+	// inServer 握手失败，且 没有任何回落可用时的情况, 在这里我们直接退出。
 	if wlc == nil && udp_wlc == nil {
-		//证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
 
-		if ce := iics.CanLogWarn("invalid request and no matched fallback, hung up"); ce != nil {
+		if ce := iics.CanLogWarn("Invalid request and no matched fallback, hung up"); ce != nil {
 			ce.Write(zap.String("client RemoteAddr", iics.getRealRAddr()))
 		}
 
@@ -678,7 +678,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				if err != nil {
 
 					if !errors.Is(err, os.ErrDeadlineExceeded) {
-						if ce := iics.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
+						if ce := iics.CanLogErr("Failed in reading first payload, not because of timeout, will hung up"); ce != nil {
 							ce.Write(
 								zap.String("target", targetAddr.String()),
 								zap.Error(err),
@@ -711,7 +711,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				if err != nil {
 
 					if !errors.Is(err, os.ErrDeadlineExceeded) {
-						if ce := iics.CanLogErr("Read first udp payload failed not because of timeout, will hung up"); ce != nil {
+						if ce := iics.CanLogErr("Failed in reading first udp payload, not because of timeout, will hung up"); ce != nil {
 							ce.Write(
 								zap.String("target", targetAddr.String()),
 								zap.Error(err),
@@ -995,7 +995,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 					result = result1
 					return
 				} else {
-					if ce := iics.CanLogDebug("client inner mux dial innerProxy failed, will redial"); ce != nil {
+					if ce := iics.CanLogDebug("Failed in client inner mux dialing innerProxy , will redial"); ce != nil {
 						ce.Write()
 					}
 				}
@@ -1034,7 +1034,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 		realTargetAddr, err = netLayer.NewAddr(client.AddrStr())
 		if err != nil {
 
-			if ce := iics.CanLogErr("dial client convert addr err"); ce != nil {
+			if ce := iics.CanLogErr("Err at dial client convert addr "); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 			result = -1
@@ -1075,7 +1075,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 					goto advLayerHandshakeStep
 				} else {
 
-					if ce := iics.CanLogErr("Super AdvLayer GetCommonConn failed"); ce != nil {
+					if ce := iics.CanLogErr("Failed in Super AdvLayer GetCommonConn"); ce != nil {
 						ce.Write(
 							zap.Error(err),
 						)
@@ -1106,7 +1106,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 			} else {
 				//虽然拨号失败,但是不能认为我们一定有错误, 因为很可能申请的ip本身就是不可达的, 所以不是error等级而是warn等级
-				if ce := iics.CanLogWarn("failed dialing"); ce != nil {
+				if ce := iics.CanLogWarn("Failed dialing"); ce != nil {
 					ce.Write(
 						zap.String("target", realTargetAddr.String()),
 						zap.Error(err),
@@ -1154,7 +1154,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 		tlsConn, err2 := client.GetTLS_Client().Handshake(clientConn)
 		if err2 != nil {
-			if ce := iics.CanLogErr("failed in handshake outClient tls"); ce != nil {
+			if ce := iics.CanLogErr("Failed in handshake outClient tls"); ce != nil {
 				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
 			}
 
@@ -1190,7 +1190,7 @@ advLayerHandshakeStep:
 			clientConn, err = muxC.DialSubConn(dialedCommonConn)
 			if err != nil {
 
-				if ce := iics.CanLogErr("DialSubConn failed"); ce != nil {
+				if ce := iics.CanLogErr("Failed in DialSubConn"); ce != nil {
 					ce.Write(
 						zap.Error(err),
 					)
@@ -1207,7 +1207,7 @@ advLayerHandshakeStep:
 				dialedCommonConn, err = muxC.GetCommonConn(clientConn)
 
 				if dialedCommonConn == nil {
-					if ce := iics.CanLogErr("GetCommonConn failed"); ce != nil {
+					if ce := iics.CanLogErr("Failed in GetCommonConn"); ce != nil {
 						ce.Write(
 							zap.Error(err),
 						)
@@ -1219,7 +1219,7 @@ advLayerHandshakeStep:
 
 			clientConn, err = muxC.DialSubConn(dialedCommonConn)
 			if err != nil {
-				if ce := iics.CanLogErr("grpc.DialNewSubConn failed"); ce != nil {
+				if ce := iics.CanLogErr("Failed in grpc.DialNewSubConn"); ce != nil {
 
 					ce.Write(zap.Error(err))
 
@@ -1257,7 +1257,7 @@ advLayerHandshakeStep:
 			wc, err = wcs.Handshake(clientConn, ed)
 
 			if err != nil {
-				if ce := iics.CanLogErr("failed in handshake Single AdvLayer"); ce != nil {
+				if ce := iics.CanLogErr("Failed in handshake Single AdvLayer"); ce != nil {
 					ce.Write(
 						zap.String("advLayer", adv),
 						zap.String("target", targetAddr.String()),
@@ -1297,7 +1297,7 @@ advLayerHandshakeStep:
 
 		wrc, err = client.Handshake(clientConn, ed, targetAddr)
 		if err != nil {
-			if ce := iics.CanLogErr("Handshake client failed"); ce != nil {
+			if ce := iics.CanLogErr("Failed in Handshake client"); ce != nil {
 				ce.Write(
 					zap.String("target", targetAddr.String()),
 					zap.Error(err),
@@ -1316,7 +1316,7 @@ advLayerHandshakeStep:
 
 		udp_wrc, err = client.EstablishUDPChannel(clientConn, iics.firstPayload, theAddr)
 		if err != nil {
-			if ce := iics.CanLogErr("EstablishUDPChannel failed"); ce != nil {
+			if ce := iics.CanLogErr("Failed in EstablishUDPChannel"); ce != nil {
 				ce.Write(
 					zap.String("target", targetAddr.String()),
 					zap.Error(err),
