@@ -1054,7 +1054,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 		不是direct的udp的话，也要分情况:
 		如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
-		Instead, 我们要试图 取出已经拨号好了的 连接 ，获取不到现有连接后 再拨号
+		Instead, 我们要试图 取出已经拨号好了的 连接
 	*/
 
 	adv := client.AdvancedLayer()

@@ -133,11 +133,15 @@ advLayer文件夹 代表第七层, proxy文件夹代表第8层或第10层, 同�
 
 Contents of proxy package - proxy包内容
 
-接口 ProxyCommon 和 结构 ProxyCommonStruct 给 这个架构定义了标准.
+接口 BaseInterface 和 结构 Base 给 这个架构定义了标准.
 
 而 Client 和 Server 接口 是 具体利用该架构的 客户端 和 服务端，都位于VSI中的第八层.
 
-使用 RegisterClient 和 RegisterServer 来注册新的实现.
+使用 RegisterClient 和 RegisterServer 来注册新的实现（Creator）.
+
+一般Client和Server都要内嵌Base结构，这样可以快速实现BaseInterface接口，然后自行实现Name方法以及
+
+Client接口中的方法 和 Server接口中的方法
 
 Server and Client
 
@@ -150,6 +154,8 @@ Server and Client
 proxy中默认实现了 direct 和 reject 这两种 Client。默认实现了 reject Server
 
 reject作为Client和Server 的作用基本是一致的，就是读取一下用户的请求，查看是否为 http请求，然后根据情况 返回 对应的 http1.1 的 4xx 响应，然后关闭连接。
+
+
 
 Comparison
 

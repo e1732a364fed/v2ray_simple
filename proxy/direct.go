@@ -25,10 +25,6 @@ func (DirectCreator) NewClientFromURL(url *url.URL) (Client, error) {
 
 func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 	d := &DirectClient{}
-	if dc.Sockopt != nil {
-		opt := *dc.Sockopt
-		d.Sockopt = &opt
-	}
 	return d, nil
 }
 

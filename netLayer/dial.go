@@ -14,6 +14,9 @@ var (
 	CustomDialerMap = make(map[string]func(address string, timeout time.Duration) (net.Conn, error))
 )
 
+//Dial 可以拨号tcp、udp、unix domain socket、tls 这几种协议。
+//如果不是这几种之一，则会尝试查询 CustomDialerMap 找出匹配的函数进行拨号。
+//如果找不到，则会使用net包的方法进行拨号（其会返回错误）。
 func (a *Addr) Dial() (net.Conn, error) {
 	var istls bool
 	var resultConn net.Conn
@@ -49,43 +52,22 @@ func (a *Addr) Dial() (net.Conn, error) {
 
 tcp:
 
-	//本以为直接用 DialTCP 可以加速拨号，结果发现go官方包内部依然还是把地址转换回字符串再拨号
-
 	if a.IP != nil {
-		if a.IP.To4() == nil {
-			if weKnowThatWeDontHaveIPV6 {
-				return nil, ErrMachineCantConnectToIpv6
-			} else {
 
-				tcpConn, err2 := net.DialTCP("tcp6", nil, &net.TCPAddr{
-					IP:   a.IP,
-					Port: a.Port,
-				})
+		var tcpConn *net.TCPConn
 
-				if err2 == nil {
-					tcpConn.SetWriteBuffer(utils.MaxPacketLen) //有时不设置writebuffer时，会遇到 write: no buffer space available 错误, 在实现vmess的 ChunkMasking 时 遇到了该问题。
+		tcpConn, err = net.DialTCP("tcp", nil, &net.TCPAddr{
+			IP:   a.IP,
+			Port: a.Port,
+		})
 
-				}
+		if err == nil {
+			tcpConn.SetWriteBuffer(utils.MaxPacketLen) //有时不设置writebuffer时，会遇到 write: no buffer space available 错误, 在实现vmess的 ChunkMasking 时 遇到了该问题。
 
-				resultConn, err = tcpConn, err2
-				goto dialedPart
-			}
-		} else {
-
-			tcpConn, err2 := net.DialTCP("tcp4", nil, &net.TCPAddr{
-				IP:   a.IP,
-				Port: a.Port,
-			})
-
-			if err2 == nil {
-				tcpConn.SetWriteBuffer(utils.MaxPacketLen)
-
-			}
-
-			resultConn, err = tcpConn, err2
-
-			goto dialedPart
 		}
+
+		resultConn = tcpConn
+		goto dialedPart
 
 	}
 
@@ -120,7 +102,7 @@ dialedPart:
 func (a Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
 
 	dialer := &net.Dialer{
-		Timeout: time.Second * 8, //v2ray默认16秒，是不是太长了？？
+		Timeout: time.Second * 8, //作为对照，v2ray默认是16秒
 	}
 	dialer.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
