@@ -29,6 +29,9 @@ jobs:
           install: |
             apt-get update -q -y
             apt-get install -q -y build-essential libgtk-3-dev
+            tar -C /usr/local -xzf go1.19.4.linux-arm64.tar.gz
+            echo "/usr/local/go/bin" >> $GITHUB_PATH
+
           run: |
             uname -a
             echo ::set-output name=uname::$(uname -a)
