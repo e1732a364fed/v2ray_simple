@@ -59,6 +59,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 		if thing := lc.Extra["tun_auto_route"]; thing != nil {
 			if auto, autoOk := utils.AnyToBool(thing); autoOk && auto {
+				s.autoRoute = true
 
 				if thing := lc.Extra["tun_auto_route_direct_list"]; thing != nil {
 
@@ -71,12 +72,6 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 					}
 				}
 
-				if len(s.autoRouteDirectList) == 0 {
-					utils.Warn("tun auto route set, but no direct list given. auto route will not run.")
-				} else {
-					s.autoRoute = true
-
-				}
 			}
 		}
 	}

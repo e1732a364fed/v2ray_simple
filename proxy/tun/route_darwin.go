@@ -12,6 +12,10 @@ var rememberedRouterIP string
 
 func init() {
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+		if len(directList) == 0 {
+			utils.Warn("tun auto route called, but no direct list given. auto route will not run.")
+		}
+
 		var ok = false
 		params := "-nr -f inet"
 		out, err := exec.Command("netstat", strings.Split(params, " ")...).Output()
@@ -86,6 +90,9 @@ func init() {
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+		if len(directList) == 0 {
+			utils.Warn("tun auto route down called, but no direct list given. auto route will not run.")
+		}
 		//恢复路由表
 		params := "delete -host default"
 		out1, _ := exec.Command("route", strings.Split(params, " ")...).Output()
