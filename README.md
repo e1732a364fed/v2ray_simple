@@ -15,7 +15,7 @@
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
 
-只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。
+只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs".
 
 verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富，轻量级，极简，用户友好，新手向。
 
