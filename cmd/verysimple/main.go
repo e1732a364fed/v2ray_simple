@@ -92,11 +92,15 @@ func cleanup() {
 		}
 	}
 
-	for _, tm := range tproxyList {
-		if tm != nil {
-			tm.Stop()
+	if len(tproxyList) > 0 {
+		log.Println("closing tproxies")
+		for _, tm := range tproxyList {
+			if tm != nil {
+				tm.Stop()
+			}
 		}
 	}
+
 }
 
 func main() {
@@ -393,18 +397,27 @@ func mainFunc() (result int) {
 				}
 
 				for _, thisConf := range tproxyConfs {
-					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), defaultOutClient, routingEnv.RoutePolicy)
+					enableSniff := false
+					if thisConf.SniffConf != nil {
+						enableSniff = thisConf.SniffConf.Enable
+					}
+					lc := proxy.LesserConf{
+						Addr:        thisConf.GetAddrStrForListenOrDial(),
+						Tag:         thisConf.Tag,
+						UseSniffing: enableSniff,
+					}
+					tm := vs.ListenTproxy(lc, defaultOutClient, routingEnv.RoutePolicy)
 					if tm != nil {
 						tproxyList = append(tproxyList, tm)
 					}
 
 				}
 
-			}
+			} //if len(tproxyConfs) > 0 {
 
-		}
+		} //if mode == proxy.SimpleMode {
 
-	}
+	} //if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
 
 	//没可用的listen/dial，而且还无法动态更改配置
 	if noFuture() {

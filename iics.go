@@ -64,6 +64,9 @@ type incomingInserverConnState struct {
 	inServer      proxy.Server //可为 nil
 	defaultClient proxy.Client
 
+	inTag       string //在inServer为nil时，可用此项确定 inTag
+	useSniffing bool   //在inServer为nil时，可用此项确定 是否使用sniffing
+
 	cachedRemoteAddr string
 
 	inServerTlsConn            *tlsLayer.Conn

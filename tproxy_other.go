@@ -11,7 +11,7 @@ import (
 )
 
 //非阻塞。在非linux系统中无效。
-func ListenTproxy(string, proxy.Client, *netLayer.RoutePolicy) (_ *tproxy.Machine) {
+func ListenTproxy(lc proxy.LesserConf, defaultClient proxy.Client, routePolicy *netLayer.RoutePolicy) (_ *tproxy.Machine) {
 	utils.Error("Tproxy not possible on non-linux device")
 	return
 }

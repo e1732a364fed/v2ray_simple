@@ -13,6 +13,12 @@ utils -> netLayer-> tlsLayer -> httpLayer -> advLayer -> proxy -> v2ray_simple -
 
 ListenSer函数用于主要 代理的转发，ListenTproxy函数用于转发透明代理。内置了 lazy的转发逻辑。
 
+Tproxy
+
+tproxy没有 TLS层 以及更上层的所有参数，只包含网络层和传输层的参数，网络层只包含 ip和端口这两个参数，传输层只包含 "是否开启sniffing" 这一个参数; 然后还有一个 tag参数，然后就没了。
+
+所以tproxy不能算是一个完整的 proxy.Server. 所以要用单独的函数启动转发。
+
 
 Chain
 

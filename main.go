@@ -516,8 +516,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 }
 
-//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。 iics.inServer可能为nil。
-// 本函数可能是本文件中 最长的函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy。
+//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 以及 tproxy 调用。 iics.inServer可能为nil。
+// 本函数可能是本文件中 最长的函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy，最终转发到 某个 outClient。
 //
 // 会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
@@ -607,7 +607,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	}
 
 	if wlc == nil && udp_wlc == nil {
-		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
+		//证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
 		if ce := iics.CanLogDebug("invalid request and no matched fallback, hung up"); ce != nil {
 			ce.Write()
 		}
@@ -729,7 +729,13 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	if len(iics.firstPayload) > 0 {
 
-		inserverMarkedSniffing := (inServer != nil && inServer.Sniffing())
+		inserverMarkedSniffing := false
+
+		if inServer == nil {
+			inserverMarkedSniffing = iics.useSniffing
+		} else {
+			inserverMarkedSniffing = inServer.Sniffing()
+		}
 
 		dialIslazy := iics.defaultClient.IsLazyTls()
 
@@ -793,6 +799,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 		}
 		if inServer != nil {
 			desc.InTag = inServer.GetTag()
+		} else {
+			desc.InTag = iics.inTag
 		}
 		if uc, ok := wlc.(utils.User); ok {
 			desc.UserIdentityStr = uc.IdentityStr()

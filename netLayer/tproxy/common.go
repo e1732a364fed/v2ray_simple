@@ -105,7 +105,9 @@ http://ivo-wang.github.io/2018/02/24/ss-redir/
 package tproxy
 
 import (
+	"log"
 	"net"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
@@ -120,10 +122,26 @@ type Machine struct {
 
 func (m *Machine) Stop() {
 	if m.Listener != nil {
-		m.Listener.Close()
+		log.Println("closing tproxy listener")
+		//后来发现，不知为何，这个 Close调用会卡住
+
+		ch := make(chan int)
+		go func() {
+			m.Listener.Close()
+			close(ch)
+		}()
+		tCh := time.After(time.Second)
+		select {
+		case <-tCh:
+			log.Println("close tproxy listener timeout")
+		case <-ch:
+			break
+		}
 
 	}
 	if m.UDPConn != nil {
+		log.Println("closing tproxy udp conn")
+
 		m.UDPConn.Close()
 
 	}

@@ -61,16 +61,25 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	c.user = utils.V2rayUser(uuid)
 	c.opt = OptChunkStream
 
+	hasSetSecurityByExtra := false
+
 	if len(dc.Extra) > 0 {
 		if thing := dc.Extra["vmess_security"]; thing != nil {
 			if str, ok := thing.(string); ok {
-				if err = c.specifySecurityByStr(str); err != nil {
+
+				err = c.specifySecurityByStr(str)
+
+				if err == nil {
+					hasSetSecurityByExtra = true
+				} else {
 					return nil, err
 				}
 
 			}
 		}
-	} else {
+	}
+
+	if !hasSetSecurityByExtra {
 		c.specifySecurityByStr("")
 	}
 
