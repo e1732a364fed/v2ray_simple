@@ -16,11 +16,16 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-func TestTCP(protocol string, version int, port string, extraQuery string, t *testing.T) {
+func TestTCP(protocol string, specialUUID string, version int, port string, extraQuery string, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog("")
 
-	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?v=" + strconv.Itoa(version)
+	uuid := "a684455c-b14f-11ea-bf0d-42010aaa0003"
+	if specialUUID != "" {
+		uuid = specialUUID
+	}
+
+	url := protocol + "://" + uuid + "@127.0.0.1:" + port + "?v=" + strconv.Itoa(version)
 	if extraQuery != "" {
 		url += "&" + extraQuery
 	}
@@ -63,7 +68,7 @@ func TestTCP(protocol string, version int, port string, extraQuery string, t *te
 				defer lc.Close()
 				wlc, _, targetAddr, err := server.Handshake(lc)
 				if err != nil {
-					t.Logf("failed in handshake form %v: %v", server.AddrStr(), err)
+					t.Logf("failed in handshake from %v: %v", server.AddrStr(), err)
 					t.Fail()
 					return
 				}
@@ -132,9 +137,11 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 
 	t.Log("fakeServerEndLocalServer port is ", proxyPort)
 
-	fmtStr := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:%s?v=%d&vless1_udp_multi=%d"
+	uuid := "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
-	url := fmt.Sprintf(fmtStr, proxyPort, version, use_multi)
+	fmtStr := protocol + "://%s@127.0.0.1:%s?v=%d&vless1_udp_multi=%d"
+
+	url := fmt.Sprintf(fmtStr, uuid, proxyPort, version, use_multi)
 	fakeServerEndLocalServer, errx := ServerFromURL(url)
 	if errx != nil {
 		t.Log("fakeClientEndLocalServer parse err", errx)

@@ -58,7 +58,7 @@ func flist(list []*CliCmd) (result []func()) {
 var cliCmdList = []*CliCmd{
 	{
 		"查询当前状态", func() {
-			printAllState(os.Stdout, false)
+			printAllState(os.Stdout)
 		},
 	}, {
 		"打印当前版本所支持的所有协议", printSupportedProtocols,
@@ -143,13 +143,13 @@ func generateRandomSSlCert() {
 }
 
 func printSupportedProtocols() {
-	utils.PrintStr("Support tcp/udp/tproxy/unix domain socket/tls/uTls by default.\n")
+	utils.PrintStr("Support tcp/udp/unix domain socket/tls/uTls by default.\n")
 	proxy.PrintAllServerNames()
 	proxy.PrintAllClientNames()
 	advLayer.PrintAllProtocolNames()
 }
 
-func printAllState(w io.Writer, withoutTProxy bool) {
+func printAllState(w io.Writer) {
 	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
@@ -158,13 +158,6 @@ func printAllState(w io.Writer, withoutTProxy bool) {
 		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
 
 	}
-
-	// if !withoutTProxy && len(tproxyList) > 0 {
-	// 	for i, tc := range tproxyList {
-	// 		fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
-	// 	}
-	// }
-
 	for i, c := range allClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
 	}

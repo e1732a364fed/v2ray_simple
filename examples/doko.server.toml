@@ -1,5 +1,8 @@
 # dokodemo常用于 测试。 它可将任意程序的输出转发到 特定目标地址
 
+# 本示例测试udp, 对应的 客户端程序为 doco_udpclient.go , 使用 go run doco_udpclient.go 运行它,
+# 然后运行本配置, 你在 doco_udpclient.go 输入的所有字符串都会被 本配置发送到 10800, 并让10800进一步发送到 4444
+
 [[listen]]
 protocol = "dokodemo"
 network = "udp" # 可以监听tcp，也可以监听 udp
@@ -12,5 +15,7 @@ target = "udp://127.0.0.1:4444"
 
 [[dial]]
 protocol = "socks5"
+#protocol = "shadowsocks"
 host = "127.0.0.1"
 port = 10800
+#uuid = "method:AES-128-GCM\npass:iloveverysimple"   

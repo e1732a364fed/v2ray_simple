@@ -59,7 +59,7 @@ func runApiServer(adminUUID string) {
 	mux := http.NewServeMux()
 
 	ser.addServerHandle(mux, "allstate", func(w http.ResponseWriter, r *http.Request) {
-		printAllState(w, false)
+		printAllState(w)
 	})
 	ser.addServerHandle(mux, "hotDelete", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()

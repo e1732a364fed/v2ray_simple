@@ -8,11 +8,11 @@ import (
 )
 
 func TestTCP(t *testing.T) {
-	proxy.TestTCP("vmess", 0, netLayer.RandPortStr_safe(true, false), "", t)
+	proxy.TestTCP("vmess", "", 0, netLayer.RandPortStr_safe(true, false), "", t)
 }
 
 func TestTCP_none(t *testing.T) {
-	proxy.TestTCP("vmess", 0, netLayer.RandPortStr_safe(true, false), "security=none", t)
+	proxy.TestTCP("vmess", "", 0, netLayer.RandPortStr_safe(true, false), "security=none", t)
 }
 
 func TestUDP(t *testing.T) {

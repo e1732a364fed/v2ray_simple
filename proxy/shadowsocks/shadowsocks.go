@@ -7,8 +7,6 @@ https://github.com/shadowsocks/shadowsocks-org/wiki/Protocol
 
 https://github.com/shadowsocks/shadowsocks-org/wiki/AEAD-Ciphers
 
-这里vs参考了gost的实现。gost中，Connector就相当于 client，Handler就相当于 Server
-
 参考阅读 http://overtalk.site/2020/02/25/network-shadowsocks/
 
 注意, shadowsocks 可能同时使用tcp和udp，但是一定会使用到 tcp, shadowsocks 的network只能设置为tcp或者dual
@@ -44,7 +42,6 @@ const (
 
 func initShadowCipher(info MethodPass) (cipher core.Cipher) {
 	var method, password = info.Method, info.Password
-	//根据 https://github.com/shadowsocks/shadowsocks-org/wiki/SIP002-URI-Scheme
 
 	if method == "" || password == "" {
 		return
@@ -153,13 +150,6 @@ type MethodPass struct {
 	Method, Password string
 }
 
-// //require "method" and "pass" field. return true if both not empty.
-// func (ph *MethodPass) InitWithUrl(u *url.URL) bool {
-// 	ph.Method = u.Query().Get("method")
-// 	ph.Password = u.Query().Get("pass")
-// 	return len(ph.Method) > 0 && len(ph.Password) > 0
-// }
-
 // uuid: "method:xxxx\npass:xxxx"
 func (ph *MethodPass) InitWithStr(str string) (ok bool) {
 
@@ -172,7 +162,8 @@ func (ph *MethodPass) InitWithStr(str string) (ok bool) {
 	if potentialMethod != "" && potentialPass != "" {
 		ph.Method = potentialMethod
 		ph.Password = potentialPass
+		ok = true
+
 	}
-	ok = true
 	return
 }

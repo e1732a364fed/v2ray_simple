@@ -270,7 +270,7 @@ func interactively_hotRemoveServerOrClient() {
 	utils.PrintStr("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
 	utils.PrintStr("【当前所有配置】为：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout, true)
+	printAllState(os.Stdout)
 
 	var items []string
 	if len(allServers) > 0 {
@@ -368,7 +368,7 @@ func interactively_hotRemoveServerOrClient() {
 
 	utils.PrintStr("删除成功！当前状态：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout, true)
+	printAllState(os.Stdout)
 }
 
 func interactively_hotLoadUrlConfig() {
@@ -439,7 +439,7 @@ func interactively_hotLoadConfigFile() {
 	utils.PrintStr("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
 	utils.PrintStr("【当前所有配置】为：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout, false)
+	printAllState(os.Stdout)
 
 	utils.PrintStr("请输入你想添加的文件名称\n")
 
@@ -515,7 +515,7 @@ func interactively_hotLoadConfigFile() {
 
 	utils.PrintStr("添加成功！当前状态：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout, false)
+	printAllState(os.Stdout)
 }
 
 func interactively_adjust_loglevel() {

@@ -1,6 +1,6 @@
 module github.com/e1732a364fed/v2ray_simple
 
-go 1.18
+go 1.19
 
 require (
 	github.com/BurntSushi/toml v1.2.1

@@ -35,8 +35,6 @@ var (
 	allServers = make([]proxy.Server, 0, 8)
 	allClients = make([]proxy.Client, 0, 8)
 
-	//tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
-
 	listenCloserList []io.Closer //所有运行的 inServer 的 Listener 的 Closer
 
 	defaultOutClient proxy.Client
@@ -93,15 +91,6 @@ func cleanup() {
 			listener.Close()
 		}
 	}
-
-	// if len(tproxyList) > 0 {
-	// 	log.Println("closing tproxies")
-	// 	for _, tm := range tproxyList {
-	// 		if tm != nil {
-	// 			tm.Stop()
-	// 		}
-	// 	}
-	// }
 
 }
 
@@ -260,7 +249,6 @@ func mainFunc() (result int) {
 
 	}
 
-	var defaultInServer proxy.Server
 	var Default_uuid string
 
 	if mainFallback != nil {
@@ -270,10 +258,13 @@ func mainFunc() (result int) {
 	//load inServers and RoutingEnv
 	switch configMode {
 	case proxy.SimpleMode:
-		result, defaultInServer = loadSimpleServer()
+		var theServer proxy.Server
+		result, theServer = loadSimpleServer()
 		if result < 0 {
 			return result
 		}
+		allServers = append(allServers, theServer)
+
 	case proxy.StandardMode:
 
 		if appConf != nil {
@@ -360,25 +351,17 @@ func mainFunc() (result int) {
 
 	runPreCommands()
 
-	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0) {
+	if (defaultOutClient != nil) && (len(allServers) > 0) {
 
-		if configMode == proxy.SimpleMode {
-			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
+		for _, inServer := range allServers {
+			lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
+
 			if lis != nil {
 				listenCloserList = append(listenCloserList, lis)
 			}
-		} else {
-			for _, inServer := range allServers {
-				lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
+		}
 
-				if lis != nil {
-					listenCloserList = append(listenCloserList, lis)
-				}
-			}
-
-		} //if mode == proxy.SimpleMode {
-
-	} //if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 ) {
+	}
 
 	//没可用的listen/dial，而且还无法动态更改配置
 	if noFuture() {
