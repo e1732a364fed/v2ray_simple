@@ -1,5 +1,7 @@
 /*
 Package tlsLayer provides facilities for tls, including uTls, sniffing and random certificate.
+
+Sniffing can be a part of Tls Lazy Encrypt tech.
 */
 package tlsLayer
 

@@ -1304,14 +1304,8 @@ advLayerHandshakeStep:
 			var edlen int
 
 			if !hasInnerMux && advClient.IsEarly() && wlc != nil {
-
 				edlen = len(iics.firstPayload)
-
 			}
-
-			// 我们verysimple的架构是 ws握手之后，再进行vless握手
-			// 但是如果要传输earlydata的话，则必须要在握手阶段就 预知 vless 的所有数据才行
-			// 所以我们需要一种特殊方法
 
 			var wc net.Conn
 

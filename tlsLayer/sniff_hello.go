@@ -80,6 +80,8 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 //可参考 https://halfrost.com/https_tls1-3_handshake/ 。
 // 具体见最上面的注释，以及rfc。
 //解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
+//
+//会按情况在返回前 设置cd.DefinitelyNotTLS，cd.handshakeFailReason，cd.CantBeTLS13，cd.handshakeVer，cd.helloPacketPass
 func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bool) {
 	pAfterLegacy_compression_methods := cd.sniff_commonHelloPre(pAfter)
 

@@ -28,7 +28,7 @@ endif
 
 main: linux_amd64 linux_arm64 android_arm64 macos macm win10 win10_arm
 
-extra: linux_arm32_v7 linux_mips64 linux_mips linux_s390x linux_riscv64 win32
+extra: linux_arm32_v5 linux_arm32_v6 linux_arm32_v7 linux_mips64 linux_mips linux_s390x linux_riscv64 win32
 
 # 注意调用参数时，逗号前后不能留空格
 # 关于arm版本号 https://github.com/goreleaser/goreleaser/issues/36
@@ -38,6 +38,12 @@ linux_amd64:
 
 linux_arm64:
 	$(call compile,linux_arm64,linux,arm64)
+
+linux_arm32_v5:	#某些路由器需要
+	$(call compile,linux_arm32_v5,linux,arm,,5)
+
+linux_arm32_v6:
+	$(call compile,linux_arm32_v6,linux,arm,,6)
 
 linux_arm32_v7:
 	$(call compile,linux_arm32_v7a,linux,arm,,7)
