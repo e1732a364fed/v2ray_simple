@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -18,8 +19,6 @@ import (
 )
 
 //cli = command line interface
-
-var interactive_mode bool
 
 type CliCmd struct {
 	Name string
@@ -127,10 +126,19 @@ func runCli_func() {
 		}
 	*/
 
+	searcher := func(input string, index int) bool {
+		pepper := cliCmdList[index]
+		name := strings.Replace(strings.ToLower(pepper.Name), " ", "", -1)
+		input = strings.Replace(strings.ToLower(input), " ", "", -1)
+
+		return strings.Contains(name, input)
+	}
+
 	for {
 		Select := promptui.Select{
-			Label: "请选择想执行的功能",
-			Items: cliCmdList,
+			Label:    "请选择想执行的功能",
+			Items:    cliCmdList,
+			Searcher: searcher,
 		}
 
 		i, result, err := Select.Run()

@@ -46,8 +46,18 @@ func init() {
 			}
 		}
 
-		ui.Main(setupUI)
+		defer func() {
+			utils.PrintStr("Gui Mode exited. \n")
+			if ce := utils.CanLogInfo("Gui Mode exited"); ce != nil {
+				ce.Write()
+			}
 
+			savePerferences()
+		}()
+
+		loadPreferences()
+
+		ui.Main(setupUI)
 	}
 
 	tun.AddManualRunCmdsListFunc = func(s []string) {

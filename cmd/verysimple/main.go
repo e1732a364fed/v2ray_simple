@@ -26,6 +26,7 @@ var (
 	startPProf         bool
 	startMProf         bool
 	gui_mode           bool
+	interactive_mode   bool
 
 	listenURL string //用于命令行模式
 	dialURL   string //用于命令行模式
@@ -81,31 +82,6 @@ func main() {
 	os.Exit(mainFunc())
 }
 
-func stopMachineAndExit(m *machine.M) {
-
-	ch := make(chan struct{})
-	go func() {
-		m.Stop()
-		close(ch)
-	}()
-	tCh := time.After(time.Second * 2)
-	select {
-	case <-tCh:
-		log.Println("Close timeout")
-		os.Exit(-1)
-	case <-ch:
-		break
-	}
-	os.Exit(0)
-
-}
-
-func exitBySignal() {
-	utils.Info("Program got close signal.")
-
-	stopMachineAndExit(mainM)
-}
-
 func mainFunc() (result int) {
 	defer func() {
 		//注意，这个recover代码并不是万能的，有时捕捉不到panic。
@@ -146,10 +122,6 @@ func mainFunc() (result int) {
 	// config params step
 	setupSystemParemeters()
 
-	var configMode int
-
-	var loadConfigErr error
-
 	fpath := utils.GetFilePath(configFileName)
 	if !utils.FileExist(fpath) {
 
@@ -163,7 +135,7 @@ func mainFunc() (result int) {
 
 	}
 
-	configMode, loadConfigErr = mainM.LoadConfig(configFileName, listenURL, dialURL)
+	configMode, loadConfigErr := mainM.LoadConfig(configFileName, listenURL, dialURL)
 
 	if utils.LogOutFileName == defaultLogFile {
 
@@ -267,9 +239,9 @@ func mainFunc() (result int) {
 	if gui_mode {
 		if runGui != nil {
 			runGui()
-			gui_mode = false
-			utils.Info("gui mode exited")
 		}
+		gui_mode = false
+
 	}
 
 	if NothingRunning(mainM) {
@@ -286,6 +258,31 @@ func mainFunc() (result int) {
 		exitBySignal()
 	}
 	return
+}
+
+func stopMachineAndExit(m *machine.M) {
+
+	ch := make(chan struct{})
+	go func() {
+		m.Stop()
+		close(ch)
+	}()
+	tCh := time.After(time.Second * 2)
+	select {
+	case <-tCh:
+		log.Println("Close timeout")
+		os.Exit(-1)
+	case <-ch:
+		break
+	}
+	os.Exit(0)
+
+}
+
+func exitBySignal() {
+	utils.Info("Program got close signal.")
+
+	stopMachineAndExit(mainM)
 }
 
 func setupSystemParemeters() {

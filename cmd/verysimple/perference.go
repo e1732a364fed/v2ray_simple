@@ -43,6 +43,9 @@ func savePerferences() {
 	if disablePreferenceFeature {
 		return
 	}
+	if currentUserPreference.Cli == nil && currentUserPreference.Gui == nil {
+		return
+	}
 	fmt.Println("Saving preferences")
 
 	buf := utils.GetBuf()
