@@ -78,7 +78,8 @@ func shadowTls1(servername string, clientConn net.Conn) (tlsConn *Conn, err erro
 	}
 
 	tlsConn = &Conn{
-		Conn: clientConn,
+		Conn:    clientConn,
+		tlsType: ShadowTls_t,
 	}
 
 	return
@@ -123,7 +124,8 @@ func shadowTls2(servername string, clientConn net.Conn, password string) (tlsCon
 		}
 
 		return &Conn{
-			Conn: allDataConn,
+			Conn:    allDataConn,
+			tlsType: ShadowTls2_t,
 		}, nil
 	} else if err == utils.ErrFailed {
 		if ce := utils.CanLogWarn("shadowTls2 fake failed!"); ce != nil {

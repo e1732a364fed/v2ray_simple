@@ -296,3 +296,7 @@ func (c *UserTCPConn) GetRawForReadv() syscall.RawConn {
 func (c *UserTCPConn) ReadBuffers() (bs [][]byte, err error) {
 	return c.br.ReadBuffers()
 }
+
+func (c *UserTCPConn) PutBuffers(bs [][]byte) {
+	c.br.PutBuffers(bs)
+}

@@ -93,3 +93,11 @@ func (c *Conn) GetSni() string {
 	return ""
 
 }
+
+func (c *Conn) WillReadBuffersBenifit() int {
+	return 0
+}
+
+func (c *Conn) CanMultiRead() bool {
+	return false
+}

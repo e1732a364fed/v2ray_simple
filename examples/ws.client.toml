@@ -13,5 +13,9 @@ version = 0
 insecure = true
 #utls = true
 advancedLayer = "ws"
-path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好
+path = "/ohmygod_verysimple_is_very_simple" 
+
+#为了防探测, path越长越随机越好, 而且path项必须给出, 如果要为空, 写成 path = "/"
+
+
 # early = true    # 是否开启early data, 注意本作这里要开启的话，就要服务端和客户端 两端都开启。

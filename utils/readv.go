@@ -110,28 +110,3 @@ func ReadvFrom(rawReadConn syscall.RawConn, rm *ReadvMem) ([][]byte, error) {
 
 	return allocedBuffers[:nBuf], nil
 }
-
-/*
-// 依次试图使用 readv、ReadBuffers 以及 原始 Read 读取数据
-func ReadBuffersFrom(c io.Reader, rawReadConn syscall.RawConn, mr MultiReader) (buffers [][]byte, err error) {
-
-	if rawReadConn != nil {
-		readv_mem := Get_readvMem()
-		//defer put_readvMem(readv_mem)	//因为返回的buffers还需使用, 所以不能立刻放回 readv_mem
-
-		buffers, err = ReadvFrom(rawReadConn, readv_mem)
-
-	} else if mr != nil {
-		return mr.ReadBuffers()
-	} else {
-		packet := GetPacket()
-		var n int
-		n, err = c.Read(packet)
-		if err != nil {
-			return
-		}
-		buffers = append(buffers, packet[:n])
-	}
-	return
-}
-*/

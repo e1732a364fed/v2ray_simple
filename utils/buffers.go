@@ -1,10 +1,41 @@
 package utils
 
 import (
+	"bytes"
 	"io"
 	"log"
+	"sync"
 	"syscall"
 )
+
+var (
+	buffersPool sync.Pool //*[][]byte
+)
+
+func init() {
+
+	buffersPool = sync.Pool{
+		New: func() any {
+			bs := make([][]byte, Readv_buffer_allocLen)
+
+			for i := range bs {
+				bs[i] = make([]byte, ReadvSingleBufLen)
+			}
+			return &bs
+		},
+	}
+}
+
+// 从pool获取buffers，长度为8，每个长4k
+func GetBuffers() [][]byte {
+	return *buffersPool.Get().(*[][]byte)
+}
+
+// 将用 GetBuffers 得到的 buffers 放回pool
+func PutBuffers(bs [][]byte) {
+	bs = RecoverBuffers(bs, Readv_buffer_allocLen, ReadvSingleBufLen)
+	buffersPool.Put(&bs)
+}
 
 // SystemReadver 是平台相关的 用于 调用readv的 工具.
 // 该 SystemReadver 的用例请参照 netLayer.readvFrom , 在 netLayer/readv.go中;
@@ -58,6 +89,9 @@ type MultiReader interface {
 
 type BuffersReader interface {
 	ReadBuffers() ([][]byte, error)
+
+	//将 ReadBuffers 放回缓存，以便重复利用内存
+	PutBuffers([][]byte)
 }
 
 type Readver interface {
@@ -108,9 +142,9 @@ func RecoverBuffers(bs [][]byte, oldLen, old_sub_len int) [][]byte {
 	return bs
 }
 
-func BuffersWriteTo(bs [][]byte, writeConn io.Writer) (num int64, err2 error) {
+func BuffersWriteTo(bs [][]byte, writer io.Writer) (num int64, err2 error) {
 	for _, b := range bs {
-		nb, err := writeConn.Write(b)
+		nb, err := writer.Write(b)
 		num += int64(nb)
 		if err != nil {
 
@@ -162,4 +196,12 @@ func MergeBuffers(bs [][]byte) (result []byte, duplicate bool) {
 	}
 
 	return result[:allLen], true
+}
+
+func BuffersToMultiReader(bs [][]byte) io.Reader {
+	bufs := make([]io.Reader, len(bs))
+	for i, v := range bs {
+		bufs[i] = bytes.NewBuffer(v)
+	}
+	return io.MultiReader(bufs...)
 }

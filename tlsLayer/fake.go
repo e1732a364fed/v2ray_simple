@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"io"
 	"net"
+	"syscall"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
@@ -14,6 +17,9 @@ import (
 type FakeAppDataConn struct {
 	net.Conn
 	readRemaining int
+
+	//for readv
+	rr syscall.RawConn
 }
 
 func (c *FakeAppDataConn) Read(p []byte) (n int, err error) {
@@ -112,4 +118,129 @@ func (c *FakeAppDataConn) Write(p []byte) (n int, err error) {
 
 func (c *FakeAppDataConn) Upstream() any {
 	return c.Conn
+}
+
+func (c *FakeAppDataConn) WillReadBuffersBenifit() int {
+	//一般而言底层连接就是tcp
+	if r, rr := netLayer.IsConnGoodForReadv(c.Conn); r != 0 {
+		c.rr = rr
+	}
+
+	return 1
+}
+
+// ReadBuffers一次性尽可能多读几个buf, 每个buf内部都是一个完整的appdata
+func (c *FakeAppDataConn) ReadBuffers() (buffers [][]byte, err error) {
+
+	//最理想的情况是，一次性读到一个大包，我们根据tls包头分割出多个appdata，然后放入buffers中
+
+	//但是有可能读不完整
+
+	var reader io.Reader
+
+	wholeReadLen := 0
+	//一次性读取
+	if c.rr != nil {
+		readv_mem := utils.Get_readvMem()
+		buffers, err = utils.ReadvFrom(c.rr, readv_mem)
+		if err != nil {
+			return nil, err
+		}
+
+		reader = utils.BuffersToMultiReader(buffers)
+		wholeReadLen = utils.BuffersLen(buffers)
+	} else {
+		bs := utils.GetPacket()
+		wholeReadLen, err = c.Conn.Read(bs)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewBuffer(bs[:wholeReadLen])
+	}
+	if wholeReadLen < 5 {
+		return nil, errors.New("FakeAppDataConn ReadBuffers too short")
+	}
+	wholeLeftLen := wholeReadLen
+
+	if c.readRemaining > 0 {
+		bs := utils.GetPacket()
+		var n int
+		n, err = c.Conn.Read(bs[:c.readRemaining])
+		c.readRemaining -= n
+		buffers = append(buffers, bs[:n])
+		return
+	}
+	for {
+		if wholeLeftLen < 5 {
+			reader = io.MultiReader(reader, c.Conn)
+			var tlsHeader [5]byte
+			_, err = io.ReadFull(reader, tlsHeader[:])
+			if err != nil {
+				return
+			}
+			thisAppDataLen := int(binary.BigEndian.Uint16(tlsHeader[3:]))
+			if tlsHeader[0] != 23 {
+				return nil, utils.ErrInErr{ErrDesc: "unexpected TLS record type: ", Data: tlsHeader[0]}
+			}
+			thisBs := utils.GetPacket()
+
+			var n int
+			n, err = reader.Read(thisBs[:thisAppDataLen])
+			if err != nil {
+				return
+			}
+			buffers = append(buffers, thisBs[:n])
+
+			if diff := thisAppDataLen - n; diff > 0 {
+				c.readRemaining = diff
+
+			} else if diff < 0 {
+				return nil, utils.ErrInErr{ErrDesc: "FakeAppDataConn ReadBuffers read n>thisAppDataLen ", Data: []int{n, thisAppDataLen}}
+			}
+			return
+
+		}
+
+		var tlsHeader [5]byte
+		_, err = io.ReadFull(reader, tlsHeader[:])
+		if err != nil {
+			return
+		}
+		wholeLeftLen -= 5
+
+		thisAppDataLen := int(binary.BigEndian.Uint16(tlsHeader[3:]))
+		if tlsHeader[0] != 23 {
+			return nil, utils.ErrInErr{ErrDesc: "unexpected TLS record type: ", Data: tlsHeader[0]}
+		}
+		thisBs := utils.GetPacket()
+
+		var n int
+		n, err = reader.Read(thisBs[:thisAppDataLen])
+		if err != nil {
+			return
+		}
+		buffers = append(buffers, thisBs[:n])
+
+		if diff := thisAppDataLen - n; diff > 0 {
+			c.readRemaining = diff
+			return
+
+		} else if diff < 0 {
+			return nil, utils.ErrInErr{ErrDesc: "FakeAppDataConn ReadBuffers read n>thisAppDataLen ", Data: []int{n, thisAppDataLen}}
+		}
+
+		wholeLeftLen -= thisAppDataLen
+
+		if wholeLeftLen == 0 {
+			return
+		}
+
+	}
+
+}
+func (c *FakeAppDataConn) PutBuffers(bss [][]byte) {
+	for _, v := range bss {
+		utils.PutPacket(v)
+	}
+
 }

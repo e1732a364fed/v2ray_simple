@@ -234,9 +234,11 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, id uint32) (allnum int64, 
 				return
 			}
 
-			if !userlevel_readv {
-				buffers = utils.RecoverBuffers(buffers, utils.Readv_buffer_allocLen, utils.ReadvSingleBufLen)
+			if userlevel_readv {
+				br.PutBuffers(buffers)
 
+			} else {
+				buffers = utils.RecoverBuffers(buffers, utils.Readv_buffer_allocLen, utils.ReadvSingleBufLen)
 			}
 
 		}
