@@ -37,7 +37,7 @@ key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不�
 
 # extra.tls_minVersion = "1.2"   # 默认的 minVersion 是1.3，你还可以设成1.2，其它值无效。
 # extra.tls_maxVersion = "1.2"
-# extra.tls_cipherSuites = [ "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"]    # 加密套件，所有可能的值请参考 golang的官方文档
+# extra.tls_cipherSuites = [ "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"]    # 加密套件，所有可能的值请参考 golang的官方文档
 
 
 [[dial]]
