@@ -7,6 +7,8 @@ tun 工作在第三层 IP层上。
 
 我们基本上抄了 xjasonlyu/tun2socks, 因此把GPL证书放在了本包的文件夹中
 
+本来最好是直接import的，但是目前（22.12.18）tun2socks的最新代码还没有打tag，而老代码又不可用，所以只能先复制过来。
+
 windows中,
 需要从 https://www.wintun.net/ 下载 wintun.dll 放到vs可执行文件旁边
 */

@@ -5,7 +5,7 @@
 # 你要配置好路由表才能让tun正常使用。 
 # 路由表不是那么好配置，见下面指导
 
-# 对于小白来说，下面的指导太过于高级，难以看懂，因此对于小白来说推荐全自动化的方案。
+# 对于小白来说，下面的指导太过于高级，难以看懂，因此对于小白来说推荐全自动化的方案，跳过这一大段内容
 
 # 需要管理员权限(sudo)运行vs_gui 才能自动修改路由表 或者创建tun设备
 
@@ -83,7 +83,13 @@ utls = true
 
 # 上面的一行配置是 bindToDevice功能，可以指定 某一个网卡 来监听 或者拨号, 
 #  这样就不用配置listen中tun的 tun_auto_route_direct_list了
-# 之所以注释掉，是因为每个人的deivce名称可能都不一样，需要自行确认
+# 之所以注释掉，是因为每个人的deivce名称可能都不一样，需要自行确认, 
+
+# windows 上可能为 WLAN / Ethernet
+# mac 上可能为 eth0
+
+# sockopt.device = "WLAN"   
+# sockopt.device = "Ethernet"   
 
 
 ###############################################################
@@ -118,6 +124,8 @@ utls = true
 #   这是因为，xjasonlyu/tun2socks 没有在windows上实现 bindToDevice, 而在另外两个平台上实现了
 #   所以在windows上配置多一步； 
 #    不过本作最新代码已经linux，mac和windows 都支持了 bindToDevice,
+
+# 最新的 xjasonlyu/tun2socks 代码也都支持了，但是 其文档指导还停留在旧代码的阶段，特此指出。
 
 # 2. linux 上它需要手动启动tun设备，而其他两个平台不需要
 #   这是因为它在linux上和在其他平台上开启tun设备的逻辑不同。本作作者也不清楚原因，但是还是觉得原作者肯定对，就模仿了。

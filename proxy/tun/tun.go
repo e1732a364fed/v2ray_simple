@@ -4,7 +4,7 @@
 	使用 ip 配置作为 gateway 的ip
 	使用 extra.tun_selfip 作为 tun向外拨号的ip
 
-	tun device name的默认值约定： mac utun5, windows vs_wintun
+	tun device name的默认值约定： mac: utun5, windows: vs_wintun， linux: vs_tun
 
 */
 package tun
@@ -213,7 +213,8 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 
 	//由于我们目前完全使用 xjasonlyu/tun2socks 的 代码，需要注意，xjasonlyu/tun2socks 在
 	// windows 和 darwin 都是用的是 wiregard包来创建 tun, 而 在linux上是采用的 gvisor包创建的
-	// 至于为什么这么做，本作作者暂时不清楚。
+	// 至于为什么这么做，仔细观察代码，看出 linux返回的是一个 fdbased，而其他平台返回的是 iobased。
+	// 也许fdbased的性能更好。
 
 	// 不过这就导致了 linux 和其他系统的一点不同，那就是，在linux上我们要先手动用命令创建tun，然后再 运行本程序,
 	// 可以参考 https://github.com/xjasonlyu/tun2socks/wiki/Examples
