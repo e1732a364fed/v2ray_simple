@@ -156,7 +156,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 	requestHeaderNotGivenCount := s.requestHeaderCheckCount
 
-	var realAddr *net.TCPAddr
+	var realAddr net.Addr
 
 	var theUpgrader *ws.Upgrader = &ws.Upgrader{
 
@@ -179,7 +179,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 				xffs := strings.SplitN(realV, ",", 2)
 
 				if len(xffs) > 0 {
-					ta, e := net.ResolveTCPAddr("tcp", strings.TrimLeft(xffs[0], " "))
+					ta, e := net.ResolveIPAddr("ip", strings.TrimLeft(xffs[0], " "))
 					if e == nil {
 						realAddr = ta
 					} else {

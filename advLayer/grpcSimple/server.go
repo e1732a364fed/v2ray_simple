@@ -262,7 +262,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 		xffs := rq.Header.Values(httpLayer.XForwardStr)
 
 		if len(xffs) > 0 {
-			ta, e := net.ResolveTCPAddr("tcp", xffs[0])
+			ta, e := net.ResolveIPAddr("ip", xffs[0])
 			if e == nil {
 				sc.ra = ta
 			} else {

@@ -28,7 +28,7 @@ type Conn struct {
 
 	bigHeaderEverUsed bool
 
-	realRaddr *net.TCPAddr //可从 X-Forwarded-For 读取用户真实ip，用于反代等情况
+	realRaddr net.Addr //可从 X-Forwarded-For 读取用户真实ip，用于反代等情况
 }
 
 //Read websocket binary frames
