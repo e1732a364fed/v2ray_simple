@@ -1,7 +1,9 @@
 package netLayer
 
 import (
+	"encoding/binary"
 	"net"
+	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -39,7 +41,17 @@ func bindToDevice(fd int, device string, is6 bool) {
 			return
 		}
 	} else {
-		if err := windows.SetsockoptInt(windows.Handle(fd), windows.IPPROTO_IP, IP_UNICAST_IF, iface.Index); err != nil {
+
+		//https://github.com/xjasonlyu/tun2socks/pull/192/files
+
+		// For IPv4, this parameter must be an interface index in network byte order.
+		// Ref: https://learn.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options
+
+		var bytes [4]byte
+		binary.BigEndian.PutUint32(bytes[:], uint32(iface.Index))
+		index := *(*uint32)(unsafe.Pointer(&bytes[0]))
+
+		if err := windows.SetsockoptInt(windows.Handle(fd), windows.IPPROTO_IP, IP_UNICAST_IF, int(index)); err != nil {
 			if ce := utils.CanLogErr("BindToDevice failed"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
