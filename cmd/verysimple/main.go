@@ -214,7 +214,7 @@ func mainFunc() (result int) {
 		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
 	}
 
-	if loadConfigErr != nil && !defaultMachine.IsFlexible(interactive_mode, gui_mode) {
+	if loadConfigErr != nil && !IsFlexible(defaultMachine) {
 
 		if ce := utils.CanLogErr(willExitStr); ce != nil {
 			ce.Write(zap.Error(loadConfigErr))
@@ -358,7 +358,7 @@ func mainFunc() (result int) {
 	}
 
 	//没可用的listen/dial，而且还无法动态更改配置
-	if defaultMachine.NoFuture(interactive_mode, gui_mode) {
+	if NoFuture(defaultMachine) {
 		utils.Error(willExitStr)
 		return -1
 	}
@@ -397,7 +397,7 @@ func mainFunc() (result int) {
 		}
 	}
 
-	if defaultMachine.NothingRunning(interactive_mode, gui_mode) {
+	if NothingRunning(defaultMachine) {
 		utils.Warn(willExitStr)
 		return
 	}
@@ -412,4 +412,17 @@ func mainFunc() (result int) {
 		defaultMachine.Cleanup()
 	}
 	return
+}
+
+// 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
+func IsFlexible(m *machine.M) bool {
+	return interactive_mode || gui_mode || m.EnableApiServer
+}
+
+func NoFuture(m *machine.M) bool {
+	return !m.HasProxyRunning() && !IsFlexible(m)
+}
+
+func NothingRunning(m *machine.M) bool {
+	return !m.HasProxyRunning() && !(interactive_mode || gui_mode || m.ApiServerRunning)
 }
