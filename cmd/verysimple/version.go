@@ -11,6 +11,11 @@ Package main 读取配置文件，然后进行代理转发, 并选择性运行 c
 
 若 noquic给出，则不引用 advLayer/quic，否则 默认引用 advLayer/quic。
 quic大概占用 2MB 大小。
+
+若 notun给出，则不引用 proxy/tun, 否则 默认引用 proxy/tun
+tun大概占用 3.5MB 大小
+
+若gui给出，则会编译出 vs_gui 可执行文件, 会增加几MB大小.
 */
 package main
 

@@ -3,7 +3,6 @@
 package main
 
 // gui界面, 所属计划为 vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
-//tun 的支持 通过在这里引入 proxy/tun 包 实现.
 
 import (
 	"flag"
@@ -105,19 +104,33 @@ func setupDefaultPref() {
 func makeBasicControlsPage() ui.Control {
 	vbox := ui.NewVerticalBox()
 	vbox.SetPadded(true)
-	vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
 
-	hbox := ui.NewHorizontalBox()
-	hbox.SetPadded(true)
-	vbox.Append(hbox, false)
+	vsHbox := ui.NewHorizontalBox()
+	vsHbox.SetPadded(true)
+
+	vsToggleGroup := ui.NewGroup("开启或关闭vs代理")
+	vsToggleGroup.SetMargined(true)
+
+	vsVbox := ui.NewVerticalBox()
+	vsVbox.SetPadded(true)
+
+	vsToggleGroup.SetChild(vsVbox)
+	vsHbox.Append(vsToggleGroup, true)
+	vbox.Append(vsHbox, true)
+
+	//vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
+
+	toggleHbox := ui.NewHorizontalBox()
+	toggleHbox.SetPadded(true)
+	vsVbox.Append(toggleHbox, false)
 
 	toggleCheckbox := ui.NewCheckbox("Enable")
 	stopBtn := ui.NewButton("Stop")
 	startBtn := ui.NewButton("Start")
 
-	hbox.Append(toggleCheckbox, false)
-	hbox.Append(stopBtn, false)
-	hbox.Append(startBtn, false)
+	toggleHbox.Append(toggleCheckbox, false)
+	toggleHbox.Append(stopBtn, false)
+	toggleHbox.Append(startBtn, false)
 
 	{
 		var updateState = func(btn, cbx bool) {
@@ -184,90 +197,147 @@ func makeBasicControlsPage() ui.Control {
 
 	}
 
+	vsFileGroup := ui.NewGroup("选择配置文件")
+	vsFileVbox := ui.NewVerticalBox()
+	vsFileGroup.SetChild(vsFileVbox)
+	vsHbox.Append(vsFileGroup, true)
+
+	{
+		vsFileGroup.SetMargined(true)
+		vsFileVbox.SetPadded(true)
+
+		grid := ui.NewGrid()
+		grid.SetPadded(true)
+		vsFileVbox.Append(grid, false)
+
+		button := ui.NewButton("选择文件")
+		entry := ui.NewEntry()
+		entry.SetReadOnly(true)
+		button.OnClicked(func(*ui.Button) {
+			filename := ui.OpenFile(mainwin)
+			if filename == "" {
+				filename = "(cancelled)"
+			}
+			entry.SetText(filename)
+		})
+		grid.Append(button,
+			0, 0, 1, 1,
+			false, ui.AlignFill, false, ui.AlignFill)
+		grid.Append(entry,
+			1, 0, 1, 1,
+			true, ui.AlignFill, false, ui.AlignFill)
+
+		button = ui.NewButton("保存文件")
+		entry2 := ui.NewEntry()
+		entry2.SetReadOnly(true)
+		button.OnClicked(func(*ui.Button) {
+			filename := ui.SaveFile(mainwin)
+			if filename == "" {
+				filename = "(cancelled)"
+			}
+			entry2.SetText(filename)
+		})
+		grid.Append(button,
+			0, 1, 1, 1,
+			false, ui.AlignFill, false, ui.AlignFill)
+		grid.Append(entry2,
+			1, 1, 1, 1,
+			true, ui.AlignFill, false, ui.AlignFill)
+
+	}
+
 	vbox.Append(ui.NewHorizontalSeparator(), false)
 
 	systemGroup := ui.NewGroup("系统代理")
-	systemGroup.SetMargined(true)
-
 	systemHbox := ui.NewHorizontalBox()
-	systemHbox.SetPadded(true)
 	systemHbox.Append(systemGroup, true)
 
-	vbox.Append(systemHbox, true)
+	{
+		systemGroup.SetMargined(true)
+		systemHbox.SetPadded(true)
 
-	proxyForm := ui.NewForm()
-	proxyForm.SetPadded(true)
-	systemGroup.SetChild(proxyForm)
-	// systemProxyHbox.Append(proxyForm, true)
+		vbox.Append(systemHbox, true)
 
-	var newProxyToggle = func(form *ui.Form, isSocks5 bool) {
-		gp := currentUserPreference.Gui
-		var port = gp.HttpPort
-		var addr = gp.HttpAddr
+		proxyForm := ui.NewForm()
+		proxyForm.SetPadded(true)
+		systemGroup.SetChild(proxyForm)
+		// systemProxyHbox.Append(proxyForm, true)
 
-		str := "http"
+		var newProxyToggle = func(form *ui.Form, isSocks5 bool) {
+			gp := currentUserPreference.Gui
+			var port = gp.HttpPort
+			var addr = gp.HttpAddr
 
-		if isSocks5 {
-			str = "socks5"
-			port = gp.Socks5Port
-			addr = gp.Socks5Addr
+			str := "http"
+
+			if isSocks5 {
+				str = "socks5"
+				port = gp.Socks5Port
+				addr = gp.Socks5Addr
+			}
+
+			addrE := ui.NewEntry()
+			addrE.SetText(addr)
+			addrE.OnChanged(func(e *ui.Entry) {
+				if isSocks5 {
+					gp.Socks5Addr = e.Text()
+				} else {
+					gp.HttpAddr = e.Text()
+				}
+			})
+
+			portE := ui.NewEntry()
+			portE.SetText(port)
+			portE.OnChanged(func(e *ui.Entry) {
+				if isSocks5 {
+					gp.Socks5Port = e.Text()
+				} else {
+					gp.HttpPort = e.Text()
+				}
+			})
+
+			cb := ui.NewCheckbox("系统" + str)
+			cb.OnToggled(func(c *ui.Checkbox) {
+				netLayer.ToggleSystemProxy(isSocks5, addrE.Text(), portE.Text(), c.Checked())
+			})
+
+			proxyForm.Append("开关系统"+str, cb, false)
+			proxyForm.Append(str+"地址", addrE, false)
+			proxyForm.Append(str+"端口", portE, false)
 		}
 
-		addrE := ui.NewEntry()
-		addrE.SetText(addr)
-		addrE.OnChanged(func(e *ui.Entry) {
-			if isSocks5 {
-				gp.Socks5Addr = e.Text()
-			} else {
-				gp.HttpAddr = e.Text()
-			}
-		})
+		newProxyToggle(proxyForm, true)
 
-		portE := ui.NewEntry()
-		portE.SetText(port)
-		portE.OnChanged(func(e *ui.Entry) {
-			if isSocks5 {
-				gp.Socks5Port = e.Text()
-			} else {
-				gp.HttpPort = e.Text()
-			}
-		})
-
-		cb := ui.NewCheckbox("系统" + str)
-		cb.OnToggled(func(c *ui.Checkbox) {
-			netLayer.ToggleSystemProxy(isSocks5, addrE.Text(), portE.Text(), c.Checked())
-		})
-
-		proxyForm.Append("开关系统"+str, cb, false)
-		proxyForm.Append(str+"地址", addrE, false)
-		proxyForm.Append(str+"端口", portE, false)
+		newProxyToggle(proxyForm, false)
 	}
 
-	newProxyToggle(proxyForm, true)
-
-	newProxyToggle(proxyForm, false)
-
 	dnsGroup := ui.NewGroup("系统dns")
-	dnsGroup.SetMargined(true)
 	systemHbox.Append(dnsGroup, true)
 
-	dnsentryForm := ui.NewForm()
-	dnsentryForm.SetPadded(true)
-	dnsGroup.SetChild(dnsentryForm)
+	{
+		dnsGroup.SetMargined(true)
 
-	dnsEntry := ui.NewEntry()
-	dnsentryForm.Append("dns", dnsEntry, false)
+		dnsentryForm := ui.NewForm()
+		dnsentryForm.SetPadded(true)
+		dnsGroup.SetChild(dnsentryForm)
 
-	dnsConfirmBtn := ui.NewButton("提交")
-	dnsConfirmBtn.OnClicked(func(b *ui.Button) {
-		str := dnsEntry.Text()
-		ip := net.ParseIP(str)
-		if ip == nil {
-			return
+		dnsEntry := ui.NewEntry()
+		if ds := netLayer.GetSystemDNS(); len(ds) > 0 {
+			dnsEntry.SetText(ds[0])
 		}
-		netLayer.SetSystemDNS(str)
-	})
-	dnsentryForm.Append("提交", dnsConfirmBtn, false)
+		dnsentryForm.Append("dns", dnsEntry, false)
+
+		dnsConfirmBtn := ui.NewButton("提交")
+		dnsConfirmBtn.OnClicked(func(b *ui.Button) {
+			str := dnsEntry.Text()
+			ip := net.ParseIP(str)
+			if ip == nil {
+				return
+			}
+			netLayer.SetSystemDNS(str)
+		})
+		dnsentryForm.Append("提交", dnsConfirmBtn, false)
+	}
 
 	entriesGroup = ui.NewGroup("Entries")
 	entriesGroup.Hide()
@@ -370,92 +440,6 @@ func makeConfPage() ui.Control {
 	return result
 }
 
-func makeDataChoosersPage() ui.Control {
-	hbox := ui.NewHorizontalBox()
-	hbox.SetPadded(true)
-
-	vbox := ui.NewVerticalBox()
-	vbox.SetPadded(true)
-	hbox.Append(vbox, false)
-
-	// vbox.Append(ui.NewDatePicker(), false)
-	// vbox.Append(ui.NewTimePicker(), false)
-	// vbox.Append(ui.NewDateTimePicker(), false)
-	// vbox.Append(ui.NewFontButton(), false)
-	// vbox.Append(ui.NewColorButton(), false)
-
-	hbox.Append(ui.NewVerticalSeparator(), false)
-
-	vbox = ui.NewVerticalBox()
-	vbox.SetPadded(true)
-	hbox.Append(vbox, true)
-
-	grid := ui.NewGrid()
-	grid.SetPadded(true)
-	vbox.Append(grid, false)
-
-	button := ui.NewButton("Open File")
-	entry := ui.NewEntry()
-	entry.SetReadOnly(true)
-	button.OnClicked(func(*ui.Button) {
-		filename := ui.OpenFile(mainwin)
-		if filename == "" {
-			filename = "(cancelled)"
-		}
-		entry.SetText(filename)
-	})
-	grid.Append(button,
-		0, 0, 1, 1,
-		false, ui.AlignFill, false, ui.AlignFill)
-	grid.Append(entry,
-		1, 0, 1, 1,
-		true, ui.AlignFill, false, ui.AlignFill)
-
-	button = ui.NewButton("Save File")
-	entry2 := ui.NewEntry()
-	entry2.SetReadOnly(true)
-	button.OnClicked(func(*ui.Button) {
-		filename := ui.SaveFile(mainwin)
-		if filename == "" {
-			filename = "(cancelled)"
-		}
-		entry2.SetText(filename)
-	})
-	grid.Append(button,
-		0, 1, 1, 1,
-		false, ui.AlignFill, false, ui.AlignFill)
-	grid.Append(entry2,
-		1, 1, 1, 1,
-		true, ui.AlignFill, false, ui.AlignFill)
-
-	// msggrid := ui.NewGrid()
-	// msggrid.SetPadded(true)
-	// grid.Append(msggrid,
-	// 	0, 2, 2, 1,
-	// 	false, ui.AlignCenter, false, ui.AlignStart)
-
-	// button = ui.NewButton("Message Box")
-	// button.OnClicked(func(*ui.Button) {
-	// 	ui.MsgBox(mainwin,
-	// 		"This is a normal message box.",
-	// 		"More detailed information can be shown here.")
-	// })
-	// msggrid.Append(button,
-	// 	0, 0, 1, 1,
-	// 	false, ui.AlignFill, false, ui.AlignFill)
-	// button = ui.NewButton("Error Box")
-	// button.OnClicked(func(*ui.Button) {
-	// 	ui.MsgBoxError(mainwin,
-	// 		"This message box describes an error.",
-	// 		"More detailed information can be shown here.")
-	// })
-	// msggrid.Append(button,
-	// 	1, 0, 1, 1,
-	// 	false, ui.AlignFill, false, ui.AlignFill)
-
-	return hbox
-}
-
 func windowClose(*ui.Window) bool {
 	return true
 }
@@ -484,7 +468,7 @@ func setupUI() {
 
 	tab.Append("基础控制", makeBasicControlsPage())
 	tab.Append("配置控制", makeConfPage())
-	tab.Append("Data Choosers", makeDataChoosersPage())
+	//tab.Append("Data Choosers", makeDataChoosersPage())
 
 	for i := 0; i < tab.NumPages(); i++ {
 		tab.SetMargined(i, true)
