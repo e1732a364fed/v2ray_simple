@@ -21,16 +21,25 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tagName }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      # https://github.com/marketplace/actions/run-on-architecture
+      - uses: uraimo/run-on-arch-action@v2
+        name: Run commands
+        id: runcmd
         with:
-          go-version: 1.19
+          arch: aarch64
+          distro: ubuntu_latest
 
-      - name: Run commands
-        run: |
-          sudo apt-get update -q -y
-          sudo apt-get install -q -y build-essential libgtk-3-dev wget gcc-aarch64-linux-gnu
-          cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
+          githubToken: ${{ github.token }}
+
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y build-essential libgtk-3-dev wget
+            wget https://go.dev/dl/go1.19.4.linux-arm64.tar.gz
+            tar -C /usr/local -xzf go1.19.4.linux-arm64.tar.gz
+            echo "/usr/local/go/bin" >> $GITHUB_PATH
+
+          run: |
+            cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
