@@ -193,7 +193,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			s.devName = "utun5"
 		case "windows":
 			s.devName = "vs_wintun"
-		case "liunx":
+		case "linux":
 			s.devName = "vs_tun"
 		}
 
