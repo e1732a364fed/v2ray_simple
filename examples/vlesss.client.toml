@@ -114,6 +114,9 @@ protocol = "direct" # direct 这个dial 是不需要特地写出的, 程序会�
 
 [[route]]
 country = ["CN"]
-domain = ["geosite:cn"]
+domain = ["geosite:cn","geosite:private"]   
 ip = ["private"]        # 所有内网ip，等价于 v2ray的 "geoip:private"
 toTag = "mydirect"
+
+# domain的 geosite:private 和 ip的private 并不等价, domain包含 "localhost"等字符串, 见
+# https://github.com/v2fly/domain-list-community/blob/master/data/private
