@@ -111,11 +111,11 @@ func printAllState(w io.Writer) {
 	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
 
 	for i, s := range allServers {
-		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
+		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
 
 	}
 	for i, c := range allClients {
-		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
+		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
 	}
 
 }
@@ -281,6 +281,8 @@ func hotLoadListenConf(conf []*proxy.ListenConf) (ok bool) {
 			listenCloserList = append(listenCloserList, lis)
 			allServers = append(allServers, inServer)
 
+		} else {
+			ok = false
 		}
 
 	}

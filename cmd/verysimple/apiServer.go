@@ -30,6 +30,10 @@ func init() {
 
 }
 
+/*
+curl -k https://127.0.0.1:48345/api/allstate
+*/
+
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
 func tryRunApiServer() {
 
@@ -73,6 +77,8 @@ func runApiServer(adminUUID string) {
 
 			listenIndex, err := strconv.Atoi(listenIndexStr)
 			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+
 				w.Write([]byte("illegal parameter"))
 				return
 			}
@@ -86,6 +92,8 @@ func runApiServer(adminUUID string) {
 
 			dialIndex, err := strconv.Atoi(dialIndexStr)
 			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+
 				w.Write([]byte("illegal parameter"))
 				return
 			}
@@ -94,22 +102,23 @@ func runApiServer(adminUUID string) {
 	})
 
 	ser.addServerHandle(mux, "hotLoadUrl", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
+		if e := r.ParseForm(); e != nil {
+			if ce := utils.CanLogWarn("api server ParseForm failed"); ce != nil {
+				ce.Write(zap.Error(e))
+				return
+			}
 
-		listenStr := q.Get("listen")
-		dialStr := q.Get("dial")
+		}
 
 		f := r.Form
+		//log.Println("f", f, len(f))
 
-		if listenStr == "" {
-			listenStr = f.Get("listen")
-		}
-		if dialStr == "" {
-			dialStr = f.Get("dial")
-		}
+		listenStr := f.Get("listen")
+		dialStr := f.Get("dial")
 
 		var resultStr string = "result:"
 		if listenStr != "" {
+
 			if ce := utils.CanLogInfo("api server got hot load listen request"); ce != nil {
 				ce.Write(zap.String("listenUrl", listenStr))
 			}
@@ -117,10 +126,12 @@ func runApiServer(adminUUID string) {
 			if e == nil {
 				resultStr += "\nhot load listen Url Success for " + listenStr
 			} else {
+				w.WriteHeader(http.StatusInternalServerError)
 				resultStr += "\nhot load listen Url Failed for " + listenStr
 			}
 		}
 		if dialStr != "" {
+
 			if ce := utils.CanLogInfo("api server got hot load dial request"); ce != nil {
 				ce.Write(zap.String("dialUrl", dialStr))
 			}
@@ -128,6 +139,7 @@ func runApiServer(adminUUID string) {
 			if e == nil {
 				resultStr += "\nhot load dial Url Success for " + dialStr
 			} else {
+				w.WriteHeader(http.StatusInternalServerError)
 				resultStr += "\nhot load dial Url Failed for " + dialStr
 			}
 		}
@@ -142,7 +154,7 @@ func runApiServer(adminUUID string) {
 		WriteTimeout: 30 * time.Second,
 		TLSConfig: &tls.Config{
 			InsecureSkipVerify: true,
-			Certificates:       tlsLayer.GenerateRandomTLSCert(),
+			Certificates:       tlsLayer.GenerateRandomTLSCert(), //curl -k
 		},
 	}
 
@@ -180,8 +192,20 @@ func (ser *apiServer) addServerHandle(mux *http.ServeMux, name string, f func(w 
 func (ser *apiServer) basicAuth(realfunc http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		if ser.nopass {
+		doFunc := func() {
+			if ce := utils.CanLogInfo("api server got new request"); ce != nil {
+				ce.Write(
+					zap.String("method", r.Method),
+					zap.String("requestURL", r.RequestURI),
+				)
+			}
+
 			realfunc.ServeHTTP(w, r)
+
+		}
+
+		if ser.nopass {
+			doFunc()
 			return
 		}
 
@@ -194,7 +218,8 @@ func (ser *apiServer) basicAuth(realfunc http.HandlerFunc) http.HandlerFunc {
 			passwordMatch := (subtle.ConstantTimeCompare(passwordHash[:], ser.admin_auth.expectedPasswordHash[:]) == 1)
 
 			if usernameMatch && passwordMatch {
-				realfunc.ServeHTTP(w, r)
+
+				doFunc()
 				return
 			}
 		}

@@ -206,6 +206,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		if ce := utils.CanLogInfo("Listening"); ce != nil {
 
 			ce.Write(
+				zap.String("tag", inServer.GetTag()),
 				zap.String("protocol", proxy.GetFullName(inServer)),
 				zap.String("listen_addr", inServer.AddrStr()),
 				zap.String("defaultClient", proxy.GetFullName(defaultOutClient)),
