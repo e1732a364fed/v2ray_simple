@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"strings"
+
 	"golang.org/x/exp/constraints"
 	"golang.org/x/exp/slices"
 )
@@ -88,4 +90,29 @@ func GetMapSortedKeySlice[K constraints.Ordered, V any](theMap map[K]V) []K {
 	slices.Sort(result)
 
 	return result
+}
+
+//本作的惯例, 经常使用如下字符串作为配置： s = "e1:v1\ne2:v2",
+func CommonSplit(s, e1, e2 string) (ok bool, v1, v2 string) {
+	s = strings.TrimSuffix(s, "\n")
+	lines := strings.SplitN(s, "\n", 2)
+	if len(lines) != 2 {
+		return
+	}
+
+	strs1 := strings.SplitN(lines[0], ":", 2)
+	if strs1[0] != e1 {
+
+		return
+	}
+	v1 = strs1[1]
+
+	strs2 := strings.SplitN(lines[1], ":", 2)
+	if strs2[0] != e2 {
+
+		return
+	}
+	v2 = strs2[1]
+	ok = true
+	return
 }

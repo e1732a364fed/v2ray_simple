@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"net/url"
-	"strings"
 	"sync"
 )
 
@@ -168,33 +167,13 @@ func (ph *UserPass) InitWithUrl(u *url.URL) bool {
 
 //uuid: "user:xxxx\npass:xxxx"
 func (ph *UserPass) InitWithStr(str string) (ok bool) {
-	str = strings.TrimSuffix(str, "\n")
-	strs := strings.SplitN(str, "\n", 2)
-	if len(strs) != 2 {
+	var v1, v2 string
+	ok, v1, v2 = CommonSplit(str, "user", "pass")
+	if !ok {
 		return
 	}
-
-	var potentialUser, potentialPass string
-
-	ustrs := strings.SplitN(strs[0], ":", 2)
-	if ustrs[0] != "user" {
-
-		return
-	}
-	potentialUser = ustrs[1]
-
-	pstrs := strings.SplitN(strs[1], ":", 2)
-	if pstrs[0] != "pass" {
-
-		return
-	}
-	potentialPass = pstrs[1]
-
-	if potentialUser != "" && potentialPass != "" {
-		ph.UserID = []byte(potentialUser)
-		ph.Password = []byte(potentialPass)
-	}
-	ok = true
+	ph.UserID = []byte(v1)
+	ph.Password = []byte(v2)
 	return
 }
 

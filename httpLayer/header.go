@@ -367,10 +367,18 @@ func (c *HeaderConn) Read(p []byte) (n int, err error) {
 			rp, buf, err = c.H.ReadRequest(c.Conn)
 			if err != nil {
 
-				err = &utils.ErrBuffer{
-					Err: utils.ErrInErr{ErrDesc: "http HeaderConn Read failed, at serverEnd", ErrDetail: err},
-					Buf: rp.WholeRequestBuf,
+				const errDesc = "http HeaderConn Read failed, at serverEnd"
+
+				if rp.WholeRequestBuf != nil {
+
+					err = &utils.ErrBuffer{
+						Err: utils.ErrInErr{ErrDesc: errDesc, ErrDetail: err},
+						Buf: rp.WholeRequestBuf,
+					}
+				} else {
+					err = &utils.ErrInErr{ErrDesc: errDesc, ErrDetail: err}
 				}
+
 				return
 			}
 			if c.ReadOkCallback != nil {

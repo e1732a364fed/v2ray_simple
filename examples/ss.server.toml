@@ -1,6 +1,7 @@
 [[listen]]
 protocol = "shadowsocks"
-uuid = "method:AES-128-GCM\npass:iloveverysimple"
 host = "127.0.0.1"
 port = 4434
-#network = "mix"
+uuid = "method:AES-128-GCM\npass:iloveverysimple"
+
+#network = "dual"

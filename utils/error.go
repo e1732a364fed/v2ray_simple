@@ -81,7 +81,13 @@ func (ef ErrBuffer) Unwarp() error {
 
 func (ef ErrBuffer) Error() string {
 
-	return ef.Err.Error() + ", with Buffer."
+	if ef.Buf != nil {
+		return ef.Err.Error() + ", with Buffer,len " + strconv.Itoa(ef.Buf.Len())
+
+	} else {
+		return ef.Err.Error() + ", with nil Buffer."
+
+	}
 }
 
 // ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况. 类似 fmt.Errorf.

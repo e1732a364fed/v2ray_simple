@@ -144,7 +144,13 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 
 		if firstbuffer := be.Buf; firstbuffer == nil {
 			//不应该，至少能读到1字节的。
+			if ce := utils.CanLogErr("No FirstBuffer"); ce != nil {
 
+				ce.Write(
+					zap.Any("params", be.Buf),
+				)
+
+			}
 			panic("No FirstBuffer")
 
 		} else {

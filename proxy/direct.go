@@ -32,12 +32,12 @@ func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 	d := &DirectClient{}
 
 	if dc.SendThrough != "" {
-		st, err := netLayer.StrToNetAddr(netLayer.MixNetworkName, dc.SendThrough)
+		st, err := netLayer.StrToNetAddr(netLayer.DualNetworkName, dc.SendThrough)
 		if err != nil {
 			return nil, err
 		}
-		d.localTCPAddr = st.(*netLayer.TCP_or_UDPAddr).TCPAddr
-		d.localUDPAddr = st.(*netLayer.TCP_or_UDPAddr).UDPAddr
+		d.localTCPAddr = st.(*netLayer.TCPUDPAddr).TCPAddr
+		d.localUDPAddr = st.(*netLayer.TCPUDPAddr).UDPAddr
 
 	}
 
@@ -64,7 +64,7 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 
 		if d.Sockopt != nil {
 			if d.localTCPAddr == nil {
-				result, err = target.DialWithOpt(d.Sockopt, nil) //尽量避免把nil的 *net.TCPAddr 装箱到 net.Addr里
+				result, err = target.DialWithOpt(d.Sockopt, nil) //避免把nil的 *net.TCPAddr 装箱到 net.Addr里
 
 			} else {
 				result, err = target.DialWithOpt(d.Sockopt, d.localTCPAddr)

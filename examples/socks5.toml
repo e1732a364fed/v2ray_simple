@@ -1,21 +1,25 @@
-# 本文件 可 测试socks 的 dial, 以及密码认证 等功能 是否可用；socks5进，socks5出，然后又socks5进，direct出
+# 本文件 可 测试socks 的 dial, 以及密码认证 等功能 是否可用；
+# 本文件所定义的传导链是： ->socks5->socks5->direct
 
 # 另外你可以看到，listen、dial和 route的顺序是可以打乱的，
 #  这样 自己可以方便地  把相关联 的配置 放在一起。
 
+# vs暂未给出http代理的示例配置，因为完全和socks5类似，只需要把 protocol 改为 http即可
+
 [[listen]]
 tag = "my_socks5_1"
 protocol = "socks5"
-host = "127.0.0.1" 
-port = 10800       
+host = "127.0.0.1"
+port = 10800
 
 [[dial]]
-protocol = "socks5"  
+protocol = "socks5"
 tag = "dial1"
-host = "127.0.0.1"  
+host = "127.0.0.1"
 port = 10801
 
-#uuid = "user:very\npass:simple"
+#uuid = "user:very\npass:simple"    #vs 的逻辑是，uuid相当于一个登陆token, 能完整确认一个用户的身份以及登陆权限, 用户名和密码加起来提供了足够的信息，足以用做token, 所以都填到uuid里.
+
 uuid = "user:admin\npass:nimda"
 
 [[route]]
@@ -23,8 +27,8 @@ fromTag = ["my_socks5_1"]
 toTag = "dial1"
 
 [[listen]]
-tag = "my_socks5_2"   
-protocol = "socks5" 
+tag = "my_socks5_2"
+protocol = "socks5"
 host = "127.0.0.1"
 port = 10801
 
@@ -40,7 +44,10 @@ pass:nimda
 # 或者这种，但是看起来不太美观
 #uuid = "user:very\npass:simple"
 
-users = [ {user = "very", pass = "simple"}, {user = "v2ray", pass = "hard"} ]   #也可以用users 来存储多个用户
+users = [
+    { user = "very", pass = "simple" },
+    { user = "v2ray", pass = "hard" },
+] #也可以用users 来存储多个用户
 
 [[dial]]
 tag = "direct"

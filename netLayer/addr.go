@@ -641,17 +641,17 @@ func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
 	return
 }
 
-const MixNetworkName = "tcp/udp"
+const DualNetworkName = "tcp/udp"
 
-type TCP_or_UDPAddr struct {
+type TCPUDPAddr struct {
 	*net.TCPAddr
 	*net.UDPAddr
 }
 
-func (tu *TCP_or_UDPAddr) Network() string {
-	return MixNetworkName
+func (tu *TCPUDPAddr) Network() string {
+	return DualNetworkName
 }
-func (tu *TCP_or_UDPAddr) String() string {
+func (tu *TCPUDPAddr) String() string {
 	return tu.TCPAddr.String() + " / " + tu.UDPAddr.String()
 }
 
@@ -675,22 +675,42 @@ func StrToNetAddr(network, s string) (net.Addr, error) {
 		}
 		return net.ResolveUDPAddr(network, s)
 
-	case Mix:
-		ta, e := StrToNetAddr("tcp", s)
-		if e != nil {
-			return nil, e
-		}
+	case Dual:
+		//两种配置方式，一种是给出一个地址，tcp和udp均使用该地址；
+		// 另一种是 分别指出 两种协议的 地址.
 
-		ua, e := StrToNetAddr("udp", s)
-		if e != nil {
-			return nil, e
-		}
+		if strings.HasPrefix(s, "tcp:") { //tcp:127.0.0.1:80\nudp:127.0.0.1:12345
 
-		return &TCP_or_UDPAddr{TCPAddr: ta.(*net.TCPAddr), UDPAddr: ua.(*net.UDPAddr)}, nil
+			ok, t, u := utils.CommonSplit(s, "tcp", "udp")
+
+			if ok {
+				return makeTcpUdpAddr(t, u)
+			} else {
+				return nil, utils.ErrInvalidData
+
+			}
+
+		} else {
+			return makeTcpUdpAddr(s, s)
+		}
 
 	case UNIX:
 		return net.ResolveUnixAddr(network, s)
 	default:
 		return nil, utils.ErrWrongParameter
 	}
+}
+
+func makeTcpUdpAddr(t, u string) (*TCPUDPAddr, error) {
+	ta, e := StrToNetAddr("tcp", t)
+	if e != nil {
+		return nil, e
+	}
+
+	ua, e := StrToNetAddr("udp", u)
+	if e != nil {
+		return nil, e
+	}
+
+	return &TCPUDPAddr{TCPAddr: ta.(*net.TCPAddr), UDPAddr: ua.(*net.UDPAddr)}, nil
 }

@@ -30,17 +30,20 @@ verysimple 研发了一些新技术，使用自研架构，可以加速，目前
 
 vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛的utls支持，grpc回落，交互模式等。
 
-支持的功能有:
+_喜大泪奔，本作的先行研究启发了xray项目，使其开发了 vision 流控。本作也算为代理界做出了一些贡献～_
 
-socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1)/vmess, 多用户,
 
-ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
+## 支持的功能
+
+socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/**v1**)/vmess/shadowsocks, 多用户, http头
+
+ws(以及earlydata)/grpc(以及multiMode,uTls，以及 **支持回落的 grpcSimple**)/quic(以及**hy阻控、手动挡** 和 0-rtt)/smux, 
 
 dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,【tls lazy encrypt】, http伪装头,PROXY protocol v1/v2 监听,
+tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听,
 
-cli(交互模式)/apiServer, Docker, docker-compose.
+cli(**交互模式**)/apiServer, Docker, docker-compose.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -49,17 +52,9 @@ cli(交互模式)/apiServer, Docker, docker-compose.
 
 ## 安装方式：
 
-对觉得本作安装很复杂的人，我再强调一遍: 
-
-本作对标的是 v2ray和xray等内核，不是对标的“安装脚本”，**本作是个内核**，再说一遍。内核能支持各种交互模式已经很强大了好不好。
-
-你见哪个内核项目负责人自己上来就提供完整一键脚本的？都是其他人帮着提供的，我这么忙哪有时间研究一键脚本。有需求的你可以写一个然后提PR啊。
-
-本内核完全是我自己写的，完全不同于 xray这种 fork的版本，所以我很忙的。
-
 ### 下载安装
 
-如果是 linux服务器，可以参考我的一篇指导文章 [install.md](docs/install.md)
+如果是 linux服务器，可参考指导文章 [install.md](docs/install.md).
 
 电脑客户端的话直接自己到release下载就行。
 
@@ -136,7 +131,7 @@ verysimple -c server.json
 
 极简模式暂不支持 ws/grpc 特性.
 
-极简模式继承自v2simple，理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
+极简模式继承自 v2simple, 理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
 
 verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
@@ -300,7 +295,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 使用readv 进行加速
 
-其它监听协议还支持 socks5, http, dokodemo
+其它监听协议还支持 socks5, http, dokodemo,vmess, simplesocks, shadowsocks 等
 
 多种配置文件格式,包括自有的 toml标准格式
 
@@ -314,11 +309,11 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持grpc，与 xray/v2ray兼容; 还有 grpcSimple，见上文。
 
-真实 nginx响应。
+真实 nginx拒绝响应。
 
 支持 quic以及hysteria 阻控，与xray/v2ray兼容（详情见wiki）,还新开发了“手动挡”模式
 
-api服务器；tproxy 透明代理； http伪装头.
+api服务器；tproxy 透明代理； http头(即所谓的混淆、伪装头等), 该模式下还支持回落。
 
 本作支持 trojan-go 的 “可插拔模块”模式的。而且也可以用build tag 来开启或关闭某项功能。不过本作为了速度，耦合高一些。
 
@@ -504,9 +499,9 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后作者不承�
 
 启发自我fork的v2simple，不过原作者的架构还是有点欠缺，我就直接完全重构了，完全使用我自己的代码。
 
-## 额外说明 以及 开发计划
+## 开发计划
 
-计划有
+远期计划有
 
 1. 完善并实现 vless v1协议
 2. 什么时候搞一个 verysimple_c 项目，用c语言照着写一遍; 也就是说，就算本verysimple没有任何技术创新，单单架构简单也是有技术优势的，可以作为参考 实现更底层的 c语言实现。之后本以为可以加入naiveproxy，但是实际发现没那么简单.
@@ -597,36 +592,13 @@ verysimple 版本 v1.0.3
 
 测速时，打开的窗口尽量少，且只留浏览器的窗口在最前方。已经证明多余的窗口会影响速率。尤其是这种消耗cpu性能的情况，在核显的电脑上确实要保证cpu其它压力减到最小。
 
-## 交流
+## 交流与思想
 
 群肯定是有的。只在此山中，云深不知处。实际上每一个群都有可能是verysimple群，每一个成员都有可能是verysimple的作者。
 
-如果你实在找不到群，你不妨自己建一个，然后自称verysimple项目作者。
-
-建议所有的人都认真阅读README以及其它所有有文字的文件和页面；
-
-有能力的人要阅读整个verysimple项目的所有代码；
-
-希望每一个人都能站出来，自豪地说，“我就是原作者”，并且能够滔滔不绝地讲解自己对verysimple的架构的理解。
-
-如果你能fork，并青出于蓝，那么我甘拜下风。
-
-也希望本项目能够普及到世界上所有需要学习相关技术的国家，希望所有的想要学习代码的人都能够先学习中文。
+如果你实在找不到群，你不妨自己建一个。希望每一个人都能站出来，自豪地说，“我就是原作者”，并且能够滔滔不绝地讲解自己对verysimple的架构的理解。关键不在于谁是作者，一个作者倒下，千万个作者会站起来。
 
 如果本作作者突然停更，这里允许任何人以 verysimple 作者的名义fork并 接盘。你只要声称自己是原作者，忘记了github和自己邮箱的密码，只好重开，这不就ok了。
-
-关键不在于谁是作者，一个作者倒下，千万个作者会站起来。
-
-我们的思想 生生不息，追求自由的人们啊，一起奋斗吧！
-
->鱼，我所欲也；熊掌，亦我所欲也。二者不可得兼，舍鱼而取熊掌者也。生，亦我所欲也；义，亦我所欲也。二者不可得兼，舍生而取义者也。
-
->砍头不要紧，
-只要主义真。
-杀了夏明翰，
-还有后来人。
-
-
 
 
 # 免责声明与鸣谢

@@ -8,6 +8,17 @@ import (
 	"gonum.org/v1/gonum/stat/combin"
 )
 
+func TestCommonSpit(t *testing.T) {
+	realv1 := "v1"
+	realv2 := "v2"
+	s := "e1:" + realv1 + "\ne2:" + realv2
+	ok, v1, v2 := utils.CommonSplit(s, "e1", "e2")
+
+	if !ok || realv1 != v1 || realv2 != v2 {
+		t.FailNow()
+	}
+}
+
 var x = []string{"AA", "BB", "CC", "DD"}
 var y = []int{1, 2, 3, 4}
 

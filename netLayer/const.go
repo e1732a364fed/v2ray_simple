@@ -5,7 +5,7 @@ const (
 	// Transport Layer Protocols, 使用uint16 mask，所以最多支持16种
 	TCP uint16 = 1 << iota
 	UDP
-	Mix  //use both tcp and udp
+	Dual //use both tcp and udp
 	UNIX //unix domain socket
 	IP
 	Raw_socket
@@ -21,8 +21,8 @@ func StrToTransportProtocol(s string) uint16 {
 		return TCP
 	case "udp", "udp4", "udp6", "UDP", "UDP4", "UDP6":
 		return UDP
-	case "mix", "mixed", "Mix", "MIX":
-		return Mix
+	case "dual", "mix", "mixed", "Mix", "MIX":
+		return Dual
 	case "unix", "Unix", "UNIX":
 		return UNIX
 	case "raw", "RAW":

@@ -22,10 +22,29 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-const vmess_security_confStr string = "vmess_security"
-
 func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
+}
+
+const Security_confStr string = "vmess_security"
+
+func GetEncryptAlgo(dc *proxy.DialConf) (result string) {
+
+	if len(dc.Extra) > 0 {
+		if thing := dc.Extra[Security_confStr]; thing != nil {
+			if str, ok := thing.(string); ok {
+
+				result = str
+
+			}
+		}
+	}
+
+	if dc.EncryptAlgo != "" {
+		result = dc.EncryptAlgo
+	}
+
+	return result
 }
 
 type ClientCreator struct{}
@@ -51,7 +70,7 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 			dc.Extra = make(map[string]any)
 		}
 
-		dc.Extra[vmess_security_confStr] = security
+		dc.Extra[Security_confStr] = security
 
 	}
 	return dc, nil
@@ -66,26 +85,11 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	c.V2rayUser = utils.V2rayUser(uuid)
 	c.opt = OptChunkStream
 
-	hasSetSecurityByExtra := false
+	var ea string = GetEncryptAlgo(dc)
 
-	if len(dc.Extra) > 0 {
-		if thing := dc.Extra[vmess_security_confStr]; thing != nil {
-			if str, ok := thing.(string); ok {
+	if err := c.specifySecurityByStr(ea); err != nil {
 
-				err = c.specifySecurityByStr(str)
-
-				if err == nil {
-					hasSetSecurityByExtra = true
-				} else {
-					return nil, err
-				}
-
-			}
-		}
-	}
-
-	if !hasSetSecurityByExtra {
-		c.specifySecurityByStr("")
+		return nil, err
 	}
 
 	return c, nil

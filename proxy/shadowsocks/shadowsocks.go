@@ -18,14 +18,6 @@ https://github.com/shadowsocks/shadowsocks-org/wiki/AEAD-Ciphers
 ss不像vmess等协议一样，只使用一种传输层协议来传输 tcp和udp数据；而是：用tcp传tcp，用udp传udp。
 如此的话，特征必很明显。
 
-还有一个重要的问题，就是，我们vs的架构，在设计之初，就是为vmess/vless/trojan等 只需要一种传输层协议 来获取 多种传输层协议的客户端等数据的；
-
-而为了支持ss，以目前的vs架构来说，要同时写两个listen，一个监听tcp，一个监听udp，如此才能做到。
-
-而且对于client来说也比较棘手，因为我们的架构只认为需要dial单一的传输层协议就可以与一个服务端完整通信，所以配置文件里需要配置network指明使用的是哪个传输层协议；而如果是ss的模式的话，则客户端对tcp和udp都要拨号，也十分麻烦。
-
-
-
 另外，本包是普通的ss AEAD Ciphers ，不过它还是有问题。所以以后要研究ss-2022
 
 https://github.com/shadowsocks/shadowsocks-org/issues/183
@@ -175,27 +167,12 @@ func (ph *MethodPass) InitWithUrl(u *url.URL) bool {
 
 //uuid: "method:xxxx\npass:xxxx"
 func (ph *MethodPass) InitWithStr(str string) (ok bool) {
-	str = strings.TrimSuffix(str, "\n")
-	strs := strings.SplitN(str, "\n", 2)
-	if len(strs) != 2 {
-		return
-	}
 
 	var potentialMethod, potentialPass string
-
-	ustrs := strings.SplitN(strs[0], ":", 2)
-	if ustrs[0] != "method" {
-
+	ok, potentialMethod, potentialPass = utils.CommonSplit(str, "method", "pass")
+	if !ok {
 		return
 	}
-	potentialMethod = ustrs[1]
-
-	pstrs := strings.SplitN(strs[1], ":", 2)
-	if pstrs[0] != "pass" {
-
-		return
-	}
-	potentialPass = pstrs[1]
 
 	if potentialMethod != "" && potentialPass != "" {
 		ph.Method = potentialMethod
