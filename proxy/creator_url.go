@@ -139,7 +139,7 @@ func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
 	}
 }
 
-//SetAddrStr, setNetwork
+//SetAddrStr, setNetwork, Isfullcone
 func configCommonByURL(baseI BaseInterface, u *url.URL) {
 	if u.Scheme != DirectName {
 		baseI.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们 默认 配置里肯定给了port

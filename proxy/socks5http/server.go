@@ -52,14 +52,17 @@ func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 }
 
 func newServer() *Server {
-	return &Server{}
+	return &Server{
+		hs: http.NewServer(),
+		ss: socks5.NewServer(),
+	}
 }
 
 type Server struct {
 	proxy.Base
 
-	hs http.Server
-	ss socks5.Server
+	hs *http.Server
+	ss *socks5.Server
 }
 
 func (*Server) Name() string {

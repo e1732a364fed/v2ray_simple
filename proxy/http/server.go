@@ -51,7 +51,7 @@ type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 
-	s := newServer()
+	s := NewServer()
 	var userPass utils.UserPass
 	if userPass.InitWithUrl(u) {
 		s.AddUser(&userPass)
@@ -60,7 +60,7 @@ func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-	s := newServer()
+	s := NewServer()
 	if str := lc.Uuid; str != "" {
 		var userPass utils.UserPass
 		if userPass.InitWithStr(str) {
@@ -89,7 +89,7 @@ type Server struct {
 	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。之前本以为connect就可以搞定一切，后来实测发现 wget 确实在 非https时 会用 纯http请求的方式 请求代理。所以 一般 OnlyConnect 为 false即可.
 }
 
-func newServer() *Server {
+func NewServer() *Server {
 	s := &Server{
 		MultiUserMap: utils.NewMultiUserMap(),
 	}

@@ -297,7 +297,7 @@ func (b *Base) GetAdvServer() advLayer.Server {
 	return b.AdvS
 }
 
-//setNetwork, Xver, Tag,Sockopt,Header,AdvancedL, InitAdvLayer
+//setNetwork, Xver, Tag,Sockopt, IsFullcone, Header,AdvancedL, InitAdvLayer
 func (b *Base) ConfigCommon(cc *CommonConf) {
 
 	b.setNetwork(cc.Network)
