@@ -52,7 +52,7 @@ type Conf struct {
 	RejectUnknownSni bool //only server
 	CipherSuites     []uint16
 
-	Extra map[string]any
+	Extra map[string]any //用于shadowTls
 }
 
 func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {

@@ -34,6 +34,7 @@ type StandardConf struct {
 var StandardConfSynonyms = [][2]string{
 	{"advancedLayer", "adv"},
 	{"tls_rejectUnknownSni", "rejectUnknownSni"},
+	{"utls = true", `tls_type = "utls"`},
 }
 
 var StandardConfBytesSynonyms [][2][]byte

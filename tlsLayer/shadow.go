@@ -14,6 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//https://github.com/ihciah/shadow-tls/blob/master/docs/protocol-cn.md
+
 func getShadowTlsPasswordFromExtra(extra map[string]any) string {
 	if len(extra) > 0 {
 		if thing := extra["shadowtls_password"]; thing != nil {

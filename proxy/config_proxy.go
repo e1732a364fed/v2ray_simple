@@ -24,6 +24,7 @@ type CommonConf struct {
 
 	//tls 的最低版本号配置填在这里：
 	//extra = { tls_minVersion = "1.2" }, 或 extra.tls_minVersion = "1.2"
+	//tls 的其他extra请参考 tlsConfig.go
 
 	/////////////////// 网络层 ///////////////////
 
