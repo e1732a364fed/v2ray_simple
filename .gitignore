@@ -4,6 +4,8 @@ client.toml
 server.toml
 v2ray_simple
 v2ray_simple_*
+vsc_*
+vs_gui*
 cmd/verysimple/verysimple
 cmd/verysimple/*.toml
 verysimple_*

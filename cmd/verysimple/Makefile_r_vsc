@@ -3,12 +3,15 @@
 # 该版本使用cgo。
 # vsc因为开启了cgo，是较难交叉编译的，建议在目标平台上编译。或者搜索一下 "xgo"
 
-prefix :=vsc
+prefix :=vs_gui
+winsuffix       :=.exe
 
 cmd:=go build -tags "vsc $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
 
+
 ifeq ($(OS),Windows_NT) 
     detected_OS   :=Windows
+	defaultSuffix :=${winsuffix}
 else
     detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
 endif
@@ -39,7 +42,12 @@ endif
 
 endif
 
-main: linux_amd64 linux_arm64 macos macm win10 win10_arm
+defaultOutFn    :=${prefix}
+
+${defaultOutFn}:
+	$(call compile,native,,,$(defaultSuffix))
+
+all: linux_amd64 linux_arm64 macos macm win10 win10_arm
 
 linux_amd64:
 	$(call compile,linux_amd64,linux,amd64)
