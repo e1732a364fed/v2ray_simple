@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 
 	vs "github.com/e1732a364fed/v2ray_simple"
-	"go.uber.org/zap"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -105,24 +103,6 @@ func printSupportedProtocols() {
 	advLayer.PrintAllProtocolNames()
 }
 
-func printAllState(w io.Writer) {
-	if w == nil {
-		w = os.Stdout
-	}
-	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
-	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
-	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
-
-	for i, s := range allServers {
-		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
-
-	}
-	for i, c := range allClients {
-		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
-	}
-
-}
-
 // see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 func tryDownloadMMDB() {
 	fp := utils.GetFilePath(netLayer.GeoipFileName)
@@ -135,8 +115,8 @@ func tryDownloadMMDB() {
 
 	var outClient proxy.Client
 
-	if defaultOutClient != nil && defaultOutClient.Name() != proxy.DirectName && defaultOutClient.Name() != proxy.RejectName {
-		outClient = defaultOutClient
+	if defaultMachine.DefaultOutClient != nil && defaultMachine.DefaultOutClient.Name() != proxy.DirectName && defaultMachine.DefaultOutClient.Name() != proxy.RejectName {
+		outClient = defaultMachine.DefaultOutClient
 		utils.PrintStr("trying to download mmdb through your proxy dial\n")
 	} else {
 		utils.PrintStr("trying to download mmdb directly\n")
@@ -199,8 +179,8 @@ func tryDownloadGeositeSource() {
 
 	var outClient proxy.Client
 
-	if defaultOutClient != nil && defaultOutClient.Name() != proxy.DirectName && defaultOutClient.Name() != proxy.RejectName {
-		outClient = defaultOutClient
+	if defaultMachine.DefaultOutClient != nil && defaultMachine.DefaultOutClient.Name() != proxy.DirectName && defaultMachine.DefaultOutClient.Name() != proxy.RejectName {
+		outClient = defaultMachine.DefaultOutClient
 		utils.PrintStr("trying to download geosite through your proxy dial\n")
 	} else {
 		utils.PrintStr("trying to download geosite directly\n")
@@ -226,217 +206,4 @@ func tryDownloadGeositeSource() {
 
 	netLayer.DownloadCommunity_DomainListFiles(proxyUrl)
 
-}
-
-func hotLoadDialConf(Default_uuid string, conf []*proxy.DialConf) (ok bool) {
-	ok = true
-
-	for _, d := range conf {
-
-		if d.Uuid == "" && Default_uuid != "" {
-			d.Uuid = Default_uuid
-		}
-
-		outClient, err := proxy.NewClient(d)
-		if err != nil {
-			if ce := utils.CanLogErr("can not create outClient: "); ce != nil {
-				ce.Write(zap.Error(err))
-			}
-			ok = false
-			continue
-		}
-
-		allClients = append(allClients, outClient)
-		if tag := outClient.GetTag(); tag != "" {
-
-			routingEnv.SetClient(tag, outClient)
-
-		}
-	}
-
-	if defaultOutClient == nil {
-		if len(allClients) > 0 {
-			defaultOutClient = allClients[0]
-
-		} else {
-			defaultOutClient = vs.DirectClient
-		}
-	}
-	return
-
-}
-func hotLoadListenConf(conf []*proxy.ListenConf) (ok bool) {
-	ok = true
-
-	if defaultOutClient == nil {
-		defaultOutClient = vs.DirectClient
-	}
-
-	for i, l := range conf {
-		inServer, err := proxy.NewServer(l)
-		if err != nil {
-			log.Println("can not create inServer: ", i, err)
-			ok = false
-			continue
-		}
-		lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
-		if lis != nil {
-			listenCloserList = append(listenCloserList, lis)
-			allServers = append(allServers, inServer)
-
-		} else {
-			ok = false
-		}
-
-	}
-
-	return
-}
-
-func hotLoadDialUrl(theUrlStr string, format int) error {
-	u, sn, creator, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
-	if err != nil {
-		fmt.Printf("parse url failed %v\n", err)
-		return err
-	}
-	dc := &proxy.DialConf{}
-	dc.Protocol = sn
-
-	dc.TLS = okTls
-	err = proxy.URLToDialConf(u, dc)
-	if err != nil {
-		fmt.Printf("parse url failed %v\n", err)
-		return err
-	}
-	dc, err = creator.URLToDialConf(u, dc, format)
-	if err != nil {
-		fmt.Printf("parse url step 2 failed %v\n", err)
-		return err
-	}
-
-	if !hotLoadDialConf("", []*proxy.DialConf{dc}) {
-		return utils.ErrFailed
-	}
-	return nil
-
-}
-
-func hotLoadListenUrl(theUrlStr string, format int) error {
-	u, sn, creator, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
-	if err != nil {
-		fmt.Printf("parse url failed %v\n", err)
-		return err
-	}
-
-	lc := &proxy.ListenConf{}
-	lc.Protocol = sn
-
-	lc.TLS = okTls
-
-	err = proxy.URLToListenConf(u, lc)
-	if err != nil {
-		fmt.Printf("parse url failed %v\n", err)
-		return err
-	}
-	lc, err = creator.URLToListenConf(u, lc, format)
-	if err != nil {
-		fmt.Printf("parse url step 2 failed %v\n", err)
-		return err
-	}
-	if !hotLoadListenConf([]*proxy.ListenConf{lc}) {
-		return utils.ErrFailed
-	}
-	return nil
-}
-
-func hotDeleteClient(index int) {
-	if index < 0 || index >= len(allClients) {
-		return
-	}
-	doomedClient := allClients[index]
-
-	routingEnv.DelClient(doomedClient.GetTag())
-	doomedClient.Stop()
-	allClients = utils.TrimSlice(allClients, index)
-}
-
-func hotDeleteServer(index int) {
-	if index < 0 || index >= len(listenCloserList) {
-		return
-	}
-
-	listenCloserList[index].Close()
-	allServers[index].Stop()
-
-	allServers = utils.TrimSlice(allServers, index)
-	listenCloserList = utils.TrimSlice(listenCloserList, index)
-}
-
-func loadSimpleServer() (result int, server proxy.Server) {
-	var e error
-	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
-	if e != nil {
-		if ce := utils.CanLogErr("can not create local server"); ce != nil {
-			ce.Write(zap.String("error", e.Error()))
-		}
-		result = -1
-		return
-	}
-
-	allServers = append(allServers, server)
-
-	if !server.CantRoute() && simpleConf.Route != nil {
-
-		netLayer.LoadMaxmindGeoipFile("")
-
-		//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
-		routingEnv.RoutePolicy = netLayer.NewRoutePolicy()
-		if simpleConf.MyCountryISO_3166 != "" {
-			routingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
-
-		}
-	}
-	return
-}
-
-func loadSimpleClient() (result int, client proxy.Client) {
-	var e error
-	client, e = proxy.ClientFromURL(simpleConf.DialUrl)
-	if e != nil {
-		if ce := utils.CanLogErr("can not create remote client"); ce != nil {
-			ce.Write(zap.String("error", e.Error()))
-		}
-		result = -1
-		return
-	}
-
-	allClients = append(allClients, client)
-	return
-}
-
-func getStandardConfFromCurrentState() (sc proxy.StandardConf) {
-	for i := range allClients {
-		sc.Dial = append(sc.Dial, getDialConfFromCurrentState(i))
-
-	}
-	for i := range allServers {
-		sc.Listen = append(sc.Listen, getListenConfFromCurrentState(i))
-
-	}
-
-	return
-}
-
-func getDialConfFromCurrentState(i int) (dc *proxy.DialConf) {
-	c := allClients[i]
-	dc = c.GetBase().DialConf
-
-	return
-}
-
-func getListenConfFromCurrentState(i int) (lc *proxy.ListenConf) {
-	c := allServers[i]
-	lc = c.GetBase().ListenConf
-
-	return
 }

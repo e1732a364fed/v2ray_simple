@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -18,6 +17,7 @@ import (
 
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -33,20 +33,13 @@ var (
 
 	listenURL string //用于命令行模式
 	dialURL   string //用于命令行模式
-	//jsonMode       int
+
 	dialTimeoutSecond int
-
-	allServers = make([]proxy.Server, 0, 8)
-	allClients = make([]proxy.Client, 0, 8)
-
-	listenCloserList []io.Closer //所有运行的 inServer 的 Listener 的 Closer
-
-	defaultOutClient proxy.Client
-
-	routingEnv proxy.RoutingEnv
 
 	runCli func()
 	runGui func()
+
+	defaultMachine *machine.M
 )
 
 const (
@@ -58,7 +51,7 @@ const (
 )
 
 func init() {
-	routingEnv.ClientsTagMap = make(map[string]proxy.Client)
+	defaultMachine = machine.New()
 
 	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 
@@ -84,23 +77,6 @@ func init() {
 	flag.StringVar(&netLayer.GeoipFileName, "geoip", defaultGeoipFn, "geoip maxmind file name (relative or absolute path)")
 	flag.StringVar(&netLayer.GeositeFolder, "geosite", netLayer.DefaultGeositeFolder, "geosite folder name (set it to the relative or absolute path of your geosite/data folder)")
 	flag.StringVar(&utils.ExtraSearchPath, "path", "", "search path for mmdb, geosite and other required files")
-
-}
-
-// 我们 在程序关闭时, 主动Close, Stop
-func cleanup() {
-
-	for _, ser := range allServers {
-		if ser != nil {
-			ser.Stop()
-		}
-	}
-
-	for _, listener := range listenCloserList {
-		if listener != nil {
-			listener.Close()
-		}
-	}
 
 }
 
@@ -131,7 +107,7 @@ func mainFunc() (result int) {
 
 			result = -3
 
-			cleanup()
+			defaultMachine.Cleanup()
 		}
 	}()
 
@@ -200,11 +176,13 @@ func mainFunc() (result int) {
 
 	}
 
-	configMode, mainFallback, loadConfigErr = LoadConfig(configFileName, listenURL, dialURL)
+	var simpleConf proxy.SimpleConf
+
+	configMode, simpleConf, mainFallback, loadConfigErr = LoadConfig(configFileName, listenURL, dialURL)
 
 	if loadConfigErr == nil {
 
-		setupByAppConf(appConf)
+		machine.SetupByAppConf(appConf)
 
 	}
 
@@ -235,7 +213,7 @@ func mainFunc() (result int) {
 		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
 	}
 
-	if loadConfigErr != nil && !isFlexible() {
+	if loadConfigErr != nil && !defaultMachine.IsFlexible() {
 
 		if ce := utils.CanLogErr(willExitStr); ce != nil {
 			ce.Write(zap.Error(loadConfigErr))
@@ -267,14 +245,14 @@ func mainFunc() (result int) {
 	var Default_uuid string
 
 	if mainFallback != nil {
-		routingEnv.MainFallback = mainFallback
+		defaultMachine.RoutingEnv.MainFallback = mainFallback
 	}
 
 	//load inServers and RoutingEnv
 	switch configMode {
 	case proxy.SimpleMode:
 		//var theServer proxy.Server
-		result, _ = loadSimpleServer()
+		result, _ = defaultMachine.LoadSimpleServer(simpleConf)
 		if result < 0 {
 			return result
 		}
@@ -309,7 +287,7 @@ func mainFunc() (result int) {
 				continue
 			}
 
-			allServers = append(allServers, thisServer)
+			defaultMachine.AllServers = append(defaultMachine.AllServers, thisServer)
 		}
 
 		//将@前缀的 回落dest配置 替换成 实际的 地址。
@@ -320,7 +298,7 @@ func mainFunc() (result int) {
 					continue
 				}
 				if deststr, ok := fbConf.Dest.(string); ok && strings.HasPrefix(deststr, "@") {
-					for _, s := range allServers {
+					for _, s := range defaultMachine.AllServers {
 						if s.GetTag() == deststr[1:] {
 							log.Println("got tag fallback dest, will set to ", s.AddrStr())
 							fbConf.Dest = s.AddrStr()
@@ -331,19 +309,19 @@ func mainFunc() (result int) {
 
 			}
 		}
-		var MyCountryISO_3166 string
+		var myCountryISO_3166 string
 		if appConf != nil {
-			MyCountryISO_3166 = appConf.MyCountryISO_3166
+			myCountryISO_3166 = appConf.MyCountryISO_3166
 		}
 
-		routingEnv = proxy.LoadEnvFromStandardConf(&standardConf, MyCountryISO_3166)
+		defaultMachine.RoutingEnv = proxy.LoadEnvFromStandardConf(&standardConf, myCountryISO_3166)
 
 	}
 
 	// load outClients
 	switch configMode {
 	case proxy.SimpleMode:
-		result, defaultOutClient = loadSimpleClient()
+		result, defaultMachine.DefaultOutClient = defaultMachine.LoadSimpleClient(simpleConf)
 		if result < 0 {
 			return result
 		}
@@ -352,40 +330,40 @@ func mainFunc() (result int) {
 		if len(standardConf.Dial) < 1 {
 			utils.Warn("no dial in config settings, will add 'direct'")
 
-			allClients = append(allClients, vs.DirectClient)
-			defaultOutClient = vs.DirectClient
+			defaultMachine.AllClients = append(defaultMachine.AllClients, vs.DirectClient)
+			defaultMachine.DefaultOutClient = vs.DirectClient
 
-			routingEnv.SetClient("direct", vs.DirectClient)
+			defaultMachine.RoutingEnv.SetClient("direct", vs.DirectClient)
 
 			break
 		}
 
-		hotLoadDialConf(Default_uuid, standardConf.Dial)
+		defaultMachine.HotLoadDialConf(Default_uuid, standardConf.Dial)
 
 	}
 
 	runPreCommands()
 
-	if (defaultOutClient != nil) && (len(allServers) > 0) {
+	if (defaultMachine.DefaultOutClient != nil) && (len(defaultMachine.AllServers) > 0) {
 
-		for _, inServer := range allServers {
-			lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
+		for _, inServer := range defaultMachine.AllServers {
+			lis := vs.ListenSer(inServer, defaultMachine.DefaultOutClient, &defaultMachine.RoutingEnv)
 
 			if lis != nil {
-				listenCloserList = append(listenCloserList, lis)
+				defaultMachine.ListenCloserList = append(defaultMachine.ListenCloserList, lis)
 			}
 		}
 
 	}
 
 	//没可用的listen/dial，而且还无法动态更改配置
-	if noFuture() {
+	if defaultMachine.NoFuture() {
 		utils.Error(willExitStr)
 		return -1
 	}
 
-	if enableApiServer {
-		tryRunApiServer()
+	if defaultMachine.EnableApiServer {
+		defaultMachine.TryRunApiServer(appConf)
 
 	}
 
@@ -405,7 +383,7 @@ func mainFunc() (result int) {
 		}
 	}
 
-	if nothingRunning() {
+	if defaultMachine.NothingRunning() {
 		utils.Warn(willExitStr)
 		return
 	}
@@ -417,24 +395,7 @@ func mainFunc() (result int) {
 
 		utils.Info("Program got close signal.")
 
-		cleanup()
+		defaultMachine.Cleanup()
 	}
 	return
-}
-
-func hasProxyRunning() bool {
-	return len(listenCloserList) > 0
-}
-
-// 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
-func isFlexible() bool {
-	return interactive_mode || enableApiServer || gui_mode
-}
-
-func noFuture() bool {
-	return !hasProxyRunning() && !isFlexible()
-}
-
-func nothingRunning() bool {
-	return !hasProxyRunning() && !(interactive_mode || apiServerRunning || gui_mode)
 }

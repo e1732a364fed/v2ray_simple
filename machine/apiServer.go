@@ -1,4 +1,4 @@
-package main
+package machine
 
 import (
 	"crypto/sha256"
@@ -19,7 +19,6 @@ import (
 
 var (
 	enableApiServer     bool
-	apiServerRunning    bool
 	apiServerPlainHttp  bool
 	apiServerKeyFile    string
 	apiServerCertFile   string
@@ -45,7 +44,7 @@ curl -k https://127.0.0.1:48345/api/allstate
 */
 
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
-func tryRunApiServer() {
+func (m *M) TryRunApiServer(appConf *AppConf) {
 
 	var thepass string
 
@@ -57,16 +56,16 @@ func tryRunApiServer() {
 		thepass = apiServerAdminPass
 	}
 
-	apiServerRunning = true
+	m.ApiServerRunning = true
 
-	go runApiServer(thepass)
+	go m.runApiServer(thepass)
 
 }
 
 const eIllegalParameter = "illegal parameter"
 
 // 阻塞
-func runApiServer(adminUUID string) {
+func (m *M) runApiServer(adminUUID string) {
 
 	var addrStr = apiServerAddr
 	if apiServerPlainHttp {
@@ -95,7 +94,7 @@ func runApiServer(adminUUID string) {
 	}
 
 	ser.addServerHandle(mux, "allstate", func(w http.ResponseWriter, r *http.Request) {
-		printAllState(w)
+		m.PrintAllState(w)
 	})
 	ser.addServerHandle(mux, "hotDelete", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -114,7 +113,7 @@ func runApiServer(adminUUID string) {
 				w.Write([]byte(eIllegalParameter))
 				return
 			}
-			hotDeleteServer(listenIndex)
+			m.HotDeleteServer(listenIndex)
 		}
 		if dialIndexStr != "" {
 
@@ -129,7 +128,7 @@ func runApiServer(adminUUID string) {
 				w.Write([]byte(eIllegalParameter))
 				return
 			}
-			hotDeleteClient(dialIndex)
+			m.HotDeleteClient(dialIndex)
 		}
 	})
 
@@ -165,7 +164,7 @@ func runApiServer(adminUUID string) {
 			if ce := utils.CanLogInfo("api server got hot load listen request"); ce != nil {
 				ce.Write(zap.String("listenUrl", listenStr))
 			}
-			e := hotLoadListenUrl(listenStr, uf)
+			e := m.HotLoadListenUrl(listenStr, uf)
 			if e == nil {
 				resultStr += "\nhot load listen Url Success for " + listenStr
 			} else {
@@ -178,7 +177,7 @@ func runApiServer(adminUUID string) {
 			if ce := utils.CanLogInfo("api server got hot load dial request"); ce != nil {
 				ce.Write(zap.String("dialUrl", dialStr))
 			}
-			e := hotLoadDialUrl(dialStr, uf)
+			e := m.HotLoadDialUrl(dialStr, uf)
 			if e == nil {
 				resultStr += "\nhot load dial Url Success for " + dialStr
 			} else {
@@ -200,18 +199,18 @@ func runApiServer(adminUUID string) {
 			}
 
 			ind, err := strconv.Atoi(indexStr)
-			if err != nil || ind < 0 || (isDial && ind >= len(allClients)) || (!isDial && ind >= len(allServers)) {
+			if err != nil || ind < 0 || (isDial && ind >= len(m.AllClients)) || (!isDial && ind >= len(m.AllServers)) {
 				failBadRequest(err, eIllegalParameter, w)
 
 				w.Write([]byte(eIllegalParameter))
 				return
 			}
 			if isDial {
-				dc := getDialConfFromCurrentState(ind)
+				dc := m.getDialConfFromCurrentState(ind)
 				url := proxy.ToStandardUrl(&dc.CommonConf, dc, nil)
 				w.Write([]byte(url))
 			} else {
-				lc := getListenConfFromCurrentState(ind)
+				lc := m.getListenConfFromCurrentState(ind)
 				url := proxy.ToStandardUrl(&lc.CommonConf, nil, lc)
 				w.Write([]byte(url))
 			}
@@ -248,7 +247,7 @@ func runApiServer(adminUUID string) {
 		srv.ListenAndServeTLS(apiServerCertFile, apiServerKeyFile)
 
 	}
-	apiServerRunning = false
+	m.ApiServerRunning = false
 }
 
 type auth struct {

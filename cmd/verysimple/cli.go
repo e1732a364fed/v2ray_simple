@@ -11,6 +11,7 @@ import (
 	"strconv"
 
 	vs "github.com/e1732a364fed/v2ray_simple"
+	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -45,7 +46,7 @@ func flist(list []*CliCmd) (result []func()) {
 var cliCmdList = []*CliCmd{
 	{
 		"查询当前状态", func() {
-			printAllState(os.Stdout)
+			defaultMachine.PrintAllState(os.Stdout)
 		},
 	}, {
 		"打印当前版本所支持的所有协议", printSupportedProtocols,
@@ -67,17 +68,17 @@ func init() {
 
 	cliCmdList = append(cliCmdList, &CliCmd{
 		"【生成分享链接】<-当前的配置", func() {
-			sc := getStandardConfFromCurrentState()
+			sc := defaultMachine.GetStandardConfFromCurrentState()
 			interactively_generate_share(&sc)
 		},
 	}, &CliCmd{
-		"【交互生成配置】，超级强大", generateConfigFileInteractively,
+		"【交互生成配置】，超级强大", func() { generateConfigFileInteractively(defaultMachine) },
 	}, &CliCmd{
-		"热删除配置", interactively_hotRemoveServerOrClient,
+		"热删除配置", func() { interactively_hotRemoveServerOrClient(defaultMachine) },
 	}, &CliCmd{
-		"【热加载】新配置文件", interactively_hotLoadConfigFile,
+		"【热加载】新配置文件", func() { interactively_hotLoadConfigFile(defaultMachine) },
 	}, &CliCmd{
-		"【热加载】新配置url", interactively_hotLoadUrlConfig,
+		"【热加载】新配置url", func() { interactively_hotLoadUrlConfig(defaultMachine) },
 	}, &CliCmd{
 		"调节日志等级", interactively_adjust_loglevel,
 	})
@@ -150,7 +151,7 @@ func runCli_func() {
 
 }
 
-func generateConfigFileInteractively() {
+func generateConfigFileInteractively(m *machine.M) {
 
 	rootLevelList := []string{
 		"【打印】当前缓存的配置",
@@ -188,8 +189,8 @@ func generateConfigFileInteractively() {
 				Domains: []string{"geosite:cn"},
 			}}
 
-			var vsConfClient VSConf = VSConf{
-				AppConf:      &AppConf{MyCountryISO_3166: "CN"},
+			var vsConfClient machine.VSConf = machine.VSConf{
+				AppConf:      &machine.AppConf{MyCountryISO_3166: "CN"},
 				StandardConf: confClient,
 			}
 
@@ -285,12 +286,12 @@ func generateConfigFileInteractively() {
 			switch ihot {
 			case 0:
 
-				hotLoadDialConf("", confServer.Dial)
-				hotLoadListenConf(confServer.Listen)
+				m.HotLoadDialConf("", confServer.Dial)
+				m.HotLoadListenConf(confServer.Listen)
 
 			case 1:
-				hotLoadDialConf("", confClient.Dial)
-				hotLoadListenConf(confClient.Listen)
+				m.HotLoadDialConf("", confClient.Dial)
+				m.HotLoadListenConf(confClient.Listen)
 			}
 
 			utils.PrintStr("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
@@ -300,17 +301,17 @@ func generateConfigFileInteractively() {
 }
 
 // 热删除配置
-func interactively_hotRemoveServerOrClient() {
+func interactively_hotRemoveServerOrClient(m *machine.M) {
 	utils.PrintStr("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
 	utils.PrintStr("【当前所有配置】为：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout)
+	m.PrintAllState(os.Stdout)
 
 	var items []string
-	if len(allServers) > 0 {
+	if len(m.AllServers) > 0 {
 		items = append(items, "listen")
 	}
-	if len(allClients) > 0 {
+	if len(m.AllClients) > 0 {
 		items = append(items, "dial")
 	}
 	if len(items) == 0 {
@@ -337,15 +338,15 @@ func interactively_hotRemoveServerOrClient() {
 	fmt.Printf("你选择了 %s\n", result)
 	switch i {
 	case 0:
-		if len(allServers) > 0 {
+		if len(m.AllServers) > 0 {
 			will_delete_listen = true
 
-		} else if len(allClients) > 0 {
+		} else if len(m.AllClients) > 0 {
 			will_delete_dial = true
 		}
 
 	case 1:
-		if len(allServers) > 0 {
+		if len(m.AllServers) > 0 {
 			will_delete_dial = true
 
 		}
@@ -353,7 +354,7 @@ func interactively_hotRemoveServerOrClient() {
 
 	var theInt int64
 
-	if (will_delete_dial && len(allClients) > 1) || (will_delete_listen && len(allServers) > 1) {
+	if (will_delete_dial && len(m.AllClients) > 1) || (will_delete_listen && len(m.AllServers) > 1) {
 
 		validateFunc := func(input string) error {
 			theInt, err = strconv.ParseInt(input, 10, 64)
@@ -361,11 +362,11 @@ func interactively_hotRemoveServerOrClient() {
 				return utils.ErrInvalidNumber
 			}
 
-			if will_delete_dial && int(theInt) >= len(allClients) {
+			if will_delete_dial && int(theInt) >= len(m.AllClients) {
 				return errors.New("must with in len of dial array")
 			}
 
-			if will_delete_listen && int(theInt) >= len(allServers) {
+			if will_delete_listen && int(theInt) >= len(m.AllServers) {
 				return errors.New("must with in len of listen array")
 			}
 
@@ -393,19 +394,19 @@ func interactively_hotRemoveServerOrClient() {
 	will_delete_index = int(theInt)
 
 	if will_delete_dial {
-		hotDeleteClient(will_delete_index)
+		m.HotDeleteClient(will_delete_index)
 	}
 	if will_delete_listen {
-		hotDeleteServer(will_delete_index)
+		m.HotDeleteServer(will_delete_index)
 
 	}
 
 	utils.PrintStr("删除成功！当前状态：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout)
+	m.PrintAllState(os.Stdout)
 }
 
-func interactively_hotLoadUrlConfig() {
+func interactively_hotLoadUrlConfig(m *machine.M) {
 	utils.PrintStr("即将开始热添加url配置\n")
 	Select := promptui.Select{
 		Label: "请选择你的url的格式类型",
@@ -456,10 +457,10 @@ func interactively_hotLoadUrlConfig() {
 		}
 
 		if i == 0 {
-			hotLoadDialUrl(theUrlStr, proxy.UrlFormat)
+			m.HotLoadDialUrl(theUrlStr, proxy.UrlFormat)
 
 		} else {
-			hotLoadListenUrl(theUrlStr, proxy.UrlFormat)
+			m.HotLoadListenUrl(theUrlStr, proxy.UrlFormat)
 
 		}
 		return
@@ -468,12 +469,12 @@ func interactively_hotLoadUrlConfig() {
 }
 
 // 热添加配置文件
-func interactively_hotLoadConfigFile() {
+func interactively_hotLoadConfigFile(m *machine.M) {
 	utils.PrintStr("即将开始热添加配置文件\n")
 	utils.PrintStr("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
 	utils.PrintStr("【当前所有配置】为：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout)
+	m.PrintAllState(os.Stdout)
 
 	utils.PrintStr("请输入你想添加的文件名称\n")
 
@@ -501,7 +502,8 @@ func interactively_hotLoadConfigFile() {
 	fmt.Printf("你输入了 %s\n", fpath)
 
 	var confMode int
-	confMode, _, err = LoadConfig(fpath, "", "")
+	var simpleConf proxy.SimpleConf
+	confMode, simpleConf, _, err = LoadConfig(fpath, "", "")
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)
@@ -521,35 +523,35 @@ func interactively_hotLoadConfigFile() {
 	switch confMode {
 	case proxy.StandardMode:
 		if len(standardConf.Dial) > 0 {
-			hotLoadDialConf("", standardConf.Dial)
+			defaultMachine.HotLoadDialConf("", standardConf.Dial)
 
 		}
 
 		if len(standardConf.Listen) > 0 {
-			hotLoadListenConf(standardConf.Listen)
+			defaultMachine.HotLoadListenConf(standardConf.Listen)
 
 		}
 	case proxy.SimpleMode:
-		r, ser := loadSimpleServer()
+		r, ser := defaultMachine.LoadSimpleServer(simpleConf)
 		if r < 0 {
 			return
 		}
 
-		r, cli := loadSimpleClient()
+		r, cli := defaultMachine.LoadSimpleClient(simpleConf)
 		if r < 0 {
 			return
 		}
 
-		lis := vs.ListenSer(ser, cli, &routingEnv)
+		lis := vs.ListenSer(ser, cli, &m.RoutingEnv)
 		if lis != nil {
-			listenCloserList = append(listenCloserList, lis)
+			m.ListenCloserList = append(m.ListenCloserList, lis)
 		}
 
 	}
 
 	utils.PrintStr("添加成功！当前状态：\n")
 	utils.PrintStr(delimiter)
-	printAllState(os.Stdout)
+	m.PrintAllState(os.Stdout)
 }
 
 func interactively_adjust_loglevel() {
