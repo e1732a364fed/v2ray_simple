@@ -4,7 +4,7 @@ host = "127.0.0.1"
 port = 10800
 
 [[dial]]
-protocol = "trojans"
+protocol = "vmesss"
 tag = "t"
 host = "cloud.tecent.com"
 ip = "127.0.0.1"    #这里为了本机测试, 设成了127.0.0.1 , 你改成你vps的ip.

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -40,29 +39,29 @@ func shadowTls1(servername string, clientConn net.Conn) (tlsConn *Conn, err erro
 		ce.Write()
 	}
 
-	var wg sync.WaitGroup
 	var e1, e2 error
-	wg.Add(2)
+
+	finish1 := make(chan struct{})
 	go func() {
 		e1 = CopyTls12Handshake(true, fakeConn, clientConn)
-		wg.Done()
 
 		if ce := utils.CanLogDebug("shadowTls copy client end"); ce != nil {
 			ce.Write(zap.Error(e1))
 		}
-	}()
-	go func() {
-		e2 = CopyTls12Handshake(false, clientConn, fakeConn)
-		wg.Done()
 
-		if ce := utils.CanLogDebug("shadowTls copy server end"); ce != nil {
-			ce.Write(
-				zap.Error(e2),
-			)
-		}
+		close(finish1)
+
 	}()
 
-	wg.Wait()
+	e2 = CopyTls12Handshake(false, clientConn, fakeConn)
+
+	if ce := utils.CanLogDebug("shadowTls copy server end"); ce != nil {
+		ce.Write(
+			zap.Error(e2),
+		)
+	}
+
+	<-finish1
 
 	if e1 != nil || e2 != nil {
 		e := utils.Errs{}
