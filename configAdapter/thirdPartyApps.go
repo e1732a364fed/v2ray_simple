@@ -11,10 +11,12 @@ import (
 )
 
 /*
+To Quantumult X [server_local] string
+
 quantumult X 只支持 vmess,trojan,shadowsocks,http 这四种协议.
 See https://github.com/crossutility/Quantumult-X/blob/master/sample.conf
 
-圈叉的配置很奇葩，每一个协议的格式都略有不同，我们只能照着示例分情况处理。
+圈叉的配置，每一个协议的格式都略有不同，我们只能照着示例分情况处理。
 
 同时，我们不支持里面的 fast-open 等选项。
 */
@@ -175,7 +177,7 @@ func ToQX(dc *proxy.DialConf) string {
 	return sb.String()
 }
 
-/* clash使用yaml作为配置格式。我们该函数中不导出整个yaml配置文件，而只导出
+/* clash使用yaml作为配置格式。本函数中不导出整个yaml配置文件，而只导出
 对应的proxies项下的子项，比如
 
 
@@ -374,7 +376,6 @@ func ToClash(dc *proxy.DialConf) string {
 	return sb.String()
 }
 
-//See https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2)
 type V2rayNConfig struct {
 	V        string `json:"v"`   //配置文件版本号,主要用来识别当前配置
 	PS       string `json:"ps"`  //备注或别名
@@ -390,6 +391,7 @@ type V2rayNConfig struct {
 	Sni      string `json:"sni"`
 }
 
+//See https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2)
 func ToV2rayN(dc *proxy.DialConf) string {
 	if dc.Protocol != "vmess" {
 		return "ToV2rayN doesn't support any protocol other than vmess, you give " + dc.Protocol

@@ -35,6 +35,15 @@ func interactively_generate_share(conf *proxy.StandardConf) {
 			},
 		},
 		{
+			Name: "vs标准toml",
+			f: func() {
+				fmt.Println("#vs_auto_generated:")
+
+				fmt.Println(utils.GetPurgedTomlStr(conf))
+
+			},
+		},
+		{
 			Name: "xray分享链接标准提案 (#716)",
 			f: func() {
 				for _, v := range conf.Dial {

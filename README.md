@@ -206,6 +206,8 @@ verysimple -c server.toml
 
 ## 关于证书
 
+<details>
+
 自己生成证书！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
 
 而且用了真证书后，别忘了把配置文件中的 `insecure=true` 给删掉.
@@ -249,6 +251,14 @@ openssl x509 -req -days 365 -sha256  -in client.csr -CA ca.crt -CAkey ca.key -se
 
 在你的服务端下载好程序后，运行 `verysimple -i` 开启交互模式，然后按向下箭头 找到对应选项，按回车 来自动生成tls证书。
 
+</details>
+
+
+# 技术相关
+
+<details>
+
+<summary>技术相关</summary>
 
 ## 创新点
 
@@ -530,6 +540,9 @@ https://github.com/e1732a364fed/v2ray_simple/discussions/3
 ```
 ./verysimple -c ../../examples/quic.server.toml -ll 0
 ```
+
+</details>
+
 
 ## 测速
 

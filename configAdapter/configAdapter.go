@@ -14,11 +14,12 @@ package configAdapter
 import (
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
-//convert proxy.DialConf to verysimple's official URL format.
+//convert proxy.DialConf to verysimple Official URL format.
 // See https://github.com/e1732a364fed/v2ray_simple/discussions/163
 func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
 	var u url.URL
@@ -71,15 +72,9 @@ func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
 				q.Add("http.version", r.Version)
 			}
 
-			for k, v := range r.Headers {
-				vstr := ""
-				for i, v2 := range v {
-					vstr += v2
-					if i != len(v)-1 {
-						vstr += ", "
-					}
-				}
-				q.Add("header."+k, vstr)
+			for k, headers := range r.Headers {
+
+				q.Add("header."+k, strings.Join(headers, ", "))
 			}
 		}
 	}

@@ -10,110 +10,43 @@ import (
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
-	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )
 
-type CliCmd struct {
-	Name string
-	f    func()
-}
-
-func (cc CliCmd) String() string {
-	return cc.Name
-}
-
-func nlist(list []CliCmd) (result []string) {
-	for _, v := range list {
-		result = append(result, v.Name)
-	}
-	return
-}
-
-func flist(list []CliCmd) (result []func()) {
-	for _, v := range list {
-		result = append(result, v.f)
-	}
-	return
-}
-
-var cliCmdList = []CliCmd{
-	{
-		"生成随机ssl证书", func() {
-			const certFn = "cert.pem"
-			const keyFn = "cert.key"
-			if utils.FileExist(certFn) {
-				utils.PrintStr(certFn)
-				utils.PrintStr(" 已存在！\n")
-				return
-			}
-
-			if utils.FileExist(keyFn) {
-				utils.PrintStr(keyFn)
-				utils.PrintStr(" 已存在！\n")
-				return
-			}
-
-			err := tlsLayer.GenerateRandomCertKeyFiles(certFn, keyFn)
-			if err == nil {
-				utils.PrintStr("生成成功！请查看目录中的 ")
-				utils.PrintStr(certFn)
-				utils.PrintStr(" 和 ")
-				utils.PrintStr(keyFn)
-				utils.PrintStr("\n")
-
-			} else {
-
-				utils.PrintStr("生成失败,")
-				utils.PrintStr(err.Error())
-				utils.PrintStr("\n")
-
-			}
-		},
-	},
-}
-
-func getStandardConfFromCurrentState() (sc proxy.StandardConf) {
-	for _, c := range allClients {
-		dc := c.GetBase().DialConf
-		sc.Dial = append(sc.Dial, dc)
-
-	}
-	for _, s := range allServers {
-		lc := s.GetBase().ListenConf
-		sc.Listen = append(sc.Listen, lc)
-
-	}
-
-	return
-}
-
 func init() {
+	//cli.go 中添加的 CliCmd都是需进一步交互的命令
 
-	//cli.go 中定义的 CliCmd都是需进一步交互的命令
+	var getStandardConfFromCurrentState = func() (sc proxy.StandardConf) {
+		for _, c := range allClients {
+			dc := c.GetBase().DialConf
+			sc.Dial = append(sc.Dial, dc)
+
+		}
+		for _, s := range allServers {
+			lc := s.GetBase().ListenConf
+			sc.Listen = append(sc.Listen, lc)
+
+		}
+
+		return
+	}
+
 	cliCmdList = append(cliCmdList, CliCmd{
-		"对当前引用的配置文件生成分享链接", func() {
-
+		"【生成分享链接】<-当前的配置", func() {
 			sc := getStandardConfFromCurrentState()
 			interactively_generate_share(&sc)
 		},
 	}, CliCmd{
-		"交互生成配置，超级强大", func() {
-			generateConfigFileInteractively()
-		},
+		"【交互生成配置】，超级强大", generateConfigFileInteractively,
 	}, CliCmd{
-		"热删除配置", func() {
-			interactively_hotRemoveServerOrClient()
-		},
+		"热删除配置", interactively_hotRemoveServerOrClient,
 	}, CliCmd{
-		"热加载新配置文件", func() {
-			interactively_hotLoadConfigFile()
-		},
+		"【热加载】新配置文件", interactively_hotLoadConfigFile,
 	}, CliCmd{
-		"调节日志等级", func() {
-			interactively_adjust_loglevel()
-		},
+		"【热加载】新配置url", interactively_hotLoadUrlConfig,
+	}, CliCmd{
+		"调节日志等级", interactively_adjust_loglevel,
 	})
 
 }
@@ -444,6 +377,100 @@ func interactively_hotRemoveServerOrClient() {
 	utils.PrintStr("删除成功！当前状态：\n")
 	utils.PrintStr(delimiter)
 	printAllState(os.Stdout, true)
+}
+
+func interactively_hotLoadUrlConfig() {
+	utils.PrintStr("即将开始热添加url配置\n")
+	Select := promptui.Select{
+		Label: "请选择你的url的格式类型",
+		Items: []string{
+			"协议官方url格式(视代理协议不同而不同)",
+			"vs标准url格式",
+		},
+	}
+	i, result, err := Select.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	fmt.Printf("你选择了 %s\n", result)
+
+	switch i {
+	case 0:
+		fmt.Printf("目前暂不支持")
+		return
+
+	case 1:
+		Select := promptui.Select{
+			Label: "请选择该url是用于服务端还是客户端",
+			Items: []string{
+				"客户端",
+				"服务端",
+			},
+		}
+		i, result, err := Select.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			return
+		}
+		fmt.Printf("你选择了 %s\n", result)
+
+		fmt.Printf("请输入你的配置url\n")
+
+		var theUrlStr string
+
+		fmt.Scanln(&theUrlStr)
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			return
+		}
+
+		if i == 0 {
+			u, sn, _, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
+			if err != nil {
+				fmt.Printf("parse url failed %v\n", err)
+				return
+			}
+			dc := &proxy.DialConf{}
+			dc.Protocol = sn
+
+			dc.TLS = okTls
+			err = proxy.URLToDialConf(u, dc)
+			if err != nil {
+				fmt.Printf("parse url failed %v\n", err)
+				return
+			}
+
+			hotLoadDialConfForRuntime("", []*proxy.DialConf{dc})
+
+		} else {
+
+			u, sn, _, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
+			if err != nil {
+				fmt.Printf("parse url failed %v\n", err)
+				return
+			}
+
+			lc := &proxy.ListenConf{}
+			lc.Protocol = sn
+
+			lc.TLS = okTls
+
+			err = proxy.URLToListenConf(u, lc)
+			if err != nil {
+				fmt.Printf("parse url failed %v\n", err)
+				return
+			}
+
+			hotLoadListenConfForRuntime([]*proxy.ListenConf{lc})
+		}
+		return
+
+	}
 }
 
 //热添加配置文件

@@ -40,6 +40,7 @@ type ClientCreator interface {
 	//大部分通用内容都会被proxy包解析，方法只需要处理proxy包未知的内容
 	NewClient(*DialConf) (Client, error) //标准配置
 
+	//URLToDialConf 执行proxy自定义的非标准代码;
 	//iv: initial value, can be nil.
 	URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error)
 	//DialConfToURL(url *DialConf, format int) (*url.URL, error)

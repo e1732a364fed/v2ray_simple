@@ -9,6 +9,7 @@ import (
 	"os"
 
 	httpProxy "github.com/e1732a364fed/v2ray_simple/proxy/http"
+	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"go.uber.org/zap"
@@ -29,35 +30,54 @@ var (
 	download         bool
 )
 
+type CliCmd struct {
+	Name string
+	f    func()
+}
+
+func (cc CliCmd) String() string {
+	return cc.Name
+}
+
+// func nlist(list []CliCmd) (result []string) {
+// 	for _, v := range list {
+// 		result = append(result, v.Name)
+// 	}
+// 	return
+// }
+
+func flist(list []CliCmd) (result []func()) {
+	for _, v := range list {
+		result = append(result, v.f)
+	}
+	return
+}
+
+// cliCmdList 包含所有交互模式中可执行的命令；
+//本文件 中添加的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
+var cliCmdList = []CliCmd{
+	{
+		"查询当前状态", func() {
+			printAllState(os.Stdout, false)
+		},
+	}, {
+		"打印当前版本所支持的所有协议", printSupportedProtocols,
+	}, {
+		"生成随机ssl证书", generateRandomSSlCert,
+	}, {
+		"生成一个随机的uuid供你参考", generateAndPrintUUID,
+	}, {
+		"下载geosite文件夹", tryDownloadGeositeSource,
+	}, {
+		"下载geoip文件(GeoLite2-Country.mmdb)", tryDownloadMMDB,
+	},
+}
+
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
-
-	//本文件 中定义的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
-
-	cliCmdList = append(cliCmdList, CliCmd{
-		"生成一个随机的uuid供你参考", func() {
-			generateAndPrintUUID()
-		},
-	}, CliCmd{
-		"下载geosite文件夹", func() {
-			tryDownloadGeositeSource()
-		},
-	}, CliCmd{
-		"下载geoip文件(GeoLite2-Country.mmdb)", func() {
-			tryDownloadMMDB()
-		},
-	}, CliCmd{
-		"打印当前版本所支持的所有协议", func() {
-			printSupportedProtocols()
-		},
-	}, CliCmd{
-		"查询当前状态", func() {
-			printAllState(os.Stdout, false)
-		},
-	})
 
 }
 
@@ -88,6 +108,38 @@ func runPreCommands() {
 
 func generateAndPrintUUID() {
 	fmt.Printf("New random uuid : %s\n", utils.GenerateUUIDStr())
+}
+
+func generateRandomSSlCert() {
+	const certFn = "cert.pem"
+	const keyFn = "cert.key"
+	if utils.FileExist(certFn) {
+		utils.PrintStr(certFn)
+		utils.PrintStr(" 已存在！\n")
+		return
+	}
+
+	if utils.FileExist(keyFn) {
+		utils.PrintStr(keyFn)
+		utils.PrintStr(" 已存在！\n")
+		return
+	}
+
+	err := tlsLayer.GenerateRandomCertKeyFiles(certFn, keyFn)
+	if err == nil {
+		utils.PrintStr("生成成功！请查看目录中的 ")
+		utils.PrintStr(certFn)
+		utils.PrintStr(" 和 ")
+		utils.PrintStr(keyFn)
+		utils.PrintStr("\n")
+
+	} else {
+
+		utils.PrintStr("生成失败,")
+		utils.PrintStr(err.Error())
+		utils.PrintStr("\n")
+
+	}
 }
 
 func printSupportedProtocols() {
@@ -258,6 +310,10 @@ func hotLoadDialConfForRuntime(Default_uuid string, conf []*proxy.DialConf) {
 
 }
 func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
+
+	if defaultOutClient == nil {
+		defaultOutClient = vs.DirectClient
+	}
 
 	for i, l := range conf {
 		inServer, err := proxy.NewServer(l)
