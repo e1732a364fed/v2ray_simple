@@ -32,8 +32,6 @@ https://github.com/FarFetchd/simple_tproxy_example/blob/master/tproxy_captive_po
 
 而且, udp 的过程更加特殊。
 
-总之，这种情况完全不适配 proxy.Server 的接口, 应该单独拿出来, 属于网络层的特殊情况.
-
 另外就是，偶然发现，trojan-go也是使用的 上面的示例的代码。
 
 同时，trojan-go还使用了.

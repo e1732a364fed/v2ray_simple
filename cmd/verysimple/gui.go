@@ -5,6 +5,7 @@ package main
 // gui界面, 所属计划为 vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
 
 import (
+	"flag"
 	"os"
 	"syscall"
 
@@ -19,7 +20,10 @@ import (
 var testFunc func()
 
 func init() {
-	gui_mode = true
+	//gui_mode = true
+
+	flag.BoolVar(&gui_mode, "g", true, "gui mode")
+
 	runGui = func() {
 		ui.Main(setupUI)
 		testFunc = func() {

@@ -77,6 +77,17 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 					s.autoRoute = true
 
 				}
+
+				if thing := lc.Extra["tun_dns_list"]; thing != nil {
+
+					if list, ok := thing.([]any); ok {
+						for _, v := range list {
+							if str, ok := v.(string); ok && str != "" {
+								s.tun_dnsList = append(s.tun_dnsList, str)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -115,9 +126,9 @@ type Server struct {
 	udpRequestChan chan<- netLayer.UDPRequestInfo
 	lwipCloser     io.Closer
 
-	devName, realIP, selfip, mask string
-	autoRoute                     bool
-	autoRouteDirectList           []string
+	devName, realIP, selfip, mask    string
+	autoRoute                        bool
+	autoRouteDirectList, tun_dnsList []string
 }
 
 func (*Server) Name() string { return name }
@@ -137,21 +148,23 @@ func (s *Server) Close() error {
 func (s *Server) Stop() {
 	if !s.stopped {
 		s.stopped = true
-		s.lwipCloser.Close()
-		close(s.infoChan)
-		close(s.udpRequestChan)
+
 		if s.autoRoute && autoRouteDownFunc != nil {
 			utils.Info("tun running auto table down")
 
 			autoRouteDownFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
 		}
+
+		close(s.infoChan)
+		close(s.udpRequestChan)
+		s.lwipCloser.Close()
 	}
 
 }
 
 func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
 	//log.Println(s.devName, s.selfip, s.realIP, s.mask)
-	realname, tunDev, err := tun.CreateTun(s.devName, s.selfip, s.realIP, s.mask)
+	realname, tunDev, err := tun.CreateTun(s.devName, s.selfip, s.realIP, s.mask, s.tun_dnsList)
 	if err != nil {
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
 			ce.Write(zap.Error(err))

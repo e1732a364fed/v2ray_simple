@@ -124,14 +124,17 @@ func (h *handler) ReceiveTo(conn core.UDPConn, data []byte, addr *net.UDPAddr) e
 // realAddr 是在路由表中需要配置的那个ip。
 // mask是子网掩码，不是很重要.
 // macos上的使用举例："", "10.1.0.10", "10.1.0.20", "255.255.255.0"
-func CreateTun(name, selfaddr, realAddr, mask string) (realname string, tunDev io.ReadWriteCloser, err error) {
+func CreateTun(name, selfaddr, realAddr, mask string, dns []string) (realname string, tunDev io.ReadWriteCloser, err error) {
 	//tun.OpenTunDevice 是一个非常平台相关的函数，而且看起来不是太完美
 
 	//在windows上调用时，dns不能为空, 否则闪退; 而在macos上 dns 会被无视; 在windows上调用返回的是一个tap设备，而不是tun
 	//在linux上调用时 addr, gw, mask, dnsServers 都会被无视
 
 	//macos 上无法指定tun名称
-	tunDev, err = tun.OpenTunDevice(name, selfaddr, realAddr, mask, []string{"114.114.114.114"}, false)
+	if len(dns) == 0 {
+		dns = []string{"114.114.114.114"}
+	}
+	tunDev, err = tun.OpenTunDevice(name, selfaddr, realAddr, mask, dns, false)
 	if err == nil {
 		wi, ok := tunDev.(*water.Interface)
 		if ok {
@@ -158,6 +161,7 @@ func CreateTun(name, selfaddr, realAddr, mask string) (realname string, tunDev i
 	return
 }
 
+// 这个返回的closer在执行Close时可能会卡住
 func ListenTun(tunDev io.ReadWriteCloser) (tcpChan <-chan netLayer.TCPRequestInfo, udpChan <-chan netLayer.UDPRequestInfo, closer io.Closer) {
 	lwip := core.NewLWIPStack()
 	core.RegisterOutputFn(func(data []byte) (int, error) {

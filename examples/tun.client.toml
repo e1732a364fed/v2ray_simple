@@ -1,5 +1,7 @@
 # tun; vs的tun功能仅在 vs_gui 系列中存在。
 
+###############################################################
+
 # 你要配置好路由表才能让tun正常使用。 
 # 在mac/windows上，路由表不是那么好配置，尤其是没有linux那么灵活
 # 而如果是在linux上的话，直接推荐使用tproxy
@@ -11,6 +13,7 @@
 
 # 在windows上，目前的tun实际上由tap执行, 程序不会主动试图创建tap设备
 # 而是需要 Tap-windows 虚拟网卡安装好，(Tap-Windows Provider V9 Network adapters)
+# 如果你安装过netch，则这个网卡应该已经装过了。
 
 ###############################################################
 
@@ -43,6 +46,11 @@
 # route delete 0.0.0.0 mask 0.0.0.0
 # route add 0.0.0.0 mask 0.0.0.0 192.168.1.1 metric 50
 
+# 参考 https://tachyondevel.medium.com/%E6%95%99%E7%A8%8B-%E5%9C%A8-windows-%E4%B8%8A%E4%BD%BF%E7%94%A8-tun2socks-%E8%BF%9B%E8%A1%8C%E5%85%A8%E5%B1%80%E4%BB%A3%E7%90%86-aa51869dd0d
+
+###############################################################
+
+
 
 [[listen]]
 protocol = "tun"
@@ -54,12 +62,16 @@ protocol = "tun"
 
 
 # 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 
-# 此时如果是在macos上, 则必须额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址; 如果不给出, 则不会自动配置路由表
+# 此时必须额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址; 如果不给出, 则不会自动配置路由表
+
+# 在windows上，还可给出 tun_dns_list 否则windows上,vs默认会使用 114.114.114.114
 
 # 目前的自动配置逻辑 完全仿照上面的路由配置指导。
 
 extra.tun_auto_route = true
 extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
+
+extra.tun_dns_list = [ "223.5.5.5" ] #阿里
 
 [[dial]]
 protocol = "vlesss"
@@ -69,3 +81,17 @@ port = 4433
 version = 0
 insecure = true
 utls = true
+
+###############################################################
+# 其他
+
+# 一、windows 上自动模式失败后的紧急修复
+# 如果自动路由发生错误，则可能导致电脑路由出错，连不上网，除了重启解决以外，可以按如下指导进行恢复
+
+# route delete 在tun_auto_route_direct_list中的ip  (一个一行）
+# route delete 0.0.0.0 mask 0.0.0.0
+# route add 0.0.0.0 mask 0.0.0.0 192.168.1.1 metric 50  (加回原来的网关ip）
+
+# 二、实现相关
+# 最佳实践应该是通过dial的地址直接自动配置 tun中的直连列表；
+# 但是受限于vs的架构， 配置listen和dial的过程是独立分开互不影响的，导致listen的代码读不到dial的内容
