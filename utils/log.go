@@ -73,7 +73,7 @@ func levelCapitalStrWith5Chars(l zapcore.Level) string {
 	case zapcore.FatalLevel:
 		return "FATAL"
 	default:
-		return fmt.Sprintf("LEVEL(%d)", l)
+		return fmt.Sprintf("LVL.%d", l)
 	}
 }
 func capitalLevelEncoderWith5Chars(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {

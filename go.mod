@@ -3,9 +3,9 @@ module github.com/e1732a364fed/v2ray_simple
 go 1.18
 
 require (
-	github.com/BurntSushi/toml v1.1.0
+	github.com/BurntSushi/toml v1.2.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
-	github.com/biter777/countries v1.3.4
+	github.com/biter777/countries v1.5.6
 	github.com/gobwas/ws v1.1.0
 	github.com/lucas-clemente/quic-go v0.0.0-00010101000000-000000000000
 	github.com/manifoldco/promptui v0.9.0

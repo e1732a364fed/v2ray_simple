@@ -5,6 +5,12 @@ import (
 	"sync"
 )
 
+//一种简单的读写组合, 在ws包中被用到.
+type RW struct {
+	io.Reader
+	io.Writer
+}
+
 type WriteWrapper interface {
 	io.Writer
 

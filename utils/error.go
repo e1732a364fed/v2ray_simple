@@ -84,7 +84,7 @@ func (ef ErrBuffer) Error() string {
 	return ef.Err.Error() + ", with Buffer."
 }
 
-// ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况. 类似 fmt.Errorf
+// ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况. 类似 fmt.Errorf.
 type ErrInErr struct {
 	ErrDesc   string
 	ErrDetail error

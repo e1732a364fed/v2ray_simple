@@ -5,13 +5,6 @@ import (
 	"log"
 )
 
-//一种简单的组合
-// 在ws包中被用到.
-type RW struct {
-	io.Reader
-	io.Writer
-}
-
 // SystemReadver 是平台相关的 用于 调用readv的 工具.
 // 该 SystemReadver 的用例请参照 netLayer.readvFrom , 在 netLayer/readv.go中;
 // SystemReadver的具体平台相关的实现见 readv_*.go; 用 GetReadVReader() 函数来获取本平台的对应实现。

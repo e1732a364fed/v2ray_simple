@@ -45,7 +45,7 @@ func UUIDToStr(u []byte) string {
 	return string(buf)
 }
 
-//生成完全随机的uuid
+//生成完全随机的uuid,不包含任何uuid版本信息 (即不符合rfc，但是更安全)
 func GenerateUUID() (r [UUID_BytesLen]byte) {
 	rand.Reader.Read(r[:])
 	return
@@ -55,10 +55,18 @@ func GenerateUUIDStr() string {
 	return UUIDToStr(bs[:])
 }
 
-//生成符合v4标准的uuid
+/*
+GenerateUUID_v4 生成符合v4标准的uuid.
+
+ v4: https://datatracker.ietf.org/doc/html/rfc4122#section-4.4
+
+ variant: https://datatracker.ietf.org/doc/html/rfc4122#section-4.1.1
+
+ version: https://datatracker.ietf.org/doc/html/rfc4122#section-4.1.3
+*/
 func GenerateUUID_v4() (r [UUID_BytesLen]byte) {
 	rand.Reader.Read(r[:])
 	r[6] = (r[6] & 0x0f) | 0x40 // Version 4
-	r[8] = (r[8] & 0x3f) | 0x80 // Variant is 10，（标准要求 "8", "9", "a", or "b"，我们是第十种）
+	r[8] = (r[8] & 0x3f) | 0x80
 	return
 }

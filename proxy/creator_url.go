@@ -10,6 +10,16 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	UrlNativeMode   = iota //proxy对应的标准文档所定义的url模式，一般散布于对应github的文档上
+	UrlStandardMode        //VS定义的 供 所有proxy 使用的 标准 url模式
+)
+
+var (
+	//关于url模式， 见 https://github.com/e1732a364fed/v2ray_simple/discussions/163
+	UrlMode = UrlNativeMode
+)
+
 // ClientFromURL calls the registered creator to create client. The returned bool is true if has err.
 func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)

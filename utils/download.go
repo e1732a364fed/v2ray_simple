@@ -6,7 +6,10 @@ import (
 	"net/url"
 )
 
-//if proxyUrl is empty, call http.DefaultClient.Get, or it will create with a client with a transport with proxy set to proxyUrl. If err==nil, then thehttpClient!=nil .
+// TryDownloadWithProxyUrl try to download from a link with the given proxy url.
+// thehttpClient is the client created, could be http.DefaultClient or a newly created one.
+//
+//If proxyUrl is empty, the function will call http.DefaultClient.Get, or it will create with a client with a transport with proxy set to proxyUrl. If err==nil, then thehttpClient!=nil .
 func TryDownloadWithProxyUrl(proxyUrl, downloadLink string) (thehttpClient *http.Client, resp *http.Response, err error) {
 	thehttpClient = http.DefaultClient
 
