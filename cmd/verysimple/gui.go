@@ -422,86 +422,6 @@ func makeBasicControlsPage() ui.Control {
 	return vbox
 }
 
-func makeConfPage() ui.Control {
-	result := ui.NewHorizontalBox()
-	group := ui.NewGroup("Numbers")
-	group2 := ui.NewGroup("Lists")
-
-	result.Append(group, true)
-	result.Append(group2, true)
-
-	result.SetPadded(true)
-	group.SetMargined(true)
-	group2.SetMargined(true)
-
-	{
-		vbox := ui.NewVerticalBox()
-		vbox.SetPadded(true)
-		group.SetChild(vbox)
-
-		spinbox := ui.NewSpinbox(0, 100)
-		slider := ui.NewSlider(0, 100)
-		pbar := ui.NewProgressBar()
-		spinbox.OnChanged(func(*ui.Spinbox) {
-			slider.SetValue(spinbox.Value())
-			pbar.SetValue(spinbox.Value())
-		})
-		slider.OnChanged(func(*ui.Slider) {
-			spinbox.SetValue(slider.Value())
-			pbar.SetValue(slider.Value())
-		})
-		vbox.Append(spinbox, false)
-		vbox.Append(slider, false)
-		vbox.Append(pbar, false)
-
-		// ip := ui.NewProgressBar()
-		// ip.SetValue(-1)
-		// vbox.Append(ip, false)
-	}
-
-	vbox := ui.NewVerticalBox()
-	group2.SetChild(vbox)
-
-	vbox.SetPadded(true)
-
-	hbox2 := ui.NewHorizontalBox()
-	vbox.Append(hbox2, false)
-
-	hbox2.Append(ui.NewLabel("Listen"), false)
-
-	cbox := ui.NewCombobox()
-
-	hbox2.Append(cbox, true)
-
-	// cbox.Append("Combobox Item 1")
-	// cbox.Append("Combobox Item 2")
-	// cbox.Append("Combobox Item 3")
-
-	hbox2 = ui.NewHorizontalBox()
-	vbox.Append(hbox2, false)
-
-	hbox2.Append(ui.NewLabel("Dial"), false)
-
-	cbox = ui.NewCombobox()
-
-	hbox2.Append(cbox, true)
-
-	ecbox := ui.NewEditableCombobox()
-	vbox.Append(ecbox, false)
-
-	ecbox.Append("Editable Item 1")
-	ecbox.Append("Editable Item 2")
-	ecbox.Append("Editable Item 3")
-
-	rb := ui.NewRadioButtons()
-	rb.Append("Radio Button 1")
-	rb.Append("Radio Button 2")
-	rb.Append("Radio Button 3")
-	vbox.Append(rb, false)
-
-	return result
-}
-
 func windowClose(*ui.Window) bool {
 	return true
 }
@@ -529,7 +449,8 @@ func setupUI() {
 	mainwin.SetMargined(true)
 
 	tab.Append("基础控制", makeBasicControlsPage())
-	tab.Append("配置控制", makeConfPage())
+	tab.Append("代理控制", makeConfPage())
+	tab.Append("app控制", makeAppPage())
 	//tab.Append("Data Choosers", makeDataChoosersPage())
 
 	for i := 0; i < tab.NumPages(); i++ {

@@ -200,6 +200,16 @@ func (m *M) HasProxyRunning() bool {
 	return len(m.listenCloserList) > 0
 }
 
+func (m *M) printAllState_2(w io.Writer) {
+	for i, s := range m.allServers {
+		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
+
+	}
+	for i, c := range m.allClients {
+		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
+	}
+}
+
 func (m *M) PrintAllState(w io.Writer) {
 	if w == nil {
 		w = os.Stdout
@@ -208,14 +218,7 @@ func (m *M) PrintAllState(w io.Writer) {
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", m.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", m.AllUploadBytesSinceStart)
 
-	for i, s := range m.allServers {
-		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
-
-	}
-	for i, c := range m.allClients {
-		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
-	}
-
+	m.printAllState_2(w)
 }
 
 // mimic PrintAllState
@@ -227,12 +230,6 @@ func (m *M) PrintAllStateForHuman(w io.Writer) {
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", humanize.Bytes(m.AllDownloadBytesSinceStart))
 	fmt.Fprintln(w, "allUploadBytesSinceStart", humanize.Bytes(m.AllUploadBytesSinceStart))
 
-	for i, s := range m.allServers {
-		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
-
-	}
-	for i, c := range m.allClients {
-		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
-	}
+	m.printAllState_2(w)
 
 }

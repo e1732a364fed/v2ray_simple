@@ -85,11 +85,20 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 	return
 }
 
+func (m *M) RemoveAllClient() {
+	count := m.ClientCount()
+
+	for i := 0; i < count; i++ {
+		m.HotDeleteClient(0)
+	}
+}
+
 // delete and stop the client
 func (m *M) HotDeleteClient(index int) {
 	if index < 0 || index >= len(m.allClients) {
 		return
 	}
+
 	doomedClient := m.allClients[index]
 
 	m.routingEnv.DelClient(doomedClient.GetTag())
