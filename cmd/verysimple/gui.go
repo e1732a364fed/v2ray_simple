@@ -11,10 +11,15 @@ import (
 	"go.uber.org/zap"
 )
 
+var testFunc func()
+
 func init() {
 	gui_mode = true
 	runGui = func() {
 		ui.Main(setupUI)
+		testFunc = func() {
+
+		}
 	}
 }
 
@@ -41,6 +46,9 @@ func makeBasicControlsPage() ui.Control {
 		toggleCheckbox.SetChecked(defaultMachine.IsRunning())
 
 		defaultMachine.AddToggleCallback(func(i int) {
+			if mainwin == nil {
+				return
+			}
 			ok := i == 1
 			toggleCheckbox.SetChecked(ok) //SetChecked不会触发OnToggled
 			if ok {
@@ -67,6 +75,7 @@ func makeBasicControlsPage() ui.Control {
 		startBtn.OnClicked(func(b *ui.Button) {
 			defaultMachine.Start()
 		})
+
 	}
 
 	vbox.Append(ui.NewLabel("This is a label. Right now, labels can only span one line."), false)
@@ -92,56 +101,76 @@ func makeBasicControlsPage() ui.Control {
 	return vbox
 }
 
-func makeNumbersPage() ui.Control {
-	hbox := ui.NewHorizontalBox()
-	hbox.SetPadded(true)
-
+func makeConfPage() ui.Control {
+	result := ui.NewHorizontalBox()
 	group := ui.NewGroup("Numbers")
+	group2 := ui.NewGroup("Lists")
+
+	result.Append(group, true)
+	result.Append(group2, true)
+
+	result.SetPadded(true)
 	group.SetMargined(true)
-	hbox.Append(group, true)
+	group2.SetMargined(true)
+
+	{
+		vbox := ui.NewVerticalBox()
+		vbox.SetPadded(true)
+		group.SetChild(vbox)
+
+		spinbox := ui.NewSpinbox(0, 100)
+		slider := ui.NewSlider(0, 100)
+		pbar := ui.NewProgressBar()
+		spinbox.OnChanged(func(*ui.Spinbox) {
+			slider.SetValue(spinbox.Value())
+			pbar.SetValue(spinbox.Value())
+		})
+		slider.OnChanged(func(*ui.Slider) {
+			spinbox.SetValue(slider.Value())
+			pbar.SetValue(slider.Value())
+		})
+		vbox.Append(spinbox, false)
+		vbox.Append(slider, false)
+		vbox.Append(pbar, false)
+
+		ip := ui.NewProgressBar()
+		ip.SetValue(-1)
+		vbox.Append(ip, false)
+	}
 
 	vbox := ui.NewVerticalBox()
+	group2.SetChild(vbox)
+
 	vbox.SetPadded(true)
-	group.SetChild(vbox)
 
-	spinbox := ui.NewSpinbox(0, 100)
-	slider := ui.NewSlider(0, 100)
-	pbar := ui.NewProgressBar()
-	spinbox.OnChanged(func(*ui.Spinbox) {
-		slider.SetValue(spinbox.Value())
-		pbar.SetValue(spinbox.Value())
-	})
-	slider.OnChanged(func(*ui.Slider) {
-		spinbox.SetValue(slider.Value())
-		pbar.SetValue(slider.Value())
-	})
-	vbox.Append(spinbox, false)
-	vbox.Append(slider, false)
-	vbox.Append(pbar, false)
+	hbox2 := ui.NewHorizontalBox()
+	vbox.Append(hbox2, false)
 
-	ip := ui.NewProgressBar()
-	ip.SetValue(-1)
-	vbox.Append(ip, false)
-
-	group = ui.NewGroup("Lists")
-	group.SetMargined(true)
-	hbox.Append(group, true)
-
-	vbox = ui.NewVerticalBox()
-	vbox.SetPadded(true)
-	group.SetChild(vbox)
+	hbox2.Append(ui.NewLabel("Listen"), false)
 
 	cbox := ui.NewCombobox()
-	cbox.Append("Combobox Item 1")
-	cbox.Append("Combobox Item 2")
-	cbox.Append("Combobox Item 3")
-	vbox.Append(cbox, false)
+
+	hbox2.Append(cbox, true)
+
+	// cbox.Append("Combobox Item 1")
+	// cbox.Append("Combobox Item 2")
+	// cbox.Append("Combobox Item 3")
+
+	hbox2 = ui.NewHorizontalBox()
+	vbox.Append(hbox2, false)
+
+	hbox2.Append(ui.NewLabel("Dial"), false)
+
+	cbox = ui.NewCombobox()
+
+	hbox2.Append(cbox, true)
 
 	ecbox := ui.NewEditableCombobox()
+	vbox.Append(ecbox, false)
+
 	ecbox.Append("Editable Item 1")
 	ecbox.Append("Editable Item 2")
 	ecbox.Append("Editable Item 3")
-	vbox.Append(ecbox, false)
 
 	rb := ui.NewRadioButtons()
 	rb.Append("Radio Button 1")
@@ -149,7 +178,7 @@ func makeNumbersPage() ui.Control {
 	rb.Append("Radio Button 3")
 	vbox.Append(rb, false)
 
-	return hbox
+	return result
 }
 
 func makeDataChoosersPage() ui.Control {
@@ -265,8 +294,12 @@ func setupUI() {
 		filesM.AppendItem("Open github").OnClicked(openUrlFunc(weblink))
 		filesM.AppendItem("Check github releases").OnClicked(openUrlFunc(weblink + "releases"))
 
-		//var y = ui.NewMenu("Menu2")
-		//y.AppendItem("verysimple")
+		var y = ui.NewMenu("Debug")
+		y.AppendItem("test").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+			if testFunc != nil {
+				testFunc()
+			}
+		})
 
 	}
 	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
@@ -274,10 +307,11 @@ func setupUI() {
 	{
 		mainwin.OnClosing(func(*ui.Window) bool {
 			ui.Quit()
+			mainwin = nil
 			return true
 		})
 		ui.OnShouldQuit(func() bool {
-			mainwin.Destroy()
+			mainwin = nil
 			return true
 		})
 	}
@@ -286,14 +320,13 @@ func setupUI() {
 	mainwin.SetChild(tab)
 	mainwin.SetMargined(true)
 
-	tab.Append("Basic Controls", makeBasicControlsPage())
-	tab.Append("Numbers and Lists", makeNumbersPage())
+	tab.Append("基础控制", makeBasicControlsPage())
+	tab.Append("配置控制", makeConfPage())
 	tab.Append("Data Choosers", makeDataChoosersPage())
 
 	for i := 0; i < tab.NumPages(); i++ {
 		tab.SetMargined(i, true)
 	}
-
 	mainwin.Show()
 
 }

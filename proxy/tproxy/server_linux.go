@@ -60,8 +60,8 @@ type Server struct {
 
 	shouldSetIPTable bool
 
-	infoChan    chan<- proxy.TCPRequestInfo
-	udpInfoChan chan<- proxy.UDPRequestInfo
+	infoChan    chan<- netLayer.TCPRequestInfo
+	udpInfoChan chan<- netLayer.UDPRequestInfo
 	tm          *tproxy.Machine
 	sync.Once
 }
@@ -109,7 +109,7 @@ func (s *Server) Stop() {
 
 }
 
-func (s *Server) StartListen(infoChan chan<- proxy.TCPRequestInfo, udpInfoChan chan<- proxy.UDPRequestInfo) io.Closer {
+func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoChan chan<- netLayer.UDPRequestInfo) io.Closer {
 
 	tm := new(tproxy.Machine)
 
@@ -122,7 +122,7 @@ func (s *Server) StartListen(infoChan chan<- proxy.TCPRequestInfo, udpInfoChan c
 			tcpconn := conn.(*net.TCPConn)
 			targetAddr := tproxy.HandshakeTCP(tcpconn)
 
-			info := proxy.TCPRequestInfo{
+			info := netLayer.TCPRequestInfo{
 				Conn:   tcpconn,
 				Target: targetAddr,
 			}
@@ -184,7 +184,7 @@ func (s *Server) StartListen(infoChan chan<- proxy.TCPRequestInfo, udpInfoChan c
 					return
 				}
 
-				udpInfoChan <- proxy.UDPRequestInfo{MsgConn: msgConn, Target: raddr}
+				udpInfoChan <- netLayer.UDPRequestInfo{MsgConn: msgConn, Target: raddr}
 
 			}
 		}()

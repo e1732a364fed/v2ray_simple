@@ -5,12 +5,11 @@ Package netLayer contains definitions in network layer AND transport layer.
 
 以后如果要添加 kcp 或 raw socket 等底层协议时，也要在此包 或子包里实现.
 
-Tags
+# Tags
 
 本包提供 embed_geoip 这个 build tag。
 
 若给出 embed_geoip，则会尝试内嵌 GeoLite2-Country.mmdb.tgz 文件；默认不内嵌。
-
 */
 package netLayer
 
@@ -36,12 +35,12 @@ var (
 	ErrTimeout                  = errors.New("timeout")
 )
 
-//做一些网络层的资料准备工作, 可以优化本包其它函数的调用。
+// 做一些网络层的资料准备工作, 可以优化本包其它函数的调用。
 func PrepareInterfaces() {
 	//weKnowThatWeDontHaveIPV6 = !HasIpv6Interface()
 }
 
-//c.SetDeadline(time.Time{})
+// c.SetDeadline(time.Time{})
 func PersistConn(c net.Conn) {
 	c.SetDeadline(time.Time{})
 }
@@ -54,7 +53,7 @@ func IsTCP(r any) *net.TCPConn {
 	return nil
 }
 
-//net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
+// net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
 func IsBasicConn(r interface{}) bool {
 	if _, ok := r.(syscall.Conn); ok {
 		return true
@@ -79,7 +78,7 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 	return nil
 }
 
-//"udp", "udp4", "udp6"
+// "udp", "udp4", "udp6"
 func IsStrUDP_network(s string) bool {
 	switch s {
 	case "udp", "udp4", "udp6":
@@ -117,7 +116,7 @@ type NetDeadliner interface {
 	SetWriteDeadline(t time.Time) error
 }
 
-//实现 NetAddresser
+// 实现 NetAddresser
 type EasyNetAddresser struct {
 	LA, RA net.Addr
 }
@@ -159,8 +158,18 @@ func HasIpv6Interface() bool {
 	return false
 }
 
-//用于定义拒绝响应的行为；可参考 httpLayer.RejectConn
+// 用于定义拒绝响应的行为；可参考 httpLayer.RejectConn
 type RejectConn interface {
 	RejectBehaviorDefined() bool //若为false，则只能直接Close
 	Reject()
+}
+
+type TCPRequestInfo struct {
+	net.Conn
+	Target Addr
+}
+
+type UDPRequestInfo struct {
+	MsgConn
+	Target Addr
 }

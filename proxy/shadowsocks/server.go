@@ -162,7 +162,7 @@ func (m *Server) removeUDPByHash(hash netLayer.HashableAddr) {
 	m.Unlock()
 }
 
-func (s *Server) StartListen(_ chan<- proxy.TCPRequestInfo, udpInfoChan chan<- proxy.UDPRequestInfo) io.Closer {
+func (s *Server) StartListen(_ chan<- netLayer.TCPRequestInfo, udpInfoChan chan<- netLayer.UDPRequestInfo) io.Closer {
 	uc, err := net.ListenUDP("udp", s.LUA)
 	if err != nil {
 		log.Panicln("shadowsocks listen udp failed", err)
@@ -226,7 +226,7 @@ func (s *Server) StartListen(_ chan<- proxy.TCPRequestInfo, udpInfoChan chan<- p
 			conn.readChan <- netLayer.AddrData{Data: readbuf.Bytes(), Addr: destAddr}
 
 			if !found {
-				udpInfoChan <- proxy.UDPRequestInfo{
+				udpInfoChan <- netLayer.UDPRequestInfo{
 					MsgConn: conn, Target: destAddr,
 				}
 			}

@@ -340,6 +340,7 @@ func mainFunc() (result int) {
 		if runGui != nil {
 			runGui()
 			gui_mode = false
+			utils.Info("gui mode exited")
 		}
 	}
 

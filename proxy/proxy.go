@@ -94,19 +94,9 @@ type Server interface {
 	SelfListen() (is, tcp, udp bool)
 }
 
-type TCPRequestInfo struct {
-	net.Conn
-	Target netLayer.Addr
-}
-
-type UDPRequestInfo struct {
-	netLayer.MsgConn
-	Target netLayer.Addr
-}
-
 type ListenerServer interface {
 	Server
-	StartListen(chan<- TCPRequestInfo, chan<- UDPRequestInfo) io.Closer
+	StartListen(chan<- netLayer.TCPRequestInfo, chan<- netLayer.UDPRequestInfo) io.Closer
 }
 
 type UserServer interface {
