@@ -523,9 +523,23 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	case utils.ErrHandled:
 		return
 
-	default:
+	default: //回落
 		if !iics.extractFirstBufFromErr(err) {
 			return
+		}
+
+		if iics.isTlsLazyServerEnd {
+			iics.isTlsLazyServerEnd = false
+
+			/*
+				我们这里取巧，认为只要进行了回落，那么客户端就一定不是vs客户端，进而不再应用lazy
+				关联 issue #158
+
+				开启了lazy后，如果进行回落了，那么是要先从iics.firstbuffer 来读的，但是目前lazy函数根本不接收 iics.
+
+				而回落一般用于正常客户端的浏览网页，一般的客户端就是浏览器，是不用lazy的，所以可以如此取巧
+
+			*/
 		}
 
 		passToOutClient(iics, true, nil, nil, netLayer.Addr{})
@@ -847,7 +861,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			ce.Write(zap.Any("source", desc))
 		}
 
-		outtag := re.RoutePolicy.GetOutTag(desc)
+		outtag := re.RoutePolicy.CalcuOutTag(desc)
 
 		if len(re.ClientsTagMap) > 0 {
 			if tagC := re.GetClient(outtag); tagC != nil {
@@ -1038,24 +1052,24 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 		if iics.fallbackXver >= 0 {
 			if iics.fallbackXver > 0 {
 				ce.Write(
-					zap.String("fallback from", iics.cachedRemoteAddr),
-					zap.String("target", targetAddr.UrlString()),
+					zap.String("Fallback from", iics.cachedRemoteAddr),
+					zap.String("Target", targetAddr.UrlString()),
 					zap.String("through", proxy.GetVSI_url(client)),
 					zap.Int("with xver", iics.fallbackXver),
 				)
 
 			} else {
 				ce.Write(
-					zap.String("fallback from", iics.cachedRemoteAddr),
-					zap.String("target", targetAddr.UrlString()),
+					zap.String("Fallback from", iics.cachedRemoteAddr),
+					zap.String("Target", targetAddr.UrlString()),
 					zap.String("through", proxy.GetVSI_url(client)),
 				)
 
 			}
 		} else {
 			ce.Write(
-				zap.String("from", iics.cachedRemoteAddr),
-				zap.String("target", targetAddr.UrlString()),
+				zap.String("From", iics.cachedRemoteAddr),
+				zap.String("Target", targetAddr.UrlString()),
 				zap.String("through", proxy.GetVSI_url(client)),
 			)
 		}

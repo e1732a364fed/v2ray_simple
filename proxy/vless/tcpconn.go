@@ -108,8 +108,6 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 }
 
-//如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
-// 这里规定，如果是UDP，则 每Write一遍，都要Write一个 完整的UDP 数据包
 func (c *UserTCPConn) Write(p []byte) (int, error) {
 
 	if c.version == 0 {

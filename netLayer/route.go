@@ -284,10 +284,10 @@ func (rp *RoutePolicy) AddRouteSet(rs *RouteSet) {
 	}
 }
 
-// 返回一个 proxy.Client 的 tag。
+// 根据td 以及 RoutePolicy的配置 计算出 一个 对应的 proxy.Client 的 tag。
 // 默认情况下，始终具有direct这个tag以及 proxy这个tag，无需用户额外在配置文件中指定。
 // 默认如果不匹配任何值的话，就会流向 "proxy" tag，也就是客户设置的 remoteClient的值。
-func (rp *RoutePolicy) GetOutTag(td *TargetDescription) string {
+func (rp *RoutePolicy) CalcuOutTag(td *TargetDescription) string {
 	for _, rs := range rp.List {
 		if rs.IsIn(td) {
 			switch n := len(rs.OutTags); n {

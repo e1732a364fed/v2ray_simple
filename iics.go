@@ -66,7 +66,7 @@ type incomingInserverConnState struct {
 
 	isInner bool
 
-	inTag       string //在inServer为nil时，可用此项确定 inTag
+	inTag       string //在inServer为nil时，可用此项确定 inTag。比如tproxy就属于这种情况
 	useSniffing bool   //在inServer为nil时，可用此项确定 是否使用sniffing
 
 	cachedRemoteAddr string
@@ -114,7 +114,7 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 	//通过err找出 并赋值给 iics.theFallbackFirstBuffer
 	{
 
-		fe, ok := err.(*utils.ErrBuffer)
+		be, ok := err.(*utils.ErrBuffer)
 		if !ok {
 			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
 			if iics.wrappedConn != nil {
@@ -123,7 +123,7 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 			return false
 		}
 
-		if firstbuffer := fe.Buf; firstbuffer == nil {
+		if firstbuffer := be.Buf; firstbuffer == nil {
 			//不应该，至少能读到1字节的。
 
 			panic("No FirstBuffer")
