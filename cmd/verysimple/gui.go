@@ -62,9 +62,9 @@ func makeBasicControlsPage() ui.Control {
 
 	{
 
-		toggleCheckbox.SetChecked(defaultMachine.IsRunning())
+		toggleCheckbox.SetChecked(mainM.IsRunning())
 
-		defaultMachine.AddToggleCallback(func(i int) {
+		mainM.AddToggleCallback(func(i int) {
 			if mainwin == nil {
 				return
 			}
@@ -80,19 +80,19 @@ func makeBasicControlsPage() ui.Control {
 		})
 		toggleCheckbox.OnToggled(func(c *ui.Checkbox) {
 			if c.Checked() {
-				defaultMachine.Start()
+				mainM.Start()
 			} else {
-				defaultMachine.Stop()
+				mainM.Stop()
 
 			}
 		})
 
 		stopBtn.OnClicked(func(b *ui.Button) {
-			defaultMachine.Stop()
+			mainM.Stop()
 		})
 
 		startBtn.OnClicked(func(b *ui.Button) {
-			defaultMachine.Start()
+			mainM.Start()
 		})
 
 	}

@@ -22,7 +22,6 @@ import (
 
 type M struct {
 	ApiServerConf
-	DefaultUUID string
 
 	standardConf proxy.StandardConf
 	simpleConf   proxy.SimpleConf
@@ -30,6 +29,8 @@ type M struct {
 
 	v2ray_simple.GlobalInfo
 	sync.RWMutex
+
+	DefaultUUID string
 
 	ApiServerRunning bool
 

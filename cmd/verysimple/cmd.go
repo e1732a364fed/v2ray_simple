@@ -134,8 +134,8 @@ func tryDownloadMMDB() {
 
 	var outClient proxy.Client
 
-	if defaultMachine.DefaultClientUsable() {
-		outClient = defaultMachine.DefaultOutClient
+	if mainM.DefaultClientUsable() {
+		outClient = mainM.DefaultOutClient
 		utils.PrintStr("trying to download mmdb through your proxy dial\n")
 	} else {
 		utils.PrintStr("trying to download mmdb directly\n")
@@ -198,8 +198,8 @@ func tryDownloadGeositeSource() {
 
 	var outClient proxy.Client
 
-	if defaultMachine.DefaultClientUsable() {
-		outClient = defaultMachine.DefaultOutClient
+	if mainM.DefaultClientUsable() {
+		outClient = mainM.DefaultOutClient
 		utils.PrintStr("trying to download geosite through your proxy dial\n")
 	} else {
 		utils.PrintStr("trying to download geosite directly\n")

@@ -47,7 +47,7 @@ func flist(list []*CliCmd) (result []func()) {
 var cliCmdList = []*CliCmd{
 	{
 		"查询当前状态", func() {
-			defaultMachine.PrintAllState(os.Stdout)
+			mainM.PrintAllState(os.Stdout)
 		},
 	}, {
 		"打印当前版本所支持的所有协议", printSupportedProtocols,
@@ -69,17 +69,17 @@ func init() {
 
 	cliCmdList = append(cliCmdList, &CliCmd{
 		"【生成分享链接】<-当前的配置", func() {
-			sc := defaultMachine.GetStandardConfFromCurrentState()
+			sc := mainM.GetStandardConfFromCurrentState()
 			interactively_generate_share(&sc)
 		},
 	}, &CliCmd{
-		"【交互生成配置】，超级强大", func() { generateConfigFileInteractively(defaultMachine) },
+		"【交互生成配置】，超级强大", func() { generateConfigFileInteractively(mainM) },
 	}, &CliCmd{
-		"热删除配置", func() { interactively_hotRemoveServerOrClient(defaultMachine) },
+		"热删除配置", func() { interactively_hotRemoveServerOrClient(mainM) },
 	}, &CliCmd{
-		"【热加载】新配置文件", func() { interactively_hotLoadConfigFile(defaultMachine) },
+		"【热加载】新配置文件", func() { interactively_hotLoadConfigFile(mainM) },
 	}, &CliCmd{
-		"【热加载】新配置url", func() { interactively_hotLoadUrlConfig(defaultMachine) },
+		"【热加载】新配置url", func() { interactively_hotLoadUrlConfig(mainM) },
 	}, &CliCmd{
 		"调节日志等级", interactively_adjust_loglevel,
 	})
@@ -503,7 +503,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	fmt.Printf("你输入了 %s\n", fpath)
 
 	var confMode int
-	confMode, err = defaultMachine.LoadConfig(fpath, "", "")
+	confMode, err = mainM.LoadConfig(fpath, "", "")
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)

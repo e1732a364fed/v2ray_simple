@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
 )
@@ -110,4 +112,10 @@ func Openbrowser(url string) error {
 // https://stackoverflow.com/questions/37290693/how-to-remove-redundant-spaces-whitespace-from-a-string-in-golang
 func StandardizeSpaces(s string) string {
 	return strings.Join(strings.Fields(s), " ")
+}
+
+func GetSystemKillChan() <-chan os.Signal {
+	osSignals := make(chan os.Signal, 1)
+	signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
+	return osSignals
 }

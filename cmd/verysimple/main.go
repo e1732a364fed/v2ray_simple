@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"runtime/debug"
 	"runtime/pprof"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/pkg/profile"
@@ -37,7 +35,7 @@ var (
 	runCli func()
 	runGui func()
 
-	defaultMachine *machine.M
+	mainM *machine.M
 )
 
 const (
@@ -49,13 +47,13 @@ const (
 )
 
 func init() {
-	defaultMachine = machine.New()
+	mainM = machine.New()
 
 	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 
 	//有时发现在某些情况下，dns查询或者tcp链接的建立很慢，甚至超过8秒, 所以开放自定义超时时间，便于在不同环境下测试
 	flag.IntVar(&dialTimeoutSecond, "dt", int(netLayer.DialTimeout/time.Second), "dial timeout, in second")
-	flag.BoolVar(&defaultMachine.EnableApiServer, "ea", false, "enable api server")
+	flag.BoolVar(&mainM.EnableApiServer, "ea", false, "enable api server")
 
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
@@ -102,6 +100,12 @@ func stopMachineAndExit(m *machine.M) {
 
 }
 
+func exitBySignal() {
+	utils.Info("Program got close signal.")
+
+	stopMachineAndExit(mainM)
+}
+
 func mainFunc() (result int) {
 	defer func() {
 		//注意，这个recover代码并不是万能的，有时捕捉不到panic。
@@ -125,7 +129,7 @@ func mainFunc() (result int) {
 
 			result = -3
 
-			stopMachineAndExit(defaultMachine)
+			stopMachineAndExit(mainM)
 		}
 	}()
 
@@ -140,41 +144,7 @@ func mainFunc() (result int) {
 	}
 
 	// config params step
-	{
-		if disableSplice {
-			netLayer.SystemCanSplice = false
-		}
-		if startPProf {
-			const pprofFN = "cpu.pprof"
-			f, err := os.OpenFile(pprofFN, os.O_CREATE|os.O_RDWR, 0644)
-
-			if err == nil {
-				defer f.Close()
-				err = pprof.StartCPUProfile(f)
-				if err == nil {
-					defer pprof.StopCPUProfile()
-				} else {
-					log.Println("pprof.StartCPUProfile failed", err)
-
-				}
-			} else {
-				log.Println(pprofFN, "can't be created,", err)
-			}
-
-		}
-		if startMProf {
-			//若不使用 NoShutdownHook, 则 我们ctrl+c退出时不会产生 pprof文件
-			p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
-
-			defer p.Stop()
-		}
-
-		if useNativeUrlFormat {
-			proxy.UrlFormat = proxy.UrlNativeFormat
-		}
-
-		netLayer.DialTimeout = time.Duration(dialTimeoutSecond) * time.Second
-	}
+	setupSystemParemeters()
 
 	var configMode int
 
@@ -193,7 +163,7 @@ func mainFunc() (result int) {
 
 	}
 
-	configMode, loadConfigErr = defaultMachine.LoadConfig(configFileName, listenURL, dialURL)
+	configMode, loadConfigErr = mainM.LoadConfig(configFileName, listenURL, dialURL)
 
 	if utils.LogOutFileName == defaultLogFile {
 
@@ -222,7 +192,7 @@ func mainFunc() (result int) {
 		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
 	}
 
-	if loadConfigErr != nil && !IsFlexible(defaultMachine) {
+	if loadConfigErr != nil && !IsFlexible(mainM) {
 
 		if ce := utils.CanLogErr(willExitStr); ce != nil {
 			ce.Write(zap.Error(loadConfigErr))
@@ -233,7 +203,7 @@ func mainFunc() (result int) {
 		return -1
 	}
 
-	//netLayer.PrepareInterfaces()	//发现有时, ipv6不是程序刚运行时就有的, 所以不应默认 预读网卡。主要是 openwrt等设备 在使用 DHCPv6 获取ipv6 等情况时。
+	//netLayer.PrepareInterfaces()	//有时ipv6不是程序刚运行时就有的, 所以不应默认 预读网卡。主要是 openwrt等设备 在使用 DHCPv6 获取ipv6 等情况
 
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 
@@ -248,14 +218,14 @@ func mainFunc() (result int) {
 
 	switch configMode {
 	case proxy.SimpleMode:
-		result = defaultMachine.LoadSimpleConf(false)
+		result = mainM.LoadSimpleConf(false)
 		if result < 0 {
 			return result
 		}
 
 	case proxy.StandardMode:
-		defaultMachine.SetupListenAndRoute()
-		defaultMachine.SetupDial()
+		mainM.SetupListenAndRoute()
+		mainM.SetupDial()
 	}
 
 	runPreCommands()
@@ -263,30 +233,27 @@ func mainFunc() (result int) {
 	stopGorouteCaptureSignalChan := make(chan struct{})
 
 	go func() {
-		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
+		osSignals := utils.GetSystemKillChan()
 		select {
 		case <-stopGorouteCaptureSignalChan:
 			return
 		case <-osSignals:
-			utils.Info("Program got close signal.")
-
-			stopMachineAndExit(defaultMachine)
+			exitBySignal()
 		}
 
 	}()
 
-	defaultMachine.Start()
+	mainM.Start()
 
 	//没可用的listen/dial，而且还无法动态更改配置
-	if NoFuture(defaultMachine) {
+	if NoFuture(mainM) {
 		utils.Error(willExitStr)
 		return -1
 	}
 
-	if defaultMachine.EnableApiServer {
-		defaultMachine.ApiServerConf = defaultApiServerConf
-		defaultMachine.TryRunApiServer()
+	if mainM.EnableApiServer {
+		mainM.ApiServerConf = defaultApiServerConf
+		mainM.TryRunApiServer()
 	}
 
 	if interactive_mode {
@@ -305,7 +272,7 @@ func mainFunc() (result int) {
 		}
 	}
 
-	if NothingRunning(defaultMachine) {
+	if NothingRunning(mainM) {
 		utils.Warn(willExitStr)
 		return
 	}
@@ -313,15 +280,48 @@ func mainFunc() (result int) {
 	{
 		close(stopGorouteCaptureSignalChan)
 
-		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
+		osSignals := utils.GetSystemKillChan()
 		<-osSignals
 
-		utils.Info("Program got close signal.")
-
-		stopMachineAndExit(defaultMachine)
+		exitBySignal()
 	}
 	return
+}
+
+func setupSystemParemeters() {
+	if disableSplice {
+		netLayer.SystemCanSplice = false
+	}
+	if startPProf {
+		const pprofFN = "cpu.pprof"
+		f, err := os.OpenFile(pprofFN, os.O_CREATE|os.O_RDWR, 0644)
+
+		if err == nil {
+			defer f.Close()
+			err = pprof.StartCPUProfile(f)
+			if err == nil {
+				defer pprof.StopCPUProfile()
+			} else {
+				log.Println("pprof.StartCPUProfile failed", err)
+
+			}
+		} else {
+			log.Println(pprofFN, "can't be created,", err)
+		}
+
+	}
+	if startMProf {
+		//若不使用 NoShutdownHook, 则 我们ctrl+c退出时不会产生 pprof文件
+		p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
+
+		defer p.Stop()
+	}
+
+	if useNativeUrlFormat {
+		proxy.UrlFormat = proxy.UrlNativeFormat
+	}
+
+	netLayer.DialTimeout = time.Duration(dialTimeoutSecond) * time.Second
 }
 
 // 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
