@@ -101,7 +101,7 @@ func (u *UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
 	abs, atype := addr.AddressBytes()
 
 	atype = netLayer.ATypeToSocks5Standard(atype)
-	buf.WriteByte(atype)
+	buf.WriteByte(netLayer.ATypeToSocks5Standard(atype))
 	buf.Write(abs)
 
 	buf.WriteByte(byte(addr.Port >> 8))

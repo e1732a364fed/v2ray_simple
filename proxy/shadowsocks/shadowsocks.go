@@ -1,7 +1,7 @@
 /*
 Package shadowsocks implements shadowsocks protocol.
 
-Reference
+# Reference
 
 https://github.com/shadowsocks/shadowsocks-org/wiki/Protocol
 
@@ -24,14 +24,12 @@ https://github.com/shadowsocks/shadowsocks-org/issues/183
 
 关于ss-2022
 https://github.com/shadowsocks/shadowsocks-org/issues/196
-
 */
 package shadowsocks
 
 import (
 	"errors"
 	"net"
-	"net/url"
 	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -68,7 +66,7 @@ func initShadowCipher(info MethodPass) (cipher core.Cipher) {
 	return
 }
 
-//依照shadowsocks协议的格式读取 地址的域名、ip、port信息 (same as socks5 and trojan)
+// 依照shadowsocks协议的格式读取 地址的域名、ip、port信息 (same as socks5 and trojan)
 func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	var b1 byte
 
@@ -158,14 +156,14 @@ type MethodPass struct {
 	Method, Password string
 }
 
-//require "method" and "pass" field. return true if both not empty.
-func (ph *MethodPass) InitWithUrl(u *url.URL) bool {
-	ph.Method = u.Query().Get("method")
-	ph.Password = u.Query().Get("pass")
-	return len(ph.Method) > 0 && len(ph.Password) > 0
-}
+// //require "method" and "pass" field. return true if both not empty.
+// func (ph *MethodPass) InitWithUrl(u *url.URL) bool {
+// 	ph.Method = u.Query().Get("method")
+// 	ph.Password = u.Query().Get("pass")
+// 	return len(ph.Method) > 0 && len(ph.Password) > 0
+// }
 
-//uuid: "method:xxxx\npass:xxxx"
+// uuid: "method:xxxx\npass:xxxx"
 func (ph *MethodPass) InitWithStr(str string) (ok bool) {
 
 	var potentialMethod, potentialPass string
