@@ -13,7 +13,9 @@ import (
 )
 
 // default recommended handshake read timeout
-const CommonReadTimeout = time.Second * 4
+const DefaultCommonReadTimeout = time.Second * 4
+
+var CommonReadTimeout = DefaultCommonReadTimeout
 
 // set read timeout after CommonReadTimeout
 func SetCommonReadTimeout(c net.Conn) error {

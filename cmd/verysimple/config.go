@@ -41,6 +41,7 @@ type AppConf struct {
 	UDP_timeout *int `toml:"udp_timeout"`
 
 	DialTimeoutSeconds *int `toml:"dial_timeout"`
+	ReadTimeoutSeconds *int `toml:"read_timeout"`
 
 	GeoipFile     *string `toml:"geoip_file"`
 	GeositeFolder *string `toml:"geosite_folder"`
@@ -75,6 +76,13 @@ func setupByAppConf(ac *AppConf) {
 
 			}
 		}
+
+		if ac.ReadTimeoutSeconds != nil {
+			if s := *ac.ReadTimeoutSeconds; s > 0 {
+				proxy.CommonReadTimeout = time.Duration(s) * time.Second
+			}
+		}
+
 		if ac.GeoipFile != nil {
 			netLayer.GeoipFileName = *ac.GeoipFile
 		}

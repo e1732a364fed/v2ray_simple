@@ -90,13 +90,32 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 
 	readbs := utils.GetBytes(utils.MTU)
 
-	wholeReadLen, err := underlay.Read(readbs)
-	if err != nil {
-		returnErr = utils.ErrInErr{ErrDesc: "read underlay failed", ErrDetail: err, Data: wholeReadLen}
-		return
-	}
-	//todo: 根据 https://www.ihcblog.com/a-better-tls-obfs-proxy/
+	var wholeReadLen int
+
+	//根据 https://www.ihcblog.com/a-better-tls-obfs-proxy/
 	//trojan的 CRLF 是为了模拟http服务器的行为, 所以此时不要一次性Read，而是要Read到CRLF为止
+
+	// wholeReadLen, err := underlay.Read(readbs)
+	// if err != nil {
+	// 	returnErr = utils.ErrInErr{ErrDesc: "read underlay failed", ErrDetail: err, Data: wholeReadLen}
+	// 	return
+	// }
+
+	for {
+		thislen, e := underlay.Read(readbs[wholeReadLen:])
+		if e != nil {
+			returnErr = utils.ErrInErr{ErrDesc: "read underlay failed", ErrDetail: e, Data: wholeReadLen}
+			return
+		}
+		lastTail := wholeReadLen
+		wholeReadLen += thislen
+
+		index_crlf := bytes.Index(readbs[lastTail:wholeReadLen], crlf)
+
+		if index_crlf > 0 {
+			break
+		}
+	}
 
 	if wholeReadLen < 17 {
 		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
@@ -173,6 +192,7 @@ realPart:
 		//关于 trojan实现多路复用的方式，可参考 https://p4gefau1t.github.io/trojan-go/developer/mux/  (该链接只是泛泛提了一下而已，没有制定具体实现的标准)
 		ismux = true
 	}
+	var err error
 
 	targetAddr, err = GetAddrFrom(readbuf, ismux)
 	if err != nil {
