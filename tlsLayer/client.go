@@ -31,6 +31,8 @@ func NewClient(conf Conf) *Client {
 	c.alpnList = conf.AlpnList
 
 	switch conf.Tls_type {
+	case shadowTls2_t:
+		fallthrough
 	case shadowTls_t:
 		//fallthrough
 		c.tlsConfig = GetTlsConfig(false, conf)
@@ -93,11 +95,23 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 		}
 
 		tlsConn = &Conn{
-			Conn: underlay,
-			//Conn:    utlsConn,
-			//ptr:     unsafe.Pointer(utlsConn.Conn),
+			Conn:    underlay,
 			tlsType: shadowTls_t,
 		}
+
+	case shadowTls2_t:
+		configCopy := c.uTlsConfig
+		utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
+		err = utlsConn.Handshake()
+		if err != nil {
+			return
+		}
+
+		tlsConn = &Conn{
+			Conn:    underlay,
+			tlsType: shadowTls2_t,
+		}
+
 	}
 
 	return

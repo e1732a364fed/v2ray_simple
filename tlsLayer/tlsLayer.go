@@ -20,6 +20,7 @@ const (
 	tls_t = iota
 	uTls_t
 	shadowTls_t
+	shadowTls2_t
 )
 
 func StrToType(str string) int {
@@ -33,6 +34,8 @@ func StrToType(str string) int {
 		return uTls_t
 	case "shadow", "shadowtls":
 		return shadowTls_t
+	case "shadow2", "shadowtls2", "shadowtlsv2", "shadowtls_v2":
+		return shadowTls2_t
 	}
 }
 
