@@ -12,7 +12,7 @@ require (
 	github.com/lucas-clemente/quic-go v0.0.0-00010101000000-000000000000
 	github.com/manifoldco/promptui v0.9.0
 	github.com/marten-seemann/qtls v0.10.0
-	github.com/miekg/dns v1.1.48
+	github.com/miekg/dns v1.1.50
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/pires/go-proxyproto v0.6.2

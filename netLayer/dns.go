@@ -31,7 +31,7 @@ func Is_DNSQuery_returnType_ReadErr(err error) bool {
 	}
 }
 
-//筛除掉 Is_DNSQuery_returnType_ReadErr 时，err 为 net.Error.Timeout() 的情况
+// 筛除掉 Is_DNSQuery_returnType_ReadErr 时，err 为 net.Error.Timeout() 的情况
 func Is_DNSQuery_returnType_ReadFatalErr(err error) bool {
 	if !Is_DNSQuery_returnType_ReadErr(err) {
 		return false
@@ -45,7 +45,7 @@ func Is_DNSQuery_returnType_ReadFatalErr(err error) bool {
 	return false
 }
 
-//domain必须是 dns.Fqdn 函数 包过的, 本函数不检查是否包过。如果不包过就传入，会报错。
+// domain必须是 dns.Fqdn 函数 包过的, 本函数不检查是否包过。如果不包过就传入，会报错。
 // dns_type 为 miekg/dns 包中定义的类型, 如 TypeA, TypeAAAA, TypeCNAME.
 // conn是一个建立好的 dns.Conn, 必须非空, 本函数不检查.
 // theMux是与 conn相匹配的mutex, 这是为了防止同时有多个请求导致无法对口；内部若判断为nil,会主动使用一个全局mux.
@@ -128,12 +128,13 @@ func DNSQuery(domain string, dns_type uint16, conn *dns.Conn, theMux *sync.Mutex
 	return
 }
 
-// 给 miekg/dns.Conn 加一个互斥锁, 可保证同一时间仅有一个请求发生.
-// 这样就不会造成并发时的混乱
 type DnsConn struct {
 	*dns.Conn
 	Name  string //我们这里惯例，直接使用配置文件中配置的url字符串作为Name
 	raddr *Addr  //这个用于在Conn出故障后, 重新拨号时所使用
+
+	// 加一个互斥锁, 可保证同一时间仅有一个 对 dns.Conn 的使用。
+	// 这样就不会造成并发时的混乱
 	mutex sync.Mutex
 
 	garbageMark bool
@@ -145,7 +146,7 @@ type IPRecord struct {
 	RecordTime time.Time
 }
 
-//dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求。
+// dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求。
 // 会缓存dns记录; 该设施是一个状态机, 所以叫 DNSMachine。
 // SpecialIPPollicy 用于指定特殊的 域名-ip 映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip。
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询。
@@ -174,7 +175,7 @@ func (c *DnsConn) Dial() error {
 	return nil
 }
 
-//建立一个与dns服务器连接, 可为纯udp dns or DoT. if DoT, 则要求 addr.Network == "tls",
+// 建立一个与dns服务器连接, 可为纯udp dns or DoT. if DoT, 则要求 addr.Network == "tls",
 // 如果是纯udp的，要求 addr.IsUDP() == true
 func DialDnsAddr(addr *Addr) (conn net.Conn, err error) {
 
@@ -265,7 +266,7 @@ func (dm *DNSMachine) Query(domain string) (ip net.IP) {
 	return
 }
 
-//传入的domain必须是不带尾缀点号的domain, 即没有包过 Fqdn
+// 传入的domain必须是不带尾缀点号的domain, 即没有包过 Fqdn
 func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 	var generalCacheHit bool // 若读到了 cache 或 SpecialIPPollicy 的项, 则 generalCacheHit 为 true
 

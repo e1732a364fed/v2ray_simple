@@ -12,6 +12,7 @@ import (
 
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -51,6 +52,8 @@ func init() {
 	mainM = machine.New()
 
 	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
+
+	flag.IntVar(&utils.LogLevelForFile, "llf", -1, "log level for log file,if negative, it will be the same as ll. 0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 
 	//有时发现在某些情况下，dns查询或者tcp链接的建立很慢，甚至超过8秒, 所以开放自定义超时时间，便于在不同环境下测试
 	flag.IntVar(&dialTimeoutSecond, "dt", int(netLayer.DialTimeout/time.Second), "dial timeout, in second")
@@ -182,9 +185,16 @@ func mainFunc() (result int) {
 	fmt.Printf("Log Level:%d %s\n", utils.LogLevel, utils.LogLevelStr(utils.LogLevel))
 
 	if ce := utils.CanLogInfo("Options"); ce != nil {
-		ce.Write(
+		fields := []zapcore.Field{
 			zap.String("Log Level", utils.LogLevelStr(utils.LogLevel)),
 			zap.Bool("UseReadv", netLayer.UseReadv),
+		}
+
+		if utils.LogLevelForFile >= 0 {
+			fields = append(fields, zap.String("Log Level For File", utils.LogLevelStr(utils.LogLevelForFile)))
+		}
+		ce.Write(
+			fields...,
 		)
 	} else {
 		fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
