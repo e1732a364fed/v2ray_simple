@@ -338,6 +338,9 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 				num, e1 := rawWRC.ReadFrom(wlccc_raw)
 				log.Printf("SpliceRead R方向 传完，%v , 长度: %d\n", e1, num)
 			} else {
+				if ce := utils.CanLogDebug("Tls lazy ok1"); ce != nil {
+					ce.Write(zap.Uint32("id", connid))
+				}
 				rawWRC.ReadFrom(wlccc_raw)
 			}
 
@@ -442,6 +445,9 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 	if isgood2 {
 		if tlsLayer.PDD {
 			log.Printf("成功SpliceRead W方向,准备 直连对拷\n")
+		}
+		if ce := utils.CanLogDebug("Tls lazy ok2"); ce != nil {
+			ce.Write(zap.Uint32("id", connid))
 		}
 
 		if tlslazy_willuseSystemCall {
