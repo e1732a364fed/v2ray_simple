@@ -1,6 +1,13 @@
 [[listen]]
+tag = "myreject"
 protocol = "reject"
 ip = "0.0.0.0"
 port = 4433
-extra = { type = "nginx"}
+extra = { type = "nginx"}   # type 可为 "", "http", "nginx", 推荐使用 nginx类型 来模拟。 
 
+# 本 reject 的listen 可以用于 最终回落, 比如下面代码。 当然本示例 只列了 一个listen。你可以在 listen其它协议的 配置文件中 放置一个 reject 的 listen 来作为回落。 
+
+# 换句话说，你直接把本文件 所有内容复制粘贴 到 其它 文件到末尾 即可 实现默认回落 到 reject 的用法。
+
+[[fallback]]
+dest = "@myreject"

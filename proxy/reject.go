@@ -25,9 +25,9 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 			bs = bs[:n]
 			_, _, _, _, failreason := httpLayer.ParseH1Request(bs, false)
 			if failreason == 0 {
-				underlay.Write([]byte(httpLayer.GetReal400Response()))
+				underlay.Write([]byte(httpLayer.GetReal403Response())) //forbiden
 			} else {
-				underlay.Write([]byte(httpLayer.GetReal403Response()))
+				underlay.Write([]byte(httpLayer.GetReal400Response())) //bad request, for non-http (illegal) request
 			}
 		}
 
@@ -41,10 +41,7 @@ type RejectCreator struct{}
 
 func (RejectCreator) NewClientFromURL(url *url.URL) (Client, error) {
 	r := &RejectClient{}
-	nStr := url.Query().Get("type")
-	if nStr != "" {
-		r.theType = nStr
-	}
+	r.initWithUrl(url)
 
 	return r, nil
 }
@@ -52,15 +49,51 @@ func (RejectCreator) NewClientFromURL(url *url.URL) (Client, error) {
 func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	r := &RejectClient{}
 
-	if dc.Extra != nil {
-		if thing := dc.Extra["type"]; thing != nil {
+	r.initWithCommonConf(&dc.CommonConf)
+
+	return r, nil
+}
+
+func (RejectCreator) NewServerFromURL(url *url.URL) (Server, error) {
+	r := &RejectServer{}
+	r.initWithUrl(url)
+
+	return r, nil
+}
+
+func (RejectCreator) NewServer(lc *ListenConf) (Server, error) {
+	r := &RejectServer{}
+
+	r.initWithCommonConf(&lc.CommonConf)
+
+	return r, nil
+}
+
+type rejectCommon struct {
+	Base
+
+	theType string
+}
+
+func (*rejectCommon) Name() string { return RejectName }
+
+func (rc *rejectCommon) initWithUrl(url *url.URL) {
+	nStr := url.Query().Get("type")
+	if nStr != "" {
+		rc.theType = nStr
+	}
+
+}
+
+func (rc *rejectCommon) initWithCommonConf(cc *CommonConf) {
+	if cc.Extra != nil {
+		if thing := cc.Extra["type"]; thing != nil {
 			if t, ok := thing.(string); ok && t != "" {
-				r.theType = t
+				rc.theType = t
 			}
 		}
 	}
 
-	return r, nil
 }
 
 /*RejectClient implements Client, optionally response a 403 and close the underlay immediately.
@@ -77,14 +110,10 @@ func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 默认为 "" 空类型，直接 close，不反回任何信息。 若设为 http，则返回一个403错误；若设为nginx，则分类返回400/403错误。
 */
 type RejectClient struct {
-	Base
-
-	theType string
+	rejectCommon
 }
 
-func (*RejectClient) Name() string { return RejectName }
-
-//optionally response a 403 and close the underlay.
+//optionally response 403 and close the underlay, return io.EOF.
 func (c *RejectClient) Handshake(underlay net.Conn, _ []byte, _ netLayer.Addr) (result io.ReadWriteCloser, err error) {
 	tryRejectWithHttpRespAndClose(c.theType, underlay)
 	return nil, io.EOF
@@ -94,4 +123,17 @@ func (c *RejectClient) Handshake(underlay net.Conn, _ []byte, _ netLayer.Addr) (
 func (c *RejectClient) EstablishUDPChannel(underlay net.Conn, _ []byte, _ netLayer.Addr) (netLayer.MsgConn, error) {
 	tryRejectWithHttpRespAndClose(c.theType, underlay)
 	return nil, io.EOF
+}
+
+//mimic the behavior of RejectClient
+type RejectServer struct {
+	rejectCommon
+}
+
+//return utils.ErrHandled
+func (s *RejectServer) Handshake(underlay net.Conn) (_ net.Conn, _ netLayer.MsgConn, _ netLayer.Addr, e error) {
+	tryRejectWithHttpRespAndClose(s.theType, underlay)
+
+	e = utils.ErrHandled
+	return
 }
