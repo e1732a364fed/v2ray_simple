@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//BaseInterface provides supports for all VSI model layers except proxy layer.
+// BaseInterface provides supports for all VSI model layers except proxy layer.
 type BaseInterface interface {
 	Name() string       //代理协议名称, 如vless
 	MiddleName() string //不包含传输层 和 代理层的 其它VSI层 所使用的协议，前后被加了加号，如 +tls+ws+
@@ -38,8 +38,6 @@ type BaseInterface interface {
 	CantRoute() bool //for inServer
 
 	/////////////////// 传输层 ///////////////////
-
-	MultiTransportLayer() bool //同时使用tcp和udp来传输数据。direct, socks5 和 shadowsocks 都为true
 
 	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc. 这里叫做Network而不是transport, 是遵循 golang 标准包 net包的用法。我们兼容 net的Listen等方法, 可把Network直接作为 net.Listen等方法的 network 参数。
 	GetXver() int
@@ -83,7 +81,8 @@ type BaseInterface interface {
 // 规定，所有的proxy都要内嵌本struct. 我们用这种方式实现 "继承".
 // 这是verysimple的架构所要求的。
 // verysimple规定，在加载完配置文件后，listen/dial 所使用的全部层级都是完整确定了的.
-//  因为所有使用的层级都是确定的，就可以进行针对性优化
+//
+//	因为所有使用的层级都是确定的，就可以进行针对性优化
 type Base struct {
 	ListenConf *ListenConf
 	DialConf   *DialConf
@@ -124,10 +123,6 @@ func (b *Base) GetBase() *Base {
 
 func (b *Base) Network() string {
 	return b.TransportLayer
-}
-
-func (b *Base) MultiTransportLayer() bool {
-	return false
 }
 
 func (b *Base) LocalAddr() net.Addr {
@@ -190,7 +185,7 @@ func (b *Base) InnerMuxEstablished() bool {
 	return b.Innermux != nil && !b.Innermux.IsClosed()
 }
 
-//placeholder
+// placeholder
 func (b *Base) HasInnerMux() (int, string) {
 	return 0, ""
 }
@@ -235,7 +230,7 @@ func (b *Base) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
 	}
 }
 
-//return false. As a placeholder.
+// return false. As a placeholder.
 func (b *Base) IsUDP_MultiChannel() bool {
 	return false
 }
@@ -248,20 +243,16 @@ func (b *Base) GetSockopt() *netLayer.Sockopt {
 }
 
 func (b *Base) setNetwork(network string) {
-	if network == "" {
-		b.TransportLayer = "tcp"
 
-	} else {
-		b.TransportLayer = network
+	b.TransportLayer = network
 
-	}
 }
 
 func (b *Base) AdvancedLayer() string {
 	return b.AdvancedL
 }
 
-//try close inner mux and stop AdvS
+// try close inner mux and stop AdvS
 func (b *Base) Stop() {
 	if b.Innermux != nil {
 		b.Innermux.Close()
@@ -272,7 +263,7 @@ func (b *Base) Stop() {
 	}
 }
 
-//return false. As a placeholder.
+// return false. As a placeholder.
 func (b *Base) CanFallback() bool {
 	return false
 }
@@ -313,7 +304,7 @@ func (b *Base) GetAdvServer() advLayer.Server {
 	return b.AdvS
 }
 
-//setNetwork, Xver, Tag,Sockopt, IsFullcone, Header,AdvancedL, InitAdvLayer
+// setNetwork, Xver, Tag,Sockopt, IsFullcone, Header,AdvancedL, InitAdvLayer
 func (b *Base) ConfigCommon(cc *CommonConf) {
 
 	b.setNetwork(cc.Network)
@@ -332,7 +323,7 @@ func (b *Base) ConfigCommon(cc *CommonConf) {
 	b.InitAdvLayer()
 }
 
-//高级层就像代理层一样重要，可以注册多种包，配置选项也比较多。
+// 高级层就像代理层一样重要，可以注册多种包，配置选项也比较多。
 func (b *Base) InitAdvLayer() {
 	switch b.AdvancedL {
 	case "":

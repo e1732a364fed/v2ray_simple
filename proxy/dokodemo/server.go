@@ -1,4 +1,5 @@
-/*Package dokodemo implements a dokodemo-door proxy.Server.
+/*
+Package dokodemo implements a dokodemo-door proxy.Server.
 
 Server that wants to relay data to a dokodemo target address.
 
@@ -6,13 +7,13 @@ dokodemo 是 v2ray的 dokodemo-door 协议的实现。不含透明代理功能�
 
 严格来说 dokodemo-door 并不是一个 "协议", 而是一个预先指定目标的转发方式。
 
-dokodemo 是 listen端, 监听一个普通的tcp端口，试图将一切流量转发到特定的预定义的地址. 并不是直接连接，而是转发到dial。
+dokodemo 是 listen端, 监听一个普通的tcp/udp端口，试图将一切流量转发到特定的预定义的地址. 并不是直接连接，而是转发到dial。
 
 dokodemo 属于 “单目标”代理，而其它proxy.Server 一般都属于 “泛目标”代理。
 
 内部实际上就是 指定了目标的 纯tcp/udp协议，属于监听协议中最简单、最纯粹的一种。
 
-Example 应用例子
+# Example 应用例子
 
 使用 dokodemo 做监听，用direct 拨号，指定一个target，那么实际上就是把 该监听的节点 与远程target间建立了一个信道;
 
@@ -53,6 +54,10 @@ func init() {
 
 type ServerCreator struct{}
 
+func (ServerCreator) MultiTransportLayer() bool {
+	return false
+}
+
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 	if format != proxy.StandardMode {
 		return lc, utils.ErrUnImplemented
@@ -76,7 +81,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return s, nil
 }
 
-//implements proxy.Server
+// implements proxy.Server
 type Server struct {
 	proxy.Base
 

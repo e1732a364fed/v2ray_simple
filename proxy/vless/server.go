@@ -20,7 +20,11 @@ func init() {
 
 type ServerCreator struct{}
 
-//如果 lc.Version==0, 则只支持 v0.
+func (ServerCreator) MultiTransportLayer() bool {
+	return false
+}
+
+// 如果 lc.Version==0, 则只支持 v0.
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 	onlyV0 := lc.Version == 0
@@ -45,7 +49,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 }
 
-//如果 v=0, 则只支持 v0.
+// 如果 v=0, 则只支持 v0.
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 
 	switch format {
@@ -85,8 +89,8 @@ func newServerWithConf(uuid string, onlyV0 bool) (*Server, error) {
 	return s, nil
 }
 
-//Server 同时支持vless v0 和 v1
-//实现 proxy.UserServer 以及 tlsLayer.UserHaser
+// Server 同时支持vless v0 和 v1
+// 实现 proxy.UserServer 以及 tlsLayer.UserHaser
 type Server struct {
 	proxy.Base
 

@@ -1,8 +1,9 @@
-/*Package socks5 provies socks5 proxy for proxy.Client and proxy.Server.
+/*
+Package socks5 provies socks5 proxy for proxy.Client and proxy.Server.
 
 Supports USER/PASSWORD authentication.
 
-Reference
+# Reference
 
 English: https://www.ietf.org/rfc/rfc1928.txt
 
@@ -14,7 +15,9 @@ USER/PASSWORD authentication rfc:
 
 https://datatracker.ietf.org/doc/html/rfc1929
 
-Off Topic
+注意，socks5可能同时使用tcp和udp，但是一定会使用到tcp，socks5的network只能设置为tcp或者dual
+
+# Off Topic
 
 纵观各种代理协议，vless/vmess/trojan/shadowsocks协议 都借鉴了socks5，有不少类似的地方。
 所以 制作代理, 有必要先学习socks5标准。
@@ -23,7 +26,7 @@ package socks5
 
 const Name = "socks5"
 
-//socks5 version number.
+// socks5 version number.
 const Version5 = 0x05
 
 // SOCKS auth type
@@ -42,6 +45,7 @@ const (
 )
 
 // SOCKS address types as defined in RFC 1928 section 4
+//
 //	Note: vmess/vless用的是123，而这里用的是134，所以是不一样的。
 const (
 	ATypIP4    = 0x1

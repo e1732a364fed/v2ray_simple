@@ -447,7 +447,7 @@ func (a *Addr) String() string {
 
 }
 
-// 返回以url表示的 地址. unix的话文件名若带斜杠则会被转义。ipv6的中括号不会被转义
+// 返回以url表示的 地址. unix的话会被url转义。ipv6的中括号不会被转义
 func (a *Addr) UrlString() string {
 	if a.Network != "" {
 		if a.Network == "unix" {
@@ -483,7 +483,7 @@ func (a *Addr) GetNetIPAddr() (na netip.Addr) {
 	return
 }
 
-// a.Network == "udp", "udp4", "udp6"
+// IsStrUDP_network(a.Network)
 func (a *Addr) IsUDP() bool {
 	return IsStrUDP_network(a.Network)
 }
@@ -505,7 +505,7 @@ func (a *Addr) ToTCPAddr() *net.TCPAddr {
 	return ta
 }
 
-// Returned host string
+// if a.IP!=nil, return IP.String() else return a.Name
 func (a *Addr) HostStr() string {
 	if a.IP == nil {
 		return a.Name
@@ -694,7 +694,7 @@ func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
 	return
 }
 
-const DualNetworkName = "tcp/udp"
+const DualNetworkName = "dual"
 
 type TCPUDPAddr struct {
 	*net.TCPAddr

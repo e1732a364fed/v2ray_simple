@@ -9,14 +9,11 @@ https://github.com/shadowsocks/shadowsocks-org/wiki/AEAD-Ciphers
 
 这里vs参考了gost的实现。gost中，Connector就相当于 client，Handler就相当于 Server
 
-但是发现，没法一个server同时处理tcp和udp？ 也就是说，只能预先指定服务端要处理的协议；
+参考阅读 http://overtalk.site/2020/02/25/network-shadowsocks/
 
-看ss的标准，也没有提及哪一项 可以指定 tcp/udp
+注意, shadowsocks 可能同时使用tcp和udp，但是一定会使用到 tcp, shadowsocks 的network只能设置为tcp或者dual
 
-重新阅读上面Protocol页面，参考阅读 http://overtalk.site/2020/02/25/network-shadowsocks/
-
-ss不像vmess等协议一样，只使用一种传输层协议来传输 tcp和udp数据；而是：用tcp传tcp，用udp传udp。
-如此的话，特征必很明显。
+如dual话，特征必很明显。
 
 另外，本包是普通的ss AEAD Ciphers ，不过它还是有问题。所以以后要研究ss-2022
 

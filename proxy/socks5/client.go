@@ -1,6 +1,7 @@
 package socks5
 
 import (
+	"errors"
 	"io"
 	"net"
 	"net/url"
@@ -16,6 +17,10 @@ func init() {
 
 type ClientCreator struct{}
 
+// true
+func (ClientCreator) MultiTransportLayer() bool {
+	return true
+}
 func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 
 	if format != proxy.UrlStandardFormat {
@@ -50,7 +55,6 @@ func (*Client) Name() string {
 }
 
 func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
-
 	if underlay == nil {
 		panic("socks5 client handshake, nil underlay is not allowed")
 	}
@@ -155,6 +159,11 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 }
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
+
+	if c.Network() == "tcp" {
+		return nil, errors.New("direct's network set to tcp, but EstablishUDPChannel called")
+	}
+
 	var err error
 	serverPort := 0
 	serverPort, err = Client_EstablishUDPAssociate(underlay)

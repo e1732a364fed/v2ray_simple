@@ -17,6 +17,9 @@ func init() {
 
 type ClientCreator struct{}
 
+func (ClientCreator) MultiTransportLayer() bool {
+	return false
+}
 func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 	if format != proxy.UrlStandardFormat {
 		return dc, utils.ErrUnImplemented

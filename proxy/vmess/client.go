@@ -49,6 +49,9 @@ func GetEncryptAlgo(dc *proxy.DialConf) (result string) {
 
 type ClientCreator struct{}
 
+func (ClientCreator) MultiTransportLayer() bool {
+	return false
+}
 func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 	if format != proxy.UrlStandardFormat {
 		return dc, utils.ErrUnImplemented
@@ -207,7 +210,7 @@ func (c *ClientConn) CloseConnWithRaddr(_ netLayer.Addr) error {
 	return c.Conn.Close()
 }
 
-//return false; vmess 标准 是不支持 fullcone的，和vless v0相同
+// return false; vmess 标准 是不支持 fullcone的，和vless v0相同
 func (c *ClientConn) Fullcone() bool {
 	return false
 }

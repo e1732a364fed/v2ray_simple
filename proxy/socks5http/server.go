@@ -1,8 +1,9 @@
-/*Package socks5http provides listening both socks5 and http at one port.
+/*
+Package socks5http provides listening both socks5 and http at one port.
 
 This package imports proxy/socks5 and proxy/http package.
 
-Naming
+# Naming
 
 socks5http 与 clash的 "mixed" 等价。之所以不用 "mixed"这个名称，是因为这容易在本作中引起歧义。
 
@@ -10,15 +11,13 @@ clash是一个客户端，它没有服务端，所以它的监听只是用于内
 
 而本作与v2ray一样，是支持多种服务端协议的，如果也叫 mixed 的话，会让人误以为，这是一个 "万能协议", 啥都能监听， 而这显然是误区。 命名为 socks5http, 则清晰地指出了 该协议的功能。
 
-Password
+# Password
 
 为了避免混淆，本包不支持密码验证。你要是有这么高的密码要求 那你不妨用单独的协议，而不要用混合版。
 
 实际上本包就是先经过http，然后如果不是http代理请求，就会回落到socks5.
 
 所以你可以通过 设计回落的方式来达到 有密码 的 混合端口 的需求。
-
-
 */
 package socks5http
 
@@ -43,6 +42,10 @@ func init() {
 
 type ServerCreator struct{}
 
+// true
+func (ServerCreator) MultiTransportLayer() bool {
+	return true
+}
 func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 
 	if lc == nil {

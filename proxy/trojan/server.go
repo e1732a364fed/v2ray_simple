@@ -17,6 +17,9 @@ func init() {
 
 type ServerCreator struct{}
 
+func (ServerCreator) MultiTransportLayer() bool {
+	return false
+}
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 
@@ -61,7 +64,7 @@ func newServer(plainPassStr string) *Server {
 	return s
 }
 
-//implements proxy.Server
+// implements proxy.Server
 type Server struct {
 	proxy.Base
 
@@ -80,7 +83,7 @@ func (*Server) CanFallback() bool {
 	return true
 }
 
-//若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
+// 若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := proxy.SetCommonReadTimeout(underlay); err != nil {
 		returnErr = err

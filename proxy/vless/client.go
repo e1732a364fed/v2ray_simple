@@ -18,6 +18,9 @@ func init() {
 
 type ClientCreator struct{}
 
+func (ClientCreator) MultiTransportLayer() bool {
+	return false
+}
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
@@ -72,7 +75,7 @@ func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int)
 
 }
 
-//实现 proxy.UserClient
+// 实现 proxy.UserClient
 type Client struct {
 	proxy.Base
 
@@ -98,7 +101,7 @@ func (c *Client) GetUser() utils.User {
 	return c.user
 }
 
-//我们只支持 vless v1 的 mux
+// 我们只支持 vless v1 的 mux
 func (c *Client) HasInnerMux() (int, string) {
 	if c.version == 1 && c.use_mux {
 		return 2, "simplesocks"

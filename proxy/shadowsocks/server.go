@@ -18,6 +18,9 @@ func init() {
 
 type ServerCreator struct{}
 
+func (ServerCreator) MultiTransportLayer() bool {
+	return false
+}
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 
@@ -61,10 +64,6 @@ func newServer(info MethodPass) *Server {
 }
 func (*Server) Name() string {
 	return Name
-}
-
-func (*Server) MultiTransportLayer() bool {
-	return true
 }
 
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {

@@ -69,6 +69,9 @@ func authUserByAuthPairList(bs []byte, authPairList []authPair, antiReplayMachin
 
 type ServerCreator struct{}
 
+func (ServerCreator) MultiTransportLayer() bool {
+	return false
+}
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 
 	switch format {

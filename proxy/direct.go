@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"errors"
 	"io"
 	"net"
 	"net/url"
@@ -14,8 +15,12 @@ const (
 	DirectURL  = DirectName + "://"
 )
 
-//implements ClientCreator for direct
+// implements ClientCreator for direct
 type DirectCreator struct{}
+
+func (DirectCreator) MultiTransportLayer() bool {
+	return true
+}
 
 func (DirectCreator) URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error) {
 	if iv != nil {
@@ -30,6 +35,10 @@ func (DirectCreator) URLToDialConf(url *url.URL, iv *DialConf, format int) (*Dia
 
 func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 	d := &DirectClient{}
+
+	if dc.Network == "" {
+		dc.Network = netLayer.DualNetworkName
+	}
 
 	if dc.SendThrough != "" {
 		st, err := netLayer.StrToNetAddr(netLayer.DualNetworkName, dc.SendThrough)
@@ -53,12 +62,11 @@ type DirectClient struct {
 
 func (*DirectClient) Name() string { return DirectName }
 
-func (*DirectClient) MultiTransportLayer() bool {
-	return true
-}
-
-//若 underlay 为nil，则会对target进行拨号, 否则返回underlay本身
+// 若 underlay 为nil，则会对target进行拨号, 否则返回underlay本身
 func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
+	if d.Network() == "udp" {
+		return nil, errors.New("direct's network set to udp, but Handshake called")
+	}
 
 	if underlay == nil {
 
@@ -97,9 +105,12 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 
 }
 
-//direct的Client的 EstablishUDPChannel 直接 监听一个udp端口，无视传入的net.Conn.
+// direct的Client的 EstablishUDPChannel 直接 监听一个udp端口，无视传入的net.Conn.
 // 这是因为要考虑到fullcone.
 func (d *DirectClient) EstablishUDPChannel(_ net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
+	if d.Network() == "tcp" {
+		return nil, errors.New("direct's network set to tcp, but EstablishUDPChannel called")
+	}
 
 	if len(firstPayload) == 0 {
 

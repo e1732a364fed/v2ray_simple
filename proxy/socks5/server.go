@@ -16,8 +16,8 @@ import (
 )
 
 // 解读如下：
-//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR （ipv4(0,0,0,0)）, BND.PORT(0, 2字节)
-//这个 BND.ADDR和port 按理说不应该传0的，不过如果只作为本地tcp代理的话应该不影响
+// ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR （ipv4(0,0,0,0)）, BND.PORT(0, 2字节)
+// 这个 BND.ADDR和port 按理说不应该传0的，不过如果只作为本地tcp代理的话应该不影响
 var commmonTCP_HandshakeReply = []byte{Version5, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 
 func init() {
@@ -41,6 +41,10 @@ func NewServer() *Server {
 
 type ServerCreator struct{}
 
+// true
+func (ServerCreator) MultiTransportLayer() bool {
+	return true
+}
 func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 
 	if format != proxy.UrlStandardFormat {
@@ -87,7 +91,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 func (*Server) Name() string { return Name }
 
-//若没有IDMap，则直接写入AuthNone响应，否则返回错误
+// 若没有IDMap，则直接写入AuthNone响应，否则返回错误
 func (s *Server) authNone(underlay net.Conn) (returnErr error) {
 	var err error
 	if len(s.IDMap) == 0 {
@@ -334,7 +338,12 @@ For:
 
 	if cmd == CmdUDPAssociate {
 
-		utils.Debug("socks5 got CmdUDPAssociate")
+		//utils.Debug("socks5 got CmdUDPAssociate")
+
+		if s.Network() == "tcp" {
+			returnErr = errors.New("socks5's network set to tcp, but got CmdUDPAssociate from client")
+			return
+		}
 
 		//这里我们serverAddr直接返回0.0.0.0即可，也实在想不到谁会返回 另一个ip地址出来。肯定应该和原ip相同的。
 
@@ -406,7 +415,7 @@ For:
 
 }
 
-//用于socks5服务端的 udp连接, 实现 netLayer.MsgConn
+// 用于socks5服务端的 udp连接, 实现 netLayer.MsgConn
 type ServerUDPConn struct {
 	*net.UDPConn
 	clientSupposedAddr *net.UDPAddr //客户端指定的客户端自己未来将使用的公网UDP的Addr
@@ -421,7 +430,7 @@ func (u *ServerUDPConn) Fullcone() bool {
 	return u.fullcone
 }
 
-//将远程地址发来的响应 传给客户端
+// 将远程地址发来的响应 传给客户端
 func (u *ServerUDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 
 	buf := &bytes.Buffer{}
@@ -447,7 +456,7 @@ func (u *ServerUDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 
 }
 
-//从 客户端读取 udp请求
+// 从 客户端读取 udp请求
 func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	var clientSupposedAddrIsNothing bool

@@ -35,8 +35,16 @@ func PrintAllClientNames() {
 	}
 }
 
-//可通过标准配置或url 来初始化。
+type CreatorCommon interface {
+	//若为true，则表明该协议可同时使用tcp和udp来传输数据。direct, socks5 和 shadowsocks 都为true。
+	//此时，是否开启udp取决于Network(), 如果为dual, 则均支持; 如果仅为tcp或者udp，则不支持。
+	// direct的默认Network为dual。
+	MultiTransportLayer() bool
+}
+
+// 可通过标准配置或url 来初始化。
 type ClientCreator interface {
+	CreatorCommon
 	//大部分通用内容都会被proxy包解析，方法只需要处理proxy包未知的内容
 	NewClient(*DialConf) (Client, error) //标准配置
 
@@ -46,8 +54,10 @@ type ClientCreator interface {
 	//DialConfToURL(url *DialConf, format int) (*url.URL, error)
 }
 
-//可通过标准配置或url 来初始化。
+// 可通过标准配置或url 来初始化。
 type ServerCreator interface {
+	CreatorCommon
+
 	NewServer(*ListenConf) (Server, error)
 
 	URLToListenConf(url *url.URL, iv *ListenConf, format int) (*ListenConf, error)
@@ -102,7 +112,7 @@ func newClient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, erro
 	}
 	if dc.SendThrough != "" {
 
-		if c.MultiTransportLayer() {
+		if c.Network() == netLayer.DualNetworkName {
 			//多个传输层的话，完全由proxy自行配置 localAddr。
 		} else {
 			st, err := netLayer.StrToNetAddr(c.Network(), dc.SendThrough)
@@ -121,7 +131,7 @@ func newClient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, erro
 
 }
 
-//SetAddrStr,  ConfigCommon
+// SetAddrStr,  ConfigCommon
 func configCommonForClient(cli BaseInterface, dc *DialConf) error {
 	if cli.Name() != DirectName {
 		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
@@ -177,7 +187,7 @@ func newServer(creator ServerCreator, lc *ListenConf, knownTls bool) (Server, er
 
 }
 
-//SetAddrStr, setCantRoute,setFallback, ConfigCommon
+// SetAddrStr, setCantRoute,setFallback, ConfigCommon
 func configCommonForServer(ser BaseInterface, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	serc := ser.GetBase()

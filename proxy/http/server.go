@@ -1,6 +1,7 @@
-/*Package http implements http proxy for proxy.Server.
+/*
+Package http implements http proxy for proxy.Server.
 
-Reference
+# Reference
 
 rfc: https://datatracker.ietf.org/doc/html/rfc7231#section-4.3.6
 
@@ -8,14 +9,11 @@ about basic auth:
 
 https://en.wikipedia.org/wiki/Basic_access_authentication
 
-
 https://datatracker.ietf.org/doc/html/rfc7617
 
 example header:
 
 	Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
-
-
 */
 package http
 
@@ -48,6 +46,10 @@ func init() {
 }
 
 type ServerCreator struct{}
+
+func (ServerCreator) MultiTransportLayer() bool {
+	return false
+}
 
 func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 	if format != proxy.UrlStandardFormat {
@@ -93,7 +95,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return s, nil
 }
 
-//implements proxy.Server
+// implements proxy.Server
 type Server struct {
 	proxy.Base
 
@@ -249,7 +251,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	return
 }
 
-//用于纯http的 代理，dial后，第一次要把客户端的数据原封不动发送给远程服务端
+// 用于纯http的 代理，dial后，第一次要把客户端的数据原封不动发送给远程服务端
 // 就是说，第一次从 ProxyConn Read时，读到的一定是之前读过的数据，原理有点像 fallback
 type ProxyConn struct {
 	net.Conn
