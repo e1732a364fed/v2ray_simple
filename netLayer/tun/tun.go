@@ -28,7 +28,8 @@ type coreUDPConnAdapter struct {
 	core.UDPConn
 	netLayer.EasyDeadline
 
-	readChan chan netLayer.UDPAddrData
+	readChan           chan netLayer.UDPAddrData
+	firstRemoteUDPAddr *net.UDPAddr
 }
 
 func newUdpAdapter() *coreUDPConnAdapter {
@@ -42,10 +43,18 @@ func (h *coreUDPConnAdapter) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	ud := <-h.readChan
 
+	if h.firstRemoteUDPAddr == nil {
+		h.firstRemoteUDPAddr = &ud.Addr
+	}
+
 	return ud.Data, netLayer.NewAddrFromUDPAddr(&ud.Addr), nil
 }
 func (h *coreUDPConnAdapter) WriteMsgTo(data []byte, ad netLayer.Addr) error {
-	_, err := h.UDPConn.WriteFrom(data, ad.ToUDPAddr())
+	ua := ad.ToUDPAddr()
+	if ua == nil {
+		ua = h.firstRemoteUDPAddr
+	}
+	_, err := h.UDPConn.WriteFrom(data, ua)
 	return err
 }
 

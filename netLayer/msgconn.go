@@ -27,7 +27,31 @@ type MsgConn interface {
 	Fullcone() bool                      //若Fullcone, 则在转发因另一端关闭而结束后, RelayUDP函数不会Close它.
 }
 
-// symmetric, proxy/dokodemo 有用到. 实现 MsgConn
+// 将MsgConn适配为Net.Conn
+type MsgConnNetAdapter struct {
+	MsgConn
+	LA, RA net.Addr
+}
+
+func (ma MsgConnNetAdapter) Read(p []byte) (int, error) {
+	bs, _, err := ma.MsgConn.ReadMsgFrom()
+	return copy(p, bs), err
+}
+
+func (ma MsgConnNetAdapter) Write(p []byte) (int, error) {
+
+	ra, _ := NewAddrFromAny(ma.RA)
+	err := ma.MsgConn.WriteMsgTo(p, ra)
+	return len(p), err
+}
+func (ma MsgConnNetAdapter) LocalAddr() net.Addr {
+	return ma.LA
+}
+func (ma MsgConnNetAdapter) RemoteAddr() net.Addr {
+	return ma.RA
+}
+
+// symmetric, proxy/dokodemo 有用到. 实现 MsgConn 和 net.Conn
 type UniTargetMsgConn struct {
 	net.Conn
 	Target Addr

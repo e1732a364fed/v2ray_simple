@@ -513,6 +513,9 @@ func (a *Addr) ToAddr() net.Addr {
 
 // 如果a里只含有域名，则会自动解析域名为IP。注意，若出现错误，则会返回nil
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
+	if a.IsEmpty() {
+		return nil
+	}
 	ua, err := net.ResolveUDPAddr("udp", a.String())
 	if err != nil {
 		return nil

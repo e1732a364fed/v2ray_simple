@@ -1082,7 +1082,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 // 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到.
 func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 	client proxy.Client,
-	wlc net.Conn,
+	wlc net.Conn, udp_wlc netLayer.MsgConn,
 	isTlsLazy_clientEnd bool) (
 
 	//return values:
@@ -1092,9 +1092,15 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 	clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder,
 	result int) {
 
-	if client.Name() == proxy.RejectName && wlc != nil {
-		client.Handshake(wlc, nil, netLayer.Addr{})
+	if client.Name() == proxy.RejectName {
+		if wlc != nil {
+			client.Handshake(wlc, nil, netLayer.Addr{})
+
+		} else if udp_wlc != nil {
+			client.Handshake(netLayer.MsgConnNetAdapter{MsgConn: udp_wlc}, nil, netLayer.Addr{})
+		}
 		result = -10
+
 		return
 	}
 
@@ -1208,7 +1214,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var dialedCommonConn any
 
-	not_udpSpecial := !(realTargetAddr.Network == "udp" && client.GetCreator().UseUDPAsMsgConn())
+	not_dial_here := !(realTargetAddr.Network == "udp" && client.GetCreator().UseUDPAsMsgConn())
 
 	/*
 		direct和shadowsocks的udp是自己拨号的，因为它用到了udp的包特性
@@ -1223,7 +1229,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var muxC advLayer.MuxClient
 
-	if not_udpSpecial {
+	if not_dial_here {
 
 		if adv != "" && advClient.IsMux() {
 
@@ -1607,7 +1613,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		}
 	}
 
-	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(iics, targetAddr, client, wlc, isTlsLazy_clientEnd)
+	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(iics, targetAddr, client, wlc, udp_wlc, isTlsLazy_clientEnd)
 	if result != 0 {
 		return
 	}
@@ -1683,7 +1689,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 					ce.Write()
 				}
 
-				_, udp_wrc, _, _, result := dialClient(iics, raddr, client, nil, false)
+				_, udp_wrc, _, _, result := dialClient(iics, raddr, client, nil, udp_wlc, false)
 
 				if ce := iics.CanLogDebug("Relaying UDP with MultiChannel, dialfunc call returned"); ce != nil {
 					ce.Write(zap.Int("result", result))
