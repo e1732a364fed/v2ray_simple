@@ -10,7 +10,9 @@ host = "0.0.0.0"
 port = 4433
 #version = 0     # 在服务端，如果version给出，则只 支持 监听特定版本的vless, 若请求版本不符合，将拒绝连接(或者回落).
 insecure = true
-fallback = ":80"    # 默认回落地址.ip必须是本机ip(可以省略ip而只写端口,程序会默认补全127.0.0.1), 或者unix domain socket的文件名/路径, 或者 udp://127.0.0.1:80 这种url格式。
+fallback = ":80"    
+# 默认回落地址.ip必须是本机ip(可以省略ip而只写端口,程序会默认补全127.0.0.1),
+# 或者unix domain socket的文件名/路径, 或者 udp://127.0.0.1:80 这种url格式。
 
 # （用udp以试图回落到 nginx的 无tls 的 udp的 http3 服务端口，适用于 quic的情况. 只能由其它协议回落到quic, 而不能由 quic 回落到quic, 没办法, 依赖的代码包不够强大.）
 
@@ -19,7 +21,11 @@ key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不�
 
 # 我们作为示例, 就直接随机证书了, 不提供现成的证书。这样可以 避免很多小白 共同使用相同的证书 导致被 审查者 察觉.
 
-#xver = 1   # 可选, 高级用法, 小白不用管. 若为1或者2, 则监听 PROXY protocol, 用于nginx等回落到 verysimple. 实际上目前无论给出的是1还是2, 都会同时监听 v1和v2. 不过这只是目前代码的实现而已, 也许未来会改动, 所以你还是确定选用一个版本.
+#xver = 1   
+
+# 可选, 高级用法, 小白不用管. 若为1或者2, 则监听 PROXY protocol, 用于nginx等回落到 verysimple 
+# 注意，这和fallback项中的 xver意义正好相反. 
+# 实际上目前无论给出的是1还是2, 都会同时监听 v1和v2. 不过这只是目前代码的实现而已, 也许未来会改动, 所以你还是确定选用一个版本.
 
 # ca = "ca.crt" # 可选, 用于验证客户端证书
 
@@ -27,7 +33,7 @@ key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不�
 
 # extra = { tls_minVersion = "1.2" }    # 默认的 minVersion 是1.3，你还可以设成1.2，其它值无效。
 
-# fullcone = true # 只有当listen和dial 均为 fullcone时, 才会开启fullcone
+# fullcone = true # 只有当listen和dial在 client和server配置 均为 fullcone时, 才会真正fullcone生效
 
 [[dial]]
 protocol = "direct"
@@ -57,7 +63,10 @@ dest = 6060     # 必填, 这里的意思是 回落到本机端口 6060, 格式�
 
 # 另外，sni和alpn的 匹配 只在 我们listen配置使用了 tls时才会有效，比如如果nginx前置的话，那么我们就是无法匹配这两项的.
 
-#xver = 1   # 可选，如果为1，则表示 使用 PROXY protocol version 1, 如果为 2, 则表示 PROXY protocol version 2, 其他值无效。
+#xver = 1   
+
+# 可选， 用于 回落到nginx 等情况时 传递客户端原始地址。
+# 如果为1，则表示 使用 PROXY protocol version 1, 如果为 2, 则表示 PROXY protocol version 2, 其他值无效。
 
 [[fallback]]
 dest = 80 

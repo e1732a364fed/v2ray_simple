@@ -26,7 +26,7 @@ ss不像vmess等协议一样，只使用一种传输层协议来传输 tcp和udp
 
 
 
-另外，本包是普通的ss AEAD Ciphers ，不过似乎它还是有问题。所以还要以后研究ss-2022
+另外，本包是普通的ss AEAD Ciphers ，不过它还是有问题。所以以后要研究ss-2022
 
 https://github.com/shadowsocks/shadowsocks-org/issues/183
 
@@ -45,7 +45,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/shadowsocks/go-shadowsocks2/core"
-	ss "github.com/shadowsocks/shadowsocks-go/shadowsocks"
 	"go.uber.org/zap"
 )
 
@@ -56,19 +55,6 @@ const (
 	ATypIP6    = 0x4
 )
 
-//implements core.Cipher
-type shadowCipher struct {
-	cipher *ss.Cipher
-}
-
-func (c *shadowCipher) StreamConn(conn net.Conn) net.Conn {
-	return ss.NewConn(conn, c.cipher.Copy())
-}
-
-func (c *shadowCipher) PacketConn(conn net.PacketConn) net.PacketConn {
-	return ss.NewSecurePacketConn(conn, c.cipher.Copy())
-}
-
 func initShadowCipher(info MethodPass) (cipher core.Cipher) {
 	var method, password = info.Method, info.Password
 	//根据 https://github.com/shadowsocks/shadowsocks-org/wiki/SIP002-URI-Scheme
@@ -77,21 +63,16 @@ func initShadowCipher(info MethodPass) (cipher core.Cipher) {
 		return
 	}
 
-	cp, _ := ss.NewCipher(method, password)
-	if cp != nil {
-		cipher = &shadowCipher{cipher: cp}
-	}
-	if cipher == nil {
-		var err error
-		cipher, err = core.PickCipher(strings.ToUpper(method), nil, password)
-		if err != nil {
-			if ce := utils.CanLogErr("ss initShadowCipher err"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
-
-			return
+	var err error
+	cipher, err = core.PickCipher(strings.ToUpper(method), nil, password)
+	if err != nil {
+		if ce := utils.CanLogErr("ss initShadowCipher err"); ce != nil {
+			ce.Write(zap.Error(err))
 		}
+
+		return
 	}
+
 	return
 }
 

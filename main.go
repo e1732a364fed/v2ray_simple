@@ -672,7 +672,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	////////////////////////////// 读取 First Payload 阶段 /////////////////////////////////////
 
-	//因为无论是 sniffing，还是后面 proxy的握手，还是 lazy功能，抑或是 ws的 earlydata，都要预先获得用户数据，所以要提前读一下
+	//因为无论是 sniffing，还是后面 proxy的握手，抑或是 ws的 earlydata，都要预先获得用户数据，所以要提前读一下
 
 	//serverEnd 的 lazy 比较特殊，要自己读
 

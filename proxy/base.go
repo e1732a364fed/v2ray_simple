@@ -39,7 +39,7 @@ type BaseInterface interface {
 
 	/////////////////// 传输层 ///////////////////
 
-	MultiTransportLayer() bool
+	MultiTransportLayer() bool //同时使用多个传输层来传输数据。direct, socks5 和 shadowsocks 都为true
 
 	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc. 这里叫做Network而不是transport, 是遵循 golang 标准包 net包的用法。我们兼容 net的Listen等方法, 可把Network直接作为 net.Listen等方法的 network 参数。
 	GetXver() int
