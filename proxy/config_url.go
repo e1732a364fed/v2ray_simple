@@ -246,6 +246,10 @@ func URLToDialConf(u *url.URL, conf *DialConf) error {
 
 	}
 
+	if utils.QueryPositive(q, "mux") {
+		conf.Mux = true
+	}
+
 	return e
 }
 

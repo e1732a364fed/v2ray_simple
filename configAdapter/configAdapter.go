@@ -69,6 +69,9 @@ func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf, lc *proxy.ListenConf) string
 		if dc.SendThrough != "" {
 			q.Add("sendThrough", dc.SendThrough)
 		}
+		if dc.Mux {
+			q.Add("mux", "true")
+		}
 	}
 
 	if cc.TLS {

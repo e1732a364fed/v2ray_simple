@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/configAdapter"
@@ -63,10 +64,25 @@ func tryRunApiServer() {
 
 }
 
+const eIllegalParameter = "illegal parameter"
+
 // 阻塞
 func runApiServer(adminUUID string) {
 
-	utils.Info("Start Api Server at " + apiServerAddr)
+	var addrStr = apiServerAddr
+	if apiServerPlainHttp {
+		if !strings.HasPrefix(addrStr, "http://") {
+			addrStr = "http://" + addrStr
+
+		}
+	} else {
+		if !strings.HasPrefix(addrStr, "https://") {
+			addrStr = "https://" + addrStr
+
+		}
+	}
+
+	utils.Info("Start Api Server at " + addrStr)
 
 	ser := newApiServer("admin", adminUUID)
 
@@ -85,8 +101,6 @@ func runApiServer(adminUUID string) {
 	ser.addServerHandle(mux, "hotDelete", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 
-		const eInfo = "illegal parameter"
-
 		listenIndexStr := q.Get("listen")
 		dialIndexStr := q.Get("dial")
 		if listenIndexStr != "" {
@@ -96,9 +110,9 @@ func runApiServer(adminUUID string) {
 
 			listenIndex, err := strconv.Atoi(listenIndexStr)
 			if err != nil {
-				failBadRequest(err, eInfo, w)
+				failBadRequest(err, eIllegalParameter, w)
 
-				w.Write([]byte(eInfo))
+				w.Write([]byte(eIllegalParameter))
 				return
 			}
 			hotDeleteServer(listenIndex)
@@ -111,9 +125,9 @@ func runApiServer(adminUUID string) {
 
 			dialIndex, err := strconv.Atoi(dialIndexStr)
 			if err != nil {
-				failBadRequest(err, eInfo, w)
+				failBadRequest(err, eIllegalParameter, w)
 
-				w.Write([]byte(eInfo))
+				w.Write([]byte(eIllegalParameter))
 				return
 			}
 			hotDeleteClient(dialIndex)
@@ -179,8 +193,6 @@ func runApiServer(adminUUID string) {
 	ser.addServerHandle(mux, "getDetailUrl", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 
-		const eInfo = "illegal parameter"
-
 		indexStr := q.Get("index")
 		isDial := utils.QueryPositive(q, "isDial")
 		if indexStr != "" {
@@ -190,9 +202,9 @@ func runApiServer(adminUUID string) {
 
 			ind, err := strconv.Atoi(indexStr)
 			if err != nil || ind < 0 || (isDial && ind >= len(allClients)) || (!isDial && ind >= len(allServers)) {
-				failBadRequest(err, eInfo, w)
+				failBadRequest(err, eIllegalParameter, w)
 
-				w.Write([]byte(eInfo))
+				w.Write([]byte(eIllegalParameter))
 				return
 			}
 			if isDial {

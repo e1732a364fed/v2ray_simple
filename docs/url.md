@@ -23,19 +23,20 @@ authority = [userinfo "@"] host [":" port]
 ## 举例
 
 ```
+socks5://127.0.0.1:1080#my_socks5 
+
+socks5://myusername:mypassword@127.0.0.1:1080#my_socks5_safe
+
+dokodemo://127.0.0.1:1081?target.ip=1.1.1.1&target.port=80#my_doko
+
+shadowsocks://aes-128-gcm:mypasswordxxxxx@127.0.0.1:8000#my_ss
+
+vmess://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433/mypath?http=true&header.host=myhost.com
+
 vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&v=0&utls=true#my_vless1
 
 vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?adv=quic&v=0&extra.maxStreamsInOneConn=6&extra.congestion_control=hy&extra.mbps=1024#my_vless_quic
 
-vmess://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433/mypath?http=true&header.host=myhost.com
-
-dokodemo://?target.ip=1.1.1.1&target.port=80#my_doko
-
-shadowsocks://aes-128-gcm:mypasswordxxxxx@127.0.0.1:8000#my_ss
-
-socks5://myusername:mypassword@127.0.0.1:1080#my_socks5_safe
-
-socks5://127.0.0.1:1080#my_socks5 
 
 ```
 
@@ -91,6 +92,8 @@ security=aes-128-gcm  设置 vmess/ss等存在多种加密方式等proxy的 具�
 adv=ws  设置使用的高级层，如不给出则没有高级层，如给出，可选 ws, grpc, quic
 
 sendThrough=0.0.0.0:0   dial（一般为direct）设置发送时所使用的端口
+
+mux=true 设置内层多路复用（使用smux）
 
 ### http 头相关
 
