@@ -29,26 +29,6 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 verysimple 研发了一些新技术，使用自研架构，可以加速，目前基本上是全网最快，且有用户报告内存占用 比v2ray/xray 小1/3。
 
 vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛的utls支持，grpc回落，交互模式等。
-
-## 本作对其它项目的启发
-
-优秀的东西总是会被模仿，但是有一些东西从未被超越。我们在模仿别人，别人也在模仿我们，不知不觉中共同创造了一个越来越棒的开源环境。
-
-### v2ray项目
-本作提倡对vless v1的进一步开发后， v2ray项目直接决定放弃vless 协议。（手动狗头～）
-
-### xray项目
-本作对xtls漏洞以及lazy技术的先行研究启发了xray项目，几个月后，其开发了 vision 流控。本作也算为代理界做出了一些贡献～。
-
-不过xray的架构太复杂，很难将这个流控应用到所有协议上。而本作因为架构优良，lazy是直接可以用于没有内部加密的任何协议的，如vless,trojan,simplesocks,socks
-
-本作实现grpc后就直接支持utls的，xray几个月后通过开发者的PR跟进。
-
-### sing-box项目
-本作对gun-lite客户端的先行研究，反推出了 gun-lite的服务端代码。 几个月后 sing-box也通过一个开发者的PR跟进了, 不过其依然没有支持grpcSimple的独特的回落到h2的功能
-
-这可能是因为sing-box的架构与v2ray/xray的架构比较类似，都比较复杂，难以施展拳脚，而为了支持h2回落，需要一些特殊技巧。
-
 ## 支持的功能
 
 socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/**v1**)/vmess/shadowsocks, 多用户, http头
@@ -544,6 +524,27 @@ https://github.com/jarvisgally/v2simple
 1. url配置的方式
 2. 转发逻辑直接放在main.go 中
 3. 架构简单
+
+
+## 本作对其它项目的启发
+
+优秀的东西总是会被模仿，但是有一些东西从未被超越。我们在模仿别人，别人也在模仿我们，不知不觉中共同创造了一个越来越棒的开源环境。
+
+### v2ray项目
+本作提倡对vless v1的进一步开发后， v2ray项目直接决定放弃vless 协议。（手动狗头～）
+
+### xray项目
+本作对xtls漏洞以及lazy技术的先行研究启发了xray项目，几个月后，其开发了 vision 流控。本作也算为代理界做出了一些贡献～。
+
+不过xray的架构太复杂，很难将这个流控应用到所有协议上。而本作因为架构优良，lazy是直接可以用于没有内部加密的任何协议的，如vless,trojan,simplesocks,socks
+
+本作实现grpc后就直接支持utls的，xray几个月后通过开发者的PR跟进。
+
+### sing-box项目
+本作对gun-lite客户端的先行研究，反推出了 gun-lite的服务端代码。 几个月后 sing-box也通过一个开发者的PR跟进了, 不过其依然没有支持grpcSimple的独特的回落到h2的功能
+
+这可能是因为sing-box的架构与v2ray/xray的架构比较类似，都比较复杂，难以施展拳脚，而为了支持h2回落，需要一些特殊技巧。
+
 
 ## 开发计划
 

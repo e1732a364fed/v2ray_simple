@@ -1,3 +1,4 @@
+// Package tproxy implements proxy.Server for tproxy.
 package tproxy
 
 import (

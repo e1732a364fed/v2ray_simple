@@ -1,4 +1,5 @@
-/*Package vmess implements vmess client.
+/*
+Package vmess implements vmess for proxy.Client and proxy.Server.
 
 from github.com/Dreamacro/clash/tree/master/transport/vmess/
 
@@ -10,14 +11,13 @@ aead:
 
 https://github.com/v2fly/v2fly-github-io/issues/20
 
-
-Implementation Details
+# Implementation Details
 
 vmess 协议是一个很老旧的协议，有很多向前兼容的代码，很多地方都已经废弃了. 我们这里只支持最新的aead.
 
 我们所实现的vmess 服务端 力求简单、最新，不求兼容所有老旧客户端。
 
-Share URL
+# Share URL
 
 v2fly只有一个草案
 https://github.com/v2fly/v2fly-github-io/issues/26
@@ -25,7 +25,6 @@ https://github.com/v2fly/v2fly-github-io/issues/26
 似乎v2fly社区对于这个URL标准的制定并不注重，而且看起来这个草案也不太美观
 
 而xray社区的则美观得多，见 https://github.com/XTLS/Xray-core/discussions/716
-
 */
 package vmess
 
@@ -57,7 +56,7 @@ const (
 	SecurityNone             byte = 5
 )
 
-//v2ray CMD types
+// v2ray CMD types
 const (
 	CmdTCP                    byte = 1
 	CmdUDP                    byte = 2

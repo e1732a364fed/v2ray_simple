@@ -1,4 +1,4 @@
-// package trojan implements trojan protocol for proxy.Client and proxy.Server.
+// Package trojan implements trojan protocol for proxy.Client and proxy.Server.
 //
 // See https://trojan-gfw.github.io/trojan/protocol .
 package trojan
