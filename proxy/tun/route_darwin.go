@@ -143,8 +143,7 @@ func init() {
 			"route add -net 0.0.0.0/1 " + rememberedRouterIP + " -hopcount 4",
 			"route add " + rememberedRouterIP + " -interface " + rname,
 		}
-
-		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
+		//虽然添加了两个默认路由，但是tun的 hopcount (metric) 更低，所以tun的优先
 
 		for _, v := range directList {
 			strs = append(strs, "route add -host "+v+" "+rememberedRouterIP)
@@ -155,6 +154,8 @@ func init() {
 		} else {
 
 			if e := utils.LogExecCmdList(strs); e != nil {
+				//这里只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
+
 				if ce := utils.CanLogErr("auto route failed"); ce != nil {
 					ce.Write(zap.Error(e))
 				}
