@@ -31,7 +31,7 @@ tag = "vlessws"
 protocol = "vless"
 network = "unix"
 host = "/dev/shm/ws.sock"   # 别忘了加双引号
-advancedLayer = "ws"
+adv = "ws"
 path = "/simple"
 
 [[fallback]]
@@ -45,7 +45,7 @@ tag = "vlessgrpc"
 protocol = "vless"
 network = "unix"            # 监听unix domain socket 必须要 给出 network 为 unix
 host = "/dev/shm/grpc.sock" # 你必须要保证 /dev/shm路径存在，且你具有写权限，才行。
-advancedLayer = "grpc"
+adv = "grpc"
 path = "very"
 
 

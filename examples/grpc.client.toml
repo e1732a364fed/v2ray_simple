@@ -12,7 +12,7 @@ port = 4434
 version = 0
 insecure = true
 tls_type = "utls"
-advancedLayer = "grpc"
+adv = "grpc"
 path = "ohmygod_verysimple_is_very_simple"  #path这里填写grpc的servicename
 
 # extra = { grpc_multi = true }    # 是否开启MultiMode, 只需客户端配置，服务端自动适配. 注意，v2ray不支持multiMode, 这个功能只与 xray 兼容.

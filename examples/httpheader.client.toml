@@ -12,7 +12,7 @@ port = 4434
 version = 0
 insecure = true
 tls_type = "utls"
-advancedLayer = "ws"                          # ws也可应用我们的http header
+adv = "ws"                          # ws也可应用我们的http header
 
 path = "/very"
 

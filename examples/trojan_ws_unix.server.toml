@@ -7,7 +7,7 @@ insecure = true
 fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
-advancedLayer = "ws"
+adv = "ws"
 path = "/ohmygod_verysimple_is_very_simple"
 early = true 
 

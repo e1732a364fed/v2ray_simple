@@ -12,7 +12,7 @@ port = 4434
 version = 0
 insecure = true
 #utls = false #quic无法使用utls, 没办法
-advancedLayer = "quic"
+adv = "quic"
 
 #alpn = ["asdfsadf"]    # 如果alpn没指定，则会自动使用 "h3"作为alpn。
 

@@ -26,7 +26,7 @@ port = 4434
 insecure = true
 cert = "cert.pem"
 key = "cert.key"
-advancedLayer = "ws"
+adv = "ws"
 path = "/ohmygod_verysimple_is_very_simple"
 fallback = 80
 
@@ -39,7 +39,7 @@ port = 4435
 insecure = true
 cert = "cert.pem"
 key = "cert.key"
-advancedLayer = "grpc"
+adv = "grpc"
 path = "ohmygod_verysimple_is_very_simple"
 
 #最简单情况下，服务端 不需要给出任何dial，不给出的话实际上程序就会自动加一个 direct。

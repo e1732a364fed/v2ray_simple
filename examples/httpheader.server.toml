@@ -8,7 +8,7 @@ fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
 
-advancedLayer = "ws"
+adv = "ws"
 path = "/very"
 
 

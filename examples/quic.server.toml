@@ -10,7 +10,7 @@ insecure = true
 
 cert = "cert.pem"
 key = "cert.key"
-advancedLayer = "quic"
+adv = "quic"
 
 #ca = "ca.crt"  # 可选，用于客户端证书 的验证
 

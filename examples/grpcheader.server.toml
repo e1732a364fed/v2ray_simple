@@ -8,7 +8,7 @@ fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
 
-advancedLayer = "grpc"
+adv = "grpc"
 path = "verysimple_serviceName"
 
 

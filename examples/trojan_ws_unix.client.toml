@@ -12,7 +12,7 @@ network = "unix"    # 别忘了标network 为 unix (unix domain socket 的 golan
 insecure = true
 tls_type = "utls"
 
-advancedLayer = "ws"
+adv = "ws"
 path = "/ohmygod_verysimple_is_very_simple"
 early = true   # websocket early data 功能 （即0-rtt）
 #use_mux = true  # 只需要客户端指明 use_mux 即可开启mux, 服务端自动适配.

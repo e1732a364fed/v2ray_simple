@@ -12,7 +12,7 @@ port = 4434
 version = 0
 insecure = true
 tls_type = "utls"
-advancedLayer = "grpc"  # grpc也可应用我们的http header
+adv = "grpc"  # grpc也可应用我们的http header
 
 path = "verysimple_serviceName"
 

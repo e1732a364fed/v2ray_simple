@@ -7,7 +7,7 @@ insecure = true
 #fallback = ":1010"    #在grpcSimple时（即默认情况下），本作的grpc也是支持回落的！要回落到 h2c, 就是说这里 你 1010端口 要用 nginx 监听 h2c
 cert = "cert.pem"
 key = "cert.key"
-advancedLayer = "grpc"
+adv = "grpc"
 path = "ohmygod_verysimple_is_very_simple"  #前面加斜杠了话, 程序会自动把斜杠移除
 
 # 这个path填的就是 v2ray中的 "service name", 因为 service name 在技术实现上就是url的path的一部分而已.

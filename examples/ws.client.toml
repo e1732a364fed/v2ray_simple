@@ -12,7 +12,7 @@ port = 4434
 version = 0
 insecure = true
 #tls_type = "utls"
-advancedLayer = "ws"
+adv = "ws"
 path = "/ohmygod_verysimple_is_very_simple" 
 
 #为了防探测, path越长越随机越好, 而且path项必须给出, 如果要为空, 写成 path = "/"
