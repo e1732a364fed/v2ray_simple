@@ -63,6 +63,10 @@ func init() {
 
 		//有了 bindToDevice, linux 就不怕造成回环
 
+		for _, v := range directList {
+			strs = append(strs, "ip route add "+v+" via "+rememberedRouterIP+" dev "+routerName+" metric 10")
+		}
+
 		utils.Info("auto route cmds generated. Don't forget to set bindToDevice for your dial config.")
 
 		if manualRoute {
@@ -84,7 +88,11 @@ func init() {
 
 		var strs = []string{
 			"ip route del default",
-			"ip route add default via " + rememberedRouterIP + " dev " + rememberedRouterName + " metric 10",
+			"ip route add default via " + rememberedRouterIP,
+		}
+
+		for _, v := range directList {
+			strs = append(strs, "ip route del "+v+" via "+rememberedRouterIP+" dev "+rememberedRouterName+" metric 10")
 		}
 
 		if manualRoute {
