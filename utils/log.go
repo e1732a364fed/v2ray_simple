@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/natefinch/lumberjack"
@@ -124,7 +125,8 @@ func InitLog(firstMsg string) {
 	}
 
 	if firstMsg != "" {
-		ZapLogger.Info(firstMsg)
+		ZapLogger.Info(firstMsg, zap.Int("loglvl", LogLevel))
+		log.Println(firstMsg, LogLevel)
 	}
 
 	if willLogToFile {

@@ -142,10 +142,10 @@ func generateRandomSSlCert() {
 }
 
 func printSupportedProtocols() {
-	utils.PrintStr("Support tcp/udp/unix domain socket/tls/uTls by default.\n")
 	proxy.PrintAllServerNames()
 	proxy.PrintAllClientNames()
 	advLayer.PrintAllProtocolNames()
+	//todo: tlsLayer
 }
 
 // see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en

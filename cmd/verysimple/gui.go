@@ -109,7 +109,7 @@ func makeBasicControlsPage() ui.Control {
 	vsHbox := ui.NewHorizontalBox()
 	vsHbox.SetPadded(true)
 
-	vsToggleGroup := ui.NewGroup("开启或关闭vs代理")
+	vsToggleGroup := ui.NewGroup("verysimple")
 	vsToggleGroup.SetMargined(true)
 
 	{
@@ -119,8 +119,6 @@ func makeBasicControlsPage() ui.Control {
 		vsToggleGroup.SetChild(vsVbox)
 		vsHbox.Append(vsToggleGroup, true)
 		vbox.Append(vsHbox, true)
-
-		//vbox.Append(ui.NewLabel("开启或关闭vs代理"), false)
 
 		toggleHbox := ui.NewHorizontalBox()
 		toggleHbox.SetPadded(true)
@@ -133,6 +131,42 @@ func makeBasicControlsPage() ui.Control {
 		toggleHbox.Append(toggleCheckbox, false)
 		toggleHbox.Append(stopBtn, false)
 		toggleHbox.Append(startBtn, false)
+
+		toggleHbox.Append(ui.NewVerticalSeparator(), false)
+
+		vsVbox.Append(ui.NewHorizontalSeparator(), false)
+
+		grid := ui.NewGrid()
+		grid.SetPadded(true)
+		toggleHbox.Append(grid, false)
+
+		grid.Append(ui.NewLabel("日志等级"), 0, 0, 1, 1,
+			false, ui.AlignFill, false, ui.AlignFill)
+
+		loglvl_cbox := ui.NewCombobox()
+
+		{
+			grid.Append(loglvl_cbox,
+				1, 0, 1, 1,
+				false, ui.AlignFill, false, ui.AlignFill)
+
+			loglvl_cbox.Append("Debug")
+			loglvl_cbox.Append("Info")
+			loglvl_cbox.Append("Warn")
+			loglvl_cbox.Append("Error")
+
+			loglvl_cbox.SetSelected(utils.LogLevel)
+
+			loglvl_cbox.OnSelected(func(c *ui.Combobox) {
+				idx := loglvl_cbox.Selected()
+				if idx < 0 {
+					return
+				}
+				utils.LogLevel = idx
+				utils.InitLog("log init manually")
+			})
+
+		}
 
 		var updateState = func(btn, cbx bool) {
 			isR := mainM.IsRunning()
@@ -171,7 +205,6 @@ func makeBasicControlsPage() ui.Control {
 			select {
 			case <-tCh:
 				log.Println("Close timeout")
-				//os.Exit(-1)
 			case <-ch:
 				break
 			}
@@ -180,15 +213,12 @@ func makeBasicControlsPage() ui.Control {
 			if c.Checked() {
 				mainM.Start()
 			} else {
-				//mainM.Stop()
-
 				stopF()
 
 			}
 		})
 
 		stopBtn.OnClicked(func(b *ui.Button) {
-			//mainM.Stop()
 			stopF()
 		})
 
@@ -196,66 +226,67 @@ func makeBasicControlsPage() ui.Control {
 			mainM.Start()
 		})
 
-	}
+		{
 
-	vsFileGroup := ui.NewGroup("选择配置文件")
-	vsFileVbox := ui.NewVerticalBox()
-	vsFileGroup.SetChild(vsFileVbox)
-	vsHbox.Append(vsFileGroup, true)
+			fgrid := ui.NewGrid()
+			fgrid.SetPadded(true)
 
-	{
-		vsFileGroup.SetMargined(true)
-		vsFileVbox.SetPadded(true)
+			vsVbox.Append(fgrid, false)
 
-		grid := ui.NewGrid()
-		grid.SetPadded(true)
-		vsFileVbox.Append(grid, false)
-
-		button := ui.NewButton("选择文件")
-		entry := ui.NewEntry()
-		entry.SetReadOnly(true)
-		button.OnClicked(func(*ui.Button) {
-			filename := ui.OpenFile(mainwin)
-			if filename == "" {
-				filename = "(cancelled)"
-			}
-			entry.SetText(filename)
-
-			_, loadConfigErr := mainM.LoadConfig(filename, "", "")
-			if loadConfigErr != nil {
-				if ce := utils.CanLogErr("Gui Load Conf File Err"); ce != nil {
-					ce.Write(zap.Error(loadConfigErr))
+			button := ui.NewButton("选择配置文件")
+			confE := ui.NewEntry()
+			confE.SetReadOnly(true)
+			button.OnClicked(func(*ui.Button) {
+				filename := ui.OpenFile(mainwin)
+				if filename == "" {
+					filename = "(cancelled)"
 				}
-			} else {
-				mainM.SetupListenAndRoute()
-				mainM.SetupDial()
+				confE.SetText(filename)
+
+				_, loadConfigErr := mainM.LoadConfig(filename, "", "")
+				if loadConfigErr != nil {
+					if ce := utils.CanLogErr("Gui Load Conf File Err"); ce != nil {
+						ce.Write(zap.Error(loadConfigErr))
+					}
+				} else {
+					mainM.SetupListenAndRoute()
+					mainM.SetupDial()
+				}
+
+			})
+
+			if len(configFiles) == 1 {
+				confE.SetText(configFiles[0])
 			}
 
-		})
-		grid.Append(button,
-			0, 0, 1, 1,
-			false, ui.AlignFill, false, ui.AlignFill)
-		grid.Append(entry,
-			1, 0, 1, 1,
-			true, ui.AlignFill, false, ui.AlignFill)
+			fgrid.Append(button,
+				0, 0, 1, 1,
+				false, ui.AlignFill, false, ui.AlignFill)
+			fgrid.Append(confE,
+				1, 0, 1, 1,
+				true, ui.AlignFill, false, ui.AlignFill)
 
-		button = ui.NewButton("保存文件")
-		entry2 := ui.NewEntry()
-		entry2.SetReadOnly(true)
-		button.OnClicked(func(*ui.Button) {
-			filename := ui.SaveFile(mainwin)
-			if filename == "" {
-				filename = "(cancelled)"
-			}
-			entry2.SetText(filename)
-		})
-		grid.Append(button,
-			0, 1, 1, 1,
-			false, ui.AlignFill, false, ui.AlignFill)
-		grid.Append(entry2,
-			1, 1, 1, 1,
-			true, ui.AlignFill, false, ui.AlignFill)
+			button = ui.NewButton("保存配置文件")
+			saveFE := ui.NewEntry()
+			saveFE.SetReadOnly(true)
+			button.OnClicked(func(*ui.Button) {
+				filename := ui.SaveFile(mainwin)
+				saveFE.SetText(filename)
 
+				if filename == "" {
+					saveFE.SetText("(cancelled)")
+					return
+				}
+
+			})
+			fgrid.Append(button,
+				0, 1, 1, 1,
+				false, ui.AlignFill, false, ui.AlignFill)
+			fgrid.Append(saveFE,
+				1, 1, 1, 1,
+				true, ui.AlignFill, false, ui.AlignFill)
+
+		}
 	}
 
 	vbox.Append(ui.NewHorizontalSeparator(), false)
@@ -273,7 +304,6 @@ func makeBasicControlsPage() ui.Control {
 		proxyForm := ui.NewForm()
 		proxyForm.SetPadded(true)
 		systemGroup.SetChild(proxyForm)
-		// systemProxyHbox.Append(proxyForm, true)
 
 		var newProxyToggle = func(form *ui.Form, isSocks5 bool) {
 			gp := currentUserPreference.Gui

@@ -8,9 +8,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// Stdout, Stderr to zap
+// Stdout, Stderr to zap, output log level debug
 func LogRunCmd(name string, arg ...string) (out string, err error) {
-	if ce := CanLogInfo("run cmd"); ce != nil {
+	if ce := CanLogInfo("run"); ce != nil {
 		ce.Write(zap.String("cmd", name), zap.Strings("args", arg))
 	}
 
@@ -22,14 +22,14 @@ func LogRunCmd(name string, arg ...string) (out string, err error) {
 
 	if err = cmd1.Run(); err != nil {
 
-		if ce := CanLogErr("run cmd failed"); ce != nil {
+		if ce := CanLogErr("Failed run cmd"); ce != nil {
 			ce.Write(zap.Error(err), zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
 		}
 
 	}
 	out = sbO.String()
 
-	if ce := CanLogInfo("run cmd"); ce != nil {
+	if ce := CanLogDebug("run result"); ce != nil { //因为输出可能很长,故用debug
 		ce.Write(zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
 	}
 
@@ -38,7 +38,7 @@ func LogRunCmd(name string, arg ...string) (out string, err error) {
 
 // Stdout, Stderr to fmt
 func FmtPrintRunCmd(name string, arg ...string) (out string, err error) {
-	fmt.Println("run cmd", "cmd", name, "args", arg)
+	fmt.Println("run cmd", name, "args", arg)
 
 	cmd1 := exec.Command(name, arg...)
 	var sbE strings.Builder
@@ -47,7 +47,7 @@ func FmtPrintRunCmd(name string, arg ...string) (out string, err error) {
 	cmd1.Stdout = &sbO
 
 	if err = cmd1.Run(); err != nil {
-		fmt.Println("run cmd failed", err, "stdOut", out, "stdErr", sbE.String())
+		fmt.Println("Failed run cmd", err, "stdOut", out, "stdErr", sbE.String())
 	}
 	out = sbO.String()
 	fmt.Println("run cmd result", "stdOut:", out, "stdErr:", sbE.String())
@@ -56,13 +56,18 @@ func FmtPrintRunCmd(name string, arg ...string) (out string, err error) {
 }
 
 func ExecCmd(cmdStr string) (err error) {
-	ZapLogger.Info("run cmd", zap.String("cmd", cmdStr))
+	if ce := CanLogInfo("run"); ce != nil {
+		ce.Write(zap.String("cmd", cmdStr))
+	}
 
 	strs := strings.Split(cmdStr, " ")
 
 	cmd1 := exec.Command(strs[0], strs[1:]...)
 	if err = cmd1.Run(); err != nil {
-		ZapLogger.Error("run cmd failed", zap.Error(err))
+
+		if ce := CanLogErr("Failed run cmd"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
 	}
 
 	return
@@ -89,6 +94,7 @@ func ExecCmdList(strs []string) (err error) {
 	return
 }
 
+// 按顺序执行, 遇到一个错误后就会停止运行, 直接返回
 func LogExecCmdList(strs []string) (err error) {
 
 	for i, str := range strs {
