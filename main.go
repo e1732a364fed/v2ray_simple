@@ -618,12 +618,21 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			ce.Write()
 		}
 
-		if iics.wrappedConn != nil {
-
+		if wc := iics.wrappedConn; wc != nil {
 			//应该返回一个http400错误，这样更逼真一些
-			iics.wrappedConn.SetWriteDeadline(time.Now().Add(time.Second))
-			iics.wrappedConn.Write([]byte(httpLayer.GetNginx400Response()))
-			iics.wrappedConn.Close()
+			// 不过有一些高级层不属于 http1.1，如grpc和 quic，此时通过 如下方式处理
+
+			if rejectConn, ok := wc.(netLayer.RejectConn); ok {
+
+				if rejectConn.RejectBehaviorDefined() {
+					rejectConn.Reject()
+				}
+			} else {
+
+				wc.SetWriteDeadline(time.Now().Add(time.Second))
+				wc.Write([]byte(httpLayer.GetNginx400Response()))
+			}
+			wc.Close()
 
 		}
 		return

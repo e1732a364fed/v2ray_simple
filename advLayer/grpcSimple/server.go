@@ -185,6 +185,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 						Reader:    rq.Body,
 						Writer:    rw,
 						CloseChan: make(chan struct{}),
+						Rejecter:  httpLayer.RejectConn{ResponseWriter: rw},
 					}
 
 					fm := httpLayer.FallbackMeta{
@@ -290,6 +291,12 @@ type ServerConn struct {
 	closeOnce sync.Once
 	closeChan chan int
 	closed    bool
+}
+
+//implements netLayer.RejectConn, 模仿nginx响应，参考httpLayer.Err400response_nginx
+func (sc *ServerConn) Reject() {
+	httpLayer.SetNginx400Response(sc.Writer)
+
 }
 
 func (sc *ServerConn) Close() error {

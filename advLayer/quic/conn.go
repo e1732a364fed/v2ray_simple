@@ -36,6 +36,16 @@ func (sc *StreamConn) RemoteAddr() net.Addr {
 	return sc.raddr
 }
 
+//implements netLayer.RejectConn, return false
+func (sc *StreamConn) HasOwnDefaultRejectBehavior() bool {
+	return false
+}
+
+//implements netLayer.RejectConn, placeholder
+func (sc *StreamConn) Reject() {
+
+}
+
 func (sc *StreamConn) Close() error {
 	if sc.isclosed {
 		return nil

@@ -150,3 +150,8 @@ func HasIpv6Interface() bool {
 	}
 	return false
 }
+
+type RejectConn interface {
+	RejectBehaviorDefined() bool //若为false，则只能直接Close
+	Reject()
+}

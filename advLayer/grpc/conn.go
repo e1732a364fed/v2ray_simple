@@ -111,3 +111,13 @@ func (c *Conn) LocalAddr() net.Addr {
 func (c *Conn) RemoteAddr() net.Addr {
 	return c.remote
 }
+
+//implements netLayer.RejectConn, return false
+func (c *Conn) HasOwnDefaultRejectBehavior() bool {
+	return false
+}
+
+//implements netLayer.RejectConn, placeholder
+func (c *Conn) Reject() {
+
+}

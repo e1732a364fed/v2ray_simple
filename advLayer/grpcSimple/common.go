@@ -36,6 +36,11 @@ type commonPart struct {
 	la, ra net.Addr
 }
 
+//implements netLayer.RejectConn, return true
+func (*commonPart) HasOwnDefaultRejectBehavior() bool {
+	return true
+}
+
 func (c *commonPart) LocalAddr() net.Addr  { return c.la }
 func (c *commonPart) RemoteAddr() net.Addr { return c.ra }
 

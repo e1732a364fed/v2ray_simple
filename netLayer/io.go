@@ -40,7 +40,7 @@ func (rw *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
 
 }
 
-//一个自定义的由多个组件组成的实现 net.Conn 的结构
+//一个自定义的由多个组件组成的实现 net.Conn 的结构, 也通过设置 Rejecter 实现 RejectConn
 type IOWrapper struct {
 	EasyNetAddresser
 	EasyDeadline
@@ -56,6 +56,8 @@ type IOWrapper struct {
 	deadlineInited bool
 
 	closeOnce, firstWriteOnce sync.Once
+
+	Rejecter RejectConn
 }
 
 func (iw *IOWrapper) Read(p []byte) (int, error) {
@@ -109,4 +111,14 @@ func (iw *IOWrapper) Close() error {
 
 	}
 	return nil
+}
+
+func (iw *IOWrapper) HasOwnDefaultRejectBehavior() bool {
+
+	return iw.Rejecter != nil && iw.Rejecter.RejectBehaviorDefined()
+}
+func (iw *IOWrapper) Reject() {
+	if iw.Rejecter != nil {
+		iw.Rejecter.Reject()
+	}
 }
