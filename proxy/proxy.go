@@ -25,6 +25,14 @@ type MuxMarkerConn struct {
 
 func (mh *MuxMarkerConn) IsMux() bool { return true }
 
+// 实现 utils.MuxMarker, utils.User
+type UserMuxMarker struct {
+	utils.User
+	netLayer.ReadWrapper
+}
+
+func (mh *UserMuxMarker) IsMux() bool { return true }
+
 // some client may 建立tcp连接后首先由客户端读服务端的数据？虽较少见但确实存在.
 // Anyway firstpayload might not be read, and we should try to reduce this delay.
 // 也有可能是有人用 nc 来测试，也会遇到这种读不到 firstpayload 的情况

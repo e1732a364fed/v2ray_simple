@@ -605,6 +605,14 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 									}
 								}
 							}
+						} else if udp_wlc != nil {
+							if u, ok := udp_wlc.(utils.User); ok {
+								if udp_wlc1 != nil {
+									if us, ok := udp_wlc1.(utils.UserAssigner); ok {
+										us.SetUser(u)
+									}
+								}
+							}
 						}
 
 						passToOutClient(newiics, false, wlc1, udp_wlc1, targetAddr1)
@@ -1028,6 +1036,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			desc.InTag = iics.inTag
 		}
 		if uc, ok := wlc.(utils.User); ok {
+			desc.UserIdentityStr = uc.IdentityStr()
+		} else if uc, ok := udp_wlc.(utils.User); ok {
 			desc.UserIdentityStr = uc.IdentityStr()
 		}
 

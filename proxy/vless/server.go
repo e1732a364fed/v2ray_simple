@@ -257,7 +257,8 @@ realPart:
 	}
 
 	if ismux {
-		mm := &proxy.MuxMarkerConn{
+		mm := &proxy.UserMuxMarker{
+			User: utils.V2rayUser(thisUUIDBytes),
 			ReadWrapper: netLayer.ReadWrapper{
 				Conn: underlay,
 			},
