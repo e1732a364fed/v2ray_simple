@@ -33,6 +33,16 @@ type ApiServerConf struct {
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true
 func (m *M) TryRunApiServer() {
 
+	var thepass string
+
+	if m.AdminPass == "" && m.appConf != nil {
+		if ap := m.appConf.AdminPass; ap != "" {
+			thepass = ap
+		}
+		m.AdminPass = thepass
+
+	}
+
 	m.ApiServerRunning = true
 
 	go m.runApiServer()

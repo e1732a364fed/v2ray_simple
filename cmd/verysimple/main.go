@@ -197,11 +197,11 @@ func mainFunc() (result int) {
 
 	var simpleConf proxy.SimpleConf
 
-	configMode, simpleConf, fallback, loadConfigErr = LoadConfig(configFileName, listenURL, dialURL)
+	configMode, simpleConf, fallback, loadConfigErr = defaultMachine.LoadConfig(configFileName, listenURL, dialURL)
 
 	if loadConfigErr == nil {
 
-		machine.SetupByAppConf(appConf)
+		defaultMachine.SetupAppConf()
 
 	}
 
@@ -271,30 +271,7 @@ func mainFunc() (result int) {
 
 	case proxy.StandardMode:
 
-		if appConf != nil {
-			defaultMachine.DefaultUUID = appConf.DefaultUUID
-		}
-
-		//虽然标准模式支持多个Server，目前先只考虑一个
-		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
-
-		if len(standardConf.Listen) < 1 {
-			utils.Warn("no listen in config settings")
-			break
-		}
-
-		defaultMachine.LoadListenConf(standardConf.Listen, false)
-
-		if len(standardConf.Fallbacks) > 0 {
-			defaultMachine.ParseFallbacksAtSymbol(standardConf.Fallbacks)
-		}
-		var myCountryISO_3166 string
-		if appConf != nil {
-			myCountryISO_3166 = appConf.MyCountryISO_3166
-		}
-
-		defaultMachine.RoutingEnv = proxy.LoadEnvFromStandardConf(&standardConf, myCountryISO_3166)
-
+		defaultMachine.SetupListen()
 	}
 
 	// load outClients
@@ -306,15 +283,7 @@ func mainFunc() (result int) {
 		}
 	case proxy.StandardMode:
 
-		if len(standardConf.Dial) < 1 {
-			utils.Warn("no dial in config settings, will add 'direct'")
-
-			defaultMachine.SetDefaultDirectClient()
-
-			break
-		}
-
-		defaultMachine.LoadDialConf(standardConf.Dial)
+		defaultMachine.SetupDial()
 
 	}
 
@@ -347,16 +316,6 @@ func mainFunc() (result int) {
 	if defaultMachine.EnableApiServer {
 
 		defaultMachine.ApiServerConf = defaultApiServerConf
-
-		var thepass string
-
-		if defaultMachine.AdminPass == "" && appConf != nil {
-			if ap := appConf.AdminPass; ap != "" {
-				thepass = ap
-			}
-			defaultMachine.AdminPass = thepass
-
-		}
 
 		defaultMachine.TryRunApiServer()
 

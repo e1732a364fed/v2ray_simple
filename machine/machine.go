@@ -24,6 +24,9 @@ type M struct {
 	ApiServerConf
 	DefaultUUID string
 
+	standardConf proxy.StandardConf
+	appConf      *AppConf
+
 	v2ray_simple.GlobalInfo
 	sync.RWMutex
 

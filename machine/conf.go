@@ -1,9 +1,15 @@
 package machine
 
 import (
+	"errors"
+	"io"
+	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -92,5 +98,111 @@ func SetupByAppConf(ac *AppConf) {
 		if ac.GeositeFolder != nil {
 			netLayer.GeositeFolder = *ac.GeositeFolder
 		}
+	}
+}
+
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf or simpleConf，否则尝试 listenURL, dialURL 参数.
+// 若 返回的是 simpleConf, 则还可能返回 mainFallback.
+func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int, simpleConf proxy.SimpleConf, mainFallback *httpLayer.ClassicFallback, err error) {
+
+	fpath := utils.GetFilePath(configFileName)
+	if fpath != "" {
+
+		ext := filepath.Ext(fpath)
+		if ext == ".toml" {
+
+			if cf, err := os.Open(fpath); err == nil {
+				defer cf.Close()
+				bs, _ := io.ReadAll(cf)
+
+				m.standardConf, m.appConf, err = LoadVSConfFromBs(bs)
+				if err != nil {
+
+					log.Printf("can not load standard config file: %v, \n", err)
+					goto url
+
+				}
+
+				confMode = proxy.StandardMode
+
+			}
+
+		} else {
+
+			confMode = proxy.SimpleMode
+			simpleConf, mainFallback, err = proxy.LoadSimpleConf_byFile(fpath)
+
+		}
+
+		return
+
+	}
+url:
+	if listenURL != "" {
+		log.Printf("trying listenURL and dialURL \n")
+
+		confMode = proxy.SimpleMode
+		simpleConf, err = proxy.LoadSimpleConf_byUrl(listenURL, dialURL)
+	} else {
+
+		log.Println(proxy.ErrStrNoListenUrl)
+		err = errors.New(proxy.ErrStrNoListenUrl)
+		confMode = -1
+		return
+	}
+
+	return
+}
+
+func (m *M) SetupAppConf() {
+	SetupByAppConf(m.appConf)
+}
+
+func (defaultMachine *M) SetupListen() {
+	if defaultMachine.appConf != nil {
+		defaultMachine.DefaultUUID = defaultMachine.appConf.DefaultUUID
+	}
+
+	//虽然标准模式支持多个Server，目前先只考虑一个
+	//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
+
+	if len(defaultMachine.standardConf.Listen) < 1 {
+		utils.Warn("no listen in config settings")
+		return
+	}
+
+	defaultMachine.LoadListenConf(defaultMachine.standardConf.Listen, false)
+
+	if len(defaultMachine.standardConf.Fallbacks) > 0 {
+		defaultMachine.ParseFallbacksAtSymbol(defaultMachine.standardConf.Fallbacks)
+	}
+	var myCountryISO_3166 string
+	if defaultMachine.appConf != nil {
+		myCountryISO_3166 = defaultMachine.appConf.MyCountryISO_3166
+	}
+
+	defaultMachine.RoutingEnv = proxy.LoadEnvFromStandardConf(&defaultMachine.standardConf, myCountryISO_3166)
+
+}
+func (defaultMachine *M) SetupDial() {
+	if len(defaultMachine.standardConf.Dial) < 1 {
+		utils.Warn("no dial in config settings, will add 'direct'")
+
+		defaultMachine.SetDefaultDirectClient()
+
+		return
+	}
+
+	defaultMachine.LoadDialConf(defaultMachine.standardConf.Dial)
+}
+func (m *M) LoadStandardConf() {
+	if len(m.standardConf.Dial) > 0 {
+		m.LoadDialConf(m.standardConf.Dial)
+
+	}
+
+	if len(m.standardConf.Listen) > 0 {
+		m.LoadListenConf(m.standardConf.Listen, true)
+
 	}
 }

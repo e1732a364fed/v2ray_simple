@@ -504,7 +504,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 
 	var confMode int
 	var simpleConf proxy.SimpleConf
-	confMode, simpleConf, _, err = LoadConfig(fpath, "", "")
+	confMode, simpleConf, _, err = defaultMachine.LoadConfig(fpath, "", "")
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)
@@ -523,15 +523,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 
 	switch confMode {
 	case proxy.StandardMode:
-		if len(standardConf.Dial) > 0 {
-			m.LoadDialConf(standardConf.Dial)
-
-		}
-
-		if len(standardConf.Listen) > 0 {
-			m.LoadListenConf(standardConf.Listen, true)
-
-		}
+		m.LoadStandardConf()
 	case proxy.SimpleMode:
 		result := m.HotLoadSimpleConf(simpleConf)
 		if result < 0 {
