@@ -11,9 +11,10 @@ import (
 const (
 	official = iota
 	utlsPackage
+	shadowTls
 )
 
-//参考 crypt/tls 的 conn.go， 注意，如果上游代码的底层结构发生了改变，则这里也要跟着修改，保持头部结构一致
+// 参考 crypt/tls 的 conn.go， 注意，如果上游代码的底层结构发生了改变，则这里也要跟着修改，保持头部结构一致
 type faketlsconn struct {
 	conn     net.Conn
 	isClient bool
@@ -57,40 +58,45 @@ func (c *Conn) GetTeeConn() *TeeConn {
 
 }
 
-//return c.Conn.ConnectionState().NegotiatedProtocol
+// return c.Conn.ConnectionState().NegotiatedProtocol
 func (c *Conn) GetAlpn() string {
 
-	if c.tlsPackageType == utlsPackage {
+	switch c.tlsPackageType {
+	case utlsPackage:
 		cc := (*utls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().NegotiatedProtocol
-
-	} else {
+	case official:
 		cc := (*tls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().NegotiatedProtocol
-	}
 
+	}
+	return ""
 }
 
 func (c *Conn) GetSni() string {
-	if c.tlsPackageType == utlsPackage {
+
+	switch c.tlsPackageType {
+	case utlsPackage:
 		cc := (*utls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().ServerName
 
-	} else {
+	case official:
 		cc := (*tls.Conn)(c.ptr)
 		if cc == nil {
 			return ""
 		}
 		return cc.ConnectionState().ServerName
+
 	}
+	return ""
 
 }

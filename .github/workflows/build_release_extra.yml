@@ -79,12 +79,12 @@ jobs:
           sudo apt-get install build-essential libgtk-3-dev
 
       - if: ${{ matrix.os  != 'windows-latest' }}
-        name: set ASSET_NAME
+        name: set ASSET_NAME for !windows
         run: |
           echo "ASSET_NAME=vs_gui_${{ matrix.os }}_${{ matrix.goarch }}" >> $GITHUB_ENV
 
       - if: ${{ matrix.os  == 'windows-latest' }}
-        name: set ASSET_NAME
+        name: set ASSET_NAME for windows
         run: |
           echo "ASSET_NAME=vs_gui_${{ matrix.os }}_${{ matrix.goarch }}" | Out-File -FilePath $env:GITHUB_ENV -Append 
 
@@ -94,24 +94,28 @@ jobs:
         with:
           go-version: 1.19
 
-      - if: ${{ matrix.os  != 'macos-latest' }}
-        name: Build
-        run: |
-          cd cmd/verysimple/ && make -f Makefile_r_gui PACKNAME=${{ env.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
-      
-      - if: ${{ matrix.os  == 'macos-latest' }}
-        name: macos Build
+      - name: Build
         run: |
           cd cmd/verysimple
           go build -tags "gui"  -trimpath -ldflags "-X 'main.Version=${{ github.event.inputs.tagName }}' -s -w -buildid="
-          gtar -cJf ${{ env.ASSET_NAME }}.tar.xz verysimple* -C ../../ examples/
-          rm verysimple*
+
+      - if: ${{ matrix.os  != 'macos-latest' }}
+        name: tar (!macos)
+        run: |
+          cd cmd/verysimple && tar -cJf ${{ env.ASSET_NAME }}.tar.xz verysimple* -C ../../ examples/
+      
+      - if: ${{ matrix.os  == 'macos-latest' }}
+        name: gtar (macos)
+        run: |
+          cd cmd/verysimple && gtar -cJf ${{ env.ASSET_NAME }}.tar.xz verysimple* -C ../../ examples/
 
 
       - name: touch xz archive
         shell: bash
         run: |
-          cd cmd/verysimple/ && touch -mt $(date +%Y01010000) *.tar.xz
+          cd cmd/verysimple
+          rm verysimple*
+          touch -mt $(date +%Y01010000) *.tar.xz
       
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2

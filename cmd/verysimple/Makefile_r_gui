@@ -1,6 +1,0 @@
-# 本文件用于编译release版的 vs_gui, 用于github action中的matrix, 所以不需要在这里指定GOOS
-
-all:
-	go build -tags "gui $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
-	tar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
-	rm verysimple*

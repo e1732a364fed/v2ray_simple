@@ -34,15 +34,15 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 ## 支持的功能
 
-socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/**v1**)/vmess/shadowsocks, 多用户, http头
+socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy/tun/trojan/simplesocks/vless(v0/**v1**)/vmess/shadowsocks, 多用户, http头
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 **支持回落的 grpcSimple**)/quic(以及**hy阻控、手动挡** 和 0-rtt)/smux, 
 
-dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls), rejectUnknownSni(tls)
+dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听,
+tcp/udp(以及fullcone)/unix domain socket, tls(包括生成随机证书;客户端证书验证;rejectUnknownSni), uTls,**【tls lazy encrypt】**, http伪装头（**可支持回落**）,PROXY protocol v1/v2 监听,
 
-cli(**交互模式**)/apiServer, Docker, docker-compose.
+cli(**交互模式**)/**gui/vsb计划(flutter写的面板)**/apiServer, Docker, docker-compose.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -671,11 +671,11 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 ## 鸣谢
 
-为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
+为了支持hysteria 的阻塞控制，从 [hysteria](https://github.com/HyNetwork/hysteria) 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 
 grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议。(clash的gun又是借鉴 Qv2ray的gun的）
 
-tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它; 它有数个bug, 已经都在本作修复）
+tproxy借鉴了 [这个](https://github.com/LiamHaworth/go-tproxy/) , （trojan-go也借鉴了它; 它有数个bug, 已经都在本作修复）
 
 来自v2ray的代码有：quic的嗅探，geosite文件的解析(v2fly/domain-list-community), vmess的 ShakeSizeParser 和 openAEADHeader 等函数。
 
@@ -683,9 +683,11 @@ tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借�
 
 以上借鉴的代码都是用的MIT协议。
 
-vmess 的客户端代码 来自 github.com/Dreamacro/clash/transport/vmess, 使用的是 GPLv3协议。该协议直接 放在 proxy/vmess/ 文件夹下了。
+vmess 的客户端代码 来自 [clash](github.com/Dreamacro/clash/transport/vmess), 使用的是 GPLv3协议。该协议直接 放在 proxy/vmess/ 文件夹下了。
 
 同时通过该vmess 客户端代码 反推出了 对应的服务端代码。
+
+tun 的代码 来自 [tun2socks](github.com/xjasonlyu/tun2socks) , 使用的是 GPLv3协议。该协议直接放在 netLayer/tun 文件夹下了。
 
 ## Stargazers over time
 
