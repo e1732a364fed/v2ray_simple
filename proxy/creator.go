@@ -40,15 +40,16 @@ type ClientCreator interface {
 	//大部分通用内容都会被proxy包解析，方法只需要处理proxy包未知的内容
 	NewClient(*DialConf) (Client, error) //标准配置
 
-	URLToDialConf(url *url.URL, format int) (*DialConf, error)
+	//iv: initial value, can be nil.
+	URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error)
 	//DialConfToURL(url *DialConf, format int) (*url.URL, error)
 }
 
-//可通过两种配置方式来初始化。
+//可通过标准配置或url 来初始化。
 type ServerCreator interface {
 	NewServer(*ListenConf) (Server, error)
 
-	URLToListenConf(url *url.URL, format int) (*ListenConf, error)
+	URLToListenConf(url *url.URL, iv *ListenConf, format int) (*ListenConf, error)
 	//ListenConfToURL(url *ListenConf, format int) (*url.URL, error)
 }
 

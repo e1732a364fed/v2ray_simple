@@ -23,7 +23,9 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-const systemAutoWillUseAes = runtime.GOARCH == "amd64" || runtime.GOARCH == "s390x" || runtime.GOARCH == "arm64"
+const systemAutoUseAes = runtime.GOARCH == "amd64" || runtime.GOARCH == "s390x" || runtime.GOARCH == "arm64"
+
+const vmess_security_confStr string = "vmess_security"
 
 func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
@@ -31,26 +33,31 @@ func init() {
 
 type ClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
-	uuidStr := url.User.Username()
-	uuid, err := utils.StrToUUID(uuidStr)
-	if err != nil {
-		return nil, err
+func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
+	if format != proxy.UrlStandardFormat {
+		return dc, utils.ErrUnImplemented
 	}
+
+	if dc == nil {
+		dc = &proxy.DialConf{}
+	}
+
+	uuidStr := url.User.Username()
+
+	dc.Uuid = uuidStr
 
 	query := url.Query()
 
 	security := query.Get("security")
+	if security != "" {
+		if dc.Extra == nil {
+			dc.Extra = make(map[string]any)
+		}
 
-	c := &Client{}
-	c.V2rayUser = utils.V2rayUser(uuid)
+		dc.Extra[vmess_security_confStr] = security
 
-	c.opt = OptChunkStream
-	if err = c.specifySecurityByStr(security); err != nil {
-		return nil, err
 	}
-
-	return c, nil
+	return dc, nil
 }
 
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
@@ -65,7 +72,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	hasSetSecurityByExtra := false
 
 	if len(dc.Extra) > 0 {
-		if thing := dc.Extra["vmess_security"]; thing != nil {
+		if thing := dc.Extra[vmess_security_confStr]; thing != nil {
 			if str, ok := thing.(string); ok {
 
 				err = c.specifySecurityByStr(str)
@@ -103,7 +110,7 @@ func (c *Client) specifySecurityByStr(security string) error {
 	case "chacha20-poly1305":
 		c.security = SecurityChacha20Poly1305
 	case "auto":
-		if systemAutoWillUseAes {
+		if systemAutoUseAes {
 			c.security = SecurityAES128GCM
 		} else {
 			c.security = SecurityChacha20Poly1305

@@ -185,7 +185,7 @@ type MethodPass struct {
 	Method, Password string
 }
 
-//require "user" and "pass" field. return true if both not empty.
+//require "method" and "pass" field. return true if both not empty.
 func (ph *MethodPass) InitWithUrl(u *url.URL) bool {
 	ph.Method = u.Query().Get("method")
 	ph.Password = u.Query().Get("pass")

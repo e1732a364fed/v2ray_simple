@@ -43,8 +43,14 @@ func init() {
 
 type ServerCreator struct{}
 
-func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	return newServer(), nil
+func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
+
+	if lc == nil {
+		lc = &proxy.ListenConf{}
+	}
+
+	return lc, nil
+
 }
 
 func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {

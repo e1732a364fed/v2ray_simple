@@ -17,14 +17,19 @@ func init() {
 
 type ClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
-
-	var mp MethodPass
-	if mp.InitWithUrl(url) {
-		return newClient(mp), nil
+func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
+	if format != proxy.UrlStandardFormat {
+		return dc, utils.ErrUnImplemented
+	}
+	if dc == nil {
+		dc = &proxy.DialConf{}
 	}
 
-	return nil, utils.ErrNilOrWrongParameter
+	m := u.Query().Get("method")
+	p := u.Query().Get("pass")
+
+	dc.Uuid = "method:" + m + "\npass:" + p
+	return dc, nil
 }
 
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
@@ -94,5 +99,5 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 		return
 	}
 
-	return nil, utils.ErrNotImplemented
+	return nil, utils.ErrUnImplemented
 }

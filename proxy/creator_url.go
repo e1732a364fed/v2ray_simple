@@ -1,7 +1,9 @@
 package proxy
 
 import (
+	"net"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -45,26 +47,28 @@ func ClientFromURL(s string) (Client, error) {
 	}
 
 	if ok {
+		var dc *DialConf
 
-		dc, e := creator.URLToDialConf(u, UrlStandardFormat)
-		if e != nil {
-
-			return nil, e
-		}
 		if UrlFormat == UrlStandardFormat {
+			dc = &DialConf{}
 			setConfByStandardURL(&dc.CommonConf, u)
 
 			if okTls {
 				dc.TLS = true
-				prepareTLS_forConf_withStandardURL(u, &dc.CommonConf, nil, dc)
+				setTLS_forConf_withStandardURL(u, &dc.CommonConf, nil, dc)
 
 			}
+		}
+		var e error
+		dc, e = creator.URLToDialConf(u, dc, UrlFormat)
+
+		if e != nil {
+			return nil, e
 		}
 
 		c, e := newClient(creator, dc, false)
 
 		if e != nil {
-
 			return nil, e
 		}
 
@@ -102,25 +106,29 @@ func ServerFromURL(s string) (Server, error) {
 
 	if ok {
 
-		sConf, err := creator.URLToListenConf(u, UrlFormat)
+		var sConf *ListenConf
+
+		if UrlFormat == UrlStandardFormat {
+			sConf = &ListenConf{}
+
+			confQueryForServer(sConf, u)
+
+			if okTls {
+				sConf.TLS = true
+
+				setTLS_forConf_withStandardURL(u, &sConf.CommonConf, sConf, nil)
+
+			}
+
+		}
+
+		sConf, err := creator.URLToListenConf(u, sConf, UrlFormat)
 		if err != nil {
 			return nil, utils.ErrInErr{
 				ErrDesc:   "URLToListenConf err ",
 				ErrDetail: err,
 				Data:      s,
 			}
-		}
-
-		if UrlFormat == UrlStandardFormat {
-			confQueryForServer(sConf, u)
-
-			if okTls {
-				sConf.TLS = true
-
-				prepareTLS_forConf_withStandardURL(u, &sConf.CommonConf, sConf, nil)
-
-			}
-
 		}
 
 		return newServer(creator, sConf, false)
@@ -130,61 +138,84 @@ func ServerFromURL(s string) (Server, error) {
 	return nil, utils.ErrInErr{ErrDesc: "Unknown server protocol ", Data: u.Scheme}
 }
 
-/*
-//set Tag, cantRoute,FallbackAddr, call configCommonByURL
-func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
+func getFullconeFromUrl(url *url.URL) bool {
+	nStr := url.Query().Get("fullcone")
+	return nStr == "true" || nStr == "1"
+}
+
+//SetAddrStr, setNetwork, Isfullcone
+func setConfByStandardURL(conf *CommonConf, u *url.URL) error {
+	if u.Scheme != DirectName {
+
+		hn := u.Hostname()
+
+		ip := net.ParseIP(hn)
+		if ip != nil {
+			conf.IP = hn
+		} else {
+			conf.Host = hn
+		}
+
+		if hn != u.Host { //给出了port
+			colon := strings.LastIndexByte(u.Host, ':')
+			p, err := strconv.Atoi(u.Host[colon+1:])
+			if err != nil {
+				return err
+			} else if p < 0 || p > 65535 {
+				return utils.ErrInvalidData
+			}
+			conf.Port = p
+
+		}
+	}
+	conf.Network = u.Query().Get("network")
+
+	conf.Fullcone = getFullconeFromUrl(u)
+	conf.Tag = u.Fragment
+
+	return nil
+}
+
+//set Tag, NoRoute,Fallback, call setConfByStandardURL
+func confQueryForServer(conf *ListenConf, u *url.URL) {
 	nr := false
 	q := u.Query()
 	if q.Get("noroute") != "" {
 		nr = true
 	}
-	configCommonByStandardURL(ser, u)
+	setConfByStandardURL(&conf.CommonConf, u)
 
-	serc := ser.GetBase()
-	if serc == nil {
-		return
-	}
-	serc.IsCantRoute = nr
-	serc.Tag = u.Fragment
+	conf.NoRoute = nr
+
+	conf.Tag = u.Fragment
 
 	fallbackStr := q.Get("fallback")
 
-	if fallbackStr != "" {
-		fa, err := netLayer.NewAddr(fallbackStr)
-
-		if err != nil {
-			if utils.ZapLogger != nil {
-				utils.ZapLogger.Fatal("Failed, configCommonURLQueryForServer", zap.String("Invalid fallback", fallbackStr))
-			} else {
-				log.Fatalf("Invalid fallback %s\n", fallbackStr)
-
-			}
-		}
-
-		serc.FallbackAddr = &fa
-	}
+	conf.Fallback = fallbackStr
 }
-*/
 
-/*
-//SetAddrStr, setNetwork, Isfullcone
-func configCommonByStandardURL(baseI BaseInterface, u *url.URL) {
-	if u.Scheme != DirectName {
-		baseI.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们 默认 配置里肯定给了port
+//给 ProxyCommon 的tls做一些配置上的准备，从url读取配置
+func setTLS_forConf_withStandardURL(u *url.URL, com *CommonConf, lc *ListenConf, dc *DialConf) error {
+	q := u.Query()
+	insecureStr := q.Get("insecure")
+	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
+
+		com.Insecure = true
+	}
+
+	if dc != nil {
+		utlsStr := q.Get("utls")
+		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
+
+		dc.Utls = useUtls
+
+	} else {
+		certFile := q.Get("cert")
+		keyFile := q.Get("key")
+
+		lc.TLSCert = certFile
+		lc.TLSKey = keyFile
 
 	}
-	base := baseI.GetBase()
-	if base == nil {
-		return
-	}
-	base.setNetwork(u.Query().Get("network"))
-
-	base.IsFullcone = getFullconeFromUrl(u)
-
-}
-*/
-
-func getFullconeFromUrl(url *url.URL) bool {
-	nStr := url.Query().Get("fullcone")
-	return nStr == "true" || nStr == "1"
+	return nil
 }

@@ -1,10 +1,6 @@
 package proxy
 
 import (
-	"crypto/tls"
-	"net"
-	"net/url"
-
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 )
@@ -89,46 +85,6 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 		serc.Tls_s = tlsserver
 	} else {
 		return err
-	}
-	return nil
-}
-
-//给 ProxyCommon 的tls做一些配置上的准备，从url读取配置
-func prepareTLS_forProxyCommon_withStandardURL(u *url.URL, isclient bool, com BaseInterface) error {
-	q := u.Query()
-	insecureStr := q.Get("insecure")
-	insecure := false
-	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
-		insecure = true
-	}
-	cc := com.GetBase()
-
-	if isclient {
-		utlsStr := q.Get("utls")
-		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
-
-		if cc != nil {
-			cc.Tls_c = tlsLayer.NewClient(u.Host, insecure, useUtls, nil, nil, tls.VersionTLS13)
-
-		}
-
-	} else {
-		certFile := q.Get("cert")
-		keyFile := q.Get("key")
-
-		hostAndPort := u.Host
-		sni, _, _ := net.SplitHostPort(hostAndPort)
-
-		tlsserver, err := tlsLayer.NewServer(sni, &tlsLayer.CertConf{
-			CertFile: certFile, KeyFile: keyFile,
-		}, insecure, nil, tls.VersionTLS13)
-		if err == nil {
-			if cc != nil {
-				cc.Tls_s = tlsserver
-			}
-		} else {
-			return err
-		}
 	}
 	return nil
 }

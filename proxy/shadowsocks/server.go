@@ -30,12 +30,19 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return nil, utils.ErrNilOrWrongParameter
 }
 
-func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
-	var mp MethodPass
-	if mp.InitWithUrl(url) {
-		return newServer(mp), nil
+func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
+	if format != proxy.UrlStandardFormat {
+		return lc, utils.ErrUnImplemented
 	}
-	return nil, utils.ErrNilOrWrongParameter
+	if lc == nil {
+		lc = &proxy.ListenConf{}
+	}
+
+	m := u.Query().Get("method")
+	p := u.Query().Get("pass")
+
+	lc.Uuid = "method:" + m + "\npass:" + p
+	return lc, nil
 
 }
 

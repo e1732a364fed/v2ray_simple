@@ -18,10 +18,6 @@ func init() {
 
 type ClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
-	return NewClientByURL(u)
-}
-
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
@@ -50,7 +46,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 				}
 			}
 		} else {
-			return nil, utils.ErrInErr{ErrDesc: "given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
+			return nil, utils.ErrInErr{ErrDesc: "given version bigger than 1", ErrDetail: utils.ErrUnImplemented}
 		}
 
 	}
@@ -58,42 +54,41 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	return &c, nil
 }
 
-func NewClientByURL(url *url.URL) (proxy.Client, error) {
-	uuidStr := url.User.Username()
-	id, err := utils.NewV2rayUser(uuidStr)
-	if err != nil {
-		return nil, err
-	}
-
-	c := Client{
-		user: id,
-	}
-	vStr := url.Query().Get("version")
-	if vStr != "" {
-		v, err := strconv.Atoi(vStr)
-		if err == nil {
-			switch v {
-			case 0:
-
-			case 1:
-				c.version = 1
-
-				vless1_udp_multiStr := url.Query().Get("vless1_udp_multi")
-
-				if vless1_udp_multiStr == "true" || vless1_udp_multiStr == "1" {
-					if ce := utils.CanLogDebug("vless v1 using udp multi"); ce != nil {
-						ce.Write()
-					}
-					c.udp_multi = true
-				}
-
-			default:
-				return nil, utils.ErrInErr{ErrDesc: "Vless given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
-			}
+func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
+	switch format {
+	case proxy.UrlStandardFormat:
+		if dc == nil {
+			dc = &proxy.DialConf{}
 		}
+		uuidStr := url.User.Username()
+		dc.Uuid = uuidStr
+
+		vStr := url.Query().Get("v")
+		if vStr != "" {
+			v, e := strconv.Atoi(vStr)
+			if e != nil {
+				return nil, e
+			}
+			dc.Version = v
+			if v == 1 {
+				vless1_udp_multiStr := url.Query().Get("vless1_udp_multi")
+				if vless1_udp_multiStr == "true" || vless1_udp_multiStr == "1" {
+					if dc.Extra == nil {
+						dc.Extra = make(map[string]any)
+					}
+					dc.Extra["vless1_udp_multi"] = true
+
+				}
+			}
+
+		}
+
+		return dc, nil
+	default:
+		return dc, utils.ErrUnImplemented
+
 	}
 
-	return &c, nil
 }
 
 //实现 proxy.UserClient

@@ -29,11 +29,21 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return s, nil
 }
 
-func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
-	uuidStr := url.User.Username()
-	s := newServer(uuidStr)
+func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 
-	return s, nil
+	switch format {
+	case proxy.UrlStandardFormat:
+		if lc == nil {
+			lc = &proxy.ListenConf{}
+
+		}
+
+		uuidStr := url.User.Username()
+		lc.Uuid = uuidStr
+		return lc, nil
+	default:
+		return nil, utils.ErrUnImplemented
+	}
 }
 
 func newServer(plainPassStr string) *Server {

@@ -49,14 +49,22 @@ func init() {
 
 type ServerCreator struct{}
 
-func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-
-	s := NewServer()
-	var userPass utils.UserPass
-	if userPass.InitWithUrl(u) {
-		s.AddUser(&userPass)
+func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
+	if format != proxy.UrlStandardFormat {
+		return lc, utils.ErrUnImplemented
 	}
-	return s, nil
+	if lc == nil {
+		lc = &proxy.ListenConf{}
+	}
+
+	user := u.Query().Get("user")
+	pass := u.Query().Get("pass")
+
+	lc.Users = append(lc.Users, utils.UserConf{
+		User: user,
+		Pass: pass,
+	})
+	return lc, nil
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {

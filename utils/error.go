@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	ErrNotImplemented      = errors.New("not implemented")
+	ErrUnImplemented       = errors.New("not implemented")
 	ErrNilParameter        = errors.New("nil parameter")
 	ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
 	ErrWrongParameter      = errors.New("wrong parameter")

@@ -18,9 +18,11 @@ func init() {
 
 type ClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
-
-	return &Client{}, nil
+func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
+	if dc == nil {
+		dc = &proxy.DialConf{}
+	}
+	return dc, nil
 }
 
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {

@@ -16,10 +16,20 @@ func init() {
 
 type ClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
-	c := &Client{}
-	c.InitWithUrl(u)
-	return c, nil
+func (ClientCreator) URLToDialConf(u *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
+
+	if format != proxy.UrlStandardFormat {
+		return dc, utils.ErrUnImplemented
+	}
+	if dc == nil {
+		dc = &proxy.DialConf{}
+	}
+
+	user := u.Query().Get("user")
+	pass := u.Query().Get("pass")
+
+	dc.Uuid = "user:" + user + "\npass:" + pass
+	return dc, nil
 }
 
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {

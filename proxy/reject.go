@@ -42,7 +42,7 @@ type RejectCreator struct{}
 func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	r := &RejectClient{}
 
-	r.initWithCommonConf(&dc.CommonConf)
+	r.initByCommonConf(&dc.CommonConf)
 
 	return r, nil
 }
@@ -64,25 +64,29 @@ func (RejectCreator) initCommonConfByURL(url *url.URL, lc *CommonConf, format in
 
 }
 
-func (rc RejectCreator) URLToDialConf(url *url.URL, format int) (*DialConf, error) {
-	dc := &DialConf{}
-	rc.initCommonConfByURL(url, &dc.CommonConf, format)
+func (rc RejectCreator) URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error) {
+	if iv == nil {
+		iv = &DialConf{}
 
-	return dc, nil
+	}
+	rc.initCommonConfByURL(url, &iv.CommonConf, format)
+
+	return iv, nil
 }
 
-func (rc RejectCreator) URLToListenConf(url *url.URL, format int) (*ListenConf, error) {
+func (rc RejectCreator) URLToListenConf(url *url.URL, iv *ListenConf, format int) (*ListenConf, error) {
+	if iv == nil {
+		iv = &ListenConf{}
+	}
+	rc.initCommonConfByURL(url, &iv.CommonConf, format)
 
-	lc := &ListenConf{}
-	rc.initCommonConfByURL(url, &lc.CommonConf, format)
-
-	return lc, nil
+	return iv, nil
 }
 
 func (RejectCreator) NewServer(lc *ListenConf) (Server, error) {
 	r := &RejectServer{}
 
-	r.initWithCommonConf(&lc.CommonConf)
+	r.initByCommonConf(&lc.CommonConf)
 
 	return r, nil
 }
@@ -95,7 +99,7 @@ type rejectCommon struct {
 
 func (*rejectCommon) Name() string { return RejectName }
 
-func (rc *rejectCommon) initWithCommonConf(cc *CommonConf) {
+func (rc *rejectCommon) initByCommonConf(cc *CommonConf) {
 	if cc.Extra != nil {
 		if thing := cc.Extra["type"]; thing != nil {
 			if t, ok := thing.(string); ok && t != "" {

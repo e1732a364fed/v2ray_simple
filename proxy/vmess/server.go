@@ -69,19 +69,23 @@ func authUserByAuthPairList(bs []byte, authPairList []authPair, antiReplayMachin
 
 type ServerCreator struct{}
 
-func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
+func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
 
-	s := NewServer()
+	switch format {
+	case proxy.UrlStandardFormat:
+		if lc == nil {
+			lc = &proxy.ListenConf{}
 
-	if uuidStr := url.User.Username(); uuidStr != "" {
-		v2rayUser, err := utils.NewV2rayUser(uuidStr)
-		if err != nil {
-			return nil, err
 		}
-		s.addUser(v2rayUser)
+
+		uuidStr := url.User.Username()
+		lc.Uuid = uuidStr
+
+		return lc, nil
+	default:
+		return lc, utils.ErrUnImplemented
 	}
 
-	return s, nil
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {

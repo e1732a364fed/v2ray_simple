@@ -17,10 +17,15 @@ const (
 //implements ClientCreator for direct
 type DirectCreator struct{}
 
-func (DirectCreator) URLToDialConf(url *url.URL, format int) (*DialConf, error) {
-	d := &DialConf{}
+func (DirectCreator) URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error) {
+	if iv != nil {
+		return iv, nil
+	} else {
+		d := &DialConf{}
 
-	return d, nil
+		return d, nil
+	}
+
 }
 
 func (DirectCreator) NewClient(dc *DialConf) (Client, error) {

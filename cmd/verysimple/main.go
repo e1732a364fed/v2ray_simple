@@ -63,7 +63,7 @@ func init() {
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
 	//flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
-	flag.BoolVar(&useNativeUrlFormat, "sn", false, "use the proxy-defined url format, instead of the standard verysimple one.")
+	flag.BoolVar(&useNativeUrlFormat, "nu", false, "use the proxy-defined url format, instead of the standard verysimple one.")
 
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"strconv"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -46,9 +47,32 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 }
 
 //如果 v=0, 则只支持 v0.
-func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
-	uuidStr := url.User.Username()
-	return newServerWithConf(uuidStr, url.Query().Get("v") == "0")
+func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
+
+	switch format {
+	case proxy.UrlStandardFormat:
+		if lc == nil {
+			lc = &proxy.ListenConf{}
+
+		}
+
+		uuidStr := url.User.Username()
+		lc.Uuid = uuidStr
+		vStr := url.Query().Get("v")
+		if vStr != "" {
+			v, e := strconv.Atoi(vStr)
+			if e != nil {
+				return nil, e
+			}
+			lc.Version = v
+
+		}
+
+		return lc, nil
+	default:
+		return lc, utils.ErrUnImplemented
+	}
+
 }
 
 func newServer(onlyV0 bool) *Server {

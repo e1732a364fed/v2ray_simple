@@ -22,9 +22,11 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return s, nil
 }
 
-func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	s := &Server{}
-	return s, nil
+func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
+	if lc == nil {
+		lc = &proxy.ListenConf{}
+	}
+	return lc, nil
 }
 
 //implements proxy.Server
