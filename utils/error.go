@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 
 type InvalidDataErr string
 
-//return err == e || err == ErrInvalidData
+// return err == e || err == ErrInvalidData
 func (e InvalidDataErr) Is(err error) bool {
 	return err == e || err == ErrInvalidData
 }
@@ -32,7 +33,7 @@ func (e InvalidDataErr) Error() string {
 	return string(e)
 }
 
-//nothing special. Normally, N==0 means no error
+// nothing special. Normally, N==0 means no error
 type NumErr struct {
 	N int
 	E error
@@ -52,7 +53,7 @@ func (ef NumErr) Unwarp() error {
 	return ef.E
 }
 
-//nothing special
+// nothing special
 type NumStrErr struct {
 	N      int
 	Prefix string
@@ -63,7 +64,7 @@ func (ne NumStrErr) Error() string {
 	return ne.Prefix + strconv.Itoa(ne.N)
 }
 
-//an err with a buffer, nothing special
+// an err with a buffer, nothing special
 type ErrBuffer struct {
 	Err error
 	Buf *bytes.Buffer
@@ -140,4 +141,35 @@ func (e ErrInErr) String() string {
 
 	return e.ErrDesc
 
+}
+
+type Errs struct {
+	List []ErrsItem
+}
+
+type ErrsItem struct {
+	Index int
+	E     error
+}
+
+func (ee *Errs) Add(e ErrsItem) {
+	ee.List = append(ee.List, e)
+}
+func (e Errs) OK() bool {
+	return len(e.List) == 0
+}
+func (e Errs) String() string {
+	var sb strings.Builder
+	for _, err := range e.List {
+		sb.WriteString(strconv.Itoa(err.Index))
+		sb.WriteString(", ")
+		sb.WriteString(err.E.Error())
+		sb.WriteString("\n")
+
+	}
+	return sb.String()
+}
+
+func (e Errs) Error() string {
+	return e.String()
 }

@@ -11,7 +11,6 @@ import (
 type shadowUDPPacketConn struct {
 	net.PacketConn
 	raddr net.Addr
-	taddr net.Addr
 
 	handshakeBuf *bytes.Buffer
 }

@@ -488,6 +488,25 @@ func (a *Addr) IsUDP() bool {
 	return IsStrUDP_network(a.Network)
 }
 
+func (a *Addr) ToAddr() net.Addr {
+	n := a.Network
+	if n == "" {
+		n = "tcp"
+	}
+	switch StrToTransportProtocol(a.Network) {
+	case TCP:
+		return a.ToTCPAddr()
+	case UDP:
+		return a.ToUDPAddr()
+	case UNIX:
+		u, _ := net.ResolveUnixAddr("unix", a.Name)
+		return u
+	case IP:
+		return &net.IPAddr{IP: a.IP, Zone: a.Name}
+	}
+	return nil
+}
+
 // 如果a里只含有域名，则会自动解析域名为IP。注意，若出现错误，则会返回nil
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
 	ua, err := net.ResolveUDPAddr("udp", a.String())

@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-//一种简单的读写组合, 在ws包中被用到.
+// 一种简单的读写组合, 在ws包中被用到.
 type RW struct {
 	io.Reader
 	io.Writer
@@ -30,7 +30,7 @@ type ByteWriter interface {
 	Write(p []byte) (n int, err error)
 }
 
-//optionally read from OptionalReader
+// optionally read from OptionalReader
 type ReadWrapper struct {
 	io.Reader
 	OptionalReader    io.Reader
@@ -62,7 +62,7 @@ type DummyReadCloser struct {
 }
 
 // ReadCount -= 1 at each call.
-//if ReadCount<0, return 0, io.EOF
+// if ReadCount<0, return 0, io.EOF
 func (d *DummyReadCloser) Read(p []byte) (int, error) {
 	d.ReadCount -= 1
 	//log.Println("read called", d.ReadCount)
@@ -74,7 +74,7 @@ func (d *DummyReadCloser) Read(p []byte) (int, error) {
 	}
 }
 
-//return nil
+// return nil
 func (DummyReadCloser) Close() error {
 	return nil
 }
@@ -84,7 +84,7 @@ type DummyWriteCloser struct {
 }
 
 // WriteCount -= 1 at each call.
-//if WriteCount<0, return 0, io.EOF
+// if WriteCount<0, return 0, io.EOF
 func (d *DummyWriteCloser) Write(p []byte) (int, error) {
 	d.WriteCount -= 1
 	//log.Println("write called", d.WriteCount)
@@ -97,12 +97,12 @@ func (d *DummyWriteCloser) Write(p []byte) (int, error) {
 	}
 }
 
-//return nil
+// return nil
 func (DummyWriteCloser) Close() error {
 	return nil
 }
 
-//先从Old读，若SwitchChan被关闭, 立刻改为从New读
+// 先从Old读，若SwitchChan被关闭, 立刻改为从New读
 type ReadSwitcher struct {
 	Old, New   io.Reader     //non-nil
 	SwitchChan chan struct{} //non-nil
@@ -154,7 +154,7 @@ func (d *ReadSwitcher) Close() error {
 	return nil
 }
 
-//先向Old写，若SwitchChan被关闭, 改向New写
+// 先向Old写，若SwitchChan被关闭, 改向New写
 type WriteSwitcher struct {
 	Old, New   io.Writer     //non-nil
 	SwitchChan chan struct{} //non-nil
@@ -187,7 +187,7 @@ func (d *WriteSwitcher) Close() error {
 	return nil
 }
 
-//simple structure that send a signal by chan when Close called.
+// simple structure that send a signal by chan when Close called.
 type ChanCloser struct {
 	closeChan chan struct{}
 	once      sync.Once
@@ -205,4 +205,25 @@ func (cc *ChanCloser) Close() error {
 		close(cc.closeChan)
 	})
 	return nil
+}
+
+type MultiCloser struct {
+	Closers []io.Closer
+	sync.Once
+}
+
+func (cc *MultiCloser) Close() (result error) {
+	cc.Once.Do(func() {
+		var es Errs
+		for i, c := range cc.Closers {
+			e := c.Close()
+			if e != nil {
+				es.Add(ErrsItem{Index: i, E: e})
+			}
+		}
+		if !es.OK() {
+			result = es
+		}
+	})
+	return
 }

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -54,44 +55,15 @@ func (ServerCreator) URLToListenConf(u *url.URL, lc *proxy.ListenConf, format in
 
 }
 
-// loop read udp
-// func (ServerCreator) AfterCommonConfServer(s proxy.Server) {
-// 	if s.Network() == "udp" || s.Network() == netLayer.DualNetworkName {
-// 		ss := s.(*Server)
-// 		uc, err := net.ListenUDP("udp", ss.LUA)
-// 		if err != nil {
-// 			log.Panicln("shadowsocks listen udp failed", err)
-// 		}
-// 		pc := ss.cipher.PacketConn(uc)
-// 		for {
-// 			buf := utils.GetPacket()
-// 			defer utils.PutPacket(buf)
-// 			n, saddr, err := pc.ReadFrom(buf)
-// 			if err != nil {
-// 				if ce := utils.CanLogErr("shadowsocks read udp failed"); ce != nil {
-// 					ce.Write(zap.Error(err))
-// 				}
-// 				return
-// 			}
-// 			r := bytes.NewBuffer(buf[:n])
-// 			taddr, err := GetAddrFrom(r)
-// 			if err != nil {
-// 				if ce := utils.CanLogErr("shadowsocks GetAddrFrom failed"); ce != nil {
-// 					ce.Write(zap.Error(err))
-// 				}
-// 				return
-// 			}
-
-// 		}
-// 	}
-// }
-
 type Server struct {
 	proxy.Base
 
 	*utils.MultiUserMap
 
 	cipher core.Cipher
+
+	m             sync.RWMutex
+	udpMsgConnMap map[netLayer.HashableAddr]*shadowUDPPacketConn
 }
 
 func newServer(info MethodPass, lc *proxy.ListenConf) *Server {
@@ -103,6 +75,12 @@ func newServer(info MethodPass, lc *proxy.ListenConf) *Server {
 }
 func (*Server) Name() string {
 	return Name
+}
+
+func (s *Server) SelfListen() (is, tcp, udp bool) {
+	udp = true
+	is = true
+	return
 }
 
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
@@ -145,4 +123,66 @@ realPart:
 	}
 
 	return
+}
+
+func (ss *Server) StartListen(_ chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- proxy.IncomeUDPInfo) io.Closer {
+	// uc, err := net.ListenUDP("udp", ss.LUA)
+	// if err != nil {
+	// 	log.Panicln("shadowsocks listen udp failed", err)
+	// }
+	// pc := ss.cipher.PacketConn(uc)
+
+	// sp := &shadowUDPPacketConn{
+	// 	PacketConn: pc,
+	// }
+
+	go func() {
+
+		// for {
+		// 	bs := utils.GetPacket()
+
+		// 	n, addr, err := pc.ReadFrom(bs)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// 	ad, err := netLayer.NewAddrFromAny(addr)
+		// 	if err != nil {
+		// 		return
+		// 	}
+		// 	hash := ad.GetHashable()
+
+		// 	ss.m.RLock()
+		// 	conn, found := ss.udpMsgConnMap[hash]
+		// 	ss.m.RUnlock()
+
+		// 	if !found {
+		// 		conn = &shadowUDPPacketConn{
+		// 			ourSrcAddr:    src,
+		// 			readChan:      make(chan netLayer.AddrData, 5),
+		// 			closeChan:     make(chan struct{}),
+		// 			parentMachine: m,
+		// 			hash:          hash,
+		// 		}
+		// 		conn.InitEasyDeadline()
+
+		// 		m.Lock()
+		// 		m.udpMsgConnMap[hash] = conn
+		// 		m.Unlock()
+
+		// 	}
+
+		// 	destAddr := netLayer.NewAddrFromUDPAddr(dst)
+
+		// 	conn.readChan <- netLayer.AddrData{Data: bs[:n], Addr: destAddr}
+
+		// 	if !found {
+		// 		return conn, destAddr, nil
+
+		// 	}
+
+		// }
+
+	}()
+	return nil
+
 }

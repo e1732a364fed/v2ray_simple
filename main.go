@@ -71,6 +71,9 @@ Use cases: refer to tcp_test.go, udp_test.go or cmd/verysimple.
 non-blocking. closer used to stop listening. It means listening failed if closer == nil,
 */
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
+	var extraCloser io.Closer
+
+	//tproxy 和 shadowsocks 都用到了 SelfListen
 	if is, tcp, udp := inServer.SelfListen(); is {
 		var chantcp chan proxy.IncomeTCPInfo
 		var chanudp chan proxy.IncomeUDPInfo
@@ -106,7 +109,13 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		}
 		closer = inServer.(proxy.ListenerServer).StartListen(chantcp, chanudp)
-		return
+
+		if tcp && udp {
+			return
+
+		} else {
+			extraCloser = closer
+		}
 	}
 
 	var handleHere bool
@@ -191,6 +200,9 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 			)
 		}
 
+		if extraCloser != nil {
+			closer = &utils.MultiCloser{Closers: []io.Closer{closer, extraCloser}}
+		}
 	} else {
 		if err != nil {
 			if ce := utils.CanLogErr("ListenSer failed"); ce != nil {
@@ -200,6 +212,9 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 				)
 			}
 
+		}
+		if extraCloser != nil {
+			closer = extraCloser
 		}
 	}
 	return
