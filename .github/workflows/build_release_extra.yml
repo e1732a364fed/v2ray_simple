@@ -73,7 +73,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tagName }}
 
-      - if: ${{ matrix.os  == 'ubuntu-latest' }}
+      - if: ${{ matrix.os  == 'ubuntu-18.04' }}
         name: install dependency for ubuntu
         run: |
           sudo apt-get install build-essential libgtk-3-dev
