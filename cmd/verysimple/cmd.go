@@ -106,6 +106,9 @@ func printSupportedProtocols() {
 }
 
 func printAllState(w io.Writer) {
+	if w == nil {
+		w = os.Stdout
+	}
 	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)

@@ -20,24 +20,24 @@ type Client struct {
 	alpnList   []string
 }
 
-func NewClient(host string, insecure bool, use_uTls bool, alpnList []string, certConf *CertConf, minver uint16) *Client {
+func NewClient(conf Conf) *Client {
 
 	c := &Client{
-		use_uTls: use_uTls,
+		use_uTls: conf.Use_uTls,
 	}
 
-	c.alpnList = alpnList
+	c.alpnList = conf.AlpnList
 
-	if use_uTls {
+	if conf.Use_uTls {
 
-		c.uTlsConfig = GetUTlsConfig(insecure, alpnList, host, certConf, minver)
+		c.uTlsConfig = GetUTlsConfig(conf)
 
 		if ce := utils.CanLogInfo("Using uTls and Chrome fingerprint for"); ce != nil {
-			ce.Write(zap.String("host", host))
+			ce.Write(zap.String("host", conf.Host))
 		}
 	} else {
 
-		c.tlsConfig = GetTlsConfig(insecure, false, alpnList, host, certConf, minver)
+		c.tlsConfig = GetTlsConfig(false, conf)
 
 	}
 

@@ -14,6 +14,16 @@ import (
 	"go.uber.org/zap"
 )
 
+type Conf struct {
+	Host     string
+	CertConf *CertConf
+
+	Insecure bool
+	Use_uTls bool //only client
+	AlpnList []string
+	Minver   uint16
+}
+
 func GetMinVerFromExtra(extra map[string]any) uint16 {
 	if len(extra) > 0 {
 		if thing := extra["tls_minVersion"]; thing != nil {
@@ -29,14 +39,14 @@ func GetMinVerFromExtra(extra map[string]any) uint16 {
 	return tls.VersionTLS13
 }
 
-func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certConf *CertConf, minVer uint16) *tls.Config {
+func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 	var certArray []tls.Certificate
 	var err error
 
-	if certConf != nil || mustHasCert {
+	if conf.CertConf != nil || mustHasCert {
 
-		if certConf != nil {
-			certArray, err = GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
+		if conf.CertConf != nil {
+			certArray, err = GetCertArrayFromFile(conf.CertConf.CertFile, conf.CertConf.KeyFile)
 
 		} else {
 			certArray, err = GetCertArrayFromFile("", "")
@@ -46,7 +56,7 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 		if err != nil {
 
 			if ce := utils.CanLogErr("Can't create tls cert"); ce != nil {
-				ce.Write(zap.String("cert", certConf.CertFile), zap.String("key", certConf.KeyFile), zap.Error(err))
+				ce.Write(zap.String("cert", conf.CertConf.CertFile), zap.String("key", conf.CertConf.KeyFile), zap.Error(err))
 			}
 
 			certArray = nil
@@ -56,14 +66,14 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 	}
 
 	tConf := &tls.Config{
-		InsecureSkipVerify: insecure,
-		NextProtos:         alpn,
-		ServerName:         host,
+		InsecureSkipVerify: conf.Insecure,
+		NextProtos:         conf.AlpnList,
+		ServerName:         conf.Host,
 		Certificates:       certArray,
-		MinVersion:         minVer,
+		MinVersion:         conf.Minver,
 	}
-	if certConf != nil && certConf.CA != "" {
-		certPool, err := LoadCA(certConf.CA)
+	if conf.CertConf != nil && conf.CertConf.CA != "" {
+		certPool, err := LoadCA(conf.CertConf.CA)
 		if err != nil {
 			if ce := utils.CanLogErr("Failed in loading CA"); ce != nil {
 				ce.Write(zap.Error(err))
@@ -76,11 +86,11 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 	return tConf
 }
 
-func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf, minVer uint16) utls.Config {
+func GetUTlsConfig(conf Conf) utls.Config {
 	var certArray []utls.Certificate
 
-	if certConf != nil {
-		tlscertArray, err := GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
+	if conf.CertConf != nil {
+		tlscertArray, err := GetCertArrayFromFile(conf.CertConf.CertFile, conf.CertConf.KeyFile)
 
 		if err != nil {
 			if ce := utils.CanLogErr("Failed in loading client cert file"); ce != nil {
@@ -99,14 +109,14 @@ func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf
 	}
 
 	tConf := utls.Config{
-		InsecureSkipVerify: insecure,
-		NextProtos:         alpn,
-		ServerName:         host,
+		InsecureSkipVerify: conf.Insecure,
+		NextProtos:         conf.AlpnList,
+		ServerName:         conf.Host,
 		Certificates:       certArray,
-		MinVersion:         minVer,
+		MinVersion:         conf.Minver,
 	}
-	if certConf != nil && certConf.CA != "" {
-		certPool, err := LoadCA(certConf.CA)
+	if conf.CertConf != nil && conf.CertConf.CA != "" {
+		certPool, err := LoadCA(conf.CertConf.CA)
 		if err != nil {
 			if ce := utils.CanLogErr("Err, load CA"); ce != nil {
 				ce.Write(zap.Error(err))

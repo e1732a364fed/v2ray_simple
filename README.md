@@ -11,7 +11,7 @@
 [9]: https://img.shields.io/github/release/e1732a364fed/v2ray_simple/all.svg?style=flat-square
 [10]: https://img.shields.io/github/go-mod/go-version/e1732a364fed/v2ray_simple?style=flat-square
 
-## 关联项目
+### 最新消息
 
 最近在开发vsb计划，即verysimple 面板项目，在 https://github.com/e1732a364fed/vsb , 可以看看。
 

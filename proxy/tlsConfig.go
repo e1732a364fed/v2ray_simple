@@ -43,7 +43,7 @@ func updateAlpnListByAdvLayer(com BaseInterface, alpnList []string) (result []st
 	return
 }
 
-//use dc.Host, dc.Insecure, dc.Utls, dc.Alpn.
+// use dc.Host, dc.Insecure, dc.Utls, dc.Alpn.
 func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 	alpnList := updateAlpnListByAdvLayer(com, dc.Alpn)
 
@@ -61,11 +61,18 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 	}
 	var minVer uint16 = tlsLayer.GetMinVerFromExtra(dc.Extra)
 
-	clic.Tls_c = tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList, certConf, minVer)
+	clic.Tls_c = tlsLayer.NewClient(tlsLayer.Conf{
+		Host:     dc.Host,
+		Insecure: dc.Insecure,
+		Use_uTls: dc.Utls,
+		AlpnList: alpnList,
+		CertConf: certConf,
+		Minver:   minVer,
+	})
 	return nil
 }
 
-//use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn.
+// use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn.
 func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	serc := com.GetBase()
@@ -77,9 +84,15 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	var minVer uint16 = tlsLayer.GetMinVerFromExtra(lc.Extra)
 
-	tlsserver, err := tlsLayer.NewServer(lc.Host, &tlsLayer.CertConf{
-		CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
-	}, lc.Insecure, alpnList, minVer)
+	tlsserver, err := tlsLayer.NewServer(tlsLayer.Conf{
+		Host: lc.Host,
+		CertConf: &tlsLayer.CertConf{
+			CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
+		},
+		Insecure: lc.Insecure,
+		AlpnList: alpnList,
+		Minver:   minVer,
+	})
 
 	if err == nil {
 		serc.Tls_s = tlsserver
