@@ -3,6 +3,7 @@ package tlsLayer
 import (
 	"crypto/tls"
 	"net"
+	"strings"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -21,6 +22,7 @@ type Client struct {
 	alpnList   []string
 
 	shadowTlsPassword string
+	utlsFingerprint   utls.ClientHelloID
 }
 
 func NewClient(conf Conf) *Client {
@@ -42,6 +44,44 @@ func NewClient(conf Conf) *Client {
 	case UTls_t:
 		c.uTlsConfig = GetUTlsConfig(conf)
 
+		if len(conf.Extra) > 0 {
+			if thing := conf.Extra["utls_fingerprint"]; thing != nil {
+				if str, ok := thing.(string); ok {
+					str = strings.ToLower(str)
+					switch str {
+					case "chrome":
+						fallthrough
+					default:
+						c.utlsFingerprint = utls.HelloChrome_Auto
+					case "firefox":
+						c.utlsFingerprint = utls.HelloFirefox_Auto
+
+					case "ios":
+						c.utlsFingerprint = utls.HelloIOS_Auto
+
+					case "safari":
+						c.utlsFingerprint = utls.HelloSafari_Auto
+
+					case "golang":
+						c.utlsFingerprint = utls.HelloGolang
+
+					case "android":
+						c.utlsFingerprint = utls.HelloAndroid_11_OkHttp
+
+					case "360":
+						c.utlsFingerprint = utls.Hello360_Auto
+
+					case "edge":
+						c.utlsFingerprint = utls.HelloEdge_Auto
+
+					case "random":
+						c.utlsFingerprint = utls.HelloRandomized
+
+					}
+				}
+			}
+		}
+
 		if ce := utils.CanLogInfo("Using uTls and Chrome fingerprint for"); ce != nil {
 			ce.Write(zap.String("host", conf.Host))
 		}
@@ -61,7 +101,11 @@ func (c *Client) Handshake(underlay net.Conn) (result net.Conn, err error) {
 		configCopy := c.uTlsConfig //发现uTlsConfig竟然没法使用指针，握手一次后配置文件就会被污染，只能拷贝
 		//否则的话接下来的握手客户端会报错： tls: CurvePreferences includes unsupported curve
 
-		utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
+		if (c.utlsFingerprint == utls.ClientHelloID{}) {
+			c.utlsFingerprint = utls.HelloChrome_Auto
+		}
+
+		utlsConn := utls.UClient(underlay, &configCopy, c.utlsFingerprint)
 		err = utlsConn.Handshake()
 		if err != nil {
 			return
