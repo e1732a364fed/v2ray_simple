@@ -89,6 +89,8 @@ func runPreCommands() {
 
 	if download {
 		tryDownloadMMDB()
+
+		tryDownloadGeositeSource()
 	}
 }
 
@@ -194,6 +196,10 @@ func printAllState(w io.Writer, withoutTProxy bool) {
 //试图从自己已经配置好的节点去下载geosite源码文件, 如果没有节点则直连下载。
 // 我们只需要一个dial配置即可. listen我们不使用配置文件的配置，而是自行监听一个随机端口用于http代理
 func tryDownloadGeositeSource() {
+
+	if netLayer.HasGeositeFolder() {
+		return
+	}
 
 	var outClient proxy.Client
 

@@ -183,15 +183,17 @@ func LoadGeositeFiles() (err error) {
 	return nil
 }
 
+func HasGeositeFolder() bool {
+	return utils.DirExist(utils.GetFilePath("geosite/data"))
+}
+
 // DownloadCommunity_DomainListFiles 从 v2fly/domain-list-community 下载数据文件, 并放到 geosite文件夹中。
 // 如果已存在geosite文件夹，return immediately.
 //
 // 该函数适用于系统中没有git的情况, 如果有git我们直接 git clone就行了,而且还能不断pull进行滚动更新
 func DownloadCommunity_DomainListFiles(proxyurl string) {
 
-	dir := "geosite/data"
-	dir = utils.GetFilePath(dir)
-	if utils.DirExist(dir) {
+	if HasGeositeFolder() {
 		utils.PrintStr("geosite/data folder already exists.\n")
 		return
 	}

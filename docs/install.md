@@ -95,12 +95,13 @@ sudo systemctl start verysimple
 
 https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
 
+主要贡献者： @qzydustin , @1Xgkr6wq
+
 ## docker
 
     docker pull ghcr.io/e1732a364fed/v2ray_simple:latest
 
     docker run -d \
-    --platform linux/amd64 \
     --name verysimple \
     -e TZ="Asia/Shanghai" \
     -v /dev/shm:/dev/shm \
@@ -120,7 +121,7 @@ https://github.com/e1732a364fed/v2ray_simple/pkgs/container/v2ray_simple
 
 ## docker-compose
 
-在 docker-compose.yaml 的目录下，运行 `docker-compose up -d` 来启动；运行 `docker-compose down` 来关闭。
+在含有 docker-compose.yaml 的目录下，运行 `docker-compose up -d` 来启动；运行 `docker-compose down` 来关闭。
 
 这个docker-compose 设计时，要求你 宿主机有一个 `/etc/verysimple` 文件夹，里面放 一个 `server.toml` 配置文件。 
 
