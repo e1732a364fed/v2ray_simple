@@ -154,7 +154,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 				buffers, err = mr.ReadBuffers()
 
 			} else {
-				buffers, err = ReadvFrom(rawReadConn, readv_mem)
+				buffers, err = utils.ReadvFrom(rawReadConn, readv_mem)
 
 			}
 
@@ -243,7 +243,7 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	rm = utils.Get_readvMem()
 	defer utils.Put_readvMem(rm)
 
-	buffers, err = ReadvFrom(rawConn, rm)
+	buffers, err = utils.ReadvFrom(rawConn, rm)
 	if err != nil {
 		return 0, err
 	}

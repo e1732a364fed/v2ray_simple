@@ -276,7 +276,7 @@ func (c *UserTCPConn) ReadBuffers() (bs [][]byte, err error) {
 
 		} else {
 
-			return netLayer.ReadBuffersFrom(c.Conn, c.rr, c.mr)
+			return utils.ReadBuffersFrom(c.Conn, c.rr, c.mr)
 
 		}
 
@@ -284,12 +284,12 @@ func (c *UserTCPConn) ReadBuffers() (bs [][]byte, err error) {
 
 		if c.remainFirstBufLen > 0 { //firstPayload 已经被最开始的main.go 中的 Read读掉了，所以 在调用 ReadBuffers 时 c.remainFirstBufLen 一般为 0, 所以一般不会调用这里
 
-			bs, err = netLayer.ReadBuffersFrom(c.optionalReader, nil, nil)
+			bs, err = utils.ReadBuffersFrom(c.optionalReader, nil, nil)
 			c.remainFirstBufLen -= utils.BuffersLen(bs)
 			return
 		} else {
 
-			return netLayer.ReadBuffersFrom(c.Conn, c.rr, c.mr)
+			return utils.ReadBuffersFrom(c.Conn, c.rr, c.mr)
 
 		}
 
