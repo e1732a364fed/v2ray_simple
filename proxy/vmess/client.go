@@ -13,7 +13,6 @@ import (
 	"math/rand"
 	"net"
 	"net/url"
-	"runtime"
 	"strings"
 	"time"
 
@@ -22,8 +21,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"golang.org/x/crypto/chacha20poly1305"
 )
-
-const systemAutoUseAes = runtime.GOARCH == "amd64" || runtime.GOARCH == "s390x" || runtime.GOARCH == "arm64"
 
 const vmess_security_confStr string = "vmess_security"
 
@@ -110,7 +107,7 @@ func (c *Client) specifySecurityByStr(security string) error {
 	case "chacha20-poly1305":
 		c.security = SecurityChacha20Poly1305
 	case "auto", "": //这里我们为了保护用户，当字符串为空时，依然设为auto，而不是zero
-		if systemAutoUseAes {
+		if utils.SystemAutoUseAes {
 			c.security = SecurityAES128GCM
 		} else {
 			c.security = SecurityChacha20Poly1305

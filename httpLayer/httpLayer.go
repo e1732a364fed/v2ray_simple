@@ -118,7 +118,7 @@ type H1RequestParser struct {
 	Headers         []RawHeader
 }
 
-// 尝试读取数据并解析HTTP请求, 解析道道 数据会存入 RequestParser 结构中.
+// 尝试读取数据并解析HTTP请求, 解析的 数据会存入 RequestParser 结构中.
 //如果读取错误,会返回该错误; 如果读到的不是HTTP请求，返回 的err 的 errors.Is(err,ErrNotHTTP_Request) == true;
 //
 // 该函数有个小问题,就是如果一次Read是短Read（可能是网络原因），没读完整个http头部，则仍然会认为是错误

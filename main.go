@@ -249,10 +249,21 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 		//websocket 可以自行处理header, 不需要额外http包装
 		if !(advSer != nil && advSer.CanHandleHeaders()) {
+			var ho *heapObj = iics.heapObj
+
+			if iics.heapObj == nil {
+				ho = &heapObj{}
+				iics.heapObj = ho
+			}
+
 			wrappedConn = &httpLayer.HeaderConn{
 				Conn:        wrappedConn,
 				H:           header,
 				IsServerEnd: true,
+				ReadOkCallback: func(b *bytes.Buffer) {
+					ho.headerPass = true
+					ho.wholeBuffer = b
+				},
 			}
 
 		}

@@ -172,9 +172,8 @@ func (h *HeaderPreset) AssignDefaultValue() {
 	h.Prepare()
 }
 
-func (h *HeaderPreset) ReadRequest(underlay net.Conn) (leftBuf *bytes.Buffer, err error) {
+func (h *HeaderPreset) ReadRequest(underlay io.Reader) (rp H1RequestParser, leftBuf *bytes.Buffer, err error) {
 
-	var rp H1RequestParser
 	err = rp.ReadAndParse(underlay)
 	if err != nil {
 		return
@@ -193,14 +192,18 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (leftBuf *bytes.Buffer, er
 		err = utils.ErrInErr{ErrDesc: "ReadRequest failed, wrong path", ErrDetail: utils.ErrInvalidData, Data: rp.Path}
 		return
 	}
+
 	allbytes := rp.WholeRequestBuf.Bytes()
+
+	leftBuf = bytes.NewBuffer(allbytes)
+
 	indexOfEnding := bytes.Index(allbytes, HeaderENDING_bytes)
 	if indexOfEnding < 0 {
 		err = utils.ErrInvalidData
 		return
 
 	}
-	headerBytes := rp.WholeRequestBuf.Next(indexOfEnding)
+	headerBytes := leftBuf.Next(indexOfEnding)
 
 	if h.Strict {
 		indexOfFirstCRLF := bytes.Index(allbytes, []byte(CRLF))
@@ -258,12 +261,12 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (leftBuf *bytes.Buffer, er
 
 	}
 
-	rp.WholeRequestBuf.Next(4)
+	leftBuf.Next(len(HeaderENDING))
 
-	return rp.WholeRequestBuf, nil
+	return
 }
 
-func (h *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
+func (h *HeaderPreset) WriteRequest(underlay io.Writer, payload []byte) error {
 
 	buf := bytes.NewBuffer(payload)
 	r, err := http.NewRequest(h.Request.Method, h.Request.Path[0], buf)
@@ -281,7 +284,7 @@ func (h *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
 	return r.Write(underlay)
 }
 
-func (h *HeaderPreset) ReadResponse(underlay net.Conn) (leftBuf *bytes.Buffer, err error) {
+func (h *HeaderPreset) ReadResponse(underlay io.Reader) (leftBuf *bytes.Buffer, err error) {
 
 	bs := utils.GetPacket()
 	var n int
@@ -307,7 +310,7 @@ func (h *HeaderPreset) ReadResponse(underlay net.Conn) (leftBuf *bytes.Buffer, e
 	return buf, nil
 }
 
-func (h *HeaderPreset) WriteResponse(underlay net.Conn, payload []byte) error {
+func (h *HeaderPreset) WriteResponse(underlay io.Writer, payload []byte) error {
 	buf := utils.GetBuf()
 
 	buf.WriteString("HTTP/")
@@ -347,6 +350,7 @@ type HeaderConn struct {
 	IsServerEnd bool
 
 	optionalReader io.Reader
+	ReadOkCallback func(*bytes.Buffer)
 
 	notFirstWrite bool
 }
@@ -356,10 +360,20 @@ func (c *HeaderConn) Read(p []byte) (n int, err error) {
 
 	if c.IsServerEnd {
 		if c.optionalReader == nil {
-			buf, err = c.H.ReadRequest(c.Conn)
+			var rp H1RequestParser
+
+			rp, buf, err = c.H.ReadRequest(c.Conn)
 			if err != nil {
-				err = utils.ErrInErr{ErrDesc: "http HeaderConn Read failed, at serverEnd", ErrDetail: err}
+
+				err = &utils.ErrBuffer{
+					Err: utils.ErrInErr{ErrDesc: "http HeaderConn Read failed, at serverEnd", ErrDetail: err},
+					Buf: rp.WholeRequestBuf,
+				}
 				return
+			}
+			if c.ReadOkCallback != nil {
+				c.ReadOkCallback(rp.WholeRequestBuf)
+
 			}
 
 			c.optionalReader = io.MultiReader(buf, c.Conn)

@@ -67,14 +67,17 @@ sudo cp examples/vlesss.server.toml server.toml
 
 如果你不愿意使用linux的“后台服务”，只是想手动去令它在后台运行，那么实际上，在verysimple所在位置运行如下一段命令即可。
 
-```
-nohup ./verysimple -c server.toml >/dev/null &
-```
+
+    nohup ./verysimple -c server.toml >/dev/null &
+
 
 这里将它的标准输出舍弃了，因为一般来说我们会在toml配置文件中 配置好日志文件名称；如果不舍弃输出的话，就会多一个输出（到控制台），增加系统负担。
 
 同样，视你的权限来酌情在命令前面添加 `sudo`
 
+上面这个nohub这行命令，可以写到一个文件里，比如 run.sh, 然后用 `chmod +x run.sh` 将其变为可执行文件, 之后你只要运行 run.sh 就可以后台运行了。
+
+如果你会crontab，还可以在里面设置开机运行该脚本。这种方式就比 systemctl轻量多了，而且还适用于openwrt。
 
 ### 标准方式
 

@@ -91,6 +91,13 @@ type incomingInserverConnState struct {
 	routedToDirect bool
 
 	routingEnv *proxy.RoutingEnv //used in passToOutClient
+
+	heapObj *heapObj
+}
+
+type heapObj struct {
+	headerPass  bool
+	wholeBuffer *bytes.Buffer
 }
 
 //每个iics使用之前，必须调用 genID
@@ -103,7 +110,10 @@ func (iics *incomingInserverConnState) genID() {
 // 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
 func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 
-	if !iics.inServer.CanFallback() {
+	var hasHeader = iics.inServer.HasHeader() != nil
+	var canFallback = iics.inServer.CanFallback() || hasHeader
+
+	if !canFallback {
 		if iics.wrappedConn != nil {
 			iics.wrappedConn.Close()
 
@@ -116,6 +126,15 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 
 		be, ok := err.(*utils.ErrBuffer)
 		if !ok {
+			if iics.heapObj != nil {
+				if iics.heapObj.headerPass && iics.heapObj.wholeBuffer != nil {
+					//http header通过了但是后面出错，有可能是类似 vmess+http 的情况，收到了一个正常的Get请求，后面的vmess读取不到数据导致了 read timeout，此时依然可以回落.
+					iics.fallbackFirstBuffer = iics.heapObj.wholeBuffer
+					iics.heapObj = nil
+					return true
+
+				}
+			}
 			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
 			if iics.wrappedConn != nil {
 				iics.wrappedConn.Close()
