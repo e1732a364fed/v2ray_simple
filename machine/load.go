@@ -2,7 +2,6 @@ package machine
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -11,13 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func (m *M) HotLoadDialConf(Default_uuid string, conf []*proxy.DialConf) (ok bool) {
+func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 	ok = true
 
 	for _, d := range conf {
 
-		if d.Uuid == "" && Default_uuid != "" {
-			d.Uuid = Default_uuid
+		if d.Uuid == "" && m.DefaultUUID != "" {
+			d.Uuid = m.DefaultUUID
 		}
 
 		outClient, err := proxy.NewClient(d)
@@ -49,34 +48,47 @@ func (m *M) HotLoadDialConf(Default_uuid string, conf []*proxy.DialConf) (ok boo
 
 }
 
-func (m *M) HotLoadListenConf(conf []*proxy.ListenConf) (ok bool) {
+// add; when hot=true, listen the server
+func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 	ok = true
 
 	if m.DefaultOutClient == nil {
 		m.DefaultOutClient = v2ray_simple.DirectClient
 	}
 
-	for i, l := range conf {
+	for _, l := range conf {
+		if l.Uuid == "" && m.DefaultUUID != "" {
+			l.Uuid = m.DefaultUUID
+		}
+
 		inServer, err := proxy.NewServer(l)
 		if err != nil {
-			log.Println("can not create inServer: ", i, err)
+
+			if ce := utils.CanLogErr("Can not create listen server"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
 			ok = false
 			continue
 		}
-		lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
-		if lis != nil {
-			m.ListenCloserList = append(m.ListenCloserList, lis)
-			m.AllServers = append(m.AllServers, inServer)
 
+		if hot {
+			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
+			if lis != nil {
+				m.ListenCloserList = append(m.ListenCloserList, lis)
+				m.AllServers = append(m.AllServers, inServer)
+
+			} else {
+				ok = false
+			}
 		} else {
-			ok = false
+			m.AllServers = append(m.AllServers, inServer)
 		}
-
 	}
 
 	return
 }
 
+// delete and stop the client
 func (m *M) HotDeleteClient(index int) {
 	if index < 0 || index >= len(m.AllClients) {
 		return
@@ -88,6 +100,7 @@ func (m *M) HotDeleteClient(index int) {
 	m.AllClients = utils.TrimSlice(m.AllClients, index)
 }
 
+// delete and close the server
 func (m *M) HotDeleteServer(index int) {
 	if index < 0 || index >= len(m.ListenCloserList) {
 		return
@@ -190,7 +203,7 @@ func (m *M) HotLoadDialUrl(theUrlStr string, format int) error {
 		return err
 	}
 
-	if !m.HotLoadDialConf("", []*proxy.DialConf{dc}) {
+	if !m.LoadDialConf([]*proxy.DialConf{dc}) {
 		return utils.ErrFailed
 	}
 	return nil
@@ -219,7 +232,7 @@ func (m *M) HotLoadListenUrl(theUrlStr string, format int) error {
 		fmt.Printf("parse url step 2 failed %v\n", err)
 		return err
 	}
-	if !m.HotLoadListenConf([]*proxy.ListenConf{lc}) {
+	if !m.LoadListenConf([]*proxy.ListenConf{lc}, true) {
 		return utils.ErrFailed
 	}
 	return nil

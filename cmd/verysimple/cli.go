@@ -288,12 +288,12 @@ func generateConfigFileInteractively(m *machine.M) {
 			switch ihot {
 			case 0:
 
-				m.HotLoadDialConf("", confServer.Dial)
-				m.HotLoadListenConf(confServer.Listen)
+				m.LoadDialConf(confServer.Dial)
+				m.LoadListenConf(confServer.Listen, true)
 
 			case 1:
-				m.HotLoadDialConf("", confClient.Dial)
-				m.HotLoadListenConf(confClient.Listen)
+				m.LoadDialConf(confClient.Dial)
+				m.LoadListenConf(confClient.Listen, true)
 			}
 
 			utils.PrintStr("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
@@ -525,12 +525,12 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	switch confMode {
 	case proxy.StandardMode:
 		if len(standardConf.Dial) > 0 {
-			defaultMachine.HotLoadDialConf("", standardConf.Dial)
+			defaultMachine.LoadDialConf(standardConf.Dial)
 
 		}
 
 		if len(standardConf.Listen) > 0 {
-			defaultMachine.HotLoadListenConf(standardConf.Listen)
+			defaultMachine.LoadListenConf(standardConf.Listen, true)
 
 		}
 	case proxy.SimpleMode:

@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 
-	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -108,7 +107,7 @@ func mainFunc() (result int) {
 
 			result = -3
 
-			defaultMachine.Cleanup()
+			defaultMachine.Stop()
 		}
 	}()
 
@@ -231,19 +230,13 @@ func mainFunc() (result int) {
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 
 	if ce := utils.CanLogInfo("Options"); ce != nil {
-
 		ce.Write(
 			zap.String("Log Level", utils.LogLevelStr(utils.LogLevel)),
 			zap.Bool("UseReadv", netLayer.UseReadv),
 		)
-
 	} else {
-
 		fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
-
 	}
-
-	var Default_uuid string
 
 	if mainFallback != nil {
 		defaultMachine.RoutingEnv.MainFallback = mainFallback
@@ -252,17 +245,15 @@ func mainFunc() (result int) {
 	//load inServers and RoutingEnv
 	switch configMode {
 	case proxy.SimpleMode:
-		//var theServer proxy.Server
 		result, _ = defaultMachine.LoadSimpleServer(simpleConf)
 		if result < 0 {
 			return result
 		}
-		//allServers = append(allServers, theServer)	//loadSimpleServer 已经加过一遍了
 
 	case proxy.StandardMode:
 
 		if appConf != nil {
-			Default_uuid = appConf.DefaultUUID
+			defaultMachine.DefaultUUID = appConf.DefaultUUID
 		}
 
 		//虽然标准模式支持多个Server，目前先只考虑一个
@@ -273,42 +264,10 @@ func mainFunc() (result int) {
 			break
 		}
 
-		for _, serverConf := range standardConf.Listen {
-			thisConf := serverConf
-
-			if thisConf.Uuid == "" && Default_uuid != "" {
-				thisConf.Uuid = Default_uuid
-			}
-
-			thisServer, err := proxy.NewServer(thisConf)
-			if err != nil {
-				if ce := utils.CanLogErr("can not create local server:"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				continue
-			}
-
-			defaultMachine.AllServers = append(defaultMachine.AllServers, thisServer)
-		}
-
-		//将@前缀的 回落dest配置 替换成 实际的 地址。
+		defaultMachine.LoadListenConf(standardConf.Listen, false)
 
 		if len(standardConf.Fallbacks) > 0 {
-			for _, fbConf := range standardConf.Fallbacks {
-				if fbConf.Dest == nil {
-					continue
-				}
-				if deststr, ok := fbConf.Dest.(string); ok && strings.HasPrefix(deststr, "@") {
-					for _, s := range defaultMachine.AllServers {
-						if s.GetTag() == deststr[1:] {
-							log.Println("got tag fallback dest, will set to ", s.AddrStr())
-							fbConf.Dest = s.AddrStr()
-						}
-					}
-
-				}
-
-			}
+			defaultMachine.ParseFallbacksAtSymbol(standardConf.Fallbacks)
 		}
 		var myCountryISO_3166 string
 		if appConf != nil {
@@ -331,31 +290,18 @@ func mainFunc() (result int) {
 		if len(standardConf.Dial) < 1 {
 			utils.Warn("no dial in config settings, will add 'direct'")
 
-			defaultMachine.AllClients = append(defaultMachine.AllClients, vs.DirectClient)
-			defaultMachine.DefaultOutClient = vs.DirectClient
-
-			defaultMachine.RoutingEnv.SetClient("direct", vs.DirectClient)
+			defaultMachine.SetDefaultDirectClient()
 
 			break
 		}
 
-		defaultMachine.HotLoadDialConf(Default_uuid, standardConf.Dial)
+		defaultMachine.LoadDialConf(standardConf.Dial)
 
 	}
 
 	runPreCommands()
 
-	if (defaultMachine.DefaultOutClient != nil) && (len(defaultMachine.AllServers) > 0) {
-
-		for _, inServer := range defaultMachine.AllServers {
-			lis := vs.ListenSer(inServer, defaultMachine.DefaultOutClient, &defaultMachine.RoutingEnv, &defaultMachine.GlobalInfo)
-
-			if lis != nil {
-				defaultMachine.ListenCloserList = append(defaultMachine.ListenCloserList, lis)
-			}
-		}
-
-	}
+	defaultMachine.Start()
 
 	//没可用的listen/dial，而且还无法动态更改配置
 	if NoFuture(defaultMachine) {
@@ -409,7 +355,7 @@ func mainFunc() (result int) {
 
 		utils.Info("Program got close signal.")
 
-		defaultMachine.Cleanup()
+		defaultMachine.Stop()
 	}
 	return
 }

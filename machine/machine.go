@@ -11,13 +11,16 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
 type M struct {
 	ApiServerConf
+	DefaultUUID string
 
 	v2ray_simple.GlobalInfo
 
@@ -44,7 +47,21 @@ func New() *M {
 	return m
 }
 
-func (m *M) Cleanup() {
+func (m *M) Start() {
+	if (m.DefaultOutClient != nil) && (len(m.AllServers) > 0) {
+		for _, inServer := range m.AllServers {
+			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
+
+			if lis != nil {
+				m.ListenCloserList = append(m.ListenCloserList, lis)
+			}
+		}
+
+	}
+
+}
+
+func (m *M) Stop() {
 
 	for _, ser := range m.AllServers {
 		if ser != nil {
@@ -58,6 +75,32 @@ func (m *M) Cleanup() {
 		}
 	}
 
+}
+
+func (m *M) SetDefaultDirectClient() {
+	m.AllClients = append(m.AllClients, v2ray_simple.DirectClient)
+	m.DefaultOutClient = v2ray_simple.DirectClient
+
+	m.RoutingEnv.SetClient("direct", v2ray_simple.DirectClient)
+}
+
+// 将fallback配置中的@转化成实际对应的server的地址
+func (m *M) ParseFallbacksAtSymbol(fs []*httpLayer.FallbackConf) {
+	for _, fbConf := range fs {
+		if fbConf.Dest == nil {
+			continue
+		}
+		if deststr, ok := fbConf.Dest.(string); ok && strings.HasPrefix(deststr, "@") {
+			for _, s := range m.AllServers {
+				if s.GetTag() == deststr[1:] {
+					//log.Println("got tag fallback dest, will set to ", s.AddrStr())
+					fbConf.Dest = s.AddrStr()
+				}
+			}
+
+		}
+
+	}
 }
 
 func (m *M) HasProxyRunning() bool {
