@@ -132,7 +132,7 @@ type DnsConn struct {
 
 //dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求。
 // 会缓存dns记录; 该设施是一个状态机, 所以叫 DNSMachine。
-// SpecialIPPollicy 用于指定特殊的 域名-ip映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip。
+// SpecialIPPollicy 用于指定特殊的 域名-ip 映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip。
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询。
 type DNSMachine struct {
 	TypeStrategy int64 // 0, 4, 6, 40, 60
@@ -162,10 +162,10 @@ func (c *DnsConn) Dial() error {
 // 如果是纯udp的，要求 addr.IsUDP() == true
 func DialDnsAddr(addr *Addr) (conn net.Conn, err error) {
 
-	//实测 miekg/dns 必须用 net.PacketConn, 不过本作udp最新代码已经支持了.
+	//实测 miekg/dns 要求传入的net.Conn必须用 net.PacketConn, 本作udp拨号所获的的对象已经支持了net.PacketConn接口.
 	// 不过dns还是没必要额外包装一次, 直接用原始的udp即可.
 
-	//在 miekg/dns 遇到非 net.PacketConn 的连接时，会采用不同的办法，先从数据读取一个长度信息，然后再读其它信息，可能它没有料到 net.Conn 被包装的情况
+	//在 miekg/dns 遇到非 net.PacketConn 的连接时，会采用不同的办法，先从数据读取一个长度信息，然后再读其它信息，可能它没有料到 net.Conn 被包装的情况, 所以我们需要额外处理一下。
 
 	/*
 		dns over tls rfc：https://datatracker.ietf.org/doc/html/rfc7858
