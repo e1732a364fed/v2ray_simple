@@ -3,6 +3,7 @@ package proxy
 import (
 	"crypto/tls"
 	"io"
+	"net"
 	"strings"
 	"sync"
 
@@ -86,6 +87,7 @@ type Base struct {
 	DialConf   *DialConf
 
 	Addr           string
+	LA             net.Addr //for client's LocalAddr
 	TLS            bool
 	Tag            string //可用于路由, 见 netLayer.route.go
 	TransportLayer string
@@ -120,6 +122,10 @@ func (b *Base) GetBase() *Base {
 
 func (b *Base) Network() string {
 	return b.TransportLayer
+}
+
+func (b *Base) LocalAddr() net.Addr {
+	return b.LA
 }
 
 func (b *Base) GetXver() int {

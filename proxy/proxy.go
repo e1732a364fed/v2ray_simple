@@ -60,6 +60,8 @@ type Client interface {
 	InnerMuxEstablished() bool
 	CloseInnerMuxSession()
 
+	LocalAddr() net.Addr //用于在拨号时选用一个特定的ip拨号。
+
 	sync.Locker //用于锁定 innerMux
 }
 

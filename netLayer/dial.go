@@ -21,7 +21,7 @@ const (
 //Dial 可以拨号tcp、udp、unix domain socket、tls 这几种协议。
 //如果不是这几种之一，则会尝试查询 CustomDialerMap 找出匹配的函数进行拨号。
 //如果找不到，则会使用net包的方法进行拨号（其会返回错误）。
-func (a *Addr) Dial(sockopt *Sockopt) (net.Conn, error) {
+func (a *Addr) Dial(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error) {
 	var istls bool
 	var resultConn net.Conn
 	var err error
@@ -38,13 +38,13 @@ func (a *Addr) Dial(sockopt *Sockopt) (net.Conn, error) {
 	case "udp", "udp4", "udp6":
 		ua := a.ToUDPAddr()
 
-		if sockopt == nil {
+		if sockopt == nil && localAddr == nil {
 
 			return DialUDP(ua)
 		} else {
 
 			var c net.Conn
-			c, err = a.DialWithOpt(sockopt)
+			c, err = a.DialWithOpt(sockopt, localAddr)
 			if err == nil {
 				uc := c.(*net.UDPConn)
 				return NewUDPConn(ua, uc, true), nil
@@ -71,14 +71,14 @@ tcp:
 
 		var tcpConn *net.TCPConn
 
-		if sockopt == nil {
+		if sockopt == nil && localAddr == nil {
 			tcpConn, err = net.DialTCP("tcp", nil, &net.TCPAddr{
 				IP:   a.IP,
 				Port: a.Port,
 			})
 		} else {
 			var c net.Conn
-			c, err = a.DialWithOpt(sockopt)
+			c, err = a.DialWithOpt(sockopt, localAddr)
 			if err == nil {
 				tcpConn = c.(*net.TCPConn)
 			}
@@ -98,13 +98,13 @@ defaultPart:
 	if istls {
 		//若tls到达了这里，则说明a的ip没有给出，而只给出了域名，所以上面tcp部分没有直接拨号
 
-		if sockopt == nil {
+		if sockopt == nil && localAddr == nil {
 			resultConn, err = net.DialTimeout("tcp", a.String(), defaultDialTimeout)
 
 		} else {
 			newA := *a
 			newA.Network = "tcp"
-			resultConn, err = newA.DialWithOpt(sockopt)
+			resultConn, err = newA.DialWithOpt(sockopt, localAddr)
 		}
 
 	} else {
@@ -112,7 +112,7 @@ defaultPart:
 		if sockopt == nil {
 			resultConn, err = net.DialTimeout(a.Network, a.String(), defaultDialTimeout)
 		} else {
-			resultConn, err = a.DialWithOpt(sockopt)
+			resultConn, err = a.DialWithOpt(sockopt, localAddr)
 		}
 
 	}
@@ -136,16 +136,23 @@ dialedPart:
 
 }
 
-func (a Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
+//比Dial更低级的方法，专用于使用sockopt的情况。
+//这里调用者要保证sockopt不为nil。a的Network只能为golang支持的那几种。
+func (a Addr) DialWithOpt(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error) {
 
 	dialer := &net.Dialer{
 		Timeout: defaultDialTimeout,
 	}
-	dialer.Control = func(network, address string, c syscall.RawConn) error {
-		return c.Control(func(fd uintptr) {
-			SetSockOpt(int(fd), sockopt, a.IsUDP(), a.IsIpv6())
+	if localAddr != nil {
+		dialer.LocalAddr = localAddr
+	}
+	if sockopt != nil {
+		dialer.Control = func(network, address string, c syscall.RawConn) error {
+			return c.Control(func(fd uintptr) {
+				SetSockOpt(int(fd), sockopt, a.IsUDP(), a.IsIpv6())
 
-		})
+			})
+		}
 	}
 
 	return dialer.Dial(a.Network, a.String())

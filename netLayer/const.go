@@ -6,6 +6,7 @@ const (
 	TCP uint16 = 1 << iota
 	UDP
 	UNIX //unix domain socket
+	IP
 	Raw_socket
 	KCP
 	Quic //quic是一个横跨多个层的协议，这里也算一个，毕竟与kcp类似

@@ -633,3 +633,22 @@ func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
 
 	return
 }
+
+func StrToNetAddr(network, s string) (net.Addr, error) {
+	if network == "" {
+		network = "tcp"
+	}
+	realNet := StrToTransportProtocol(network)
+	switch realNet {
+	case IP:
+		return net.ResolveIPAddr(network, s)
+	case TCP:
+		return net.ResolveTCPAddr(network, s)
+	case UDP:
+		return net.ResolveUDPAddr(network, s)
+	case UNIX:
+		return net.ResolveUnixAddr(network, s)
+	default:
+		return nil, utils.ErrWrongParameter
+	}
+}

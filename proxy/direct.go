@@ -39,9 +39,9 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 
 	if underlay == nil {
 		if d.Sockopt != nil {
-			result, err = target.DialWithOpt(d.Sockopt)
+			result, err = target.DialWithOpt(d.Sockopt, d.LA)
 		} else {
-			result, err = target.Dial(nil)
+			result, err = target.Dial(nil, d.LA)
 		}
 
 	} else {
