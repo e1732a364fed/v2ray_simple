@@ -129,7 +129,7 @@ linuxAmdFn     :=${prefix}_linux_amd64
 linuxArmFn     :=${prefix}_linux_arm64
 androidArm64Fn :=${prefix}_android_arm64
 macFn          :=${prefix}_macos
-macM1Fn        :=${prefix}_macm
+macMFn        :=${prefix}_macm
 winFn          :=${prefix}_win10
 
 
@@ -149,7 +149,7 @@ macos:
 
 #macos apple silicon
 macm:
-	$(call compile,$(macM1Fn),darwin,arm64)
+	$(call compile,$(macMFn),darwin,arm64)
 
 win10:
 	$(call compile,$(winFn),windows,amd64,$(winsuffix))
@@ -164,14 +164,14 @@ clean:
 	rm -f $(linuxArmFn)
 	rm -f ${winFn}.exe
 	rm -f $(macFn)
-	rm -f $(macM1Fn)
+	rm -f $(macMFn)
 	rm -f $(androidArm64Fn)
 
 	rm -f $(linuxAmdFn).tar.xz
 	rm -f $(linuxArmFn).tar.xz
 	rm -f ${winFn}.tar.xz
 	rm -f $(macFn).tar.xz
-	rm -f $(macM1Fn).tar.xz
+	rm -f $(macMFn).tar.xz
 	rm -f $(androidArm64Fn).tar.xz
 
 rmlog:
