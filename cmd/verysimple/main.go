@@ -317,20 +317,21 @@ func mainFunc() (result int) {
 
 		//将@前缀的 回落dest配置 替换成 实际的 地址。
 
-		if len(standardConf.Fallbacks) != 0 {
+		if len(standardConf.Fallbacks) > 0 {
 			for _, fbConf := range standardConf.Fallbacks {
-				if fbConf.Dest != nil {
-					if deststr, ok := fbConf.Dest.(string); ok {
-						if strings.HasPrefix(deststr, "@") {
-							for _, s := range allServers {
-								if s.GetTag() == deststr[1:] {
-									log.Println("got tag fallback dest, will set to ", s.AddrStr())
-									fbConf.Dest = s.AddrStr()
-								}
-							}
+				if fbConf.Dest == nil {
+					continue
+				}
+				if deststr, ok := fbConf.Dest.(string); ok && strings.HasPrefix(deststr, "@") {
+					for _, s := range allServers {
+						if s.GetTag() == deststr[1:] {
+							log.Println("got tag fallback dest, will set to ", s.AddrStr())
+							fbConf.Dest = s.AddrStr()
 						}
 					}
+
 				}
+
 			}
 		}
 
