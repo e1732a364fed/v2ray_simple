@@ -361,10 +361,26 @@ type UDPMsgConn struct {
 // 如果是普通的单目标的客户端，用 (nil,false,false) 即可.
 //
 // 满足fullcone/symmetric, 由 fullcone 的值决定.
-func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) (*UDPMsgConn, error) {
+func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool, sockopt *Sockopt) (*UDPMsgConn, error) {
 	uc := new(UDPMsgConn)
+	var udpConn *net.UDPConn
+	var err error
+	if sockopt != nil {
+		if laddr == nil {
+			laddr = &net.UDPAddr{}
+		}
+		a := NewAddrFromUDPAddr(laddr)
+		pConn, e := a.ListenUDP_withOpt(sockopt)
+		if e != nil {
+			err = e
+		} else {
+			udpConn = pConn.(*net.UDPConn)
+		}
+	} else {
+		udpConn, err = net.ListenUDP("udp", laddr)
 
-	udpConn, err := net.ListenUDP("udp", laddr)
+	}
+
 	if err != nil {
 		return nil, err
 	}

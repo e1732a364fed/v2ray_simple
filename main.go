@@ -1042,14 +1042,15 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 		}
 		realTargetAddr.Network = client.Network()
 	}
-	var clientConn net.Conn
+	var clientConn net.Conn //拨号所得到的net.Conn, 在下面代码中 会一层层进行包装
 
 	var dialedCommonConn any
 
-	not_udp_direct := !(client.Name() == proxy.DirectName && isudp)
+	not_direct := !(client.Name() == proxy.DirectName)
 
 	/*
 		direct 的udp 是自己拨号的,因为要考虑到fullcone。
+		direct 的tcp也是自己拨号，因为还考虑到 sockopt
 
 		不是direct的udp的话，也要分情况:
 		如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
@@ -1061,7 +1062,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var muxC advLayer.MuxClient
 
-	if not_udp_direct {
+	if not_direct {
 
 		if adv != "" && advClient.IsMux() {
 

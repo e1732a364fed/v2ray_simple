@@ -269,7 +269,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 				na, _ := netLayer.NewAddr(remoteAddrStr)
 				na.Network = "udp"
 
-				wrc, err := netLayer.NewUDPMsgConn(nil, false, false)
+				wrc, err := netLayer.NewUDPMsgConn(nil, false, false, nil)
 				if err != nil {
 					t.Logf("failed netLayer.NewUDPMsgConn\n")
 					t.Fail()
