@@ -20,15 +20,13 @@ func init() {
 	*/
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
 
-		out, err := exec.Command("netstat", "-nr").Output()
+		out, err := utils.LogRunCmd("netstat", "-nr")
+
 		if err != nil {
-			if ce := utils.CanLogErr("auto route failed"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
 			return
 		}
 
-		lines := strings.Split(string(out), "\n")
+		lines := strings.Split(out, "\n")
 		startLineIndex := -1
 		for i, l := range lines {
 			if strings.HasPrefix(l, "IPv4 Route Table") {
@@ -72,7 +70,12 @@ func init() {
 		// 	ce.Write(zap.String("output", string(out1)))
 		// }
 
-		_, err = exec.Command("netsh", "interface", "ip", "set", "address", `name="`+tunGateway+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none").Output()
+		_, err = utils.LogRunCmd("netsh", "interface", "ip", "set", "address", `name="`+tunGateway+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none")
+
+		if err != nil {
+			return
+		}
+
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {
 				ce.Write(zap.Error(err))
@@ -80,7 +83,7 @@ func init() {
 			return
 		}
 
-		out1, err := exec.Command("route", "add", "0.0.0.0", "mask", "0.0.0.0", tunGateway, "metric", "6").Output()
+		_, err = utils.LogRunCmd("route", "add", "0.0.0.0", "mask", "0.0.0.0", tunGateway, "metric", "6")
 		if err != nil {
 			if err != nil {
 				if ce := utils.CanLogErr("auto route failed"); ce != nil {
@@ -89,12 +92,9 @@ func init() {
 				return
 			}
 		}
-		if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
-		}
 
 		for _, v := range directList {
-			out1, err = exec.Command("route", "add", v, rememberedRouterIP, "metric", "5").Output()
+			_, err = utils.LogRunCmd("route", "add", v, rememberedRouterIP, "metric", "5")
 			if err != nil {
 				if err != nil {
 					if ce := utils.CanLogErr("auto route failed"); ce != nil {
@@ -103,9 +103,7 @@ func init() {
 					return
 				}
 			}
-			if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
-				ce.Write(zap.String("output", string(out1)))
-			}
+
 		}
 
 		utils.Info("auto route succeed!")

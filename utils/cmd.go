@@ -7,6 +7,25 @@ import (
 	"go.uber.org/zap"
 )
 
+// Stdout, Stderr to zap
+func LogRunCmd(name string, arg ...string) (out string, err error) {
+	ZapLogger.Info("run cmd", zap.String("cmd", name))
+
+	cmd1 := exec.Command(name, arg...)
+	var sbE strings.Builder
+	var sbO strings.Builder
+	cmd1.Stderr = &sbE
+	cmd1.Stdout = &sbO
+
+	if err = cmd1.Run(); err != nil {
+		ZapLogger.Error("run cmd failed", zap.Error(err))
+	}
+	out = sbO.String()
+	ZapLogger.Info("run cmd result", zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
+
+	return
+}
+
 func ExecCmd(cmdStr string) (err error) {
 	ZapLogger.Info("run cmd", zap.String("cmd", cmdStr))
 
