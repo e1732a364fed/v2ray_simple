@@ -643,8 +643,14 @@ func StrToNetAddr(network, s string) (net.Addr, error) {
 	case IP:
 		return net.ResolveIPAddr(network, s)
 	case TCP:
+		if !strings.Contains(s, ":") {
+			s += ":0"
+		}
 		return net.ResolveTCPAddr(network, s)
 	case UDP:
+		if !strings.Contains(s, ":") {
+			s += ":0"
+		}
 		return net.ResolveUDPAddr(network, s)
 	case UNIX:
 		return net.ResolveUnixAddr(network, s)

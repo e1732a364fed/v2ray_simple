@@ -529,7 +529,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 }
 
 //被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 以及 tproxy 调用。 iics.inServer可能为nil。
-// 本函数可能是本文件中 最长的函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy，最终转发到 某个 outClient。
+// 本函数 可能是 本文件中 最长的 函数。分别处理 回落，firstpayload，sniff，dns解析，分流，以及lazy，最终转发到 某个 outClient。
 //
 // 会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {

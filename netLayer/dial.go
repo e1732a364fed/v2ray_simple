@@ -21,6 +21,8 @@ const (
 //Dial 可以拨号tcp、udp、unix domain socket、tls 这几种协议。
 //如果不是这几种之一，则会尝试查询 CustomDialerMap 找出匹配的函数进行拨号。
 //如果找不到，则会使用net包的方法进行拨号（其会返回错误）。
+//
+//localAddr可为nil，如果不为nil，则其为 为 拨号 所指定的 本地地址。
 func (a *Addr) Dial(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error) {
 	var istls bool
 	var resultConn net.Conn
@@ -137,7 +139,7 @@ dialedPart:
 }
 
 //比Dial更低级的方法，专用于使用sockopt的情况。
-//这里调用者要保证sockopt不为nil。a的Network只能为golang支持的那几种。
+//a的Network只能为golang支持的那几种。
 func (a Addr) DialWithOpt(sockopt *Sockopt, localAddr net.Addr) (net.Conn, error) {
 
 	dialer := &net.Dialer{

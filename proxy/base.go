@@ -150,14 +150,15 @@ func (b *Base) MiddleName() string {
 			sb.WriteString("+lazy")
 		}
 	}
+	advL := b.AdvancedL
 	if b.Header != nil {
-		if b.AdvancedL != "ws" {
+		if advL != "ws" && advL != "grpc" {
 			sb.WriteString("+http")
 		}
 	}
-	if b.AdvancedL != "" {
+	if advL != "" {
 		sb.WriteString("+")
-		sb.WriteString(b.AdvancedL)
+		sb.WriteString(advL)
 	}
 	sb.WriteString("+")
 	return sb.String()

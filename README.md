@@ -28,7 +28,7 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 verysimple 研发了一些新技术，使用自研架构，可以加速，目前基本上是全网最快，且有用户报告内存占用 比v2ray/xray 小1/3。
 
-vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，grpc回落，交互模式等。
+vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛的utls支持，grpc回落，交互模式等。
 
 支持的功能有:
 

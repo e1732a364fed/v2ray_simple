@@ -75,7 +75,7 @@ insecure = true
 utls = true
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" 
-#sendThrough = "63.77.15.11"	# dial可以设置 sendThrough为自己的某一个ip地址，来达到选择特定的ip来拨号的目的。常用与 服务器有ipv4和ipv6双栈，而因为某些原因需要单独使用 v4 或者v6  的情况。 （这里给出的示例ip是假的，请改为你自己的ip地址）
+#sendThrough = "63.77.15.11:0"	# dial可以设置 sendThrough为自己的某一个ip地址，来达到选择特定的ip来拨号的目的。常用与 服务器有ipv4和ipv6双栈，而因为某些原因需要单独使用 v4 或者v6  的情况。 （这里给出的示例ip是假的，请改为你自己的ip地址）
 
 
 [[dial]]
