@@ -43,7 +43,7 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 		var aMask byte
 		if len(fc.Alpn) > 2 {
 			//理论上alpn可以为任意值，但是由于我们要回落，搞那么多奇葩的alpn只会增加被审查的概率
-			// 所以这里在代码端直接就禁止这种做法就ok了
+			// 所以这里在代码里直接就禁止这种做法就ok了
 		} else {
 			for _, v := range fc.Alpn {
 				if v == H2_Str {

@@ -77,7 +77,15 @@ wget https://github.com/v2fly/domain-list-community/archive/refs/tags/$tag.tar.x
 
 */
 
-var GeositeListMap = make(map[string]*GeositeList)
+var (
+	GeositeListMap = make(map[string]*GeositeList)
+	geositeFolder  = "geosite/data"
+)
+
+func HasGeositeFolder() bool {
+	geositeFolder = utils.GetFilePath(geositeFolder)
+	return utils.DirExist(geositeFolder)
+}
 
 // v2fly经典匹配配置：
 //full:v2ray.com, domain:v2ray.com, domain意思是匹配子域名,
@@ -145,14 +153,13 @@ func (mdh MapGeositeDomainHaser) HasDomain(d string) bool {
 //
 //该 geosite/data 就是 github.com/v2fly/domain-list-community 项目的 data文件夹.
 func LoadGeositeFiles() (err error) {
-	dir := "geosite/data"
-	dir = utils.GetFilePath(dir)
-	if !utils.DirExist(dir) {
+
+	if !HasGeositeFolder() {
 		return os.ErrNotExist
 	}
 	ref := make(map[string]*GeositeRawList)
 
-	err = filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
+	err = filepath.WalkDir(geositeFolder, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -181,10 +188,6 @@ func LoadGeositeFiles() (err error) {
 		GeositeListMap[name] = pl.ToGeositeList()
 	}
 	return nil
-}
-
-func HasGeositeFolder() bool {
-	return utils.DirExist(utils.GetFilePath("geosite/data"))
 }
 
 // DownloadCommunity_DomainListFiles 从 v2fly/domain-list-community 下载数据文件, 并放到 geosite文件夹中。

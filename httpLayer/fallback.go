@@ -64,8 +64,9 @@ type Fallback interface {
 }
 
 type FallbackResult struct {
-	Addr netLayer.Addr
-	Xver int
+	Addr  netLayer.Addr
+	Xver  int
+	ToTag string
 }
 
 func (r *FallbackResult) GetFallback(ftype byte, _ ...string) *FallbackResult {
@@ -84,6 +85,8 @@ type FallbackConf struct {
 
 	//必填
 	Dest any `toml:"dest" json:"dest"` //see netLayer.NewAddrFromAny for details about "any" addr
+
+	ToTag string `toml:"toTag" json:"toTag"` //有些回落 像 unix domain socket 的话，地址可能很长，写起来不方便，所以还是 写到 toTag 里比较简单 明了
 
 	//几种匹配方式，可选
 

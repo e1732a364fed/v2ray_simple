@@ -70,6 +70,9 @@ func GetFilePath(fileName string) string {
 		}
 	}
 
+	// 下面的 runtime.Caller 查找调用函数对应的源文件所在目录。只适合普通go build的情况，如果是release版，因为使用了 trimpath参数，
+	// 就找不到源文件的路径了。不过一般使用发布版的人 也不是 git clone的，而是直接下载的，所以本来也找不到, 所以无所谓。
+
 	if _, srcFile, _, ok := runtime.Caller(0); ok {
 		p := filepath.Join(filepath.Dir(srcFile), fileName)
 		if _, err := os.Stat(p); err == nil {

@@ -105,6 +105,28 @@ func printSupportedProtocols() {
 	advLayer.PrintAllProtocolNames()
 }
 
+func printAllState(w io.Writer, withoutTProxy bool) {
+	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
+	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
+	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
+
+	for i, s := range allServers {
+		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
+
+	}
+
+	if !withoutTProxy && len(tproxyList) > 0 {
+		for i, tc := range tproxyList {
+			fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
+		}
+	}
+
+	for i, c := range allClients {
+		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
+	}
+
+}
+
 //see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 func tryDownloadMMDB() {
 	fp := utils.GetFilePath(netLayer.GeoipFileName)
@@ -168,28 +190,6 @@ func tryDownloadMMDB() {
 		return
 	}
 	utils.PrintStr("Download mmdb success!\n")
-
-}
-
-func printAllState(w io.Writer, withoutTProxy bool) {
-	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
-	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
-	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
-
-	for i, s := range allServers {
-		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
-
-	}
-
-	if !withoutTProxy && len(tproxyList) > 0 {
-		for i, tc := range tproxyList {
-			fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
-		}
-	}
-
-	for i, c := range allClients {
-		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
-	}
 
 }
 

@@ -19,6 +19,9 @@
 # 如果 default_uuid 给出了，且某个 需要uuid的地方没给出，则会使用 default_uuid 的值
 # default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
+# 一般而言 default_uuid 适合用于服务端；因为客户端一般除了vless拨号以外还有socks5/http监听，如果你设了 default_uuid, 
+# 那么会同时设置socks5的uuid，虽然uuid对于socks5是无效的（socks5使用用户名密码），但是感觉也不太对劲。
+
 # mycountry = "CN" #全局级的 国别分流配置, 见下面route的注释
 
 # noreadv = true    

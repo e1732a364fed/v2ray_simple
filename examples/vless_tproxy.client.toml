@@ -7,15 +7,17 @@
 
 # tproxy无法在 交互模式/apiServer中配置 或 热加载, 只能用 标准toml配置文件启用. （因为涉及到 iptables）
 
+# tproxy只支持客户端, 且只支持linux系统, 一般用于软路由/树莓派等.
+
 [[listen]]
-protocol = "tproxy" # tproxy只支持客户端, 且只支持linux系统, 一般用于软路由/树莓派等.
-host = "0.0.0.0"    # 这里不要填 127.0.0.1了，否则只会转发本机流量，而一般作为透明代理都是为了转发局域网内其它设备的流量的。
+protocol = "tproxy"
+ip = "0.0.0.0"    # 这里不要填 127.0.0.1了，否则只会转发本机流量，而一般作为透明代理都是为了转发局域网内其它设备的流量的。
 port = 12345
 # sockopt.tproxy = true # 不需要明示指明 tproxy这个 sockopt, 因为protocol指出tproxy后就会自动配置该项.
 
 # 不用指明network, 只要指明了tproxy, 就会同时自动监听 tcp和 dup.
 
-#extra = { auto_iptables = true } # 如果给出了 auto_iptables, 且只有一个 tproxy的listen, 则程序会自动在开始监听前配置好iptables，并在程序退出前 清除iptables中被程序改动的部分。
+#extra = { auto_iptables = true } # 如果给出了 auto_iptables, 且 【protocol 为 tproxy 的listen】【只有一个】, 则程序会自动在开始监听前配置好iptables，并在程序退出前 清除iptables中被程序改动的部分。
 # auto_iptables 会一字不差地运行 上面 给出的 toutyrater 的教程中的 iptables命令。
 
 
