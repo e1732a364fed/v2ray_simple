@@ -85,7 +85,7 @@ func TestUDP(t *testing.T) {
 	}()
 
 	//建立虚拟目标udp服务器并监听
-	fakeUDP_ServerPort := netLayer.RandPort(true, true)
+	fakeUDP_ServerPort := netLayer.RandPort(true, true, 0)
 
 	fakeRealUDPServerListener, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),

@@ -286,7 +286,7 @@ For:
 
 		//随机生成一个端口专门用于处理该客户端。这是我的想法。
 
-		bindPort := netLayer.RandPort(true, true)
+		bindPort := netLayer.RandPort(true, true, 0)
 
 		udpPreparedAddr := &net.UDPAddr{
 			IP:   []byte{0, 0, 0, 0},

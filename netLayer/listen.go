@@ -28,8 +28,9 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 		listener = &proxyproto.Listener{Listener: listener, Policy: proxyProtocolListenPolicyFunc}
 	}
 
+	var tooManyRetryCount time.Duration = 1
+
 	for {
-		var tooManyRetryCount time.Duration = 1
 		newc, err := listener.Accept()
 		if err != nil {
 			errStr := err.Error()
@@ -49,6 +50,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 
 				}
 				if tooManyRetryCount > 20 {
+					utils.Fatal("Too many incoming conns for 20 times! we will exit program to prevent infinite loop.")
 					break
 				}
 				time.Sleep(time.Millisecond * 500 * tooManyRetryCount)

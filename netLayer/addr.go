@@ -63,8 +63,9 @@ func init() {
 }
 
 //if mustValid is true, a valid port is assured.
-// isudp is used to determine whether you want to use udp
-func RandPort(mustValid, isudp bool) (p int) {
+// isudp is used to determine whether you want to use udp.
+// depth 填0 即可，用于递归。
+func RandPort(mustValid, isudp bool, depth int) (p int) {
 	p = rand.Intn(randPortBase) + 4096
 	if !mustValid {
 		return
@@ -84,7 +85,16 @@ func RandPort(mustValid, isudp bool) (p int) {
 				ce.Write()
 			}
 
-			return RandPort(mustValid, true)
+			if depth < 20 {
+				return RandPort(mustValid, true, depth+1)
+
+			} else {
+				if ce := utils.CanLogDebug("Get RandPort udp but got err, and depth reach limit, return directly"); ce != nil {
+					ce.Write()
+				}
+				return
+			}
+
 		}
 	} else {
 		listener, err := net.ListenTCP("tcp", &net.TCPAddr{
@@ -101,7 +111,15 @@ func RandPort(mustValid, isudp bool) (p int) {
 				ce.Write()
 			}
 
-			return RandPort(mustValid, false)
+			if depth < 20 {
+				return RandPort(mustValid, false, depth)
+
+			} else {
+				if ce := utils.CanLogDebug("Get RandPort udp but got err, and depth reach limit, return directly"); ce != nil {
+					ce.Write()
+				}
+				return
+			}
 		}
 
 	}
@@ -110,11 +128,11 @@ func RandPort(mustValid, isudp bool) (p int) {
 }
 
 func RandPortStr(mustValid, isudp bool) string {
-	return strconv.Itoa(RandPort(mustValid, isudp))
+	return strconv.Itoa(RandPort(mustValid, isudp, 0))
 }
 
 func RandPort_andStr(mustValid, isudp bool) (int, string) {
-	pt := RandPort(mustValid, isudp)
+	pt := RandPort(mustValid, isudp, 0)
 	return pt, strconv.Itoa(pt)
 }
 

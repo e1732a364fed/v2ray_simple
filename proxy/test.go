@@ -144,7 +144,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 		t.FailNow()
 	}
 
-	fakeRealUDPServerPort := netLayer.RandPort(true, true)
+	fakeRealUDPServerPort := netLayer.RandPort(true, true, 0)
 
 	t.Log("fake remote udp server port is ", fakeRealUDPServerPort)
 
