@@ -308,18 +308,46 @@ relay udp  有两种针对不同通道的技术
 我们重新定义一个MsgProducer 和 MsgConsumer，就方便很多. 这是针对多来源的转发。
 
 如此，一个 UDPConn就相当于一个 MsgProducer, 它的to 可以由 tproxy 或者 msg内部的数据提取出来
+
+而且 这个模型也可以实现 单来源，所以更实用
 */
-func RelayMsgP2C(p MsgProducer, c MsgConsumer) {
+func RelayMsg(rc, lc MsgHub, downloadByteCount, uploadByteCount *uint64) uint64 {
+	go CopyMsgFromP2C(lc, rc, uploadByteCount)
+
+	var dbc uint64
+	CopyMsgFromP2C(rc, lc, &dbc)
+
+	if downloadByteCount != nil {
+		atomic.AddUint64(downloadByteCount, dbc)
+	}
+	return dbc
+
+}
+
+func CopyMsgFromP2C(p MsgProducer, c MsgConsumer, countPtr *uint64) {
+	var bc uint64
+
 	for {
 		msg, from, to, err := p.ProduceMsg()
 		if err != nil {
-			return
+			break
 		}
 		err = c.ConsumeMsg(msg, from, to)
 		if err != nil {
-			return
+			break
 		}
+		bc += uint64(len(msg))
 	}
+
+	if countPtr != nil {
+		atomic.AddUint64(countPtr, bc)
+	}
+
+}
+
+type MsgHub interface {
+	MsgProducer
+	MsgConsumer
 }
 
 type MsgProducer interface {
