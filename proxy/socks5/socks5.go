@@ -16,8 +16,8 @@ https://datatracker.ietf.org/doc/html/rfc1929
 
 Off Topic
 
-总体而言，vless/vmess/trojan协议借鉴了socks5，有不少类似的地方。
-所以制作代理, 有必要学习socks5标准。
+纵观各种代理协议，vless/vmess/trojan/shadowsocks协议 都借鉴了socks5，有不少类似的地方。
+所以 制作代理, 有必要先学习socks5标准。
 */
 package socks5
 

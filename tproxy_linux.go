@@ -35,7 +35,7 @@ func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, rou
 		if ce := utils.CanLogErr("TProxy startLoopUDP DialWithOpt failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
-		return nil
+		return
 	}
 
 	udpConn := uconn.(*net.UDPConn)

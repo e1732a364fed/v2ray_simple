@@ -25,6 +25,7 @@ import (
 	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
 
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/shadowsocks"
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/simplesocks"
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/socks5http"
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/trojan"

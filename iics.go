@@ -53,7 +53,7 @@ func (zw *iicsZapWriter) Write(fields ...zapcore.Field) {
 
 //一个贯穿转发流程的关键结构,简称iics
 type incomingInserverConnState struct {
-	id uint32 //6位数字(十进制), 用于标识每一个连接.
+	id uint32 //十进制固定6位随机数, 用于标识每一个连接.
 
 	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。

@@ -1,0 +1,12 @@
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10800
+
+
+[[dial]]
+protocol = "shadowsocks"
+uuid = "method:AES-128-GCM\npass:iloveverysimple"    # chacha20-ietf-poly1305,AES-128-GCM, AES-256-GCM, 大小写均可；在macm1 上测试 应该是 aes 更快
+host = "127.0.0.1"
+port = 4434
+#network = "udp"    # 我们默认依然是在tcp上传输 ss协议的。如果是在udp上传输的话，因为暴力发包，是很容易丢包的
