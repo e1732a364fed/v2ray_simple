@@ -49,7 +49,7 @@ func NewServer(conf Conf) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Handshake(clientConn net.Conn) (tlsConn *Conn, err error) {
+func (s *Server) Handshake(clientConn net.Conn) (tlsConn Conn, err error) {
 
 	switch s.tlstype {
 	case ShadowTls_t:
@@ -67,7 +67,7 @@ func (s *Server) Handshake(clientConn net.Conn) (tlsConn *Conn, err error) {
 		return
 	}
 
-	tlsConn = &Conn{
+	tlsConn = &conn{
 		Conn: rawTlsConn,
 		ptr:  unsafe.Pointer(rawTlsConn),
 	}

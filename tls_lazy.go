@@ -107,11 +107,11 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 			}
 
 			if isTlsDirectly {
-				tlsConn := wrc.(*tlsLayer.Conn)
+				tlsConn := wrc.(tlsLayer.Conn)
 				rawWRC = tlsConn.GetRaw(true)
 			} else {
 				wrcWrapper := wrc.(netLayer.ConnWrapper)
-				tlsConn := wrcWrapper.Upstream().(*tlsLayer.Conn)
+				tlsConn := wrcWrapper.Upstream().(tlsLayer.Conn)
 				rawWRC = tlsConn.GetRaw(true)
 			}
 

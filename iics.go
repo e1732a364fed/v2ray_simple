@@ -73,7 +73,7 @@ type incomingInserverConnState struct {
 
 	cachedRemoteAddr string
 
-	inServerTlsConn            *tlsLayer.Conn
+	inServerTlsConn            tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
 
 	isFallbackH2        bool

@@ -17,13 +17,21 @@ type faketlsconn struct {
 // 本包会用到这个Conn，比如server和client的 Handshake，
 // 唯一特性就是它可以返回tls连接的底层tcp连接，见 GetRaw
 
-type Conn struct {
+type Conn interface {
+	net.Conn
+	GetRaw(tls_lazy_encrypt bool) *net.TCPConn
+	GetTeeConn() *TeeConn
+	GetAlpn() string
+	GetSni() string
+}
+
+type conn struct {
 	net.Conn
 	ptr     unsafe.Pointer
 	tlsType int
 }
 
-func (c *Conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
+func (c *conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
 
 	rc := (*faketlsconn)(c.ptr)
 	if rc != nil {
@@ -44,7 +52,7 @@ func (c *Conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
 }
 
 // 直接获取TeeConn，仅用于已经确定肯定能获取到的情况
-func (c *Conn) GetTeeConn() *TeeConn {
+func (c *conn) GetTeeConn() *TeeConn {
 	rc := (*faketlsconn)(c.ptr)
 
 	return rc.conn.(*TeeConn)
@@ -52,7 +60,7 @@ func (c *Conn) GetTeeConn() *TeeConn {
 }
 
 // return c.Conn.ConnectionState().NegotiatedProtocol
-func (c *Conn) GetAlpn() string {
+func (c *conn) GetAlpn() string {
 
 	switch c.tlsType {
 	case UTls_t:
@@ -72,7 +80,7 @@ func (c *Conn) GetAlpn() string {
 	return ""
 }
 
-func (c *Conn) GetSni() string {
+func (c *conn) GetSni() string {
 
 	switch c.tlsType {
 	case UTls_t:
@@ -92,12 +100,4 @@ func (c *Conn) GetSni() string {
 	}
 	return ""
 
-}
-
-func (c *Conn) WillReadBuffersBenifit() int {
-	return 0
-}
-
-func (c *Conn) CanMultiRead() bool {
-	return false
 }

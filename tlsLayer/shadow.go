@@ -27,7 +27,7 @@ func getShadowTlsPasswordFromExtra(extra map[string]any) string {
 	return ""
 }
 
-func shadowTls1(servername string, clientConn net.Conn) (tlsConn *Conn, err error) {
+func shadowTls1(servername string, clientConn net.Conn) (tlsConn *conn, err error) {
 	var fakeConn net.Conn
 	fakeConn, err = net.Dial("tcp", servername+":443")
 	if err != nil {
@@ -77,7 +77,7 @@ func shadowTls1(servername string, clientConn net.Conn) (tlsConn *Conn, err erro
 		ce.Write()
 	}
 
-	tlsConn = &Conn{
+	tlsConn = &conn{
 		Conn:    clientConn,
 		tlsType: ShadowTls_t,
 	}
@@ -85,7 +85,7 @@ func shadowTls1(servername string, clientConn net.Conn) (tlsConn *Conn, err erro
 	return
 }
 
-func shadowTls2(servername string, clientConn net.Conn, password string) (tlsConn *Conn, err error) {
+func shadowTls2(servername string, clientConn net.Conn, password string) (tlsConn *conn, err error) {
 	var fakeConn net.Conn
 	fakeConn, err = net.Dial("tcp", servername+":443")
 	if err != nil {
@@ -123,7 +123,7 @@ func shadowTls2(servername string, clientConn net.Conn, password string) (tlsCon
 			Writer: realconn,
 		}
 
-		return &Conn{
+		return &conn{
 			Conn:    allDataConn,
 			tlsType: ShadowTls2_t,
 		}, nil

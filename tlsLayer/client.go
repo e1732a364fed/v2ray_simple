@@ -53,7 +53,7 @@ func NewClient(conf Conf) *Client {
 	return c
 }
 
-func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
+func (c *Client) Handshake(underlay net.Conn) (tlsConn Conn, err error) {
 
 	switch c.tlsType {
 	case UTls_t:
@@ -65,7 +65,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 		if err != nil {
 			return
 		}
-		tlsConn = &Conn{
+		tlsConn = &conn{
 			Conn:    utlsConn,
 			ptr:     unsafe.Pointer(utlsConn.Conn),
 			tlsType: UTls_t,
@@ -77,7 +77,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 			return
 		}
 
-		tlsConn = &Conn{
+		tlsConn = &conn{
 			Conn:    officialConn,
 			ptr:     unsafe.Pointer(officialConn),
 			tlsType: Tls_t,
@@ -89,7 +89,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 			return
 		}
 
-		tlsConn = &Conn{
+		tlsConn = &conn{
 			Conn:    underlay,
 			tlsType: ShadowTls_t,
 		}
@@ -115,7 +115,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 		// 	return
 		// }
 
-		tlsConn = &Conn{
+		tlsConn = &conn{
 			Conn: &shadowClientConn{
 				FakeAppDataConn: &FakeAppDataConn{Conn: rw},
 				sum:             hashR.Sum(),
