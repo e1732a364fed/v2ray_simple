@@ -90,7 +90,7 @@ func generateCipherByV2rayUser(u utils.V2rayUser) (cipher.Block, error) {
 }
 
 //为0表示匹配成功, 如果不为0，则匹配失败；若为1，则CRC 校验失败（正常地匹配失败，不意味着被攻击）; 若为2，则表明校验成功 但是 时间差距超过 authID_timeMaxSecondGap 秒，如果为3，则表明遇到了重放攻击。
-func tryMatchAuthIDByBlock(now int64, block cipher.Block, encrypted_authID [16]byte, anitReplayMachine *anitReplayMachine) (failReason int) {
+func tryMatchAuthIDByBlock(now int64, block cipher.Block, encrypted_authID [16]byte, anitReplayMachine *authid_antiReplayMachine) (failReason int) {
 
 	var t int64
 	//var rand int32

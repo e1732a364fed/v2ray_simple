@@ -379,16 +379,17 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 		}
 	}
 
-	n, err = c.dataWriter.Write(b)
-	if len(b) != 0 {
+	if len(b) > 0 {
+		n, err = c.dataWriter.Write(b)
 		close(switchChan)
 		c.vmessout = nil
 
+		if err != nil {
+			return
+		}
+		_, err = c.Conn.Write(outBuf.Bytes())
 	}
-	if err != nil {
-		return
-	}
-	_, err = c.Conn.Write(outBuf.Bytes())
+
 	return
 }
 

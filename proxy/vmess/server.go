@@ -34,7 +34,7 @@ type pair struct {
 	cipher.Block
 }
 
-func authUserByAuthPairList(bs []byte, authPairList []pair, anitReplayMachine *anitReplayMachine) (user utils.V2rayUser, err error) {
+func authUserByAuthPairList(bs []byte, authPairList []pair, anitReplayMachine *authid_antiReplayMachine) (user utils.V2rayUser, err error) {
 	now := time.Now().Unix()
 
 	var encrypted_authid [authid_len]byte
@@ -110,16 +110,15 @@ type Server struct {
 
 	authPairList []pair
 
-	sessionHistory *sessionHistory
-
-	anitReplayMachine *anitReplayMachine
+	authid_anitReplayMachine  *authid_antiReplayMachine
+	session_antiReplayMachine *session_antiReplayMachine
 }
 
 func NewServer() *Server {
 	s := &Server{
-		MultiUserMap:      utils.NewMultiUserMap(),
-		sessionHistory:    NewSessionHistory(),
-		anitReplayMachine: newAntiReplyMachine(),
+		MultiUserMap:              utils.NewMultiUserMap(),
+		authid_anitReplayMachine:  newAuthIDAntiReplyMachine(),
+		session_antiReplayMachine: newSessionAntiReplayMachine(),
 	}
 	s.SetUseUUIDStr_asKey()
 	return s
@@ -127,7 +126,8 @@ func NewServer() *Server {
 func (s *Server) Name() string { return Name }
 
 func (s *Server) Stop() {
-	s.anitReplayMachine.stop()
+	s.authid_anitReplayMachine.stop()
+	s.session_antiReplayMachine.stop()
 }
 
 func (s *Server) addUser(u utils.V2rayUser) {
@@ -160,7 +160,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 1}
 		return
 	}
-	user, err := authUserByAuthPairList(data[:authid_len], s.authPairList, s.anitReplayMachine)
+	user, err := authUserByAuthPairList(data[:authid_len], s.authPairList, s.authid_anitReplayMachine)
 	if err != nil {
 
 		returnErr = err
@@ -176,6 +176,13 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		returnErr = errorReason
 
 		if ce := utils.CanLogWarn("vmess openAEADHeader err"); ce != nil {
+			//看v2ray有一个 "drain"的用法，
+			//然而，我们这里是不需要drain的，区别在于，v2ray 不是一次性读取一大串数据，
+			// 而是用一个 reader 一点一点读，这就会产生一些可探测的问题，所以才要drain
+			// 而我们直接用 64K 的大buf 一下子读取整个客户端发来的整个数据， 没有读取长度的差别。
+
+			//不过 为了尊重v2ray的代码，也 以防 我的想法有错误，还是把这个情况陈列在这里，留作备用。
+
 			ce.Write(zap.Any("things", []any{errorReason, shouldDrain, bytesRead}))
 		}
 
@@ -211,7 +218,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 	sid.key = sc.reqBodyKey
 	sid.nonce = sc.reqBodyIV
 
-	if !s.sessionHistory.addIfNotExits(sid) {
+	if !s.session_antiReplayMachine.check(sid) {
 		returnErr = ErrReplaySessionAttack
 		return
 	}
