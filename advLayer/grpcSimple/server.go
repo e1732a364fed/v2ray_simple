@@ -123,7 +123,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 				return
 			}
 
-			//log.Println("request headers", rq.Header)
+			//log.Println("request headers", rq.ContentLength, rq.Header)
 
 			shouldFallback := false
 
@@ -208,6 +208,9 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnFunc func(net.Conn), f
 				}
 			}
 			rw.WriteHeader(http.StatusOK)
+			if flusher, ok := rw.(http.Flusher); ok {
+				flusher.Flush()
+			}
 
 			sc := newServerConn(rw, rq)
 			if s.closed {
