@@ -99,6 +99,14 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装, 仅用于
 # advancedLayer = "ws"  # 也可为 grpc 或 quic
 # path = "/ohmygod_verysimple_is_very_simple" # ws的path和 grpc的serviceName 都在这个path里填写, 为了防探测这里越长越随机越好
 
+
+# 据说下面三行配置可以增强防御
+
+# extra.tls_minVersion = "1.2"
+# extra.tls_maxVersion = "1.2"
+# extra.tls_cipherSuites = [ "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"]
+
+
 [[dial]]
 tag = "mydirect"
 protocol = "direct" # direct 这个dial 是不需要特地写出的, 程序会自动创建一个 tag 为 "direct" 的 direct 的 dial. 不过如果是需要控制一下fullcone 的话, 此时就要写出来，因为程序默认的 direct 是不开启 fullcone的。 

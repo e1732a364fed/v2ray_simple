@@ -189,6 +189,19 @@ func getTlsCipherSuitesFromExtra(extra map[string]any) []uint16 {
 				if len(v) > 0 {
 					return v
 				}
+			} else {
+				if things, ok := thing.([]any); ok {
+					var v []uint16
+					for _, s := range things {
+						cs := tlsLayer.StrToCipherSuite(s.(string))
+						if cs > 0 {
+							v = append(v, cs)
+						}
+					}
+					if len(v) > 0 {
+						return v
+					}
+				}
 			}
 		}
 	}
