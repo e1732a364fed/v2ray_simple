@@ -22,6 +22,11 @@ func (ServerCreator) MultiTransportLayer() bool {
 	return false
 }
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
+
+	if lc.Network == "" {
+		lc.Network = netLayer.DualNetworkName
+	}
+
 	uuidStr := lc.Uuid
 
 	var mp MethodPass

@@ -3,6 +3,8 @@
 
 vs的通用url格式，并不遵循现存市面上的其他格式，而是针对vs的架构逻辑所设计的新格式。如果你是一个vs老手，则使用vs的通用url格式你会感觉得心应手。
 
+本通用格式既可以用于listen，也可以用于dial
+
 注意，要想读懂本文档，需要了解url的基础知识。
 
 https://datatracker.ietf.org/doc/html/rfc1738
@@ -25,6 +27,8 @@ vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&v=0&u
 
 vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?adv=quic&v=0&extra.maxStreamsInOneConn=6&extra.congestion_control=hy&extra.mbps=1024#my_vless_quic
 
+vmess://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?http=true&header.host=myhost.com
+
 dokodemo://?target.ip=1.1.1.1&target.port=80#my_doko
 
 shadowsocks://aes-128-gcm:mypasswordxxxxx@127.0.0.1:8000#my_ss
@@ -39,7 +43,7 @@ socks5://127.0.0.1:1080#my_socks5
 
 ### scheme
 
-即冒号前的部分，表示proxy所使用的具体协议，如 vmess, vless, ss, http, socks5, trojan
+即冒号前的部分，表示proxy所使用的具体协议，如 vmess, vless, shadowsocks, http, socks5, trojan 等
 
 如果后加上了s，就表示使用tls层，比如https，或者 vlesss。注意，vless和trojan都必须要加s，才能在公网中不被发现，否则就是裸奔。任何proxy都可以加s。
 

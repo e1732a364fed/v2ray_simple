@@ -16,7 +16,7 @@
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
 
-verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富。
+verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富，轻量级，极简，用户友好，新手向。
 
 本作的想法是，使用自己的代码，实现v2ray的所有的好的功能（并摒弃差的功能），而且使用自主研发的更简单的架构，结合自主研发的新技术，实现反超。
 
@@ -281,7 +281,7 @@ openssl x509 -req -days 365 -sha256  -in client.csr -CA ca.crt -CAkey ca.key -se
 
 ### 架构
 
-使用了简单的架构，单单因为架构简单 就可以 提升不少性能。
+使用了简单的架构，单单因为架构简单 就可以 提升不少性能。而且可执行文件比其他内核小不少。
 
 本作使用了分层架构，网络层，tls层，高级层，代理层等层级互不影响。
 
@@ -461,9 +461,16 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 ## 开发标准以及理念
 
+KISS, Keep it Simple and Stupid
+
 文档尽量多，代码尽量少. 同时本作不追求极致模块化, 可以进行适当耦合. 一切以速度、浅显易懂 优先
 
-KISS, Keep it Simple and Stupid
+如果你阅读代码，你有时可能看到一些“比较脏” 的代码，如包含一些 goto 跳跃，或者步骤比较繁琐的函数。
+但仔细思考比较，就会发现，这种代码的不是运行速度更快，就是更加直观易懂。
+
+比如某些需要defer的地方，我们故意不defer，而是单独放在每个return前面。这是因为defer会降低性能。类似的地方有很多。
+
+当然，如果美化代码利大于弊，我们肯定在后期慢慢改进。
 
 ### 文档
 
@@ -507,7 +514,20 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后作者不承�
 
 ## 历史
 
-启发自我fork的v2simple，不过原作者的架构还是有点欠缺，我就直接完全重构了，完全使用我自己的代码。
+首先阅读v2simple项目，一个很好的启蒙项目：
+https://github.com/jarvisgally/v2simple
+
+读了v2simple后, 我fork了一个版本, 不过原作者没附带任何开源协议，而且原作者的架构还是有点欠缺。
+
+后来就直接完全重构了，新建了本项目，完全使用自己的代码。没想到大有发展，功高盖主。
+
+但是，本作继承了v2simple的精神，即尽量simple。我极力支持这种精神，也试图让这个精神在verysimple项目中处处体现。
+
+本作继承了它的如下特点：
+
+1. url配置的方式
+2. 转发逻辑直接放在main.go 中
+3. 架构简单
 
 ## 开发计划
 
@@ -631,7 +651,7 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 
-grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议。clash的gun又是借鉴 Qv2ray的gun的）
+grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议。(clash的gun又是借鉴 Qv2ray的gun的）
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 

@@ -75,7 +75,7 @@ sudo cp examples/vlesss.server.toml server.toml
 
 同样，视你的权限来酌情在命令前面添加 `sudo`
 
-上面这个nohub这行命令，可以写到一个文件里，比如 run.sh, 然后用 `chmod +x run.sh` 将其变为可执行文件, 之后你只要运行 run.sh 就可以后台运行了。
+上面这个nohup这行命令，可以写到一个文件里，比如 run.sh, 然后用 `chmod +x run.sh` 将其变为可执行文件, 之后你只要运行 run.sh 就可以后台运行了。
 
 如果你会crontab，还可以在里面设置开机运行该脚本。这种方式就比 systemctl轻量多了，而且还适用于openwrt。
 
