@@ -16,6 +16,12 @@ type Splicer interface {
 	CanSpliceWrite() (bool, *net.TCPConn) //当前状态是否可以splice写入，即是否会暴露出 net.TCPConn
 }
 
+// SpliceReader 标明是否 该接口最终能暴露出tcp/unix来用于 splice读
+type SpliceReader interface {
+	EverPossibleToSpliceRead() bool
+	CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) //若bool为true，则 TCPConn和UnixConn必须有且仅有一个不为nil
+}
+
 // tcp, unix
 func CanRSplice(r io.Reader) bool {
 	switch r.(type) {

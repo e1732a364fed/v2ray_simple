@@ -11,8 +11,20 @@ import (
 	"go.uber.org/zap"
 )
 
+func CanWEverSplice(writeConn io.Writer) (wCanSplice bool) {
+	wCanSpliceDirectly := CanWSplice(writeConn)
+	if wCanSpliceDirectly {
+		wCanSplice = true
+	} else {
+		if CanSpliceEventually(writeConn) {
+			wCanSplice = true
+		}
+	}
+	return
+}
+
 // TryCopy 尝试 循环 从 readConn 读取数据并写入 writeConn, 直到错误发生。
-//会接连尝试 splice、循环readv 以及 原始Copy方法。如果 UseReadv 的值为false，则不会使用readv。
+// 会接连尝试 splice、循环readv 以及 原始Copy方法。如果 UseReadv 的值为false，则不会使用readv。
 //
 // identity只用于debug 日志输出.
 func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum int64, err error) {
@@ -36,24 +48,53 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 	if SystemCanSplice {
 
 		rCanSplice := CanRSplice(readConn)
+		wCanSplice := CanWEverSplice(writeConn)
 
-		if rCanSplice {
-			var wCanSplice bool
-			wCanSpliceDirectly := CanWSplice(writeConn)
-			if wCanSpliceDirectly {
-				wCanSplice = true
-			} else {
-				if CanSpliceEventually(writeConn) {
-					wCanSplice = true
-				}
-			}
+		if wCanSplice {
+			if rCanSplice {
 
-			if rCanSplice && wCanSplice {
 				if ce := utils.CanLogDebug("copying with splice"); ce != nil {
 					ce.Write(zap.Uint32("id", identity))
 				}
 
 				goto copy
+			} else if sr, ok := (readConn).(SpliceReader); ok && sr != nil {
+				if sr.EverPossibleToSpliceRead() {
+
+					if ce := utils.CanLogDebug("copying with splice, waiting spliceReader"); ce != nil {
+						ce.Write(zap.Uint32("id", identity))
+					}
+
+					for {
+						canRS, tcpConn, unixConn := sr.CanSpliceRead()
+						if canRS {
+							if tcpConn != nil {
+								readConn = tcpConn
+							} else if unixConn != nil {
+								readConn = unixConn
+							}
+
+							if ce := utils.CanLogDebug("copying with splice, spliceReader ok"); ce != nil {
+								ce.Write(zap.Uint32("id", identity))
+							}
+
+							goto copy
+						}
+						//在没能得到用于spliceRead的conn的时候，先普通拷贝
+						bs := utils.GetPacket()
+						n, err1 := readConn.Read(bs)
+						if err1 != nil {
+							err = err1
+							return
+						}
+						n2, err2 := writeConn.Write(bs[:n])
+						allnum += int64(n2)
+						if err2 != nil {
+							err = err2
+							return
+						}
+					}
+				}
 			}
 		}
 
@@ -231,7 +272,7 @@ classic:
 // UseReadv==true 时 内部使用 TryCopy 进行拷贝,
 // 会自动优选 splice，readv，不行则使用经典拷贝.
 //
-//拷贝完成后会主动关闭双方连接.
+// 拷贝完成后会主动关闭双方连接.
 // 返回从 rc读取到的总字节长度（即下载流量）. 如果 downloadByteCount, uploadByteCount 给出,
 // 则会 分别原子更新 上传和下载的总字节数. identity 用于输出日志。
 func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, identity uint32, downloadByteCount, uploadByteCount *uint64) int64 {

@@ -66,6 +66,14 @@ func IsTCP(r any) *net.TCPConn {
 	return nil
 }
 
+func IsUnix(r any) *net.UnixConn {
+	if uc, ok := r.(*net.UnixConn); ok {
+		return uc
+	}
+
+	return nil
+}
+
 // net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
 func IsBasicConn(r interface{}) bool {
 	if _, ok := r.(syscall.Conn); ok {

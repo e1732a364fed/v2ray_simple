@@ -11,7 +11,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-// 实现 net.Conn, io.ReaderFrom, utils.User, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper
+// 实现 net.Conn, io.ReaderFrom, utils.User, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper, netLayer.SpliceReader
 type UserTCPConn struct {
 	net.Conn
 
@@ -43,6 +43,54 @@ func (c *UserTCPConn) Upstream() net.Conn {
 // 当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
 func (c *UserTCPConn) canDirectWrite() bool {
 	return c.version == 1 || (c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket))
+}
+
+// 当底层链接可以暴露为 tcp或 unix链接时，返回true
+func (c *UserTCPConn) EverPossibleToSpliceRead() bool {
+	if netLayer.IsTCP(c.Conn) != nil {
+		return true
+	}
+	if netLayer.IsUnix(c.Conn) != nil {
+		return true
+	}
+
+	if s, ok := c.Conn.(netLayer.SpliceReader); ok {
+		return s.EverPossibleToSpliceRead()
+	}
+
+	return false
+}
+
+func (c *UserTCPConn) returnSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
+	if tc := netLayer.IsTCP(c.Conn); tc != nil {
+		return true, tc, nil
+	}
+	if uc := netLayer.IsUnix(c.Conn); uc != nil {
+		return true, nil, uc
+	}
+
+	if s, ok := c.Conn.(netLayer.SpliceReader); ok {
+		return s.CanSpliceRead()
+	}
+
+	return false, nil, nil
+
+}
+
+func (c *UserTCPConn) CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
+	if c.isServerEnd {
+		if c.remainFirstBufLen > 0 {
+			return false, nil, nil
+		}
+
+	} else if c.version == 0 {
+		if !c.isntFirstPacket {
+			return false, nil, nil
+		}
+	}
+
+	return c.returnSpliceRead()
+
 }
 
 func (c *UserTCPConn) EverPossibleToSpliceWrite() bool {
