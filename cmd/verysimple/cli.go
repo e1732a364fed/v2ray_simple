@@ -359,18 +359,10 @@ func interactively_hotRemoveServerOrClient() {
 	will_delete_index = int(theInt)
 
 	if will_delete_dial {
-		doomedClient := allClients[will_delete_index]
-
-		routingEnv.DelClient(doomedClient.GetTag())
-		doomedClient.Stop()
-		allClients = utils.TrimSlice(allClients, will_delete_index)
+		hotDeleteClient(will_delete_index)
 	}
 	if will_delete_listen {
-		listenCloserList[will_delete_index].Close()
-		allServers[will_delete_index].Stop()
-
-		allServers = utils.TrimSlice(allServers, will_delete_index)
-		listenCloserList = utils.TrimSlice(listenCloserList, will_delete_index)
+		hotDeleteServer(will_delete_index)
 
 	}
 

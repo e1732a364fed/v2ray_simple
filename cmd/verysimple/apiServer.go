@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
@@ -60,6 +61,38 @@ func runApiServer(adminUUID string) {
 	ser.addServerHandle(mux, "allstate", func(w http.ResponseWriter, r *http.Request) {
 		printAllState(w, false)
 	})
+	ser.addServerHandle(mux, "hotDelete", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+
+		listenIndexStr := q.Get("listen")
+		dialIndexStr := q.Get("dial")
+		if listenIndexStr != "" {
+			if ce := utils.CanLogInfo("api server got hot delete listen request"); ce != nil {
+				ce.Write(zap.String("listenIndexStr", listenIndexStr))
+			}
+
+			listenIndex, err := strconv.Atoi(listenIndexStr)
+			if err != nil {
+				w.Write([]byte("illegal parameter"))
+				return
+			}
+			hotDeleteServer(listenIndex)
+		}
+		if dialIndexStr != "" {
+
+			if ce := utils.CanLogInfo("api server got hot delete dial request"); ce != nil {
+				ce.Write(zap.String("dialIndexStr", dialIndexStr))
+			}
+
+			dialIndex, err := strconv.Atoi(dialIndexStr)
+			if err != nil {
+				w.Write([]byte("illegal parameter"))
+				return
+			}
+			hotDeleteClient(dialIndex)
+		}
+	})
+
 	ser.addServerHandle(mux, "hotLoadUrl", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 

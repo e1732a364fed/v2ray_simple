@@ -46,7 +46,7 @@ func BenchmarkCommonSplit_regex(b *testing.B) {
 var x = []string{"AA", "BB", "CC", "DD"}
 var y = []int{1, 2, 3, 4}
 
-func TestSplice(t *testing.T) {
+func TestTrimSlice(t *testing.T) {
 	t.Log(utils.TrimSlice(utils.CloneSlice(x), 0))
 	t.Log(utils.TrimSlice(utils.CloneSlice(x), 1))
 	t.Log(utils.TrimSlice(utils.CloneSlice(x), 2))

@@ -395,6 +395,29 @@ func hotLoadListenUrl(theUrlStr string) error {
 	return nil
 }
 
+func hotDeleteClient(index int) {
+	if index < 0 || index >= len(allClients) {
+		return
+	}
+	doomedClient := allClients[index]
+
+	routingEnv.DelClient(doomedClient.GetTag())
+	doomedClient.Stop()
+	allClients = utils.TrimSlice(allClients, index)
+}
+
+func hotDeleteServer(index int) {
+	if index < 0 || index >= len(listenCloserList) {
+		return
+	}
+
+	listenCloserList[index].Close()
+	allServers[index].Stop()
+
+	allServers = utils.TrimSlice(allServers, index)
+	listenCloserList = utils.TrimSlice(listenCloserList, index)
+}
+
 func loadSimpleServer() (result int, server proxy.Server) {
 	var e error
 	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
