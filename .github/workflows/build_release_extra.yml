@@ -23,7 +23,7 @@ jobs:
 
       - name: Build
         run: |
-          cd cmd/verysimple/ && make -f Makefile_r_vsc extra PACK=1 BUILD_VERSION=${{ github.event.inputs.tagName }}
+          cd cmd/verysimple/ && make -f Makefile_r_vsc PACK=1 BUILD_VERSION=${{ github.event.inputs.tagName }}
       
       - name: touch xz archive
         shell: bash
