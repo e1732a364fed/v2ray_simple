@@ -17,6 +17,7 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun"
+	"github.com/e1732a364fed/v2ray_simple/netLayer/tun/device"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -135,6 +136,7 @@ type Server struct {
 	infoChan       chan<- netLayer.TCPRequestInfo
 	udpRequestChan chan<- netLayer.UDPRequestInfo
 	lwipCloser     io.Closer
+	tunDev         device.Device
 
 	devName, realIP, selfip string //selfip 只在 darwin 上用到
 	autoRoute               bool
@@ -180,6 +182,7 @@ func (s *Server) Stop() {
 		close(s.infoChan)
 		close(s.udpRequestChan)
 		s.lwipCloser.Close()
+		s.tunDev.Close()
 
 		if s.autoRoute && autoRouteDownAfterCloseFunc != nil {
 
@@ -245,6 +248,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
+		tunDev.Close()
 		return nil
 	}
 
@@ -273,6 +277,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 		}
 	}()
 	s.lwipCloser = closer
+	s.tunDev = tunDev
 
 	return s
 }
