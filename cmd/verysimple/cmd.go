@@ -26,6 +26,9 @@ var (
 	cmdPrintVer                bool
 	cmdGenerateUUid            bool
 
+	cmdConvertQxToVs          string
+	cmdExtractQX_remoteServer string
+
 	download bool
 
 	defaultApiServerConf machine.ApiServerConf
@@ -34,10 +37,13 @@ var (
 )
 
 func init() {
+	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
+
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
-	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
 	flag.BoolVar(&cmdGenerateUUid, "gu", false, " automatically generate a uuid for you")
+	flag.StringVar(&cmdConvertQxToVs, "cvqxtvs", "", "if given, convert qx server config string to vs toml config")
+	flag.StringVar(&cmdExtractQX_remoteServer, "eqxrs", "", "if given, automatically extract remote servers from quantumultX config for you")
 
 	//apiServer stuff
 
@@ -66,6 +72,18 @@ func runExitCommands() (atLeastOneCalled bool) {
 		atLeastOneCalled = true
 
 		generateAndPrintUUID()
+	}
+
+	if cmdConvertQxToVs != "" {
+		atLeastOneCalled = true
+
+		convertQxToVs()
+	}
+
+	if cmdExtractQX_remoteServer != "" {
+		atLeastOneCalled = true
+
+		extractQxRemoteServers()
 	}
 	return
 }

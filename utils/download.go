@@ -86,18 +86,18 @@ func SimpleDownloadFile(fname, downloadLink string) (ok bool) {
 }
 
 // https://golangcode.com/download-a-file-with-progress/
-type downloadPrintCounter struct {
+type DownloadPrintCounter struct {
 	Total uint64
 }
 
-func (wc *downloadPrintCounter) Write(p []byte) (int, error) {
+func (wc *DownloadPrintCounter) Write(p []byte) (int, error) {
 	n := len(p)
 	wc.Total += uint64(n)
 	wc.PrintProgress()
 	return n, nil
 }
 
-func (wc downloadPrintCounter) PrintProgress() {
+func (wc DownloadPrintCounter) PrintProgress() {
 	fmt.Printf("\r%s", strings.Repeat(" ", 35))
 
 	fmt.Printf("\rDownloading... %s complete", humanize.Bytes(wc.Total))
@@ -121,7 +121,7 @@ func DownloadAndUnzip(fname, downloadLink, dst string) (ok bool) {
 		return
 	}
 	buf := new(bytes.Buffer)
-	counter := &downloadPrintCounter{}
+	counter := &DownloadPrintCounter{}
 	io.Copy(buf, io.TeeReader(resp.Body, counter))
 
 	out := bytes.NewReader(buf.Bytes())

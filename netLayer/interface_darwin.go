@@ -127,7 +127,7 @@ func GetGatewayDeviceName() (string, error) {
 
 // helper func, call GetGatewayDeviceName and utils.GetDarwinNetAdapterNameByInterfaceName.
 //
-// hardwarePort 和 interface的名称不同，hardwareport是 Wi-Fi, 而interface.Name 是 eth0
+// hardwarePort 和 interface的名称不同，hardwareport是 Wi-Fi, 而interface.Name 是 en0
 func GetDefaultHardwarePort() (string, error) {
 	n, e := GetGatewayDeviceName()
 	if e != nil {

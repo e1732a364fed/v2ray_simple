@@ -1,8 +1,13 @@
 package configAdapter
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -177,21 +182,64 @@ func ToQX(dc *proxy.DialConf) string {
 	return sb.String()
 }
 
-/* clash使用yaml作为配置格式。本函数中不导出整个yaml配置文件，而只导出
+func FromQX(str string) (dc proxy.DialConf) {
+	//qx 的配置应该是基本的逗号分隔值形式
+	str = utils.StandardizeSpaces(str)
+	strs := strings.Split(str, ",")
+
+	for i, p := range strs {
+		ss := strings.Split(p, "=")
+		n := ss[0]
+		v := ss[1]
+		n = strings.TrimSpace(n)
+		v = strings.TrimSpace(v)
+
+		if i == 0 {
+			dc.Protocol = n
+			hostport := v
+			host, port, err := net.SplitHostPort(hostport)
+			if err != nil {
+				fmt.Printf("FromQX: net.SplitHostPort err, %s\n", err.Error())
+			} else {
+				dc.Host = host
+				np, _ := strconv.Atoi(port)
+				dc.Port = np
+			}
+		} else {
+			switch n {
+			case "method":
+				dc.EncryptAlgo = v
+			case "password":
+				dc.Uuid = v
+			case "tag":
+				dc.Tag = v
+			}
+		}
+	}
+
+	if dc.Protocol == "shadowsocks" {
+		if dc.Uuid != "" && dc.EncryptAlgo != "" {
+			dc.Uuid = "method:" + dc.EncryptAlgo + "\n" + "pass:" + dc.Uuid
+		}
+	}
+	return
+}
+
+/*
+	clash使用yaml作为配置格式。本函数中不导出整个yaml配置文件，而只导出
+
 对应的proxies项下的子项，比如
 
-
-	- name: "ss1"
-	  type: ss
-	  server: server
-	  port: 443
-	  cipher: chacha20-ietf-poly1305
-	  password: "password"
+  - name: "ss1"
+    type: ss
+    server: server
+    port: 443
+    cipher: chacha20-ietf-poly1305
+    password: "password"
 
 See https://github.com/Dreamacro/clash/wiki/Configuration
 
 clash的配置对于不同的协议来说，格式也有不同，clash基本上尊重了每一个协议的约定, 但也不完全一致
-
 */
 func ToClash(dc *proxy.DialConf) string {
 	//这里我们不使用外部yaml包，可以减少依赖.
@@ -391,7 +439,7 @@ type V2rayNConfig struct {
 	Sni      string `json:"sni"`
 }
 
-//See https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2)
+// See https://github.com/2dust/v2rayN/wiki/%E5%88%86%E4%BA%AB%E9%93%BE%E6%8E%A5%E6%A0%BC%E5%BC%8F%E8%AF%B4%E6%98%8E(ver-2)
 func ToV2rayN(dc *proxy.DialConf) string {
 	if dc.Protocol != "vmess" {
 		return "ToV2rayN doesn't support any protocol other than vmess, you give " + dc.Protocol
@@ -428,5 +476,49 @@ func ToV2rayN(dc *proxy.DialConf) string {
 	}
 
 	return "vmess://" + base64.URLEncoding.EncodeToString(bs)
+
+}
+
+func ExtractQxRemoteServers(configContentStr string) {
+	lines := strings.Split(configContentStr, "\n")
+	for i, l := range lines {
+
+		if strings.Contains(l, "[server_remote]") {
+			fmt.Printf("got  [server_remote] field\n")
+
+			l = lines[i+1]
+			strs := strings.SplitN(l, ",", 2)
+			l = strs[0]
+
+			fmt.Printf("downloading %s\n", l)
+
+			resp, err := http.DefaultClient.Get(l)
+
+			if err != nil {
+				fmt.Printf("Download failed %s\n", err.Error())
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != http.StatusOK {
+				fmt.Printf("Download got bad status: %s\n", resp.Status)
+				return
+			}
+			fmt.Printf("download ok, reading...\n")
+
+			buf := utils.GetBuf()
+
+			counter := &utils.DownloadPrintCounter{}
+
+			fmt.Printf("\nread ok\n")
+
+			io.Copy(buf, io.TeeReader(resp.Body, counter))
+			ls := bytes.Split(buf.Bytes(), []byte("\n"))
+			for _, v := range ls {
+				fmt.Println(string(v))
+			}
+			return
+		}
+	}
 
 }
