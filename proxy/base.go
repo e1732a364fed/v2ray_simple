@@ -153,7 +153,17 @@ func (b *Base) MiddleName() string {
 	sb.WriteString("")
 
 	if b.TLS {
-		sb.WriteString("+tls")
+		tt := "tls"
+		if dc := b.DialConf; dc != nil && dc.TlsType != "" {
+			tt = dc.TlsType
+		}
+
+		if lc := b.ListenConf; lc != nil && lc.TlsType != "" {
+			tt = lc.TlsType
+		}
+
+		sb.WriteString("+")
+		sb.WriteString(tt)
 		if b.IsLazyTls() {
 			sb.WriteString("+lazy")
 		}

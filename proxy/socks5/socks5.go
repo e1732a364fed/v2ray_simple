@@ -21,6 +21,8 @@ https://datatracker.ietf.org/doc/html/rfc1929
 
 纵观各种代理协议，vless/vmess/trojan/shadowsocks协议 都借鉴了socks5，有不少类似的地方。
 所以 制作代理, 有必要先学习socks5标准。
+
+关于socks4, 它太简单了, 既不支持udp, 也不支持ipv6, 也没有验证功能, 所以本作不予支持
 */
 package socks5
 
