@@ -23,6 +23,9 @@ jobs:
 
       - name: Run genaar.sh
         run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          export PATH=$PATH:~/go/bin
+          gomobile init
           cd machine
           chmod +x genaar.sh
           ./genaar.sh
