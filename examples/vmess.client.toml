@@ -9,4 +9,10 @@ protocol = "vmess"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
 port = 4434
-extra = { vmess_security = "aes-128-gcm" }
+extra = { vmess_security = "aes-128-gcm" }  # 其他可能的值: "chacha20-poly1305", "auto", "none", "", 
+
+# ("" 这种 空字符串 就是对应的 v2ray文档中的 zero , 所以这个 vmess_security 配置 你要是不给出, 那么程序就会默认使用 zero)
+
+# 你也可以写zero, 效果一样，但是谁会多写四个字符呢，本来空字符串就是 空 的含义啊！
+
+# 具体none和zero的区别, 以及 auto 的含义, 详见 https://www.v2fly.org/config/protocols/vmess.html#userobject

@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net"
 	"net/url"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"golang.org/x/crypto/chacha20poly1305"
 )
+
+const systemAutoWillUseAes = runtime.GOARCH == "amd64" || runtime.GOARCH == "s390x" || runtime.GOARCH == "arm64"
 
 func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
@@ -75,7 +78,6 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	return c, nil
 }
 
-// Client is a vmess client
 type Client struct {
 	proxy.Base
 	user     utils.V2rayUser
@@ -90,10 +92,18 @@ func (c *Client) specifySecurityByStr(security string) error {
 		c.security = SecurityAES128GCM
 	case "chacha20-poly1305":
 		c.security = SecurityChacha20Poly1305
+	case "auto":
+		if systemAutoWillUseAes {
+			c.security = SecurityAES128GCM
+		} else {
+			c.security = SecurityChacha20Poly1305
+
+		}
 	case "none":
 		c.security = SecurityNone
-	case "":
-		// NOTE: use basic format when no method specified
+
+	case "", "zero": // NOTE: use basic format when no method specified.
+
 		c.opt = OptBasicFormat
 		c.security = SecurityNone
 	default:
