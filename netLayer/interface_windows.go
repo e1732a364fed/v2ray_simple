@@ -45,7 +45,7 @@ func GetGateway() (ip string, err error) {
 	ip = fields[2]
 
 	//为了简单起见，只认为192开头的是我们的本地路由地址;
-	if ip == "On-link" || !strings.HasPrefix(ip, "192") {
+	if ip == "On-link" {
 		utils.Warn("auto route failed, routerIP parse failed, got " + ip)
 		err = utils.ErrFailed
 

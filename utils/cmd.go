@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -22,6 +23,25 @@ func LogRunCmd(name string, arg ...string) (out string, err error) {
 	}
 	out = sbO.String()
 	ZapLogger.Info("run cmd result", zap.String("stdOut", out), zap.String("stdErr", sbE.String()))
+
+	return
+}
+
+// Stdout, Stderr to fmt
+func FmtPrintRunCmd(name string, arg ...string) (out string, err error) {
+	fmt.Println("run cmd", "cmd", name, "args", arg)
+
+	cmd1 := exec.Command(name, arg...)
+	var sbE strings.Builder
+	var sbO strings.Builder
+	cmd1.Stderr = &sbE
+	cmd1.Stdout = &sbO
+
+	if err = cmd1.Run(); err != nil {
+		fmt.Println("run cmd failed", err, "stdOut", out, "stdErr", sbE.String())
+	}
+	out = sbO.String()
+	fmt.Println("run cmd result", "stdOut", out, "stdErr", sbE.String())
 
 	return
 }

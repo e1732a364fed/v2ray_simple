@@ -153,6 +153,9 @@ macm:
 
 win10:
 	$(call compile,$(winFn),windows,amd64,$(winsuffix))
+winarm:
+	$(call compile,$(winFn),windows,arm64,$(winsuffix))
+
 
 
 clean:

@@ -3,6 +3,9 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"os"
 	"runtime"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -19,9 +22,14 @@ func init() {
 					return
 				}
 
-				if !utils.DownloadAndUnzip("wintun.zip", "https://www.wintun.net/builds/wintun-0.14.1.zip", "") {
-					return
+				if utils.DirExist("wintun") {
+
+				} else {
+					if !utils.DownloadAndUnzip("wintun.zip", "https://www.wintun.net/builds/wintun-0.14.1.zip", "") {
+						return
+					}
 				}
+
 				dir := ""
 				switch a := runtime.GOARCH; a {
 				case "386":
@@ -29,7 +37,23 @@ func init() {
 				default:
 					dir = a
 				}
-				utils.LogRunCmd("copy", "wintun\\bin\\"+dir+"\\wintun.dll", ".")
+
+				oldDll, err := os.Open("wintun\\bin\\" + dir + "\\wintun.dll")
+				if err != nil {
+					fmt.Println("err", err)
+					return
+				}
+				defer oldDll.Close()
+
+				newFile, err := os.Create("wintun.dll")
+
+				if err != nil {
+					fmt.Println("err", err)
+					return
+				}
+				defer newFile.Close()
+
+				io.Copy(newFile, oldDll)
 			}
 		}
 	})
