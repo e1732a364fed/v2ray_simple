@@ -40,24 +40,23 @@ func authUserByAuthPairList(bs []byte, authPairList []pair, antiReplayMachine *a
 	var encrypted_authid [authid_len]byte
 	copy(encrypted_authid[:], bs)
 
-	const err_desc = "Vmess AntiReplay Err,"
+	const err_desc = "Vmess AntiReplay Err"
 
 	for _, p := range authPairList {
 		failreason := tryMatchAuthIDByBlock(now, p.Block, encrypted_authid, antiReplayMachine)
+
 		switch failreason {
 
 		case 0:
 			return p.V2rayUser, nil
 		case 1: //crc
 			err = utils.ErrInErr{ErrDesc: err_desc, ErrDetail: utils.ErrInvalidData}
-			return
+			//crc校验失败只是证明是随机数据 或者是当前uuid不匹配，需要继续匹配。
 		case 2:
 			err = utils.ErrInErr{ErrDesc: err_desc, ErrDetail: ErrAuthID_timeBeyondGap}
-			return
 
 		case 3:
 			err = utils.ErrInErr{ErrDesc: err_desc, ErrDetail: ErrReplayAttack}
-			return
 
 		}
 	}

@@ -247,7 +247,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 	if e == nil {
 		sc.ra = ta
 	} else {
-		if ce := utils.CanLogErr("grpcSimple parse addr failed, which is weird"); ce != nil {
+		if ce := utils.CanLogErr("grpcSimple parse addr failed, which is weird; Will try X-Forwarded-For"); ce != nil {
 			ce.Write(zap.String("raddr", rq.RemoteAddr), zap.Error(e))
 		}
 
