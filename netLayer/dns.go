@@ -186,7 +186,7 @@ func DialDnsAddr(addr *Addr) (conn net.Conn, err error) {
 	if addr.IsUDP() {
 		conn, err = net.DialUDP("udp", nil, addr.ToUDPAddr())
 	} else {
-		conn, err = addr.Dial()
+		conn, err = addr.Dial(nil)
 
 	}
 	//todo: 以后支持DoH的话，要分离出https这个Network然后单独使用独特方法进行dial

@@ -20,7 +20,7 @@ type UDPAddrData struct {
 // UDPConn 也有能力接收来自其它目标的数据，以及向其它目标发送数据。然而, 本结构并没有记录链接端口, 所以无法实现 symmetric.
 // 如果用 DialUDP 函数初始化的 UDPConn, 则无法使用 WriteMsgTo方法向其它地址发消息.
 //
-//UDPConn 实现了 net.Conn , net.PacketConn , MsgConn
+//UDPConn 实现了 net.Conn , net.PacketConn , MsgConn.
 type UDPConn struct {
 	peerAddr *net.UDPAddr
 	realConn *net.UDPConn
@@ -37,10 +37,7 @@ type UDPConn struct {
 	isClient bool //如果realConn是用 net.DialUDP 产生的, 则为 client，否则认为是server
 }
 
-//我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
-// 主动设置了 内层udp连接的 read的 timeout为 UDP_timeout。
-// 你依然可以设置 DialUDP 所返回的 net.Conn 的 Deadline, 这属于外层的Deadline,
-// 不会影响底层 udp所强制设置的 deadline.
+//DialUDP 对raddr拨号后调用 NewUDPConn
 func DialUDP(raddr *net.UDPAddr) (*UDPConn, error) {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
@@ -51,6 +48,11 @@ func DialUDP(raddr *net.UDPAddr) (*UDPConn, error) {
 
 //如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的。
 // 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
+//
+//我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
+// 主动设置了 内层udp连接的 read的 timeout为 UDP_timeout。
+// 你依然可以设置 DialUDP 所返回的 net.Conn 的 Deadline, 这属于外层的Deadline,
+// 不会影响底层 udp所强制设置的 deadline.
 func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	inDataChan := make(chan UDPAddrData, 20)
 	theUDPConn := &UDPConn{

@@ -1092,7 +1092,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			}
 		}
 
-		clientConn, err = realTargetAddr.Dial()
+		clientConn, err = realTargetAddr.Dial(client.GetSockopt())
 
 		if err != nil {
 			if err == netLayer.ErrMachineCantConnectToIpv6 {

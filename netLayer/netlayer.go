@@ -30,7 +30,7 @@ import (
 var (
 	// 如果机器没有ipv6地址, 就无法联通ipv6, 此时可以在dial时更快拒绝ipv6地址,
 	// 避免打印过多错误输出.
-	weKnowThatWeDontHaveIPV6 bool
+	//weKnowThatWeDontHaveIPV6 bool
 
 	ErrMachineCantConnectToIpv6 = errors.New("ErrMachineCanConnectToIpv6")
 	ErrTimeout                  = errors.New("timeout")
@@ -38,7 +38,7 @@ var (
 
 //做一些网络层的资料准备工作, 可以优化本包其它函数的调用。
 func PrepareInterfaces() {
-	weKnowThatWeDontHaveIPV6 = !HasIpv6Interface()
+	//weKnowThatWeDontHaveIPV6 = !HasIpv6Interface()
 }
 
 //c.SetDeadline(time.Time{})

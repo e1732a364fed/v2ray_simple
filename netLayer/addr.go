@@ -584,7 +584,7 @@ func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
 		}
 
 		if b2 == 0 {
-			err = errors.New("got ATypDomain but domain lenth is marked to be 0")
+			err = errors.New("got ATypDomain with domain lenth marked as 0")
 			return
 		}
 

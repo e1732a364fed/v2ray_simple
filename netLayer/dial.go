@@ -14,10 +14,14 @@ var (
 	CustomDialerMap = make(map[string]func(address string, timeout time.Duration) (net.Conn, error))
 )
 
+const (
+	defaultDialTimeout = time.Second * 8 //作为对照，v2ray默认是16秒
+)
+
 //Dial 可以拨号tcp、udp、unix domain socket、tls 这几种协议。
 //如果不是这几种之一，则会尝试查询 CustomDialerMap 找出匹配的函数进行拨号。
 //如果找不到，则会使用net包的方法进行拨号（其会返回错误）。
-func (a *Addr) Dial() (net.Conn, error) {
+func (a *Addr) Dial(sockopt *Sockopt) (net.Conn, error) {
 	var istls bool
 	var resultConn net.Conn
 	var err error
@@ -34,11 +38,22 @@ func (a *Addr) Dial() (net.Conn, error) {
 	case "udp", "udp4", "udp6":
 		ua := a.ToUDPAddr()
 
-		if weKnowThatWeDontHaveIPV6 && a.IP.To4() == nil {
-			return nil, ErrMachineCantConnectToIpv6
+		if sockopt == nil {
+
+			return DialUDP(ua)
+		} else {
+
+			var c net.Conn
+			c, err = a.DialWithOpt(sockopt)
+			if err == nil {
+				uc := c.(*net.UDPConn)
+				return NewUDPConn(ua, uc, true), nil
+			} else {
+				return nil, err
+			}
+
 		}
 
-		return DialUDP(ua)
 	default:
 		if len(CustomDialerMap) > 0 {
 			if f := CustomDialerMap[n]; f != nil {
@@ -56,10 +71,18 @@ tcp:
 
 		var tcpConn *net.TCPConn
 
-		tcpConn, err = net.DialTCP("tcp", nil, &net.TCPAddr{
-			IP:   a.IP,
-			Port: a.Port,
-		})
+		if sockopt == nil {
+			tcpConn, err = net.DialTCP("tcp", nil, &net.TCPAddr{
+				IP:   a.IP,
+				Port: a.Port,
+			})
+		} else {
+			var c net.Conn
+			c, err = a.DialWithOpt(sockopt)
+			if err == nil {
+				tcpConn = c.(*net.TCPConn)
+			}
+		}
 
 		if err == nil {
 			tcpConn.SetWriteBuffer(utils.MaxPacketLen) //有时不设置writebuffer时，会遇到 write: no buffer space available 错误, 在实现vmess的 ChunkMasking 时 遇到了该问题。
@@ -73,10 +96,24 @@ tcp:
 
 defaultPart:
 	if istls {
-		resultConn, err = net.DialTimeout("tcp", a.String(), time.Second*15)
+		//若tls到达了这里，则说明a的ip没有给出，而只给出了域名，所以上面tcp部分没有直接拨号
+
+		if sockopt == nil {
+			resultConn, err = net.DialTimeout("tcp", a.String(), defaultDialTimeout)
+
+		} else {
+			newA := *a
+			newA.Network = "tcp"
+			resultConn, err = newA.DialWithOpt(sockopt)
+		}
 
 	} else {
-		resultConn, err = net.DialTimeout(a.Network, a.String(), time.Second*15)
+		//一般情况下，unix domain socket 会到达这里，其他情况则都被前面代码捕获到了
+		if sockopt == nil {
+			resultConn, err = net.DialTimeout(a.Network, a.String(), defaultDialTimeout)
+		} else {
+			resultConn, err = a.DialWithOpt(sockopt)
+		}
 
 	}
 
@@ -102,7 +139,7 @@ dialedPart:
 func (a Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
 
 	dialer := &net.Dialer{
-		Timeout: time.Second * 8, //作为对照，v2ray默认是16秒
+		Timeout: defaultDialTimeout,
 	}
 	dialer.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
