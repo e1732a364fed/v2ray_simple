@@ -15,7 +15,7 @@ import (
 
 func interactively_generate_share(conf *proxy.StandardConf) {
 
-	all := []CliCmd{
+	all := []*CliCmd{
 		{
 			Name: "vs标准url (可用于 极简/命令行模式, #163)",
 			f: func() {

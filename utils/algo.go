@@ -10,7 +10,7 @@ import (
 
 //Combinatorics ////////////////////////////////////////////////////////////////
 
-//func AllSubSets edited from https://github.com/mxschmitt/golang-combinations with MIT License
+// func AllSubSets edited from https://github.com/mxschmitt/golang-combinations with MIT License
 // All returns all combinations for a given T array.
 // This is essentially a powerset of the given set except that the empty set is disregarded.
 func AllSubSets[T comparable](set []T) (subsets [][]T) {
@@ -35,7 +35,7 @@ func AllSubSets[T comparable](set []T) (subsets [][]T) {
 	return subsets
 }
 
-//AllSubSets 测速有点慢, 我改进一下内存分配,可加速一倍多
+// AllSubSets 测速有点慢, 我改进一下内存分配,可加速一倍多
 func AllSubSets_improve1[T comparable](set []T) (subsets [][]T) {
 	length := uint(len(set))
 	subsets = make([][]T, 0, length*length)
@@ -60,7 +60,7 @@ func CloneSlice[T any](a []T) (r []T) {
 	copy(r, a)
 	return
 
-	//实际上 golang.org/x/exp/slices 的 Clone 函数也可以, 不过我还是觉得我自己的好理解一些
+	//实际上 golang.org/x/exp/slices 的 Clone 函数也可以
 }
 
 // TrimSlice 从一个slice中移除一个元素, 会直接改动原slice数据
@@ -74,7 +74,59 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 	}
 	return a[:j]
 
-	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以, 不过我还是觉得我自己的好理解一些
+	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以
+}
+
+func SortByOrder[T any](arr []T, order []int) []T {
+	var result = make([]T, len(arr))
+	for i, v := range order {
+		result[i] = arr[v]
+	}
+
+	return result
+}
+
+func MoveItem[T any](arr *[]T, fromIndex, toIndex int) {
+	var item = (*arr)[fromIndex]
+	Splice(arr, fromIndex, 1)
+	Splice(arr, toIndex, 0, item)
+}
+
+// https://github.com/zzwx/splice/blob/main/splice.go
+func Splice[T any](source *[]T, start int, delete int, item ...T) (removed []T) {
+	if start > len(*source) {
+		start = len(*source)
+	}
+	if start < 0 {
+		start = len(*source) + start
+	}
+	if start < 0 {
+		start = 0
+	}
+	if delete < 0 {
+		delete = 0
+	}
+	if delete > 0 {
+		for i := 0; i < delete; i++ {
+			if i+start < len(*source) {
+				removed = append(removed, (*source)[i+start])
+			}
+		}
+	}
+	delete = len(removed) // Adjust to actual delete count
+	grow := len(item) - delete
+	switch {
+	case grow > 0: // So we grow
+		*source = append(*source, make([]T, grow)...)
+		copy((*source)[start+delete+grow:], (*source)[start+delete:])
+	case grow < 0: // So we shrink
+		from := start + len(item)
+		to := start + delete
+		copy((*source)[from:], (*source)[to:])
+		*source = (*source)[:len(*source)+grow]
+	}
+	copy((*source)[start:], item)
+	return
 }
 
 func GetMapSortedKeySlice[K constraints.Ordered, V any](theMap map[K]V) []K {
@@ -93,7 +145,7 @@ func GetMapSortedKeySlice[K constraints.Ordered, V any](theMap map[K]V) []K {
 	return result
 }
 
-//本作的惯例, 经常使用如下字符串作为配置： s = "e1:v1\ne2:v2",
+// 本作的惯例, 经常使用如下字符串作为配置： s = "e1:v1\ne2:v2",
 func CommonSplit(s, e1, e2 string) (ok bool, v1, v2 string) {
 	return CommonSplit_strings(s, e1, e2) //经过benchmark，strings比正则快
 }

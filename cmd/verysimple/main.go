@@ -66,6 +66,7 @@ func init() {
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 
 	flag.BoolVar(&disableSplice, "ds", false, "if given, then the app won't use splice.")
+	flag.BoolVar(&disablePreferenceFeature, "dp", false, "if given, vs won't save your interactive mode preferences.")
 
 	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 
@@ -79,7 +80,7 @@ func init() {
 
 }
 
-//我们 在程序关闭时, 主动Close, Stop
+// 我们 在程序关闭时, 主动Close, Stop
 func cleanup() {
 
 	for _, ser := range allServers {
@@ -461,7 +462,7 @@ func hasProxyRunning() bool {
 	return len(listenCloserList) > 0 || len(tproxyList) > 0
 }
 
-//是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
+// 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
 func isFlexible() bool {
 	return interactive_mode || enableApiServer
 }

@@ -12,7 +12,7 @@ import (
 
 func init() {
 
-	cliCmdList = append(cliCmdList, CliCmd{
+	cliCmdList = append(cliCmdList, &CliCmd{
 		"调节hy手动挡", interactively_hy,
 	})
 

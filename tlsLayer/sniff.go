@@ -91,7 +91,7 @@ type ComSniff struct {
 
 	SpecialCommandBytes []byte //目前规定，使用uuid作为special command
 
-	Auther utils.UserAuther //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
+	Auther utils.UserAuthenticator //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
 
 	SniffedServerName string
 

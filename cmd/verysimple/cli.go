@@ -32,35 +32,39 @@ func init() {
 		return
 	}
 
-	cliCmdList = append(cliCmdList, CliCmd{
+	cliCmdList = append(cliCmdList, &CliCmd{
 		"【生成分享链接】<-当前的配置", func() {
 			sc := getStandardConfFromCurrentState()
 			interactively_generate_share(&sc)
 		},
-	}, CliCmd{
+	}, &CliCmd{
 		"【交互生成配置】，超级强大", generateConfigFileInteractively,
-	}, CliCmd{
+	}, &CliCmd{
 		"热删除配置", interactively_hotRemoveServerOrClient,
-	}, CliCmd{
+	}, &CliCmd{
 		"【热加载】新配置文件", interactively_hotLoadConfigFile,
-	}, CliCmd{
+	}, &CliCmd{
 		"【热加载】新配置url", interactively_hotLoadUrlConfig,
-	}, CliCmd{
+	}, &CliCmd{
 		"调节日志等级", interactively_adjust_loglevel,
 	})
 
 }
 
-//交互式命令行用户界面
+// 交互式命令行用户界面
 //
-//阻塞，可按ctrl+C退出或回退到上一级
+// 阻塞，可按ctrl+C退出或回退到上一级
 func runCli() {
 	defer func() {
 		utils.PrintStr("Interactive Mode exited. \n")
 		if ce := utils.CanLogInfo("Interactive Mode exited"); ce != nil {
 			ce.Write()
 		}
+
+		savePerferences()
 	}()
+
+	loadPreferences()
 
 	/*
 		langList := []string{"简体中文", "English"}
@@ -103,6 +107,11 @@ func runCli() {
 		if f := cliCmdList[i].f; f != nil {
 			f()
 		}
+
+		if currentUserPreference.AutoArrange {
+			updateMostRecentCli(i)
+		}
+
 	}
 
 }
@@ -256,7 +265,7 @@ func generateConfigFileInteractively() {
 	} //for
 }
 
-//热删除配置
+// 热删除配置
 func interactively_hotRemoveServerOrClient() {
 	utils.PrintStr("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
 	utils.PrintStr("【当前所有配置】为：\n")
@@ -473,7 +482,7 @@ func interactively_hotLoadUrlConfig() {
 	}
 }
 
-//热添加配置文件
+// 热添加配置文件
 func interactively_hotLoadConfigFile() {
 	utils.PrintStr("即将开始热添加配置文件\n")
 	utils.PrintStr("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")

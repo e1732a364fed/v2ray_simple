@@ -28,7 +28,7 @@ type UserSet interface {
 }
 
 //通过验证信息 试图取出 一个User
-type UserAuther interface {
+type UserAuthenticator interface {
 	AuthUserByStr(authStr string) User
 	AuthUserByBytes(authBytes []byte) User
 	AuthBytesLen() int
@@ -38,7 +38,7 @@ type UserAuther interface {
 type UserContainer interface {
 	UserSet
 
-	UserAuther
+	UserAuthenticator
 }
 
 // 可以控制 User 登入和登出 的接口

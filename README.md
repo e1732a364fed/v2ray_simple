@@ -104,10 +104,7 @@ cd v2ray_simple/cmd/verysimple && go build
 
 ### 运行前的准备
 
-若为客户端，运行 `./verysimple -i` 进入交互模式，选择下载geosite文件
-
-第一次运行时会自动下载geoip文件。
-
+若为客户端，可运行 `./verysimple -i` 进入交互模式，选择下载geosite文件夹 以及 geoip文件(GeoLite2-Country.mmdb)
 
 可以通过 [交互模式](#交互模式) 来生成自定义的配置。
 

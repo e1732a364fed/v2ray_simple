@@ -46,7 +46,7 @@ func (cc CliCmd) String() string {
 // 	return
 // }
 
-func flist(list []CliCmd) (result []func()) {
+func flist(list []*CliCmd) (result []func()) {
 	for _, v := range list {
 		result = append(result, v.f)
 	}
@@ -54,8 +54,8 @@ func flist(list []CliCmd) (result []func()) {
 }
 
 // cliCmdList 包含所有交互模式中可执行的命令；
-//本文件 中添加的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
-var cliCmdList = []CliCmd{
+// 本文件 中添加的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
+var cliCmdList = []*CliCmd{
 	{
 		"查询当前状态", func() {
 			printAllState(os.Stdout, false)
@@ -81,7 +81,7 @@ func init() {
 
 }
 
-//运行一些 执行后立即退出程序的 命令
+// 运行一些 执行后立即退出程序的 命令
 func runExitCommands() (atLeastOneCalled bool) {
 	if cmdPrintVer {
 		atLeastOneCalled = true
@@ -96,7 +96,7 @@ func runExitCommands() (atLeastOneCalled bool) {
 	return
 }
 
-//在开始正式代理前, 先运行一些需要运行的命令与函数
+// 在开始正式代理前, 先运行一些需要运行的命令与函数
 func runPreCommands() {
 
 	if download {
@@ -171,7 +171,7 @@ func printAllState(w io.Writer, withoutTProxy bool) {
 
 }
 
-//see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
+// see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 func tryDownloadMMDB() {
 	fp := utils.GetFilePath(netLayer.GeoipFileName)
 
@@ -237,7 +237,7 @@ func tryDownloadMMDB() {
 
 }
 
-//试图从自己已经配置好的节点去下载geosite源码文件, 如果没有节点则直连下载。
+// 试图从自己已经配置好的节点去下载geosite源码文件, 如果没有节点则直连下载。
 // 我们只需要一个dial配置即可. listen我们不使用配置文件的配置，而是自行监听一个随机端口用于http代理
 func tryDownloadGeositeSource() {
 
