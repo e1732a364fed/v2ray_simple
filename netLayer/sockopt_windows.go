@@ -11,7 +11,7 @@ import (
 // SetSockOpt 是平台相关的.
 func SetSockOpt(fd int, sockopt *Sockopt, isudp bool, isipv6 bool) {
 	if sockopt.Device != "" {
-		bindToDevice(fd, sockopt.Device)
+		bindToDevice(fd, sockopt.Device, isipv6)
 	}
 }
 
