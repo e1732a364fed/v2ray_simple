@@ -30,6 +30,8 @@ const (
 	kdfSaltConstVMessHeaderPayloadLengthAEADIV  = "VMess Header AEAD Nonce_Length"
 )
 
+const authid_len = 16
+
 func kdf(key []byte, path ...string) []byte {
 	hmacCreator := &hMacCreator{value: []byte(kdfSaltConstVMessAEADKDF)}
 	for _, v := range path {
@@ -58,7 +60,7 @@ func (h *hMacCreator) Create() hash.Hash {
 }
 
 //https://github.com/v2fly/v2fly-github-io/issues/20
-func createAuthID(cmdKey []byte, time int64) [16]byte {
+func createAuthID(cmdKey []byte, time int64) (result [authid_len]byte) {
 	buf := &bytes.Buffer{}
 	binary.Write(buf, binary.BigEndian, time)
 
@@ -69,7 +71,7 @@ func createAuthID(cmdKey []byte, time int64) [16]byte {
 	binary.Write(buf, binary.BigEndian, zero)
 
 	aesBlock, _ := generateCipher(cmdKey)
-	var result [16]byte
+
 	aesBlock.Encrypt(result[:], buf.Bytes())
 	return result
 }
@@ -78,9 +80,7 @@ func generateCipher(cmdKey []byte) (cipher.Block, error) {
 	return aes.NewCipher(kdf16(cmdKey, kdfSaltConstAuthIDEncryptionKey))
 }
 func generateCipherByV2rayUser(u utils.V2rayUser) (cipher.Block, error) {
-	var fixedLengthCmdKey [16]byte
-	copy(fixedLengthCmdKey[:], GetKey(u))
-	return generateCipher(fixedLengthCmdKey[:])
+	return generateCipher(GetKey(u))
 }
 
 //为0表示匹配成功
@@ -90,10 +90,10 @@ func tryMatchAuthIDByBlock(block cipher.Block, bs []byte) (failReason int) {
 	var rand int32
 	var zero uint32
 
-	if len(bs) < utils.UUID_BytesLen {
+	if len(bs) < authid_len {
 		return 1
 	}
-	data := utils.GetBytes(utils.UUID_BytesLen)
+	data := utils.GetBytes(authid_len)
 	block.Decrypt(data, bs)
 
 	buf := bytes.NewBuffer(data)
@@ -114,7 +114,7 @@ func tryMatchAuthIDByBlock(block cipher.Block, bs []byte) (failReason int) {
 	return 0
 }
 
-func sealVMessAEADHeader(key [16]byte, data []byte, t time.Time) []byte {
+func sealAEADHeader(key [16]byte, data []byte, t time.Time) []byte {
 	generatedAuthID := createAuthID(key[:], t.Unix())
 	connectionNonce := make([]byte, 8)
 	rand.Read(connectionNonce)

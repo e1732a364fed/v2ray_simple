@@ -1,6 +1,7 @@
 package vmess
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
@@ -157,19 +158,16 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 
 	// Request
 	if target.IsUDP() {
-		err = conn.handshake(CmdUDP)
+		err = conn.handshake(CmdUDP, firstPayload)
 		conn.theTarget = target
 
 	} else {
-		err = conn.handshake(CmdTCP)
+		err = conn.handshake(CmdTCP, firstPayload)
 
 	}
 
 	if err != nil {
 		return nil, err
-	}
-	if len(firstPayload) > 0 {
-		_, err = conn.Write(firstPayload)
 	}
 
 	return conn, err
@@ -197,6 +195,8 @@ type ClientConn struct {
 
 	dataReader io.Reader
 	dataWriter io.Writer
+
+	vmessout []byte
 }
 
 func (c *ClientConn) CloseConnWithRaddr(_ netLayer.Addr) error {
@@ -228,7 +228,7 @@ func (c *ClientConn) WriteMsgTo(b []byte, _ netLayer.Addr) error {
 }
 
 // handshake sends request to server.
-func (c *ClientConn) handshake(cmd byte) error {
+func (c *ClientConn) handshake(cmd byte, firstpayload []byte) error {
 	buf := utils.GetBuf()
 	defer utils.PutBuf(buf)
 
@@ -273,8 +273,11 @@ func (c *ClientConn) handshake(cmd byte) error {
 
 	var fixedLengthCmdKey [16]byte
 	copy(fixedLengthCmdKey[:], GetKey(c.V2rayUser))
-	vmessout := sealVMessAEADHeader(fixedLengthCmdKey, buf.Bytes(), time.Now())
-	_, err = c.Conn.Write(vmessout)
+	vmessout := sealAEADHeader(fixedLengthCmdKey, buf.Bytes(), time.Now())
+	c.vmessout = vmessout
+
+	_, err = c.Write(firstpayload)
+
 	return err
 
 }
@@ -331,17 +334,37 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 	if c.dataWriter != nil {
 		return c.dataWriter.Write(b)
 	}
-
 	c.dataWriter = c.Conn
+
+	switchChan := make(chan struct{})
+	var outBuf *bytes.Buffer
+	if len(b) == 0 {
+		_, err = c.Conn.Write(c.vmessout)
+		c.vmessout = nil
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		outBuf = bytes.NewBuffer(c.vmessout)
+		writer := &utils.WriteSwitcher{
+			Old:        outBuf,
+			New:        c.Conn,
+			SwitchChan: switchChan,
+			Closer:     c.Conn,
+		}
+
+		c.dataWriter = writer
+	}
+
 	if c.opt&OptChunkStream == OptChunkStream {
 		switch c.security {
 		case SecurityNone:
-			c.dataWriter = ChunkedWriter(c.Conn)
+			c.dataWriter = ChunkedWriter(c.dataWriter)
 
 		case SecurityAES128GCM:
 			block, _ := aes.NewCipher(c.reqBodyKey[:])
 			aead, _ := cipher.NewGCM(block)
-			c.dataWriter = AEADWriter(c.Conn, aead, c.reqBodyIV[:])
+			c.dataWriter = AEADWriter(c.dataWriter, aead, c.reqBodyIV[:])
 
 		case SecurityChacha20Poly1305:
 			key := utils.GetBytes(32)
@@ -350,12 +373,22 @@ func (c *ClientConn) Write(b []byte) (n int, err error) {
 			t = md5.Sum(key[:16])
 			copy(key[16:], t[:])
 			aead, _ := chacha20poly1305.New(key)
-			c.dataWriter = AEADWriter(c.Conn, aead, c.reqBodyIV[:])
+			c.dataWriter = AEADWriter(c.dataWriter, aead, c.reqBodyIV[:])
 			utils.PutBytes(key)
 		}
 	}
 
-	return c.dataWriter.Write(b)
+	n, err = c.dataWriter.Write(b)
+	if len(b) != 0 {
+		close(switchChan)
+		c.vmessout = nil
+
+	}
+	if err != nil {
+		return
+	}
+	_, err = c.Conn.Write(outBuf.Bytes())
+	return
 }
 
 func (c *ClientConn) Read(b []byte) (n int, err error) {

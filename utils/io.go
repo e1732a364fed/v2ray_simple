@@ -5,6 +5,13 @@ import (
 	"sync"
 )
 
+type WriteWrapper interface {
+	io.Writer
+
+	GetRawWriter() io.Writer
+	SetRawWriter(io.Writer)
+}
+
 // bufio.Reader and bytes.Buffer implemented ByteReader
 type ByteReader interface {
 	ReadByte() (byte, error)
@@ -146,17 +153,25 @@ type WriteSwitcher struct {
 	Old, New   io.Writer     //non-nil
 	SwitchChan chan struct{} //non-nil
 	io.Closer
+
+	switched bool
 }
 
 func (d *WriteSwitcher) Write(p []byte) (int, error) {
 
-	select {
-	case <-d.SwitchChan:
-		return d.New.Write(p)
+	if !d.switched {
+		select {
+		case <-d.SwitchChan:
+			d.switched = true
+			return d.New.Write(p)
 
-	default:
-		return d.Old.Write(p)
+		default:
+			return d.Old.Write(p)
+		}
+	} else {
+		return d.New.Write(p)
 	}
+
 }
 
 func (d *WriteSwitcher) Close() error {

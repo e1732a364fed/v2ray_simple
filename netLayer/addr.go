@@ -547,3 +547,89 @@ func UDPAddr2AddrPort(ua *net.UDPAddr) netip.AddrPort {
 	a, _ := netip.AddrFromSlice(ua.IP)
 	return netip.AddrPortFrom(a, uint16(ua.Port))
 }
+
+//依照 vmess/vless 协议的格式 依次读取 地址的 port, 域名/ip 信息
+func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
+
+	pb1, err := buf.ReadByte()
+	if err != nil {
+		return
+	}
+
+	pb2, err := buf.ReadByte()
+	if err != nil {
+		return
+	}
+
+	port := uint16(pb1)<<8 + uint16(pb2)
+	if port == 0 {
+		err = utils.ErrInvalidData
+		return
+	}
+	addr.Port = int(port)
+
+	var b1 byte
+
+	b1, err = buf.ReadByte()
+	if err != nil {
+		return
+	}
+
+	switch b1 {
+	case AtypDomain:
+		var b2 byte
+		b2, err = buf.ReadByte()
+		if err != nil {
+			return
+		}
+
+		if b2 == 0 {
+			err = errors.New("got ATypDomain but domain lenth is marked to be 0")
+			return
+		}
+
+		bs := utils.GetBytes(int(b2))
+		var n int
+		n, err = buf.Read(bs)
+		if err != nil {
+			return
+		}
+
+		if n != int(b2) {
+			err = utils.ErrShortRead
+			return
+		}
+		addr.Name = string(bs[:n])
+
+	case AtypIP4:
+		bs := make([]byte, 4)
+		var n int
+		n, err = buf.Read(bs)
+
+		if err != nil {
+			return
+		}
+		if n != 4 {
+			err = utils.ErrShortRead
+			return
+		}
+		addr.IP = bs
+	case AtypIP6:
+		bs := make([]byte, net.IPv6len)
+		var n int
+		n, err = buf.Read(bs)
+		if err != nil {
+			return
+		}
+		if n != 4 {
+			err = utils.ErrShortRead
+			return
+		}
+		addr.IP = bs
+	default:
+		err = utils.ErrInvalidData
+		return
+	}
+
+	return
+}

@@ -9,16 +9,25 @@ from github.com/Dreamacro/clash/tree/master/transport/vmess/
 aead:
 
 https://github.com/v2fly/v2fly-github-io/issues/20
+
+
+Implementation Details
+
+本作在chash 的 vmess 客户端的 基础上，反推出了 对称的 vmess 服务端，不过为了方便，也使用了 v2ray的 OpenVMessAEADHeader 函数.
+
+实际上 clash的 sealAEADHeader 的代码也是 和v2ray的响应代码十分接近的。这倒不重要，因为文档给出的算法是固定的，所以实现代码都是一样的。二者区别主要是读写代码的结构。
+
+vmess 协议是一个很老旧的协议，有很多向前兼容的代码，很多地方都已经废弃了，我们这里只支持最新的aead.
+
+我们所实现的vmess 服务端 力求简单、最新，不求兼容所有老旧客户端。
+
 */
 package vmess
 
 import (
 	"crypto/md5"
 	"encoding/binary"
-	"errors"
-	"net"
 
-	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
@@ -67,90 +76,4 @@ func TimestampHash(unixSec int64) []byte {
 	md5hash.Write(ts)
 	md5hash.Write(ts)
 	return md5hash.Sum(nil)
-}
-
-//依照 vmess 协议的格式 依次读取 地址的 port, 域名/ip 信息(与vless相同)
-func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
-
-	pb1, err := buf.ReadByte()
-	if err != nil {
-		return
-	}
-
-	pb2, err := buf.ReadByte()
-	if err != nil {
-		return
-	}
-
-	port := uint16(pb1)<<8 + uint16(pb2)
-	if port == 0 {
-		err = utils.ErrInvalidData
-		return
-	}
-	addr.Port = int(port)
-
-	var b1 byte
-
-	b1, err = buf.ReadByte()
-	if err != nil {
-		return
-	}
-
-	switch b1 {
-	case netLayer.AtypDomain:
-		var b2 byte
-		b2, err = buf.ReadByte()
-		if err != nil {
-			return
-		}
-
-		if b2 == 0 {
-			err = errors.New("got ATypDomain but domain lenth is marked to be 0")
-			return
-		}
-
-		bs := utils.GetBytes(int(b2))
-		var n int
-		n, err = buf.Read(bs)
-		if err != nil {
-			return
-		}
-
-		if n != int(b2) {
-			err = utils.ErrShortRead
-			return
-		}
-		addr.Name = string(bs[:n])
-
-	case netLayer.AtypIP4:
-		bs := make([]byte, 4)
-		var n int
-		n, err = buf.Read(bs)
-
-		if err != nil {
-			return
-		}
-		if n != 4 {
-			err = utils.ErrShortRead
-			return
-		}
-		addr.IP = bs
-	case netLayer.AtypIP6:
-		bs := make([]byte, net.IPv6len)
-		var n int
-		n, err = buf.Read(bs)
-		if err != nil {
-			return
-		}
-		if n != 4 {
-			err = utils.ErrShortRead
-			return
-		}
-		addr.IP = bs
-	default:
-		err = utils.ErrInvalidData
-		return
-	}
-
-	return
 }

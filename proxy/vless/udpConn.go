@@ -196,7 +196,7 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 					bs, err := u.readData_with_len()
 					return bs, u.raddr, err
 				case 1:
-					raddr, err := GetAddrFrom(u.bufr)
+					raddr, err := netLayer.V2rayGetAddrFrom(u.bufr)
 					if err != nil {
 						return nil, raddr, err
 					}
@@ -209,7 +209,7 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 				return bs, u.raddr, err
 			}
 		} else {
-			raddr, err := GetAddrFrom(u.bufr)
+			raddr, err := netLayer.V2rayGetAddrFrom(u.bufr)
 			if err != nil {
 				return nil, raddr, err
 			}

@@ -96,7 +96,7 @@ func (s *Server) addUser(u utils.V2rayUser) {
 	s.authPairList = append(s.authPairList, p)
 }
 
-func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
+func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := proxy.SetCommonReadTimeout(underlay); err != nil {
 		returnErr = err
 		return
@@ -109,18 +109,18 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 	if err != nil {
 		returnErr = err
 		return
-	} else if n < utils.UUID_BytesLen {
+	} else if n < authid_len {
 		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 1}
 		return
 	}
-	user, ok := authUserByAuthPairList(data[:utils.UUID_BytesLen], s.authPairList)
+	user, ok := authUserByAuthPairList(data[:authid_len], s.authPairList)
 	if !ok {
 		returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 2}
 		return
 	}
 
 	cmdKey := GetKey(user)
-	remainBuf := bytes.NewBuffer(data[utils.UUID_BytesLen:n])
+	remainBuf := bytes.NewBuffer(data[authid_len:n])
 
 	aeadData, shouldDrain, bytesRead, errorReason := openAEADHeader(cmdKey, data[:16], remainBuf)
 	if errorReason != nil {
@@ -160,7 +160,7 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 	switch sc.cmd {
 	//我们 不支持vmess 的 mux.cool
 	case CmdTCP, CmdUDP:
-		ad, err := GetAddrFrom(aeadDataBuf)
+		ad, err := netLayer.V2rayGetAddrFrom(aeadDataBuf)
 		if err != nil {
 			returnErr = utils.NumErr{E: utils.ErrInvalidData, N: 3}
 			return
@@ -183,14 +183,19 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 		fnv1a.Write(F)
 	*/
 
-	sc.remainBuf = remainBuf
+	sc.remainReadBuf = remainBuf
 
 	buf := utils.GetBuf()
 
 	sc.aead_encodeRespHeader(buf)
-	sc.Conn.Write(buf.Bytes())
+	sc.firstWriteBuf = buf
 
-	result = sc
+	if sc.cmd == CmdTCP {
+		tcpConn = sc
+
+	} else {
+		msgConn = sc
+	}
 
 	return
 }
@@ -212,7 +217,7 @@ type ServerConn struct {
 	respBodyIV  [16]byte
 	respBodyKey [16]byte
 
-	remainBuf *bytes.Buffer
+	remainReadBuf, firstWriteBuf *bytes.Buffer
 
 	dataReader io.Reader
 	dataWriter io.Writer
@@ -261,17 +266,26 @@ func (c *ServerConn) Write(b []byte) (n int, err error) {
 	if c.dataWriter != nil {
 		return c.dataWriter.Write(b)
 	}
+	switchChan := make(chan struct{})
 
-	c.dataWriter = c.Conn
+	//使用 WriteSwitcher 来 粘连 服务器vmess响应 以及第一个数据响应
+	writer := &utils.WriteSwitcher{
+		Old:        c.firstWriteBuf,
+		New:        c.Conn,
+		SwitchChan: switchChan,
+		Closer:     c.Conn,
+	}
+
+	c.dataWriter = writer
 	if c.opt&OptChunkStream == OptChunkStream {
 		switch c.security {
 		case SecurityNone:
-			c.dataWriter = ChunkedWriter(c.Conn)
+			c.dataWriter = ChunkedWriter(writer)
 
 		case SecurityAES128GCM:
 			block, _ := aes.NewCipher(c.respBodyKey[:])
 			aead, _ := cipher.NewGCM(block)
-			c.dataWriter = AEADWriter(c.Conn, aead, c.respBodyIV[:])
+			c.dataWriter = AEADWriter(writer, aead, c.respBodyIV[:])
 
 		case SecurityChacha20Poly1305:
 			key := utils.GetBytes(32)
@@ -280,12 +294,22 @@ func (c *ServerConn) Write(b []byte) (n int, err error) {
 			t = md5.Sum(key[:16])
 			copy(key[16:], t[:])
 			aead, _ := chacha20poly1305.New(key)
-			c.dataWriter = AEADWriter(c.Conn, aead, c.respBodyIV[:])
+			c.dataWriter = AEADWriter(writer, aead, c.respBodyIV[:])
 			utils.PutBytes(key)
 		}
 	}
 
-	return c.dataWriter.Write(b)
+	n, err = c.dataWriter.Write(b)
+
+	close(switchChan)
+
+	if err != nil {
+		return
+	}
+	_, err = c.Conn.Write(c.firstWriteBuf.Bytes())
+	utils.PutBuf(c.firstWriteBuf)
+	c.firstWriteBuf = nil
+	return
 }
 
 func (c *ServerConn) Read(b []byte) (n int, err error) {
@@ -294,8 +318,8 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 		return c.dataReader.Read(b)
 	}
 	var curReader io.Reader
-	if c.remainBuf != nil && c.remainBuf.Len() > 0 {
-		curReader = io.MultiReader(c.remainBuf, c.Conn)
+	if c.remainReadBuf != nil && c.remainReadBuf.Len() > 0 {
+		curReader = io.MultiReader(c.remainReadBuf, c.Conn)
 	} else {
 		curReader = c.Conn
 
@@ -326,4 +350,29 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 
 	return c.dataReader.Read(b)
 
+}
+
+func (c *ServerConn) ReadMsgFrom() (bs []byte, target netLayer.Addr, err error) {
+	bs = utils.GetPacket()
+	var n int
+	n, err = c.Read(bs)
+	if err != nil {
+		utils.PutPacket(bs)
+		bs = nil
+		return
+	}
+	bs = bs[:n]
+	target = c.theTarget
+	return
+}
+
+func (c *ServerConn) WriteMsgTo(b []byte, _ netLayer.Addr) error {
+	_, e := c.Write(b)
+	return e
+}
+func (c *ServerConn) CloseConnWithRaddr(_ netLayer.Addr) error {
+	return c.Conn.Close()
+}
+func (c *ServerConn) Fullcone() bool {
+	return false
 }
