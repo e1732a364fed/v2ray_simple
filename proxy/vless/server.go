@@ -294,9 +294,17 @@ realPart:
 			isServerEnd:       true,
 		}
 
-		if r, rr, mr := netLayer.IsConnGoodForReadv(underlay); r > 0 {
+		if r, rr := netLayer.IsConnGoodForReadv(underlay); r != 0 {
+
+			//一般而言，裸奔时， readvType == -1
+			// 使用普通tls时， readvType ==0
+			//使用 shadowTls 时, readvType == 1
+
 			uc.rr = rr
-			uc.mr = mr
+			uc.readvType = r
+			if r == 1 {
+				uc.br = underlay.(utils.BuffersReader)
+			}
 		}
 		return uc, nil, targetAddr, nil
 

@@ -34,8 +34,11 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 	var isWriteConn_MultiWriter bool
 
 	var mr utils.MultiReader
+	var br utils.BuffersReader
 
 	var readv_withMultiReader bool
+
+	readvType := 0
 
 	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
 		ce.Write(
@@ -110,8 +113,12 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 	if rawReadConn == nil {
 		var ok bool
 		mr, ok = readConn.(utils.MultiReader)
-		if ok && mr.WillReadBuffersBenifit() {
-			readv_withMultiReader = true
+		if ok {
+			readvType = mr.WillReadBuffersBenifit()
+			if readvType != 0 {
+				readv_withMultiReader = true
+
+			}
 		} else {
 			goto classic
 
@@ -144,6 +151,34 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 		if !readv_withMultiReader {
 			readv_mem = utils.Get_readvMem()
 			defer utils.Put_readvMem(readv_mem)
+		} else {
+			//循环读写直到 CanMultiRead 返回 true
+			bs := utils.GetPacket()
+			for {
+				if mr.CanMultiRead() {
+					break
+				}
+				var n int
+				n, err = readConn.Read(bs)
+				if err != nil {
+					return
+				}
+				n, err = writeConn.Write(bs[:n])
+
+				allnum += int64(n)
+				if err != nil {
+					return
+				}
+			}
+
+			utils.PutPacket(bs)
+
+			if readvType == 2 {
+				readv_withMultiReader = false
+				rawReadConn = readConn.(utils.Readver).GetRawForReadv()
+			} else {
+				br = readConn.(utils.BuffersReader)
+			}
 		}
 
 		//这个for循环 只会通过 return 跳出, 不会落到外部
@@ -151,7 +186,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 			var buffers net.Buffers
 
 			if readv_withMultiReader {
-				buffers, err = mr.ReadBuffers()
+				buffers, err = br.ReadBuffers()
 
 			} else {
 				buffers, err = utils.ReadvFrom(rawReadConn, readv_mem)

@@ -3,6 +3,7 @@ package utils
 import (
 	"io"
 	"log"
+	"syscall"
 )
 
 // SystemReadver 是平台相关的 用于 调用readv的 工具.
@@ -45,17 +46,25 @@ type MultiWriter interface {
 	WriteBuffers([][]byte) (int64, error)
 }
 
-// 专门用于 grpc multiMode 的情况.
-// 因为其他协议并没有能够加速的情形。
 type MultiReader interface {
-	ReadBuffers() ([][]byte, error)
 
-	//在底层没有实现readbuffers时，显然调用 ReadBuffers没有什么意义。
+	//在底层没有实现readbuffers时, 或者协议设计中并没有涉及多buf, 则显然调用 ReadBuffers没有什么意义。
 	//所以我们通过 WillReadBuffersBenifit 方法 查询 调用是否有益。
-	WillReadBuffersBenifit() bool
+	//如果int为1，说明它是一个 BuffersReader； 如果int为2，说明它是一个 Readver
+	WillReadBuffersBenifit() int
+
+	CanMultiRead() bool //一个协议的握手阶段可能需要一些操作后，才能真正执行MultiRead
 }
 
-//获取所有子[]byte 长度总和
+type BuffersReader interface {
+	ReadBuffers() ([][]byte, error)
+}
+
+type Readver interface {
+	GetRawForReadv() syscall.RawConn
+}
+
+// 获取所有子[]byte 长度总和
 func BuffersLen(bs [][]byte) (allnum int) {
 	if len(bs) < 1 {
 		return 0
@@ -72,7 +81,7 @@ func PrintBuffers(bs [][]byte) {
 	}
 }
 
-//削减buffer内部的子[]byte 到合适的长度;返回削减后 bs应有的长度.
+// 削减buffer内部的子[]byte 到合适的长度;返回削减后 bs应有的长度.
 func ShrinkBuffers(bs [][]byte, all_len int, SingleBufLen int) int {
 	curIndex := 0
 	for curIndex < len(bs) {
@@ -90,7 +99,7 @@ func ShrinkBuffers(bs [][]byte, all_len int, SingleBufLen int) int {
 	return curIndex
 }
 
-//通过reslice 方式将 bs的长度以及 子 []byte 的长度 恢复至指定长度
+// 通过reslice 方式将 bs的长度以及 子 []byte 的长度 恢复至指定长度
 func RecoverBuffers(bs [][]byte, oldLen, old_sub_len int) [][]byte {
 	bs = bs[:oldLen]
 	for i, v := range bs {
@@ -113,10 +122,12 @@ func BuffersWriteTo(bs [][]byte, writeConn io.Writer) (num int64, err2 error) {
 }
 
 // 如果 分配了新内存来 包含数据，则 duplicate ==true, 此时可以用PutPacket函数放回;
-//  如果利用了原有的第一个[]byte, 则 duplicate==false。
+//
+//	如果利用了原有的第一个[]byte, 则 duplicate==false。
 //
 // 如果 duplicate==false, 不要 使用 PutPacket等方法放入Pool；
-//  因为 在更上级的调用会试图去把 整个bs 放入pool;
+//
+//	因为 在更上级的调用会试图去把 整个bs 放入pool;
 func MergeBuffers(bs [][]byte) (result []byte, duplicate bool) {
 	if len(bs) < 1 {
 		return

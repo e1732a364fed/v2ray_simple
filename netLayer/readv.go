@@ -21,17 +21,18 @@ var (
 	UseReadv bool
 )
 
-// if r!=0, then it means c can be used in readv. 1 means syscall.RawConn, 2 means utils.MultiReader
-func IsConnGoodForReadv(c net.Conn) (r int, rawReadConn syscall.RawConn, mr utils.MultiReader) {
+// if r!=0, then it means c can be used in readv. -1 means syscall.RawConn,1 means utils.BuffersReader, 2 means  utils.Readver
+func IsConnGoodForReadv(c net.Conn) (r int, rawReadConn syscall.RawConn) {
 	rawReadConn = GetRawConn(c)
-	var ok bool
+
 	if rawReadConn != nil {
-		r = 1
+		r = -1
 		return
 
-	} else if mr, ok = c.(utils.MultiReader); ok {
-		r = 2
+	} else if mr, ok := c.(utils.MultiReader); ok {
+		r = mr.WillReadBuffersBenifit()
 		return
+
 	}
 	return
 }

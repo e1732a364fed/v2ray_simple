@@ -28,8 +28,10 @@ type UserTCPConn struct {
 
 	isntFirstPacket bool //for v0
 
-	rr syscall.RawConn   //用于 Readbuffers
-	mr utils.MultiReader //用于 Readbuffers
+	rr syscall.RawConn //用于 Readbuffers
+
+	readvType int
+	br        utils.BuffersReader
 }
 
 func (u *UserTCPConn) GetProtocolVersion() int {
@@ -61,20 +63,27 @@ func (c *UserTCPConn) EverPossibleToSpliceRead() bool {
 	return false
 }
 
-func (c *UserTCPConn) CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
+func (c *UserTCPConn) noHandshakeShit() bool {
 	if c.isServerEnd {
 		if c.remainFirstBufLen > 0 {
-			return false, nil, nil
+			return false
 		}
 
 	} else if c.version == 0 {
 		if !c.isntFirstPacket {
-			return false, nil, nil
+			return false
 		}
 	}
+	return true
+}
 
-	return netLayer.ReturnSpliceRead(c.Conn)
+func (c *UserTCPConn) CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
 
+	if c.noHandshakeShit() {
+		return netLayer.ReturnSpliceRead(c.Conn)
+
+	}
+	return false, nil, nil
 }
 
 func (c *UserTCPConn) EverPossibleToSpliceWrite() bool {
@@ -103,10 +112,6 @@ func (c *UserTCPConn) CanSpliceWrite() (r bool, conn *net.TCPConn) {
 	}
 
 	return
-}
-
-func (c *UserTCPConn) WillReadBuffersBenifit() bool {
-	return c.rr != nil || c.mr != nil
 }
 
 func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
@@ -252,47 +257,42 @@ func (c *UserTCPConn) Read(p []byte) (int, error) {
 	}
 }
 
-func (c *UserTCPConn) ReadBuffers() (bs [][]byte, err error) {
+func (c *UserTCPConn) WillReadBuffersBenifit() int {
 
-	if !c.isServerEnd {
-
-		if c.version == 0 && !c.isntFirstPacket {
-
-			c.isntFirstPacket = true
-
-			packet := utils.GetPacket()
-			var n int
-			n, err = c.Read(packet)
-			if err != nil {
-				utils.PutPacket(packet)
-				return
-			}
-			if n < 2 {
-				utils.PutPacket(packet)
-				return nil, errors.New("vless response head too short")
-			}
-			bs = append(bs, packet[2:n])
-			return
-
-		} else {
-
-			return utils.ReadBuffersFrom(c.Conn, c.rr, c.mr)
-
-		}
-
-	} else {
-
-		if c.remainFirstBufLen > 0 { //firstPayload 已经被最开始的main.go 中的 Read读掉了，所以 在调用 ReadBuffers 时 c.remainFirstBufLen 一般为 0, 所以一般不会调用这里
-
-			bs, err = utils.ReadBuffersFrom(c.optionalReader, nil, nil)
-			c.remainFirstBufLen -= utils.BuffersLen(bs)
-			return
-		} else {
-
-			return utils.ReadBuffersFrom(c.Conn, c.rr, c.mr)
-
-		}
-
+	if c.readvType == -1 || c.readvType == 2 { //底层连接为原始链接，或者Readver时, 我们用Readv
+		return 2
+	}
+	if c.readvType == 1 { //底层连接为 BuffersReader 时，我们用 BuffersReader
+		return 1
 	}
 
+	return 0
+
+}
+
+func (c *UserTCPConn) CanMultiRead() bool {
+
+	switch c.readvType {
+	case -1:
+		return c.noHandshakeShit()
+	case 1, 2:
+		if c.noHandshakeShit() {
+			if c.Conn.(utils.MultiReader).CanMultiRead() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (c *UserTCPConn) GetRawForReadv() syscall.RawConn {
+	if c.rr != nil {
+		return c.rr
+	} else {
+		return c.Conn.(utils.Readver).GetRawForReadv()
+	}
+}
+
+func (c *UserTCPConn) ReadBuffers() (bs [][]byte, err error) {
+	return c.br.ReadBuffers()
 }

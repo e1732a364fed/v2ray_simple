@@ -111,6 +111,7 @@ func ReadvFrom(rawReadConn syscall.RawConn, rm *ReadvMem) ([][]byte, error) {
 	return allocedBuffers[:nBuf], nil
 }
 
+/*
 // 依次试图使用 readv、ReadBuffers 以及 原始 Read 读取数据
 func ReadBuffersFrom(c io.Reader, rawReadConn syscall.RawConn, mr MultiReader) (buffers [][]byte, err error) {
 
@@ -133,3 +134,4 @@ func ReadBuffersFrom(c io.Reader, rawReadConn syscall.RawConn, mr MultiReader) (
 	}
 	return
 }
+*/

@@ -156,9 +156,12 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 			version:         c.version,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
 		}
-		if r, rr, mr := netLayer.IsConnGoodForReadv(underlay); r > 0 {
+		if r, rr := netLayer.IsConnGoodForReadv(underlay); r != 0 {
 			uc.rr = rr
-			uc.mr = mr
+			uc.readvType = r
+			if r == 1 {
+				uc.br = underlay.(utils.BuffersReader)
+			}
 		}
 
 		return uc, nil
