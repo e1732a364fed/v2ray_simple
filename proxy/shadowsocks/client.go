@@ -18,7 +18,7 @@ func init() {
 type ClientCreator struct{ proxy.CreatorCommonStruct }
 
 func (ClientCreator) UseUDPAsMsgConn() bool {
-	return true
+	return false
 }
 func (ClientCreator) MultiTransportLayer() bool {
 	return true

@@ -136,8 +136,8 @@ func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 		if !ok {
 			return 0, uc.peerAddr, io.EOF
 		}
-		n = copy(msg.Data, p)
-		return n, uc.peerAddr, io.EOF
+		n = copy(p, msg.Data)
+		return n, uc.peerAddr, nil //io.EOF
 
 	case <-uc.readDeadline.Wait():
 		return 0, uc.peerAddr, os.ErrDeadlineExceeded

@@ -1195,7 +1195,12 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var dialedCommonConn any
 
-	not_dial_here := !(realTargetAddr.Network == "udp" && client.GetCreator().UseUDPAsMsgConn())
+	switch realTargetAddr.Network {
+	case netLayer.DualNetworkName:
+		realTargetAddr.Network = targetAddr.Network
+	}
+
+	dialhere := !(realTargetAddr.Network == "udp" && client.GetCreator().UseUDPAsMsgConn())
 
 	/*
 		direct和shadowsocks的udp是自己拨号的，因为它用到了udp的包特性
@@ -1210,7 +1215,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 	var muxC advLayer.MuxClient
 
-	if not_dial_here {
+	if dialhere {
 
 		if adv != "" && advClient.IsMux() {
 
