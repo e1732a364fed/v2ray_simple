@@ -202,6 +202,10 @@ func (rs *RouteSet) IsAddrIn(a Addr) bool {
 
 	//开始网络层判断
 	if len(a.IP) > 0 {
+		if ip4 := a.IP.To4(); ip4 != nil { //发现有时传入的是ipv6形式的ipv4，这会对我们过滤干扰
+			a.IP = ip4
+		}
+
 		if rs.NetRanger != nil && rs.NetRanger.Len() > 0 {
 			if has, _ := rs.NetRanger.Contains(a.IP); has {
 				return true
