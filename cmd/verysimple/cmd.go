@@ -25,8 +25,7 @@ var (
 	cmdPrintSupportedProtocols bool
 	cmdPrintVer                bool
 
-	interactive_mode bool
-	download         bool
+	download bool
 
 	defaultApiServerConf machine.ApiServerConf
 )

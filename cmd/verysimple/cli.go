@@ -18,6 +18,8 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+var interactive_mode bool
+
 type CliCmd struct {
 	Name string
 	f    func()

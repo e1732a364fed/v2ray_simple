@@ -214,7 +214,7 @@ func mainFunc() (result int) {
 		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
 	}
 
-	if loadConfigErr != nil && !defaultMachine.IsFlexible() {
+	if loadConfigErr != nil && !defaultMachine.IsFlexible(interactive_mode, gui_mode) {
 
 		if ce := utils.CanLogErr(willExitStr); ce != nil {
 			ce.Write(zap.Error(loadConfigErr))
@@ -358,7 +358,7 @@ func mainFunc() (result int) {
 	}
 
 	//没可用的listen/dial，而且还无法动态更改配置
-	if defaultMachine.NoFuture() {
+	if defaultMachine.NoFuture(interactive_mode, gui_mode) {
 		utils.Error(willExitStr)
 		return -1
 	}
@@ -397,7 +397,7 @@ func mainFunc() (result int) {
 		}
 	}
 
-	if defaultMachine.NothingRunning() {
+	if defaultMachine.NothingRunning(interactive_mode, gui_mode) {
 		utils.Warn(willExitStr)
 		return
 	}

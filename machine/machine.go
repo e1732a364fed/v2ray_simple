@@ -31,9 +31,7 @@ type M struct {
 
 	ListenCloserList []io.Closer
 
-	Interactive_mode bool
 	ApiServerRunning bool
-	Gui_mode         bool
 	EnableApiServer  bool
 }
 
@@ -68,16 +66,16 @@ func (m *M) HasProxyRunning() bool {
 }
 
 // 是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
-func (m *M) IsFlexible() bool {
-	return m.Interactive_mode || m.EnableApiServer || m.Gui_mode
+func (m *M) IsFlexible(interactive_mode, Gui_mode bool) bool {
+	return interactive_mode || m.EnableApiServer || Gui_mode
 }
 
-func (m *M) NoFuture() bool {
-	return !m.HasProxyRunning() && !m.IsFlexible()
+func (m *M) NoFuture(interactive_mode, Gui_mode bool) bool {
+	return !m.HasProxyRunning() && !m.IsFlexible(interactive_mode, Gui_mode)
 }
 
-func (m *M) NothingRunning() bool {
-	return !m.HasProxyRunning() && !(m.Interactive_mode || m.ApiServerRunning || m.Gui_mode)
+func (m *M) NothingRunning(interactive_mode, Gui_mode bool) bool {
+	return !m.HasProxyRunning() && !(interactive_mode || m.ApiServerRunning || Gui_mode)
 }
 
 func (m *M) PrintAllState(w io.Writer) {
