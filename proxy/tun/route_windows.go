@@ -25,12 +25,12 @@ func init() {
 		lines := strings.Split(string(out), "\n")
 		for i, l := range lines {
 			if strings.HasPrefix(l, "IPv4 Route Table") {
-				if i < len(lines)-3 && strings.HasPrefix(lines[i+1], "Network") {
+				if i < len(lines)-3 && strings.HasPrefix(lines[i+3], "Network") {
 					str := utils.StandardizeSpaces(lines[i+4])
 					fields := strings.Split(str, " ")
 
 					if len(fields) > 3 {
-						routerIP := fields[3]
+						routerIP := fields[2]
 						if ce := utils.CanLogInfo("auto route: Your router's ip should be"); ce != nil {
 							ce.Write(zap.String("ip", routerIP))
 						}
