@@ -37,7 +37,7 @@ func (sc *StreamConn) RemoteAddr() net.Addr {
 }
 
 //implements netLayer.RejectConn, return false
-func (sc *StreamConn) HasOwnDefaultRejectBehavior() bool {
+func (sc *StreamConn) RejectBehaviorDefined() bool {
 	return false
 }
 

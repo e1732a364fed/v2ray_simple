@@ -113,7 +113,7 @@ func (c *Conn) RemoteAddr() net.Addr {
 }
 
 //implements netLayer.RejectConn, return false
-func (c *Conn) HasOwnDefaultRejectBehavior() bool {
+func (c *Conn) RejectBehaviorDefined() bool {
 	return false
 }
 
