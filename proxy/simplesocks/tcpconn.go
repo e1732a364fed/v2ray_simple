@@ -10,13 +10,17 @@ import (
 
 type TCPConn struct {
 	net.Conn
-	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
+	optionalReader io.Reader
 
 	remainFirstBufLen int //记录读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
 
 	underlayIsBasic bool
 
 	isServerEnd bool
+}
+
+func (c *TCPConn) GetRawConn() net.Conn {
+	return c.Conn
 }
 
 func (c *TCPConn) Read(p []byte) (int, error) {

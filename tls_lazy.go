@@ -10,6 +10,7 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/proxy/vless"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -87,12 +88,33 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 		//wrc 有两种情况，如果客户端那就是tls，服务端那就是direct。我们不讨论服务端 处于中间层的情况
 
 		if isclient {
-			// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
-			// 很明显，目前我们只支持vless所以才可这么操作，以后再说。
+			// vless v0 或者trojan时，客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
+			// 而vless v1时，在客户端是直接就是 *tlsLayer.Conn
 
-			wrcWrapper := wrc.(netLayer.ConnWrapper)
-			tlsConn := wrcWrapper.GetRawConn().(*tlsLayer.Conn)
-			rawWRC = tlsConn.GetRaw(true)
+			//总之只能先用笨拙的穷举情况判断，以后再做优化
+
+			var isTlsDirectly bool
+
+			switch proxy_client.Name() {
+			case "socks5":
+				isTlsDirectly = true
+
+			case "vless":
+				vc := proxy_client.(*vless.Client)
+				if vc.Version() > 0 {
+					isTlsDirectly = true
+				}
+
+			}
+
+			if isTlsDirectly {
+				tlsConn := wrc.(*tlsLayer.Conn)
+				rawWRC = tlsConn.GetRaw(true)
+			} else {
+				wrcWrapper := wrc.(netLayer.ConnWrapper)
+				tlsConn := wrcWrapper.GetRawConn().(*tlsLayer.Conn)
+				rawWRC = tlsConn.GetRaw(true)
+			}
 
 		} else {
 			rawWRC = wrc.(*net.TCPConn) //因为是direct
