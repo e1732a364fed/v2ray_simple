@@ -23,14 +23,14 @@ func testTls(protocol string, t *testing.T) {
 	port := netLayer.RandPortStr(true, false)
 
 	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@localhost:" + port + "?alterID=4&cert=../cert.pem&key=../cert.key&insecure=1"
-	server, hase, errx := proxy.ServerFromURL(url)
-	if hase {
+	server, errx := proxy.ServerFromURL(url)
+	if errx != nil {
 		t.Log("fail1", errx)
 		t.FailNow()
 	}
 	defer server.Stop()
-	client, hase, errx := proxy.ClientFromURL(url)
-	if hase {
+	client, errx := proxy.ClientFromURL(url)
+	if errx != nil {
 		t.Log("fail2", errx)
 		t.FailNow()
 	}

@@ -1,4 +1,10 @@
-// Package vless implements vless v0/v1 for proxy.Client and proxy.Server
+/* Package vless implements vless v0/v1 for proxy.Client and proxy.Server.
+
+
+vless的客户端配置 分享url文档：
+https://github.com/XTLS/Xray-core/discussions/716
+
+*/
 package vless
 
 import (
@@ -35,7 +41,6 @@ func WriteAddrTo(writeBuf utils.ByteWriter, raddr netLayer.Addr) {
 
 }
 
-//https://github.com/XTLS/Xray-core/discussions/716
 func GenerateXrayShareURL(dialconf *proxy.DialConf) string {
 
 	var u url.URL

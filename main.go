@@ -43,7 +43,7 @@ var (
 var (
 
 	//一个默认的 非 fullcone 的 direct Client
-	DirectClient, _, _ = proxy.ClientFromURL(proxy.DirectURL)
+	DirectClient, _ = proxy.ClientFromURL(proxy.DirectURL)
 )
 
 //用于回落到h2c

@@ -39,13 +39,6 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 //implements ClientCreator for reject
 type RejectCreator struct{}
 
-func (RejectCreator) NewClientFromURL(url *url.URL) (Client, error) {
-	r := &RejectClient{}
-	r.initWithUrl(url)
-
-	return r, nil
-}
-
 func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	r := &RejectClient{}
 
@@ -54,11 +47,36 @@ func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	return r, nil
 }
 
-func (RejectCreator) NewServerFromURL(url *url.URL) (Server, error) {
-	r := &RejectServer{}
-	r.initWithUrl(url)
+func (RejectCreator) initCommonConfByURL(url *url.URL, lc *CommonConf, format int) {
 
-	return r, nil
+	if format != UrlStandardFormat {
+		return
+	}
+
+	nStr := url.Query().Get("type")
+
+	if nStr != "" {
+
+		lc.Extra = make(map[string]any)
+		lc.Extra["type"] = nStr
+
+	}
+
+}
+
+func (rc RejectCreator) URLToDialConf(url *url.URL, format int) (*DialConf, error) {
+	dc := &DialConf{}
+	rc.initCommonConfByURL(url, &dc.CommonConf, format)
+
+	return dc, nil
+}
+
+func (rc RejectCreator) URLToListenConf(url *url.URL, format int) (*ListenConf, error) {
+
+	lc := &ListenConf{}
+	rc.initCommonConfByURL(url, &lc.CommonConf, format)
+
+	return lc, nil
 }
 
 func (RejectCreator) NewServer(lc *ListenConf) (Server, error) {
@@ -72,18 +90,10 @@ func (RejectCreator) NewServer(lc *ListenConf) (Server, error) {
 type rejectCommon struct {
 	Base
 
-	theType string
+	theType string //拒绝响应的类型, 可为空、http或nginx
 }
 
 func (*rejectCommon) Name() string { return RejectName }
-
-func (rc *rejectCommon) initWithUrl(url *url.URL) {
-	nStr := url.Query().Get("type")
-	if nStr != "" {
-		rc.theType = nStr
-	}
-
-}
 
 func (rc *rejectCommon) initWithCommonConf(cc *CommonConf) {
 	if cc.Extra != nil {

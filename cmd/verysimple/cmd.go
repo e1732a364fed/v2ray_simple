@@ -23,17 +23,17 @@ import (
 
 var (
 	cmdPrintSupportedProtocols bool
+	cmdPrintVer                bool
 
 	interactive_mode bool
 	download         bool
-	cmdPrintVer      bool
 )
 
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
+	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
-	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 
 	//本文件 中定义的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
 
@@ -41,27 +41,19 @@ func init() {
 		"生成一个随机的uuid供你参考", func() {
 			generateAndPrintUUID()
 		},
-	})
-
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"下载geosite文件夹", func() {
 			tryDownloadGeositeSource()
 		},
-	})
-
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"下载geoip文件(GeoLite2-Country.mmdb)", func() {
 			tryDownloadMMDB()
 		},
-	})
-
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"打印当前版本所支持的所有协议", func() {
 			printSupportedProtocols()
 		},
-	})
-
-	cliCmdList = append(cliCmdList, CliCmd{
+	}, CliCmd{
 		"查询当前状态", func() {
 			printAllState(os.Stdout, false)
 		},
@@ -285,12 +277,11 @@ func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 }
 
 func loadSimpleServer() (result int, server proxy.Server) {
-	var hase bool
-	var eie utils.ErrInErr
-	server, hase, eie = proxy.ServerFromURL(simpleConf.ListenUrl)
-	if hase {
+	var e error
+	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
+	if e != nil {
 		if ce := utils.CanLogErr("can not create local server"); ce != nil {
-			ce.Write(zap.String("error", eie.Error()))
+			ce.Write(zap.String("error", e.Error()))
 		}
 		result = -1
 		return
@@ -313,12 +304,11 @@ func loadSimpleServer() (result int, server proxy.Server) {
 }
 
 func loadSimpleClient() (result int, client proxy.Client) {
-	var hase bool
-	var eie utils.ErrInErr
-	client, hase, eie = proxy.ClientFromURL(simpleConf.DialUrl)
-	if hase {
+	var e error
+	client, e = proxy.ClientFromURL(simpleConf.DialUrl)
+	if e != nil {
 		if ce := utils.CanLogErr("can not create remote client"); ce != nil {
-			ce.Write(zap.String("error", eie.Error()))
+			ce.Write(zap.String("error", e.Error()))
 		}
 		result = -1
 		return

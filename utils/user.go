@@ -22,8 +22,8 @@ type UserWithPass interface {
 	GetPassword() []byte
 }
 
-//判断用户是否存在并取出
-type UserHaser interface {
+//用户集合，判断用户是否存在并取出
+type UserSet interface {
 	HasUserByBytes(bs []byte) User
 	IDBytesLen() int //用户名bytes的最小长度
 }
@@ -35,9 +35,9 @@ type UserAuther interface {
 	AuthBytesLen() int
 }
 
-//可判断是否存在，也可以验证
+//用户容器，可判断是否存在，也可以验证
 type UserContainer interface {
-	UserHaser
+	UserSet
 
 	UserAuther
 }
@@ -198,7 +198,7 @@ func (ph *UserPass) InitWithStr(str string) (ok bool) {
 	return
 }
 
-//implements UserBus, UserHaser, UserGetter; 只能存储同一类型的User.
+//implements UserBus, UserSet, UserGetter; 只能存储同一类型的User.
 // 通过 bytes存储用户id，而不是 str。
 type MultiUserMap struct {
 	IDMap   map[string]User

@@ -17,8 +17,8 @@ const (
 //implements ClientCreator for direct
 type DirectCreator struct{}
 
-func (DirectCreator) NewClientFromURL(url *url.URL) (Client, error) {
-	d := &DirectClient{}
+func (DirectCreator) URLToDialConf(url *url.URL, format int) (*DialConf, error) {
+	d := &DialConf{}
 
 	return d, nil
 }

@@ -35,16 +35,21 @@ func PrintAllClientNames() {
 	}
 }
 
-//可通过两种配置方式来初始化。
+//可通过标准配置或url 来初始化。
 type ClientCreator interface {
-	NewClient(*DialConf) (Client, error)
-	NewClientFromURL(url *url.URL) (Client, error)
+	//大部分通用内容都会被proxy包解析，方法只需要处理proxy包未知的内容
+	NewClient(*DialConf) (Client, error) //标准配置
+
+	URLToDialConf(url *url.URL, format int) (*DialConf, error)
+	//DialConfToURL(url *DialConf, format int) (*url.URL, error)
 }
 
 //可通过两种配置方式来初始化。
 type ServerCreator interface {
 	NewServer(*ListenConf) (Server, error)
-	NewServerFromURL(url *url.URL) (Server, error)
+
+	URLToListenConf(url *url.URL, format int) (*ListenConf, error)
+	//ListenConfToURL(url *ListenConf, format int) (*url.URL, error)
 }
 
 // 规定，每个 实现Client的包必须使用本函数进行注册。
@@ -68,19 +73,19 @@ func NewClient(dc *DialConf) (Client, error) {
 	creator, ok := clientCreatorMap[protocol]
 	if ok {
 
-		return newclient(creator, dc, false)
+		return newClient(creator, dc, false)
 	} else {
 		realScheme := strings.TrimSuffix(protocol, "s")
 		creator, ok = clientCreatorMap[realScheme]
 		if ok {
-			return newclient(creator, dc, true)
+			return newClient(creator, dc, true)
 		}
 	}
 	return nil, utils.ErrInErr{ErrDesc: "Unknown client protocol ", Data: protocol}
 
 }
 
-func newclient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, error) {
+func newClient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, error) {
 	c, e := creator.NewClient(dc)
 	if e != nil {
 		return nil, e
@@ -136,19 +141,19 @@ func NewServer(lc *ListenConf) (Server, error) {
 	protocol := lc.Protocol
 	creator, ok := serverCreatorMap[protocol]
 	if ok {
-		return newserver(creator, lc, false)
+		return newServer(creator, lc, false)
 	} else {
 		realScheme := strings.TrimSuffix(protocol, "s")
 		creator, ok = serverCreatorMap[realScheme]
 		if ok {
-			return newserver(creator, lc, true)
+			return newServer(creator, lc, true)
 		}
 	}
 
 	return nil, utils.ErrInErr{ErrDesc: "Unknown server protocol ", Data: protocol}
 }
 
-func newserver(creator ServerCreator, lc *ListenConf, knownTls bool) (Server, error) {
+func newServer(creator ServerCreator, lc *ListenConf, knownTls bool) (Server, error) {
 	ser, err := creator.NewServer(lc)
 	if err != nil {
 		return nil, err

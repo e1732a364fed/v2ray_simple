@@ -1,79 +1,84 @@
 package proxy
 
 import (
-	"log"
 	"net/url"
 	"strings"
 
-	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	"go.uber.org/zap"
 )
 
 const (
-	UrlNativeMode   = iota //proxy对应的标准文档所定义的url模式，一般散布于对应github的文档上
-	UrlStandardMode        //VS定义的 供 所有proxy 使用的 标准 url模式
+	UrlNativeFormat   = iota //proxy对应的标准文档所定义的url模式，一般散布于对应github的文档上
+	UrlStandardFormat        //VS定义的 供 所有proxy 使用的 标准 url模式
+
 )
 
 var (
-	//关于url模式， 见 https://github.com/e1732a364fed/v2ray_simple/discussions/163
-	UrlMode = UrlNativeMode
+	// Url格式 设置以何种方式解析 命令行模式/极简模式 中出现的url配置
+	//
+	//关于url格式的详细， 见 https://github.com/e1732a364fed/v2ray_simple/discussions/163
+	UrlFormat = UrlStandardFormat
 )
 
 // ClientFromURL calls the registered creator to create client. The returned bool is true if has err.
-func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
+func ClientFromURL(s string) (Client, error) {
 	u, err := url.Parse(s)
 	if err != nil {
 
-		return nil, true, utils.ErrInErr{ErrDesc: "Can't parse client url", ErrDetail: err, Data: s}
+		return nil, utils.ErrInErr{ErrDesc: "Can't parse client url", ErrDetail: err, Data: s}
 	}
 
 	schemeName := strings.ToLower(u.Scheme)
 
 	creator, ok := clientCreatorMap[schemeName]
-	if ok {
-		return clientFromURL(creator, u, false)
-	} else {
 
-		//尝试判断是否套tls, 比如vlesss实际上是vless+tls，https实际上是http+tls
+	var okTls bool
 
+	if !ok {
 		realScheme := strings.TrimSuffix(schemeName, "s")
-		creator, ok = clientCreatorMap[realScheme]
-		if ok {
-			return clientFromURL(creator, u, true)
+		creator, okTls = clientCreatorMap[realScheme]
+	}
+	//尝试判断是否套tls, 比如vlesss实际上是vless+tls，https实际上是http+tls
+
+	if okTls {
+		ok = true
+	}
+
+	if ok {
+
+		dc, e := creator.URLToDialConf(u, UrlStandardFormat)
+		if e != nil {
+
+			return nil, e
+		}
+		if UrlFormat == UrlStandardFormat {
+			setConfByStandardURL(&dc.CommonConf, u)
+
+			if okTls {
+				dc.TLS = true
+				prepareTLS_forConf_withStandardURL(u, &dc.CommonConf, nil, dc)
+
+			}
 		}
 
-	}
+		c, e := newClient(creator, dc, false)
 
-	return nil, false, utils.ErrInErr{ErrDesc: "Unknown client protocol ", Data: u.Scheme}
-}
+		if e != nil {
 
-func clientFromURL(creator ClientCreator, u *url.URL, knownTLS bool) (Client, bool, utils.ErrInErr) {
-	c, e := creator.NewClientFromURL(u)
-	if e != nil {
-		return nil, true, utils.ErrInErr{ErrDesc: "Err, creator.NewClientFromURL", ErrDetail: e}
-	}
-	configCommonByURL(c, u)
-
-	cc := c.GetBase()
-
-	if cc != nil {
-		cc.Tag = u.Fragment
-
-		if knownTLS {
-			cc.TLS = true
-			prepareTLS_forProxyCommon_withURL(u, true, c)
+			return nil, e
 		}
+
+		return c, nil
 	}
 
-	return c, false, utils.ErrInErr{}
+	return nil, utils.ErrInErr{ErrDesc: "Unknown client protocol ", Data: u.Scheme}
 }
 
 // ServerFromURL calls the registered creator to create proxy servers.
-func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
+func ServerFromURL(s string) (Server, error) {
 	u, err := url.Parse(s)
 	if err != nil {
-		return nil, true, utils.ErrInErr{
+		return nil, utils.ErrInErr{
 			ErrDesc:   "Can't parse server url ",
 			ErrDetail: err,
 			Data:      s,
@@ -82,39 +87,50 @@ func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 
 	schemeName := strings.ToLower(u.Scheme)
 	creator, ok := serverCreatorMap[schemeName]
-	if ok {
-		return serverFromURL(creator, u, false)
 
-	} else {
+	var okTls bool
+
+	if !ok {
 		realScheme := strings.TrimSuffix(schemeName, "s")
-		creator, ok = serverCreatorMap[realScheme]
-		if ok {
-			return serverFromURL(creator, u, true)
+		creator, okTls = serverCreatorMap[realScheme]
+
+	}
+
+	if okTls {
+		ok = true
+	}
+
+	if ok {
+
+		sConf, err := creator.URLToListenConf(u, UrlFormat)
+		if err != nil {
+			return nil, utils.ErrInErr{
+				ErrDesc:   "URLToListenConf err ",
+				ErrDetail: err,
+				Data:      s,
+			}
+		}
+
+		if UrlFormat == UrlStandardFormat {
+			confQueryForServer(sConf, u)
+
+			if okTls {
+				sConf.TLS = true
+
+				prepareTLS_forConf_withStandardURL(u, &sConf.CommonConf, sConf, nil)
+
+			}
 
 		}
+
+		return newServer(creator, sConf, false)
+
 	}
 
-	return nil, true, utils.ErrInErr{ErrDesc: "Unknown server protocol ", Data: u.Scheme}
+	return nil, utils.ErrInErr{ErrDesc: "Unknown server protocol ", Data: u.Scheme}
 }
 
-func serverFromURL(creator ServerCreator, u *url.URL, knownTLS bool) (Server, bool, utils.ErrInErr) {
-	server, err := creator.NewServerFromURL(u)
-	if err != nil {
-		return nil, true, utils.ErrInErr{
-			ErrDesc:   "Err, creator.NewServerFromURL",
-			ErrDetail: err,
-		}
-	}
-	configCommonURLQueryForServer(server, u)
-
-	if knownTLS {
-		server.GetBase().TLS = true
-		prepareTLS_forProxyCommon_withURL(u, false, server)
-
-	}
-	return server, false, utils.ErrInErr{}
-}
-
+/*
 //set Tag, cantRoute,FallbackAddr, call configCommonByURL
 func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
 	nr := false
@@ -122,7 +138,7 @@ func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
 	if q.Get("noroute") != "" {
 		nr = true
 	}
-	configCommonByURL(ser, u)
+	configCommonByStandardURL(ser, u)
 
 	serc := ser.GetBase()
 	if serc == nil {
@@ -148,9 +164,11 @@ func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
 		serc.FallbackAddr = &fa
 	}
 }
+*/
 
+/*
 //SetAddrStr, setNetwork, Isfullcone
-func configCommonByURL(baseI BaseInterface, u *url.URL) {
+func configCommonByStandardURL(baseI BaseInterface, u *url.URL) {
 	if u.Scheme != DirectName {
 		baseI.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们 默认 配置里肯定给了port
 
@@ -161,11 +179,12 @@ func configCommonByURL(baseI BaseInterface, u *url.URL) {
 	}
 	base.setNetwork(u.Query().Get("network"))
 
-	base.IsFullcone = GetFullconeFromUrl(u)
+	base.IsFullcone = getFullconeFromUrl(u)
 
 }
+*/
 
-func GetFullconeFromUrl(url *url.URL) bool {
+func getFullconeFromUrl(url *url.URL) bool {
 	nStr := url.Query().Get("fullcone")
 	return nStr == "true" || nStr == "1"
 }

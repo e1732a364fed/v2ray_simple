@@ -21,13 +21,13 @@ func TestTCP(protocol string, version int, port string, t *testing.T) {
 	utils.InitLog("")
 
 	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?version=" + strconv.Itoa(version)
-	server, hase, _ := ServerFromURL(url)
-	if hase {
+	server, e := ServerFromURL(url)
+	if e != nil {
 		t.FailNow()
 	}
 	defer server.Stop()
-	client, hase, _ := ClientFromURL(url)
-	if hase {
+	client, e := ClientFromURL(url)
+	if e != nil {
 		t.FailNow()
 	}
 
@@ -132,14 +132,14 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 	fmtStr := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:%s?version=%d&vless1_udp_multi=%d"
 
 	url := fmt.Sprintf(fmtStr, proxyPort, version, use_multi)
-	fakeServerEndLocalServer, hase, errx := ServerFromURL(url)
-	if hase {
+	fakeServerEndLocalServer, errx := ServerFromURL(url)
+	if errx != nil {
 		t.Log("fakeClientEndLocalServer parse err", errx)
 		t.FailNow()
 	}
 	defer fakeServerEndLocalServer.Stop()
-	fakeClientEndRemoteClient, hase, errx := ClientFromURL(url)
-	if hase {
+	fakeClientEndRemoteClient, errx := ClientFromURL(url)
+	if errx != nil {
 		t.Log("fakeClientEndRemoteClient parse err", errx)
 		t.FailNow()
 	}

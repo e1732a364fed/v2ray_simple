@@ -94,7 +94,7 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 }
 
 //给 ProxyCommon 的tls做一些配置上的准备，从url读取配置
-func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com BaseInterface) error {
+func prepareTLS_forProxyCommon_withStandardURL(u *url.URL, isclient bool, com BaseInterface) error {
 	q := u.Query()
 	insecureStr := q.Get("insecure")
 	insecure := false

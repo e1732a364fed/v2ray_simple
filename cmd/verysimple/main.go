@@ -24,11 +24,12 @@ import (
 )
 
 var (
-	configFileName string
-	startPProf     bool
-	startMProf     bool
-	listenURL      string //用于命令行模式
-	dialURL        string //用于命令行模式
+	configFileName     string
+	useNativeUrlFormat bool
+	startPProf         bool
+	startMProf         bool
+	listenURL          string //用于命令行模式
+	dialURL            string //用于命令行模式
 	//jsonMode       int
 
 	standardConf proxy.StandardConf
@@ -57,21 +58,21 @@ const (
 func init() {
 	routingEnv.ClientsTagMap = make(map[string]proxy.Client)
 
-	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
+	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
+
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
 	//flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
+	flag.BoolVar(&useNativeUrlFormat, "sn", false, "use the proxy-defined url format, instead of the standard verysimple one.")
+
+	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
+
+	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 
 	flag.StringVar(&listenURL, "L", "", "listen URL, only used when no config file is provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL, only used when no config file is provided.")
 
-	//other packages
-
-	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
-
 	flag.StringVar(&utils.LogOutFileName, "lf", defaultLogFile, "output file for log; If empty, no log file will be used.")
-
-	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 
 	flag.StringVar(&netLayer.GeoipFileName, "geoip", defaultGeoipFn, "geoip maxmind file name")
 	flag.StringVar(&utils.ExtraSearchPath, "path", "", "search path for mmdb, geosite and other required files")
@@ -143,32 +144,39 @@ func mainFunc() (result int) {
 
 	}
 
-	if startPProf {
-		const pprofFN = "cpu.pprof"
-		f, err := os.OpenFile(pprofFN, os.O_CREATE|os.O_RDWR, 0644)
+	// config by bool params
+	{
+		if startPProf {
+			const pprofFN = "cpu.pprof"
+			f, err := os.OpenFile(pprofFN, os.O_CREATE|os.O_RDWR, 0644)
 
-		if err == nil {
-			defer f.Close()
-			err = pprof.StartCPUProfile(f)
 			if err == nil {
-				defer pprof.StopCPUProfile()
-			} else {
-				log.Println("pprof.StartCPUProfile failed", err)
+				defer f.Close()
+				err = pprof.StartCPUProfile(f)
+				if err == nil {
+					defer pprof.StopCPUProfile()
+				} else {
+					log.Println("pprof.StartCPUProfile failed", err)
 
+				}
+			} else {
+				log.Println(pprofFN, "can't be created,", err)
 			}
-		} else {
-			log.Println(pprofFN, "can't be created,", err)
+
+		}
+		if startMProf {
+			//若不使用 NoShutdownHook, 则 我们ctrl+c退出时不会产生 pprof文件
+			p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
+
+			defer p.Stop()
 		}
 
-	}
-	if startMProf {
-		//若不使用 NoShutdownHook, 则 我们ctrl+c退出时不会产生 pprof文件
-		p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
-
-		defer p.Stop()
+		if useNativeUrlFormat {
+			proxy.UrlFormat = proxy.UrlNativeFormat
+		}
 	}
 
-	var mode int
+	var configMode int
 	var mainFallback *httpLayer.ClassicFallback
 
 	var loadConfigErr error
@@ -186,7 +194,7 @@ func mainFunc() (result int) {
 
 	}
 
-	standardConf, simpleConf, mode, mainFallback, loadConfigErr = proxy.LoadConfig(configFileName, listenURL, dialURL, 0)
+	standardConf, simpleConf, configMode, mainFallback, loadConfigErr = proxy.LoadConfig(configFileName, listenURL, dialURL, 0)
 
 	if loadConfigErr == nil {
 
@@ -273,7 +281,7 @@ func mainFunc() (result int) {
 	var tproxyConfs []*proxy.ListenConf
 
 	//load inServers and RoutingEnv
-	switch mode {
+	switch configMode {
 	case proxy.SimpleMode:
 		result, defaultInServer = loadSimpleServer()
 		if result < 0 {
@@ -341,7 +349,7 @@ func mainFunc() (result int) {
 	}
 
 	// load outClients
-	switch mode {
+	switch configMode {
 	case proxy.SimpleMode:
 		result, defaultOutClient = loadSimpleClient()
 		if result < 0 {
@@ -368,7 +376,7 @@ func mainFunc() (result int) {
 
 	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
 
-		if mode == proxy.SimpleMode {
+		if configMode == proxy.SimpleMode {
 			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
 			if lis != nil {
 				listenCloserList = append(listenCloserList, lis)

@@ -17,6 +17,15 @@ vmess 协议是一个很老旧的协议，有很多向前兼容的代码，很�
 
 我们所实现的vmess 服务端 力求简单、最新，不求兼容所有老旧客户端。
 
+Share URL
+
+v2fly只有一个草案
+https://github.com/v2fly/v2fly-github-io/issues/26
+
+似乎v2fly社区对于这个URL标准的制定并不注重，而且看起来这个草案也不太美观
+
+而xray社区的则美观得多，见 https://github.com/XTLS/Xray-core/discussions/716
+
 */
 package vmess
 
