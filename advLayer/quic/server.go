@@ -13,8 +13,8 @@ import (
 	"go.uber.org/zap"
 )
 
-//non-blocking
-func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newConnChan chan net.Conn, returnCloser io.Closer) {
+// non-blocking
+func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments, newSubConnFunc func(net.Conn)) (returnCloser io.Closer) {
 
 	thisConfig := common_ListenConfig
 	if arg.customMaxStreamsInOneConn > 0 {
@@ -64,13 +64,11 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newCon
 		}
 	}
 
-	newConnChan = make(chan net.Conn, 10)
-
 	if arg.early {
-		go loopAcceptEarly(elistener, newConnChan, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
+		go loopAcceptEarly(elistener, newSubConnFunc, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
 		returnCloser = elistener
 	} else {
-		go loopAccept(listener, newConnChan, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
+		go loopAccept(listener, newSubConnFunc, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
 
 		returnCloser = listener
 	}
@@ -78,8 +76,8 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newCon
 	return
 }
 
-//阻塞
-func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
+// 阻塞
+func loopAccept(l quic.Listener, newSubConnFunc func(net.Conn), useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
 	for {
 
 		conn, err := l.Accept(context.Background())
@@ -95,13 +93,13 @@ func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hyster
 			configHyForConn(conn, hysteria_manual, hysteriaMaxByteCount)
 		}
 
-		go dealNewConn(conn, theChan)
+		go dealNewConn(conn, newSubConnFunc)
 
 	}
 }
 
-//阻塞
-func loopAcceptEarly(el quic.EarlyListener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
+// 阻塞
+func loopAcceptEarly(el quic.EarlyListener, newSubConnFunc func(net.Conn), useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
 
 	for {
 
@@ -117,7 +115,7 @@ func loopAcceptEarly(el quic.EarlyListener, theChan chan net.Conn, useHysteria b
 			configHyForConn(conn, hysteria_manual, hysteriaMaxByteCount)
 		}
 
-		go dealNewConn(conn, theChan)
+		go dealNewConn(conn, newSubConnFunc)
 
 	}
 }
@@ -134,8 +132,8 @@ func configHyForConn(conn quic.Connection, hysteria_manual bool, hysteriaMaxByte
 	}
 }
 
-//阻塞
-func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
+// 阻塞
+func dealNewConn(conn quic.Connection, newSubConnFunc func(net.Conn)) {
 
 	for {
 		stream, err := conn.AcceptStream(context.Background())
@@ -153,11 +151,12 @@ func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
 			}
 			break
 		}
-		theChan <- &StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false}
+		// theChan <- &StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false}
+		go newSubConnFunc(&StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false})
 	}
 }
 
-//implements advLayer.SuperMuxServer
+// implements advLayer.SuperMuxServer
 type Server struct {
 	Creator
 
@@ -181,9 +180,9 @@ func (s *Server) Stop() {
 
 }
 
-func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer) {
+func (s *Server) StartListen(newSubConnFunc func(net.Conn)) (baseConn io.Closer) {
 
-	newSubConnChan, baseConn = ListenInitialLayers(s.addr, s.tlsConf, s.args)
+	baseConn = ListenInitialLayers(s.addr, s.tlsConf, s.args, newSubConnFunc)
 	if baseConn != nil {
 		s.listener = baseConn
 
@@ -191,7 +190,9 @@ func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer
 	return
 }
 
-//非阻塞，不支持回落。
+// 非阻塞，不支持回落。
 func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
-	go dealNewConn(underlay.(quic.Connection), newSubConnChan)
+	go dealNewConn(underlay.(quic.Connection), func(newc net.Conn) {
+		newSubConnChan <- newc
+	})
 }

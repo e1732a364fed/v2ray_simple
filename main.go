@@ -143,42 +143,54 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		superSer := advs.(advLayer.SuperMuxServer)
 
-		var newConnChan chan net.Conn
+		// var newConnChan chan net.Conn
 
-		newConnChan, closer = superSer.StartListen()
-		if newConnChan == nil {
+		closer = superSer.StartListen(func(newConn net.Conn) {
+			iics := incomingInserverConnState{
+				wrappedConn:   newConn,
+				inServer:      inServer,
+				defaultClient: defaultOutClient,
+				routingEnv:    env,
+				GlobalInfo:    gi,
+			}
+			iics.genID()
+
+			handshakeInserver_and_passToOutClient(iics)
+		})
+		// newConnChan, closer = superSer.StartListen()
+		if closer == nil {
 			utils.Error("Failed in SuperMuxServer StartListen ")
 			return
 		}
 
-		go func() {
-			for {
-				newConn, ok := <-newConnChan
-				if !ok {
-					if ce := utils.CanLogErr("Read chan from Super AdvLayer closed"); ce != nil {
-						ce.Write(zap.String("advLayer", inServer.AdvancedLayer()))
-					}
+		// go func() {
+		// 	for {
+		// 		newConn, ok := <-newConnChan
+		// 		if !ok {
+		// 			if ce := utils.CanLogErr("Read chan from Super AdvLayer closed"); ce != nil {
+		// 				ce.Write(zap.String("advLayer", inServer.AdvancedLayer()))
+		// 			}
 
-					if closer != nil {
-						closer.Close()
-					}
+		// 			if closer != nil {
+		// 				closer.Close()
+		// 			}
 
-					return
-				}
+		// 			return
+		// 		}
 
-				iics := incomingInserverConnState{
-					wrappedConn:   newConn,
-					inServer:      inServer,
-					defaultClient: defaultOutClient,
-					routingEnv:    env,
-					GlobalInfo:    gi,
-				}
-				iics.genID()
+		// 		iics := incomingInserverConnState{
+		// 			wrappedConn:   newConn,
+		// 			inServer:      inServer,
+		// 			defaultClient: defaultOutClient,
+		// 			routingEnv:    env,
+		// 			GlobalInfo:    gi,
+		// 		}
+		// 		iics.genID()
 
-				go handshakeInserver_and_passToOutClient(iics)
-			}
+		// 		go handshakeInserver_and_passToOutClient(iics)
+		// 	}
 
-		}()
+		// }()
 
 		if ce := utils.CanLogInfo("Listening Super AdvLayer"); ce != nil {
 
@@ -391,7 +403,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 		switch {
 		case advSer.IsSuper():
-		//Super 根本没调用 handleNewIncomeConnection 函数，所以不在此处理
+		//Super 根本没调用 handleNewIncomeConnection (本函数)，所以不在此处理
 		// 详见 ListenSer
 
 		case advSer.IsMux(): //grpc

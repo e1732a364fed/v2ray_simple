@@ -1,4 +1,5 @@
-/*Package advLayer contains definitions and subpackages for Advanced Layer in VSI model.
+/*
+Package advLayer contains definitions and subpackages for Advanced Layer in VSI model.
 
 An advanced layer is based on http layer. It can be websocket, http2, grpc, quic or other customized protocols that based on http and can relay raw []byte data with arbitrary length.
 
@@ -16,10 +17,10 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//The implementations should use ProtocolsMap to regiester their Creator.
+// The implementations should use ProtocolsMap to regiester their Creator.
 var ProtocolsMap = make(map[string]Creator)
 
-//为了避免黑客攻击,我们固定earlydata最大值为2048
+// 为了避免黑客攻击,我们固定earlydata最大值为2048
 var MaxEarlyDataLen = 2048 //for ws early data
 
 func PrintAllProtocolNames() {
@@ -30,7 +31,7 @@ func PrintAllProtocolNames() {
 	}
 }
 
-//Creator represents supported features of a advLayer sub-package, and it can create New Client and Server.
+// Creator represents supported features of a advLayer sub-package, and it can create New Client and Server.
 type Creator interface {
 	ProtocolName() string
 	PackageID() string //unique for each package. Sub packages included in v2ray_simple don't need to apply any prefix, but if you want to implement your own package, you should use full git path, like github.com/somebody/mypackage. This is for distinguishing different packages.
@@ -73,7 +74,7 @@ type Client interface {
 
 }
 
-//like ws (h1.1)
+// like ws (h1.1)
 type SingleClient interface {
 	Client
 
@@ -81,7 +82,7 @@ type SingleClient interface {
 	Handshake(underlay net.Conn, firstPayloadLen int) (net.Conn, error)
 }
 
-//like grpc (h2) and quic (h3)
+// like grpc (h2) and quic (h3)
 type MuxClient interface {
 	Client
 
@@ -101,24 +102,26 @@ type Server interface {
 	Stop()
 }
 
-//like ws
+// like ws
 type SingleServer interface {
 
 	//如果遇到不符合握手条件但是却合法的http请求，可返回 httpLayer.FallbackMeta 和 httpLayer.ErrShouldFallback
 	Handshake(underlay net.Conn) (net.Conn, error)
 }
 
-//like grpc
+// like grpc
 type MuxServer interface {
 
 	//non-blocking. if fallbackChan is not nil, then it can serve for fallback feature.
 	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackChan chan httpLayer.FallbackMeta)
 }
 
-//like quic
+// like quic
 type SuperMuxServer interface {
 	MuxServer
 
 	//non-blocking.  Super will listen raw conn directly, and pass subStreamConn to newSubConnChan。Can stop the listening progress by closer.Close().
-	StartListen() (newSubConnChan chan net.Conn, closer io.Closer)
+	//
+	// newSubConnFunc is a blocking func.
+	StartListen(newSubConnFunc func(net.Conn)) (closer io.Closer)
 }
