@@ -7,12 +7,16 @@ import (
 	"time"
 )
 
+var (
+	CustomDialerMap = make(map[string]func(address string, timeout time.Duration) (net.Conn, error))
+)
+
 func (a *Addr) Dial() (net.Conn, error) {
 	var istls bool
 	var resultConn net.Conn
 	var err error
 
-	switch a.Network {
+	switch n := a.Network; n {
 	case "":
 		a.Network = "tcp"
 		goto tcp
@@ -30,6 +34,11 @@ func (a *Addr) Dial() (net.Conn, error) {
 
 		return DialUDP(ua)
 	default:
+		if len(CustomDialerMap) > 0 {
+			if f := CustomDialerMap[n]; f != nil {
+				return f(a.String(), time.Second*15)
+			}
+		}
 
 		goto defaultPart
 

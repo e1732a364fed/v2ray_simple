@@ -13,6 +13,10 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	CustomListenerMap = make(map[string]func(address string) (net.Listener, error))
+)
+
 func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 	if xver > 0 {
 
@@ -146,6 +150,12 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 		}
 		fallthrough
 	default:
+
+		if len(CustomListenerMap) > 0 {
+			if f := CustomListenerMap[network]; f != nil {
+				return f(addr)
+			}
+		}
 
 		listener, err = net.Listen(network, addr)
 		if err != nil {
