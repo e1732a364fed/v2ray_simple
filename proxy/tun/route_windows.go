@@ -70,7 +70,7 @@ func init() {
 		// 	ce.Write(zap.String("output", string(out1)))
 		// }
 
-		_, err = utils.LogRunCmd("netsh", "interface", "ip", "set", "address", `name="`+tunGateway+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none")
+		_, err = utils.LogRunCmd("netsh", "interface", "ip", "set", "address", `name="`+tunDevName+`"`, "source=static", "addr="+tunGateway, "mask=255.255.255.0", "gateway=none")
 
 		if err != nil {
 			return
