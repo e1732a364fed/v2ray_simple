@@ -8,9 +8,9 @@ import (
 )
 
 func TestTCP(t *testing.T) {
-	proxy.TestTCP("simplesocks", 0, netLayer.RandPortStr(true, false), "", t)
+	proxy.TestTCP("simplesocks", 0, netLayer.RandPortStr_safe(true, false), "", t)
 }
 
 func TestUDP(t *testing.T) {
-	proxy.TestUDP("simplesocks", 0, netLayer.RandPortStr(true, true), 0, t)
+	proxy.TestUDP("simplesocks", 0, netLayer.RandPortStr_safe(true, true), 0, t)
 }

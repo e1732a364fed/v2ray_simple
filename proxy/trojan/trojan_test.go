@@ -8,9 +8,9 @@ import (
 )
 
 func TestTCP(t *testing.T) {
-	proxy.TestTCP("trojan", 0, netLayer.RandPortStr(true, false), "", t)
+	proxy.TestTCP("trojan", 0, netLayer.RandPortStr_safe(true, false), "", t)
 }
 
 func TestUDP(t *testing.T) {
-	proxy.TestUDP("trojan", 0, netLayer.RandPortStr(true, true), 0, t)
+	proxy.TestUDP("trojan", 0, netLayer.RandPortStr_safe(true, true), 0, t)
 }

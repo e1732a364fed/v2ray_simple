@@ -8,21 +8,21 @@ import (
 )
 
 func TestVLess0(t *testing.T) {
-	proxy.TestTCP("vless", 0, netLayer.RandPortStr(true, false), "", t)
+	proxy.TestTCP("vless", 0, netLayer.RandPortStr_safe(true, false), "", t)
 }
 
 func TestVLess1(t *testing.T) {
-	proxy.TestTCP("vless", 1, netLayer.RandPortStr(true, false), "", t)
+	proxy.TestTCP("vless", 1, netLayer.RandPortStr_safe(true, false), "", t)
 }
 
 func TestVLess0_udp(t *testing.T) {
-	proxy.TestUDP("vless", 0, netLayer.RandPortStr(true, true), 0, t)
+	proxy.TestUDP("vless", 0, netLayer.RandPortStr_safe(true, true), 0, t)
 }
 
 func TestVLess1_udp(t *testing.T) {
-	proxy.TestUDP("vless", 1, netLayer.RandPortStr(true, true), 0, t)
+	proxy.TestUDP("vless", 1, netLayer.RandPortStr_safe(true, true), 0, t)
 }
 
 func TestVLess1_udp_multi(t *testing.T) {
-	proxy.TestUDP("vless", 1, netLayer.RandPortStr(true, true), 1, t)
+	proxy.TestUDP("vless", 1, netLayer.RandPortStr_safe(true, true), 1, t)
 }

@@ -1,10 +1,12 @@
 package socks5_test
 
 import (
+	"math/rand"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -19,6 +21,8 @@ func TestUDP(t *testing.T) {
 	utils.InitLog("")
 
 	s := socks5.NewServer()
+
+	rand.Seed(time.Now().Unix())
 
 	//建立socks5服务并监听，这里仅用于 udp associate 握手
 	sAddrStr := netLayer.GetRandLocalAddr(true, true)

@@ -471,6 +471,12 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 		}
 	}
 
+	if c.dataReader == nil {
+		//c.opt == OptBasicFormat (0) 时即出现此情况
+
+		return 0, utils.ErrInErr{ErrDesc: "vmess server might get an old vmess client, closing. (c.dataReader==nil)", Data: c.opt}
+	}
+
 	return c.dataReader.Read(b)
 
 }

@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -125,6 +126,12 @@ func RandPort(mustValid, isudp bool, depth int) (p int) {
 	}
 
 	return
+}
+
+//use a new seed each time called
+func RandPortStr_safe(mustValid, isudp bool) string {
+	rand.Seed(time.Now().Unix())
+	return strconv.Itoa(RandPort(mustValid, isudp, 0))
 }
 
 func RandPortStr(mustValid, isudp bool) string {
