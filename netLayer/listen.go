@@ -160,7 +160,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 		if p == UNIX {
 			eu := os.Chmod(addr, 0666)
 			if eu != nil {
-				if ce := utils.CanLogErr("unix file can't set to 0666"); ce != nil {
+				if ce := utils.CanLogWarn("unix domain socket file can't be set to 0666"); ce != nil {
 					ce.Write(zap.String("deleting", addr))
 				}
 			}

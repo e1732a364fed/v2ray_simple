@@ -10,6 +10,7 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
@@ -479,8 +480,19 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 		if !addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port {
 
-			//just random attack message.
-			return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "socks5 UDPConn ReadMsg failed, addr not coming from supposed client addr", ErrDetail: utils.ErrInvalidData, Data: addr.String()}
+			//just random attack message,
+
+			//但是有些其他socks5客户端确实会导致这个问题，所以不应直接退出; 见issue 157
+			// socks5本不应用在公网，更不应在公网开启udp转发，所以这里给一个warning已经足够。
+
+			if ce := utils.CanLogWarn("socks5 got udp from a different source than expected one"); ce != nil {
+				ce.Write(
+					zap.String("expected", u.clientSupposedAddr.String()),
+					zap.String("real", addr.String()),
+				)
+			}
+
+			//return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "socks5 UDPConn ReadMsg failed, addr not coming from supposed client addr", ErrDetail: utils.ErrInvalidData, Data: addr.String()}
 
 		}
 	}
