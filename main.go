@@ -520,6 +520,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 // 会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
+	//这里的 iics.inServer 是可能为nil的，所以一定要判断一下，否则会空指针闪退
+
 	////////////////////////////// 回落阶段 /////////////////////////////////////
 
 	if isfallback {
@@ -721,16 +723,18 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	//tls请求和纯http请求是可以嗅探 host的，嗅探可以帮助我们使用 geosite 精准分流，所以是很有用的
 
-	shouldSniff := iics.inServer.Sniffing() || iics.defaultClient.IsLazyTls()
+	inserverMarkedSniffing := (iics.inServer != nil && iics.inServer.Sniffing())
 
-	if len(iics.firstPayload) > 0 && iics.inServer != nil && shouldSniff {
+	shouldSniff := inserverMarkedSniffing || iics.defaultClient.IsLazyTls()
+
+	if len(iics.firstPayload) > 0 && shouldSniff {
 		tlsSniff = new(tlsLayer.ComSniff)
 
 		if !iics.isTlsLazyServerEnd {
 			tlsSniff.Isclient = true
 		}
 
-		tlsSniff.CommonDetect(iics.firstPayload, true, iics.inServer.Sniffing() && !(iics.isTlsLazyServerEnd || iics.defaultClient.IsLazyTls()))
+		tlsSniff.CommonDetect(iics.firstPayload, true, inserverMarkedSniffing && !(iics.isTlsLazyServerEnd || iics.defaultClient.IsLazyTls()))
 
 		if sni := tlsSniff.SniffedServerName; sni != "" {
 			if ce := iics.CanLogDebug("Sniffed Sni"); ce != nil {
