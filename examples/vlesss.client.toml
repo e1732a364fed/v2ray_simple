@@ -100,7 +100,7 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装, 仅用于
 # path = "/ohmygod_verysimple_is_very_simple" # ws的path和 grpc的serviceName 都在这个path里填写, 为了防探测这里越长越随机越好
 
 
-# 据说下面三行配置可以增强防御
+# 据说下面三行配置可以增强防御, 注意因为下面使用了1.2，你就没法使用utls, 见issue #205
 
 # extra.tls_minVersion = "1.2"
 # extra.tls_maxVersion = "1.2"

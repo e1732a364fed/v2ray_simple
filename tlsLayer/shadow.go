@@ -65,9 +65,11 @@ func shadowTls1(servername string, clientConn net.Conn) (tlsConn *Conn, err erro
 	<-finish1
 
 	if e1 != nil || e2 != nil {
-		e := utils.Errs{}
-		e.Add(utils.ErrsItem{Index: 1, E: e1})
-		e.Add(utils.ErrsItem{Index: 2, E: e2})
+		e := utils.Errs{List: []utils.ErrsItem{
+			{Index: 1, E: e1},
+			{Index: 2, E: e2},
+		}}
+
 		return nil, e
 	}
 
@@ -235,7 +237,7 @@ func shadowCopyHandshakeClientToFake(fakeConn, clientConn net.Conn, hashW *utils
 		step++
 
 		if step > 8 {
-			return nil, errors.New("shit, shadowTls2 copy loop > 8, maybe under attack")
+			return nil, errors.New("shadowTls2 copy loop > 8, maybe under attack")
 
 		}
 	}

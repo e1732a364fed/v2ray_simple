@@ -53,18 +53,18 @@ func init() {
 	}
 }
 
-//从Pool中获取一个 *bytes.Buffer
+// 从Pool中获取一个 *bytes.Buffer
 func GetBuf() *bytes.Buffer {
 	return bufPool.Get().(*bytes.Buffer)
 }
 
-//将 buf 放回 Pool
+// 将 buf 放回 Pool
 func PutBuf(buf *bytes.Buffer) {
 	buf.Reset()
 	bufPool.Put(buf)
 }
 
-//建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte（MaxBufLen）
+// 建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte (MaxPacketLen)
 func GetPacket() []byte {
 	bsPtr := packetPool.Get().(*[]byte)
 	returnValue := *bsPtr

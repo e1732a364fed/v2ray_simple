@@ -55,6 +55,10 @@ type Conf struct {
 	Extra map[string]any //用于shadowTls
 }
 
+func (tConf Conf) IsShadowTls() bool {
+	return tConf.Tls_type == ShadowTls2_t || tConf.Tls_type == ShadowTls_t
+}
+
 func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 	var certArray []tls.Certificate
 	var err error
