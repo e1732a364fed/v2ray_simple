@@ -14,7 +14,7 @@ var rememberedRouterIP string
 func init() {
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
 
-		params := fmt.Sprintf(`interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=none`, tunDevName, tunIP)
+		params := fmt.Sprintf(`interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=%s`, tunDevName, tunIP, tunGateway)
 		_, err := exec.Command("netsh", strings.Split(params, " ")...).Output()
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {

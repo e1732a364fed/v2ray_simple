@@ -166,14 +166,21 @@ func (s *Server) Stop() {
 func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
 	s.stopped = false
 	//log.Println(s.devName, s.selfip, s.realIP, s.mask)
-	if s.devName == "" && runtime.GOOS == "darwin" {
-		s.devName = "utun5"
+	if s.devName == "" {
+		switch runtime.GOOS {
+		case "darwin":
+			s.devName = "utun5"
+		case "windows":
+			s.devName = "vs_wintun"
+
+		}
 	}
 	tunDev, err := tun.Open(s.devName)
 	if err != nil {
 		if ce := utils.CanLogErr("tun open failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
+		s.stopped = true
 		return nil
 	}
 
