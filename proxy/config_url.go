@@ -14,6 +14,7 @@ const (
 	UrlNativeFormat   = iota //proxy对应的标准文档所定义的url模式，一般散布于对应github的文档上
 	UrlStandardFormat        //VS定义的 供 所有proxy 使用的 标准 url模式
 
+	Url_FormatUnknown
 )
 
 var (
@@ -23,7 +24,7 @@ var (
 	UrlFormat = UrlStandardFormat
 )
 
-//try find from map, trim tail s if necessary
+// try find from map, trim tail s if necessary
 func GetRealProtocolFromClientUrl(s string) (u *url.URL, schemeName string, creator ClientCreator, okTls bool, err error) {
 	u, err = url.Parse(s)
 	if err != nil {
@@ -50,7 +51,7 @@ func GetRealProtocolFromClientUrl(s string) (u *url.URL, schemeName string, crea
 
 }
 
-//try find from map, trim tail s if necessary
+// try find from map, trim tail s if necessary
 func GetRealProtocolFromServerUrl(s string) (u *url.URL, schemeName string, creator ServerCreator, okTls bool, err error) {
 	u, err = url.Parse(s)
 	if err != nil {
@@ -145,7 +146,7 @@ func ServerFromURL(s string) (Server, error) {
 
 }
 
-//setup conf with vs standard url format
+// setup conf with vs standard url format
 func URLToCommonConf(u *url.URL, conf *CommonConf) error {
 
 	if u.Scheme != DirectName {
@@ -218,7 +219,7 @@ func setHeaders(rawq, headers map[string][]string) {
 
 }
 
-//setup conf with vs standard URL format
+// setup conf with vs standard URL format
 func URLToDialConf(u *url.URL, conf *DialConf) error {
 	e := URLToCommonConf(u, &conf.CommonConf)
 	if e != nil {
@@ -248,7 +249,7 @@ func URLToDialConf(u *url.URL, conf *DialConf) error {
 	return e
 }
 
-//setup conf with vs standard URL format
+// setup conf with vs standard URL format
 func URLToListenConf(u *url.URL, conf *ListenConf) error {
 	e := URLToCommonConf(u, &conf.CommonConf)
 	if e != nil {

@@ -290,7 +290,7 @@ func hotLoadListenConf(conf []*proxy.ListenConf) (ok bool) {
 	return
 }
 
-func hotLoadDialUrl(theUrlStr string) error {
+func hotLoadDialUrl(theUrlStr string, format int) error {
 	u, sn, creator, okTls, err := proxy.GetRealProtocolFromClientUrl(theUrlStr)
 	if err != nil {
 		fmt.Printf("parse url failed %v\n", err)
@@ -305,7 +305,7 @@ func hotLoadDialUrl(theUrlStr string) error {
 		fmt.Printf("parse url failed %v\n", err)
 		return err
 	}
-	dc, err = creator.URLToDialConf(u, dc, proxy.UrlStandardFormat)
+	dc, err = creator.URLToDialConf(u, dc, format)
 	if err != nil {
 		fmt.Printf("parse url step 2 failed %v\n", err)
 		return err
@@ -318,7 +318,7 @@ func hotLoadDialUrl(theUrlStr string) error {
 
 }
 
-func hotLoadListenUrl(theUrlStr string) error {
+func hotLoadListenUrl(theUrlStr string, format int) error {
 	u, sn, creator, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
 	if err != nil {
 		fmt.Printf("parse url failed %v\n", err)
@@ -335,7 +335,7 @@ func hotLoadListenUrl(theUrlStr string) error {
 		fmt.Printf("parse url failed %v\n", err)
 		return err
 	}
-	lc, err = creator.URLToListenConf(u, lc, proxy.UrlStandardFormat)
+	lc, err = creator.URLToListenConf(u, lc, format)
 	if err != nil {
 		fmt.Printf("parse url step 2 failed %v\n", err)
 		return err
@@ -408,5 +408,32 @@ func loadSimpleClient() (result int, client proxy.Client) {
 	}
 
 	allClients = append(allClients, client)
+	return
+}
+
+func getStandardConfFromCurrentState() (sc proxy.StandardConf) {
+	for i := range allClients {
+		sc.Dial = append(sc.Dial, getDialConfFromCurrentState(i))
+
+	}
+	for i := range allServers {
+		sc.Listen = append(sc.Listen, getListenConfFromCurrentState(i))
+
+	}
+
+	return
+}
+
+func getDialConfFromCurrentState(i int) (dc *proxy.DialConf) {
+	c := allClients[i]
+	dc = c.GetBase().DialConf
+
+	return
+}
+
+func getListenConfFromCurrentState(i int) (lc *proxy.ListenConf) {
+	c := allServers[i]
+	lc = c.GetBase().ListenConf
+
 	return
 }

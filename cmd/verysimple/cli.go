@@ -65,21 +65,6 @@ func init() {
 
 	//cli.go 中添加的 CliCmd都是需进一步交互的命令
 
-	var getStandardConfFromCurrentState = func() (sc proxy.StandardConf) {
-		for _, c := range allClients {
-			dc := c.GetBase().DialConf
-			sc.Dial = append(sc.Dial, dc)
-
-		}
-		for _, s := range allServers {
-			lc := s.GetBase().ListenConf
-			sc.Listen = append(sc.Listen, lc)
-
-		}
-
-		return
-	}
-
 	cliCmdList = append(cliCmdList, &CliCmd{
 		"【生成分享链接】<-当前的配置", func() {
 			sc := getStandardConfFromCurrentState()
@@ -471,10 +456,10 @@ func interactively_hotLoadUrlConfig() {
 		}
 
 		if i == 0 {
-			hotLoadDialUrl(theUrlStr)
+			hotLoadDialUrl(theUrlStr, proxy.UrlFormat)
 
 		} else {
-			hotLoadListenUrl(theUrlStr)
+			hotLoadListenUrl(theUrlStr, proxy.UrlFormat)
 
 		}
 		return

@@ -18,12 +18,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
-// convert proxy.DialConf to verysimple Official URL format.
+// convert proxy.DialConf or proxy.ListenConf to verysimple Official URL format.
+// cc must not be nil or it will panic.
 // See docs/url.md and https://github.com/e1732a364fed/v2ray_simple/discussions/163
-func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
+func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf, lc *proxy.ListenConf) string {
 	var u url.URL
 
 	u.Scheme = cc.Protocol
@@ -52,12 +54,35 @@ func ToVS(cc *proxy.CommonConf, dc *proxy.DialConf) string {
 		q.Add("fullcone", "true")
 	}
 
+	if lc != nil {
+		if lc.TargetAddr != "" {
+			a, e := netLayer.NewAddrFromAny(lc.TargetAddr)
+			if e == nil {
+				q.Add("target.ip", a.IP.String())
+				q.Add("target.network", a.Network)
+				q.Add("target.port", strconv.Itoa(a.Port))
+			}
+		}
+	}
+
+	if dc != nil {
+		if dc.SendThrough != "" {
+			q.Add("sendThrough", dc.SendThrough)
+		}
+	}
+
 	if cc.TLS {
 		if cc.Insecure {
 			q.Add("insecure", "true")
 		}
 		if dc != nil && dc.Utls {
 			q.Add("utls", "true")
+		}
+		if cc.TLSCert != "" {
+			q.Add("cert", cc.TLSCert)
+		}
+		if cc.TLSKey != "" {
+			q.Add("key", cc.TLSKey)
 		}
 	}
 

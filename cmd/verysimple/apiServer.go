@@ -5,10 +5,13 @@ import (
 	"crypto/subtle"
 	"crypto/tls"
 	"flag"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/e1732a364fed/v2ray_simple/configAdapter"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -17,6 +20,9 @@ import (
 var (
 	enableApiServer     bool
 	apiServerRunning    bool
+	apiServerPlainHttp  bool
+	apiServerKeyFile    string
+	apiServerCertFile   string
 	apiServerPathPrefix string
 	apiServerAdminPass  string
 	apiServerAddr       string
@@ -24,9 +30,13 @@ var (
 
 func init() {
 	flag.BoolVar(&enableApiServer, "ea", false, "enable api server")
+	flag.BoolVar(&apiServerPlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
+
 	flag.StringVar(&apiServerPathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
 	flag.StringVar(&apiServerAdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
 	flag.StringVar(&apiServerAddr, "sa", "127.0.0.1:48345", "api Server listen address")
+	flag.StringVar(&apiServerCertFile, "scert", "", "api Server tls cert file path")
+	flag.StringVar(&apiServerKeyFile, "skey", "", "api Server tls cert key path")
 
 }
 
@@ -62,11 +72,20 @@ func runApiServer(adminUUID string) {
 
 	mux := http.NewServeMux()
 
+	failBadRequest := func(e error, eInfo string, w http.ResponseWriter) {
+		if ce := utils.CanLogWarn(eInfo); ce != nil {
+			ce.Write(zap.Error(e))
+		}
+		w.WriteHeader(http.StatusBadRequest)
+	}
+
 	ser.addServerHandle(mux, "allstate", func(w http.ResponseWriter, r *http.Request) {
 		printAllState(w)
 	})
 	ser.addServerHandle(mux, "hotDelete", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
+
+		const eInfo = "illegal parameter"
 
 		listenIndexStr := q.Get("listen")
 		dialIndexStr := q.Get("dial")
@@ -77,9 +96,9 @@ func runApiServer(adminUUID string) {
 
 			listenIndex, err := strconv.Atoi(listenIndexStr)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
+				failBadRequest(err, eInfo, w)
 
-				w.Write([]byte("illegal parameter"))
+				w.Write([]byte(eInfo))
 				return
 			}
 			hotDeleteServer(listenIndex)
@@ -92,9 +111,9 @@ func runApiServer(adminUUID string) {
 
 			dialIndex, err := strconv.Atoi(dialIndexStr)
 			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
+				failBadRequest(err, eInfo, w)
 
-				w.Write([]byte("illegal parameter"))
+				w.Write([]byte(eInfo))
 				return
 			}
 			hotDeleteClient(dialIndex)
@@ -103,18 +122,29 @@ func runApiServer(adminUUID string) {
 
 	ser.addServerHandle(mux, "hotLoadUrl", func(w http.ResponseWriter, r *http.Request) {
 		if e := r.ParseForm(); e != nil {
-			if ce := utils.CanLogWarn("api server ParseForm failed"); ce != nil {
-				ce.Write(zap.Error(e))
-				return
-			}
+
+			failBadRequest(e, "api server ParseForm failed", w)
+			return
 
 		}
 
 		f := r.Form
 		//log.Println("f", f, len(f))
 
+		uf := proxy.UrlFormat
+
 		listenStr := f.Get("listen")
 		dialStr := f.Get("dial")
+		urlFormatStr := f.Get("urlFormat")
+		if urlFormatStr != "" {
+			var err error
+			uf, err = strconv.Atoi(urlFormatStr)
+			if err != nil || uf >= proxy.Url_FormatUnknown {
+				failBadRequest(utils.ErrInErr{ErrDetail: err, Data: urlFormatStr}, "api server parse urlFormat failed", w)
+				return
+
+			}
+		}
 
 		var resultStr string = "result:"
 		if listenStr != "" {
@@ -122,7 +152,7 @@ func runApiServer(adminUUID string) {
 			if ce := utils.CanLogInfo("api server got hot load listen request"); ce != nil {
 				ce.Write(zap.String("listenUrl", listenStr))
 			}
-			e := hotLoadListenUrl(listenStr)
+			e := hotLoadListenUrl(listenStr, uf)
 			if e == nil {
 				resultStr += "\nhot load listen Url Success for " + listenStr
 			} else {
@@ -135,7 +165,7 @@ func runApiServer(adminUUID string) {
 			if ce := utils.CanLogInfo("api server got hot load dial request"); ce != nil {
 				ce.Write(zap.String("dialUrl", dialStr))
 			}
-			e := hotLoadDialUrl(dialStr)
+			e := hotLoadDialUrl(dialStr, uf)
 			if e == nil {
 				resultStr += "\nhot load dial Url Success for " + dialStr
 			} else {
@@ -146,19 +176,67 @@ func runApiServer(adminUUID string) {
 		w.Write([]byte(resultStr))
 	})
 
+	ser.addServerHandle(mux, "getDetailUrl", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+
+		const eInfo = "illegal parameter"
+
+		indexStr := q.Get("index")
+		isDial := utils.QueryPositive(q, "isDial")
+		if indexStr != "" {
+			if ce := utils.CanLogInfo("api server got hot delete listen request"); ce != nil {
+				ce.Write(zap.String("listenIndexStr", indexStr))
+			}
+
+			ind, err := strconv.Atoi(indexStr)
+			if err != nil || ind < 0 || (isDial && ind >= len(allClients)) || (!isDial && ind >= len(allServers)) {
+				failBadRequest(err, eInfo, w)
+
+				w.Write([]byte(eInfo))
+				return
+			}
+			if isDial {
+				dc := getDialConfFromCurrentState(ind)
+				url := configAdapter.ToVS(&dc.CommonConf, dc, nil)
+				w.Write([]byte(url))
+			} else {
+				lc := getListenConfFromCurrentState(ind)
+				url := configAdapter.ToVS(&lc.CommonConf, nil, lc)
+				w.Write([]byte(url))
+			}
+
+		}
+
+	})
+
+	tlsConf := &tls.Config{}
+
+	if apiServerPlainHttp {
+
+	} else if apiServerCertFile == "" || apiServerKeyFile == "" {
+		log.Println("api server will use tls but key or cert file not provided, use random cert instead")
+		tlsConf = &tls.Config{
+			InsecureSkipVerify: true,
+			Certificates:       tlsLayer.GenerateRandomTLSCert(), //curl -k
+		}
+	}
+
 	srv := &http.Server{
 		Addr:         apiServerAddr,
 		Handler:      mux,
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
-		TLSConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			Certificates:       tlsLayer.GenerateRandomTLSCert(), //curl -k
-		},
+		TLSConfig:    tlsConf,
 	}
 
-	srv.ListenAndServeTLS("", "")
+	if apiServerPlainHttp {
+		srv.ListenAndServe()
+
+	} else {
+		srv.ListenAndServeTLS(apiServerCertFile, apiServerKeyFile)
+
+	}
 	apiServerRunning = false
 }
 
@@ -199,6 +277,7 @@ func (ser *apiServer) basicAuth(realfunc http.HandlerFunc) http.HandlerFunc {
 					zap.String("requestURL", r.RequestURI),
 				)
 			}
+			w.Header().Add("Access-Control-Allow-Origin", "*") //避免在网页请求本api时, 客户端遇到CSRF保护问题
 
 			realfunc.ServeHTTP(w, r)
 

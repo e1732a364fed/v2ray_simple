@@ -90,6 +90,7 @@ security=aes-128-gcm  设置 vmess/ss等存在多种加密方式等proxy的 具�
 
 adv=ws  设置使用的高级层，如不给出则没有高级层，如给出，可选 ws, grpc, quic
 
+sendThrough=0.0.0.0:0   dial（一般为direct）设置发送时所使用的端口
 
 ### http 头相关
 
@@ -139,5 +140,5 @@ cert=cert.pem&key=cert.key
 ### 其他
 
 dokodemo的目标这么写： `target.ip=1.1.1.1&target.port=80`
-
+也可以指定network `target.network=tcp`
 
