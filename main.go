@@ -616,7 +616,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 			//应该返回一个http400错误，这样更逼真一些
 			iics.wrappedConn.SetWriteDeadline(time.Now().Add(time.Second))
-			iics.wrappedConn.Write([]byte(httpLayer.GetReal400Response()))
+			iics.wrappedConn.Write([]byte(httpLayer.GetNginx400Response()))
 			iics.wrappedConn.Close()
 
 		}

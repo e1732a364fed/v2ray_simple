@@ -7,5 +7,5 @@ import (
 )
 
 func TestNginxResponse(t *testing.T) {
-	t.Log(httpLayer.GetReal400Response())
+	t.Log(httpLayer.GetNginx400Response())
 }

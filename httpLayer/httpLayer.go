@@ -35,9 +35,9 @@ import (
 	"net/http/httptest"
 )
 
-const Err403response = "HTTP/1.1 403 Forbidden\r\nConnection: close\r\nCache-Control: max-age=3600, public\r\nContent-Length: 0\r\n\r\n"
-
 const (
+	Err403response = "HTTP/1.1 403 Forbidden\r\nConnection: close\r\nCache-Control: max-age=3600, public\r\nContent-Length: 0\r\n\r\n"
+
 	H11_Str = "http/1.1"
 	H2_Str  = "h2"
 

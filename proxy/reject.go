@@ -25,9 +25,9 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 			bs = bs[:n]
 			_, _, _, _, failreason := httpLayer.ParseH1Request(bs, false)
 			if failreason == 0 {
-				underlay.Write([]byte(httpLayer.GetReal403Response())) //forbiden
+				underlay.Write([]byte(httpLayer.GetNginx403Response())) //forbiden
 			} else {
-				underlay.Write([]byte(httpLayer.GetReal400Response())) //bad request, for non-http (illegal) request
+				underlay.Write([]byte(httpLayer.GetNginx400Response())) //bad request, for non-http (illegal) request
 			}
 		}
 
