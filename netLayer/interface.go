@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net"
+	"runtime"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -62,4 +63,23 @@ func HasIpv6Interface() bool {
 		}
 	}
 	return false
+}
+
+var SetSystemDNS = func(dns string) {
+	if ce := utils.CanLogErr("SetSystemDNS: not implemented"); ce != nil {
+		ce.Write(zap.String("platform", runtime.GOOS))
+	}
+}
+
+var ToggleSystemProxy = func(isSocks5 bool, addr, port string, enable bool) {
+	if ce := utils.CanLogErr("ToggleSystemProxy: not implemented"); ce != nil {
+		ce.Write(zap.String("platform", runtime.GOOS))
+	}
+}
+
+var GetSystemProxyState = func(isSocks5 bool) (ok, enabled bool, addr, port string) {
+	if ce := utils.CanLogErr("GetSystemProxyState: not implemented"); ce != nil {
+		ce.Write(zap.String("platform", runtime.GOOS))
+	}
+	return
 }

@@ -7,6 +7,10 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+func init() {
+	ToggleSystemProxy = toggleSystemProxy
+}
+
 func GetGateway() (ip string, err error) {
 	var out []byte
 	out, err = exec.Command("netstat", "-nr").Output()
@@ -52,4 +56,36 @@ func GetGateway() (ip string, err error) {
 	}
 
 	return
+}
+
+func toggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
+	//我们使用命令行方式。
+
+	//todo: 还可以参考 https://github.com/getlantern/sysproxy ， 这里用了另一种实现，还用到elevate
+
+	const inetSettings = `HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings`
+	if enable {
+
+		utils.LogRunCmd("reg", "add", inetSettings, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "1", "/f")
+		addr = addr + ":" + port
+
+		if isSocks5 {
+			utils.LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "socks="+addr, "/f")
+
+		} else {
+
+			utils.LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "http="+addr+";https="+addr, "/f")
+
+		}
+
+		utils.LogRunCmd("reg", "add", inetSettings, "/v", "ProxyOverride", "/t", "REG_SZ", "/d", "<-loopback>", "/f")
+
+	} else {
+		utils.LogRunCmd("reg", "add", inetSettings, "/v", "ProxyEnable", "/t", "REG_DWORD", "/d", "0", "/f")
+
+		utils.LogRunCmd("reg", "add", inetSettings, "/v", "ProxyServer", "/d", "", "/f")
+
+		utils.LogRunCmd("reg", "delete", inetSettings, "/v", "ProxyOverride", "/f")
+	}
+
 }

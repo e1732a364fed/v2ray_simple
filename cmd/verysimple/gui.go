@@ -7,18 +7,15 @@ package main
 
 import (
 	"flag"
-	"image"
-	"image/draw"
 	"log"
-	"os"
+	"net"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/e1732a364fed/ui"
 	_ "github.com/e1732a364fed/ui/winmanifest"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	"go.uber.org/zap"
 
 	qrcode "github.com/skip2/go-qrcode"
 )
@@ -189,13 +186,19 @@ func makeBasicControlsPage() ui.Control {
 
 	vbox.Append(ui.NewHorizontalSeparator(), false)
 
-	systemProxyGroup := ui.NewGroup("系统代理")
-	systemProxyGroup.SetMargined(true)
-	vbox.Append(systemProxyGroup, true)
+	systemGroup := ui.NewGroup("系统代理")
+	systemGroup.SetMargined(true)
+
+	systemHbox := ui.NewHorizontalBox()
+	systemHbox.SetPadded(true)
+	systemHbox.Append(systemGroup, true)
+
+	vbox.Append(systemHbox, true)
 
 	proxyForm := ui.NewForm()
 	proxyForm.SetPadded(true)
-	systemProxyGroup.SetChild(proxyForm)
+	systemGroup.SetChild(proxyForm)
+	// systemProxyHbox.Append(proxyForm, true)
 
 	var newProxyToggle = func(form *ui.Form, isSocks5 bool) {
 		gp := currentUserPreference.Gui
@@ -232,7 +235,7 @@ func makeBasicControlsPage() ui.Control {
 
 		cb := ui.NewCheckbox("系统" + str)
 		cb.OnToggled(func(c *ui.Checkbox) {
-			utils.ToggleSystemProxy(isSocks5, addrE.Text(), portE.Text(), c.Checked())
+			netLayer.ToggleSystemProxy(isSocks5, addrE.Text(), portE.Text(), c.Checked())
 		})
 
 		proxyForm.Append("开关系统"+str, cb, false)
@@ -243,6 +246,28 @@ func makeBasicControlsPage() ui.Control {
 	newProxyToggle(proxyForm, true)
 
 	newProxyToggle(proxyForm, false)
+
+	dnsGroup := ui.NewGroup("系统dns")
+	dnsGroup.SetMargined(true)
+	systemHbox.Append(dnsGroup, true)
+
+	dnsentryForm := ui.NewForm()
+	dnsentryForm.SetPadded(true)
+	dnsGroup.SetChild(dnsentryForm)
+
+	dnsEntry := ui.NewEntry()
+	dnsentryForm.Append("dns", dnsEntry, false)
+
+	dnsConfirmBtn := ui.NewButton("提交")
+	dnsConfirmBtn.OnClicked(func(b *ui.Button) {
+		str := dnsEntry.Text()
+		ip := net.ParseIP(str)
+		if ip == nil {
+			return
+		}
+		netLayer.SetSystemDNS(str)
+	})
+	dnsentryForm.Append("提交", dnsConfirmBtn, false)
 
 	entriesGroup = ui.NewGroup("Entries")
 	entriesGroup.Hide()
@@ -437,106 +462,8 @@ func windowClose(*ui.Window) bool {
 
 func setupUI() {
 
-	var filesM = ui.NewMenu("Files")
-	{
-		filesM.AppendPreferencesItem()
-		filesM.AppendAboutItem().OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-			ui.MsgBox(mainwin,
-				"verysimple, a very simple proxy",
-				versionStr()+"\n\n"+weblink)
-		})
-		filesM.AppendQuitItem()
-		openUrlFunc := func(url string) func(mi *ui.MenuItem, w *ui.Window) {
-			return func(mi *ui.MenuItem, w *ui.Window) {
-				if e := utils.Openbrowser(url); e != nil {
-					if ce := utils.CanLogErr("open github link failed"); ce != nil {
-						ce.Write(zap.Error(e))
-					}
-				}
-			}
-		}
-		filesM.AppendItem("Open github").OnClicked(openUrlFunc(weblink))
-		filesM.AppendItem("Check github releases").OnClicked(openUrlFunc(weblink + "releases"))
-		filesM.AppendItem("Quit App").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-			//syscall.Kill(syscall.Getpid(), syscall.SIGINT) //退出app ,syscall.Kill 在windows上不存在
+	setMenu()
 
-			if p, err := os.FindProcess(os.Getpid()); err != nil {
-				if ce := utils.CanLogWarn("Failed call os.FindProcess"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-			} else {
-				p.Signal(syscall.SIGINT) //这个方法在windows上不好使
-			}
-		})
-
-		var vm = ui.NewMenu("View")
-		vm.AppendItem("toggle MultilineEntry view").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-			if entriesGroup.Visible() {
-				entriesGroup.Hide()
-			} else {
-				entriesGroup.Show()
-			}
-		})
-
-		ce := utils.CanLogDebug("testFunc")
-
-		if ce != nil {
-			var y = ui.NewMenu("Debug")
-			y.AppendItem("test").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-				if testFunc != nil {
-					testFunc()
-				}
-			})
-
-			y.AppendItem("test2").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-				qr, err := qrcode.New("https://example.org", qrcode.Medium)
-				if err != nil {
-					return
-				}
-				nw := ui.NewWindow("img", 320, 320, false)
-				uiimg := ui.NewImage(320, 320)
-				rect := image.Rect(0, 0, 320, 320)
-				rgbaImg := image.NewRGBA(rect)
-				draw.Draw(rgbaImg, rect, qr.Image(256), image.Point{}, draw.Over)
-				uiimg.Append(rgbaImg)
-
-				mh := newImgTableHandler()
-				mh.img = uiimg
-				model := ui.NewTableModel(mh)
-
-				table := ui.NewTable(&ui.TableParams{
-					Model:                         model,
-					RowBackgroundColorModelColumn: 3,
-				})
-				table.OnRowClicked(func(t *ui.Table, i int) {
-					log.Println("tc", i)
-				})
-				table.OnRowDoubleClicked(func(t *ui.Table, i int) {
-					log.Println("tc", i)
-				})
-				table.OnHeaderClicked(func(t *ui.Table, i int) {
-					log.Println("tc h", i)
-				})
-				//table.SetHeaderVisible(false)
-
-				table.AppendImageColumn("QRCode", 0)
-				table.AppendImageColumn("QRCode", 1)
-				table.SetHeaderSortIndicator(0, 1)
-				log.Println("tcsi", table.HeaderSortIndicator(0))
-				table.SetColumnWidth(0, 2)
-				nw.SetChild(table)
-				nw.SetMargined(true)
-				nw.OnClosing(func(w *ui.Window) bool { return true })
-				nw.Show()
-			})
-
-			y.AppendItem("test3").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-				log.Println(utils.GetSystemProxyState(true))
-				log.Println(utils.GetSystemProxyState(false))
-			})
-		}
-
-	}
 	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
 
 	{
