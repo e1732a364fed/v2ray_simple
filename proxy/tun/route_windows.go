@@ -113,6 +113,9 @@ func init() {
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+		if rememberedRouterIP == "" {
+			return
+		}
 		//恢复路由表
 		params := "delete 0.0.0.0 mask 0.0.0.0"
 		out1, _ := exec.Command("route", strings.Split(params, " ")...).Output()
