@@ -106,3 +106,8 @@ func Openbrowser(url string) error {
 	return err
 
 }
+
+// https://stackoverflow.com/questions/37290693/how-to-remove-redundant-spaces-whitespace-from-a-string-in-golang
+func StandardizeSpaces(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}

@@ -7,11 +7,12 @@
 # 对于小白来说，下面的指导太过于高级，难以看懂，因此对于小白来说推荐全自动化的方案。
 
 # 在macos上, 配置路由表还需要在tun设备建立之后才能进行，因为tun设备的名称是无法自定义的
+# 在macos上, 需要管理员权限(sudo)运行vs_gui 才能 成功自动创建tun设备
 
 # 下面给出macos上的路由表配置指导
+
 # 首先删除默认路由，然后将路由指向 utun3 (用户自己运行的到的名称可能不同)
-# 最后将自己的服务器的ip (我们的例子是127.0.0.1，请你改成实际服务器ip) 的路由指向原来的 路由器地址
-# 这个方案只适用于
+# 最后将自己的服务器的ip (我们的例子是 vlesss 的 127.0.0.1，请你改成实际服务器ip) 的路由指向原来的 路由器地址
 
 # sudo route delete -host default
 # sudo route add default -interface utun3
@@ -22,12 +23,25 @@
 # sudo route delete -host default
 # sudo route add default 192.168.1.1
 
+# 这个方案只适用于 不直连，全经过代理的情况。如果要分流直连，则需要更高级的 路由方案才行，否则会导致本地回环
+
 # 你还可以参考 https://github.com/yangchuansheng/love-gfw/blob/master/docs/gotun2socks-macos.md
 
 
 [[listen]]
 protocol = "tun"
 
+# tun Server使用 host 配置作为 tun device name (macos不设此项)
+# 使用 ip 配置作为 gateway 的ip , 若不给出，默认为 10.1.0.20
+# 使用 extra.tun_selfip 作为 tun向外拨号的ip, 若不给出, 默认为 10.1.0.10
+# 使用 extra.tun_mask 作为 子网掩码, 若不给出, 默认为 255.255.255.0
+
+
+# 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 
+# 此时必须额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址; 如果不给出, 则不会自动配置路由表
+
+extra.tun_auto_route = true
+extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
 
 [[dial]]
 protocol = "vlesss"

@@ -18,6 +18,7 @@ require (
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/profile v1.6.0
 	github.com/refraction-networking/utls v1.1.5
+	github.com/songgao/water v0.0.0-20190725173103-fd331bda3f4b
 	github.com/xtaci/smux v1.5.16
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/atomic v1.9.0
@@ -38,7 +39,6 @@ require (
 	github.com/marten-seemann/qtls-go1-19 v0.1.1 // indirect
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
-	github.com/songgao/water v0.0.0-20190725173103-fd331bda3f4b // indirect
 )
 
 require (

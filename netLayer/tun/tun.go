@@ -2,7 +2,6 @@ package tun
 
 import (
 	"io"
-	"log"
 	"net"
 	"sync"
 
@@ -110,16 +109,23 @@ func (h *handler) ReceiveTo(conn core.UDPConn, data []byte, addr *net.UDPAddr) e
 	return nil
 }
 
-// selfaddr是tun向外拨号时使用的ip; realAddr 是 tun接收数据时对外暴露的ip。
+// selfaddr是tun向外拨号时使用的ip; realAddr 是 tun接收数据时对外暴露的ip。也被称为gateway
+// realAddr 是在路由表中需要配置的那个ip。
 // mask是子网掩码，不是很重要.
 // macos上的使用举例："", "10.1.0.10", "10.1.0.20", "255.255.255.0"
-func CreateTun(name, selfaddr, realAddr, mask string) (tunDev io.ReadWriteCloser, err error) {
+func CreateTun(name, selfaddr, realAddr, mask string) (realname string, tunDev io.ReadWriteCloser, err error) {
 
 	//macos 上无法指定tun名称
 	tunDev, err = tun.OpenTunDevice(name, selfaddr, realAddr, mask, nil, false)
 	if err == nil {
+		realname = tunDev.(*water.Interface).Name()
 		if ce := utils.CanLogInfo("created new tun device"); ce != nil {
-			ce.Write(zap.String("name", tunDev.(*water.Interface).Name()))
+			ce.Write(
+				zap.String("name", realname),
+				zap.String("gateway", realAddr),
+				zap.String("selfip", selfaddr),
+				zap.String("mask", mask),
+			)
 		}
 	}
 	/*
@@ -143,7 +149,10 @@ func ListenTun(tunDev io.ReadWriteCloser) (tcpChan <-chan netLayer.TCPRequestInf
 	go func() {
 		_, err := io.CopyBuffer(lwip, tunDev, make([]byte, utils.MTU))
 		if err != nil {
-			log.Fatalf("tun copying from tunDev to lwip failed: %v", err)
+			if ce := utils.CanLogWarn("tun copying from tunDev to lwip failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return
 		}
 	}()
 	tcpChan = nh.tcpChan

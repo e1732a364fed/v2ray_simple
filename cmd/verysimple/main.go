@@ -301,6 +301,23 @@ func mainFunc() (result int) {
 
 	runPreCommands()
 
+	stopGorouteCaptureSignalChan := make(chan struct{})
+
+	go func() {
+		osSignals := make(chan os.Signal, 1)
+		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
+		select {
+		case <-stopGorouteCaptureSignalChan:
+			return
+		case <-osSignals:
+			utils.Info("Program got close signal.")
+
+			defaultMachine.Stop()
+			os.Exit(-1)
+		}
+
+	}()
+
 	defaultMachine.Start()
 
 	//没可用的listen/dial，而且还无法动态更改配置
@@ -350,6 +367,8 @@ func mainFunc() (result int) {
 	}
 
 	{
+		close(stopGorouteCaptureSignalChan)
+
 		osSignals := make(chan os.Signal, 1)
 		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
 		<-osSignals
