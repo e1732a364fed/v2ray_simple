@@ -14,7 +14,8 @@
 ## 最新消息
 
 vsb项目已经支持了安卓vpn功能: 
-https://github.com/e1732a364fed/vsb/releases/tag/v0.0.2
+https://github.com/e1732a364fed/vsb/releases/tag/v0.0.3
+
 # verysimple
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.

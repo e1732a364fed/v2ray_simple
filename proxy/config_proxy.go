@@ -8,14 +8,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-// 用于 tproxy 或 tun/tap 这种 只有 网络层 和传输层的情况
-// type LesserConf struct {
-// 	Addr        string
-// 	Tag         string
-// 	UseSniffing bool
-// 	Fullcone    bool
-// }
-
 // CommonConf is the common part of ListenConf and DialConf.
 type CommonConf struct {
 	Tag string `toml:"tag"` //可选
