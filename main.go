@@ -387,6 +387,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				passToOutClient(newiics, true, nil, nil, netLayer.Addr{})
 			})
 
+			return
 		default: //ws
 			singleSer := advSer.(advLayer.SingleServer)
 

@@ -478,54 +478,64 @@ func setupUI() {
 			}
 		})
 
-		var y = ui.NewMenu("Debug")
-		y.AppendItem("test").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-			if testFunc != nil {
-				testFunc()
-			}
-		})
+		ce := utils.CanLogDebug("testFunc")
 
-		y.AppendItem("test2").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-			qr, err := qrcode.New("https://example.org", qrcode.Medium)
-			if err != nil {
-				return
-			}
-			nw := ui.NewWindow("img", 320, 320, false)
-			uiimg := ui.NewImage(320, 320)
-			rect := image.Rect(0, 0, 320, 320)
-			rgbaImg := image.NewRGBA(rect)
-			draw.Draw(rgbaImg, rect, qr.Image(256), image.Point{}, draw.Over)
-			uiimg.Append(rgbaImg)
+		if ce != nil {
+			var y = ui.NewMenu("Debug")
+			y.AppendItem("test").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+				if testFunc != nil {
+					testFunc()
+				}
+			})
 
-			mh := newImgTableHandler()
-			mh.img = uiimg
-			model := ui.NewTableModel(mh)
+			y.AppendItem("test2").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+				qr, err := qrcode.New("https://example.org", qrcode.Medium)
+				if err != nil {
+					return
+				}
+				nw := ui.NewWindow("img", 320, 320, false)
+				uiimg := ui.NewImage(320, 320)
+				rect := image.Rect(0, 0, 320, 320)
+				rgbaImg := image.NewRGBA(rect)
+				draw.Draw(rgbaImg, rect, qr.Image(256), image.Point{}, draw.Over)
+				uiimg.Append(rgbaImg)
 
-			table := ui.NewTable(&ui.TableParams{
-				Model:                         model,
-				RowBackgroundColorModelColumn: 3,
-			})
-			table.OnRowClicked(func(t *ui.Table, i int) {
-				log.Println("tc", i)
-			})
-			table.OnRowDoubleClicked(func(t *ui.Table, i int) {
-				log.Println("tc", i)
-			})
-			table.OnHeaderClicked(func(t *ui.Table, i int) {
-				log.Println("tc h", i)
-			})
-			//table.SetHeaderVisible(false)
+				mh := newImgTableHandler()
+				mh.img = uiimg
+				model := ui.NewTableModel(mh)
 
-			table.AppendImageColumn("QRCode", 0)
-			table.AppendImageColumn("QRCode", 1)
-			table.SetHeaderSortIndicator(0, 1)
-			log.Println("tcsi", table.HeaderSortIndicator(0))
-			table.SetColumnWidth(0, 2)
-			nw.SetChild(table)
-			nw.SetMargined(true)
-			nw.OnClosing(func(w *ui.Window) bool { return true })
-			nw.Show()
-		})
+				table := ui.NewTable(&ui.TableParams{
+					Model:                         model,
+					RowBackgroundColorModelColumn: 3,
+				})
+				table.OnRowClicked(func(t *ui.Table, i int) {
+					log.Println("tc", i)
+				})
+				table.OnRowDoubleClicked(func(t *ui.Table, i int) {
+					log.Println("tc", i)
+				})
+				table.OnHeaderClicked(func(t *ui.Table, i int) {
+					log.Println("tc h", i)
+				})
+				//table.SetHeaderVisible(false)
+
+				table.AppendImageColumn("QRCode", 0)
+				table.AppendImageColumn("QRCode", 1)
+				table.SetHeaderSortIndicator(0, 1)
+				log.Println("tcsi", table.HeaderSortIndicator(0))
+				table.SetColumnWidth(0, 2)
+				nw.SetChild(table)
+				nw.SetMargined(true)
+				nw.OnClosing(func(w *ui.Window) bool { return true })
+				nw.Show()
+			})
+
+			y.AppendItem("test3").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+				log.Println(utils.GetSystemProxyState(true))
+				log.Println(utils.GetSystemProxyState(false))
+			})
+		}
+
 	}
 	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
 

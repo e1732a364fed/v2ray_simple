@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 )
 
@@ -51,6 +52,49 @@ func GetSystemKillChan() <-chan os.Signal {
 	return osSignals
 }
 
+func GetSystemProxyState(isSocks5 bool) (ok, enabled bool, addr, port string) {
+
+	switch runtime.GOOS {
+	case "darwin":
+		var out string
+		if isSocks5 {
+			var e error
+			out, e = LogRunCmd("networksetup", "-getsocksfirewallproxy", "Wi-Fi")
+			if e != nil {
+				return
+			}
+			ok = true
+
+		} else {
+			var e error
+			out, e = LogRunCmd("networksetup", "-getwebproxy", "Wi-Fi")
+			if e != nil {
+				return
+			}
+			ok = true
+		}
+		strs := strings.Split(out, "\n")
+		if len(strs) < 1 {
+			return
+		}
+
+		if strings.Contains(strs[0], "Yes") {
+			enabled = true
+		}
+		if len(strs) < 3 {
+			return
+		}
+		if strings.Contains(strs[1], "Server: ") {
+			addr = strings.TrimPrefix(strs[1], "Server: ")
+		}
+		if strings.Contains(strs[2], "Port: ") {
+			port = strings.TrimPrefix(strs[2], "Port: ")
+		}
+
+	}
+	return
+}
+
 func ToggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
 	//我们使用命令行方式。
 
@@ -68,9 +112,11 @@ func ToggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
 		} else {
 			if enable {
 				LogRunCmd("networksetup", "-setwebproxy", "Wi-Fi", addr, port)
+				LogRunCmd("networksetup", "-setsecurewebproxy", "Wi-Fi", addr, port)
 
 			} else {
 				LogRunCmd("networksetup", "-setwebproxystate", "Wi-Fi", "off")
+				LogRunCmd("networksetup", "-setsecurewebproxystate", "Wi-Fi", "off")
 			}
 		}
 	case "windows":
