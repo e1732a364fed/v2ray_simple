@@ -1088,6 +1088,15 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			if client.InnerMuxEstablished() {
 				client.Unlock()
 
+				if ce := iics.CanLogInfo("Mux Request"); ce != nil {
+
+					ce.Write(
+						zap.String("From", iics.cachedRemoteAddr),
+						zap.String("Target", targetAddr.UrlString()),
+						zap.String("through", proxy.GetVSI_url(client, targetAddr.Network)),
+					)
+				}
+
 				wrc1, realudp_wrc, result1 := dialInnerProxy(client, wlc, nil, iics, innerProxyName, targetAddr, isudp)
 
 				if result1 == 0 {
