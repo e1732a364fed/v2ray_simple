@@ -5,6 +5,7 @@ package machine
 //安卓我们直接将proxy等子包引入. 这是为了方便直接用machine包编译aar
 import (
 	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpcSimple"
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/quic"
 	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 
