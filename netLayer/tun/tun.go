@@ -16,15 +16,28 @@ import (
 type coreUDPConnAdapter struct {
 	core.UDPConn
 	netLayer.EasyDeadline
+
+	readChan chan netLayer.UDPAddrData
+}
+
+func newUdpAdapter() *coreUDPConnAdapter {
+	c := new(coreUDPConnAdapter)
+	c.InitEasyDeadline()
+	c.readChan = make(chan netLayer.UDPAddrData, 1)
+	return c
 }
 
 func (h *coreUDPConnAdapter) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
-	return nil, netLayer.Addr{}, nil
+	ud := <-h.readChan
+
+	return ud.Data, netLayer.NewAddrFromUDPAddr(&ud.Addr), nil
 }
-func (h *coreUDPConnAdapter) WriteMsgTo([]byte, netLayer.Addr) error {
-	return nil
+func (h *coreUDPConnAdapter) WriteMsgTo(data []byte, ad netLayer.Addr) error {
+	_, err := h.UDPConn.WriteFrom(data, ad.ToUDPAddr())
+	return err
 }
+
 func (h *coreUDPConnAdapter) CloseConnWithRaddr(raddr netLayer.Addr) error {
 
 	return nil
@@ -36,12 +49,15 @@ func (h *coreUDPConnAdapter) Fullcone() bool {
 type handler struct {
 	tcpChan chan netLayer.TCPRequestInfo
 	udpChan chan netLayer.UDPRequestInfo
+
+	udpmap map[netLayer.HashableAddr]*coreUDPConnAdapter
 }
 
 func newHandler() *handler {
 	return &handler{
 		tcpChan: make(chan netLayer.TCPRequestInfo),
 		udpChan: make(chan netLayer.UDPRequestInfo),
+		udpmap:  make(map[netLayer.HashableAddr]*coreUDPConnAdapter),
 	}
 }
 
@@ -54,23 +70,44 @@ func (h *handler) Handle(conn net.Conn, target *net.TCPAddr) error {
 }
 
 func (h *handler) Connect(conn core.UDPConn, target *net.UDPAddr) error {
-	uad := netLayer.NewAddrFromUDPAddr(target)
-	adapter := &coreUDPConnAdapter{UDPConn: conn}
-	adapter.InitEasyDeadline()
-
-	h.udpChan <- netLayer.UDPRequestInfo{Target: uad, MsgConn: adapter}
 	return nil
 }
 
 func (h *handler) ReceiveTo(conn core.UDPConn, data []byte, addr *net.UDPAddr) error {
-	log.Println("ReceiveTo called")
+	//log.Println("ReceiveTo called")
+
+	//这个conn是 tun的conn，我们只调用它的 WriteFrom 方法 把从外部获得的数据写入 tunDev
+
+	//也就是说，netLayer.MsgConn.ReadMsgFrom获得的数据要用 core.UDPConn.WriteFrom 写入
+
+	//tun 会调用我们的 ReceiveTo 方法 给我们新的 从tun读到的消息
+
+	uad := netLayer.NewAddrFromUDPAddr(addr)
+
+	ha := uad.GetHashable()
+	if adapter, ok := h.udpmap[ha]; ok {
+		adapter.readChan <- netLayer.UDPAddrData{Data: data, Addr: *addr}
+
+	} else {
+		adapter := newUdpAdapter()
+		adapter.UDPConn = conn
+
+		h.udpmap[ha] = adapter
+		adapter.readChan <- netLayer.UDPAddrData{Data: data, Addr: *addr}
+
+		h.udpChan <- netLayer.UDPRequestInfo{Target: uad, MsgConn: adapter}
+	}
+
 	return nil
 }
 
-func ListenTun() (tunDev io.ReadWriteCloser, err error) {
+// selfaddr是tun向外拨号时使用的ip; realAddr 是 tun接收数据时对外暴露的ip。
+// mask是子网掩码，不是很重要.
+// macos上的使用举例："", "10.1.0.10", "10.1.0.20", "255.255.255.0"
+func CreateTun(name, selfaddr, realAddr, mask string) (tunDev io.ReadWriteCloser, err error) {
 
 	//macos 上无法指定tun名称
-	tunDev, err = tun.OpenTunDevice("", "10.1.0.10", "10.1.0.20", "255.255.255.0", nil, false)
+	tunDev, err = tun.OpenTunDevice(name, selfaddr, realAddr, mask, nil, false)
 	if err == nil {
 		if ce := utils.CanLogInfo("created new tun device"); ce != nil {
 			ce.Write(zap.String("name", tunDev.(*water.Interface).Name()))
@@ -86,7 +123,7 @@ func ListenTun() (tunDev io.ReadWriteCloser, err error) {
 	return
 }
 
-func HandleTun(tunDev io.ReadWriteCloser) (tcpChan <-chan netLayer.TCPRequestInfo, udpChan <-chan netLayer.UDPRequestInfo, closer io.Closer) {
+func ListenTun(tunDev io.ReadWriteCloser) (tcpChan <-chan netLayer.TCPRequestInfo, udpChan <-chan netLayer.UDPRequestInfo, closer io.Closer) {
 	lwip := core.NewLWIPStack()
 	core.RegisterOutputFn(func(data []byte) (int, error) {
 		return tunDev.Write(data)

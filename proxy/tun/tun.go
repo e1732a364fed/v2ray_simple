@@ -40,8 +40,9 @@ type Server struct {
 
 	stopped bool
 
-	infoChan   chan<- netLayer.TCPRequestInfo
-	lwipCloser io.Closer
+	infoChan       chan<- netLayer.TCPRequestInfo
+	udpRequestChan chan<- netLayer.UDPRequestInfo
+	lwipCloser     io.Closer
 }
 
 func (*Server) Name() string { return name }
@@ -63,31 +64,45 @@ func (s *Server) Stop() {
 		s.stopped = true
 		s.lwipCloser.Close()
 		close(s.infoChan)
+		close(s.udpRequestChan)
 	}
 
 }
 
-func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoChan chan<- netLayer.UDPRequestInfo) io.Closer {
-	tunDev, err := tun.ListenTun()
+func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
+	tunDev, err := tun.CreateTun("", "10.1.0.10", "10.1.0.20", "255.255.255.0")
 	if err != nil {
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return nil
 	}
-	s.infoChan = infoChan
+	s.infoChan = tcpRequestChan
+	s.udpRequestChan = udpRequestChan
 
-	tchan, _, lwipcloser := tun.HandleTun(tunDev)
+	newTchan, newUchan, lwipcloser := tun.ListenTun(tunDev)
 	go func() {
-		for tr := range tchan {
+		for tr := range newTchan {
 			if s.stopped {
 				return
 			}
 			if ce := utils.CanLogInfo("tun got new tcp"); ce != nil {
 				ce.Write(zap.String("->", tr.Target.String()))
 			}
-			infoChan <- tr
+			tcpRequestChan <- tr
 
+		}
+	}()
+
+	go func() {
+		for ur := range newUchan {
+			if s.stopped {
+				return
+			}
+			if ce := utils.CanLogInfo("tun got new udp"); ce != nil {
+				ce.Write(zap.String("->", ur.Target.String()))
+			}
+			udpRequestChan <- ur
 		}
 	}()
 	s.lwipCloser = lwipcloser

@@ -21,7 +21,7 @@ telegram channel: https://t.me/+r5hKQKYyeuowMTcx
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
 
-verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富，轻量级，极简，用户友好，新手向。
+verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富，轻量级，极简，用户友好，新手向。以学习编程技术为主要目标。
 
 本作的想法是，使用自己的代码，实现v2ray的所有的好的功能（并摒弃差的功能），而且使用自主研发的更简单的架构，结合自主研发的新技术，实现反超。
 
@@ -34,6 +34,10 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 verysimple 研发了一些新技术，使用自研架构，可以加速，目前基本上是全网最快，且有用户报告内存占用 比v2ray/xray 小1/3。
 
 vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛的utls支持，grpc回落，交互模式等。
+
+总的来说，代理的编写是一个非常简单的事情，属于平民级别。
+只要不涉及复杂的tls、tcp、ip原始协议的解析，不涉及新代理协议的制定，只是制作一款代理是相当容易的。
+
 ## 支持的功能
 
 socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/**v1**)/vmess/shadowsocks, 多用户, http头

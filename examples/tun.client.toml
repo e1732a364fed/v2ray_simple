@@ -22,6 +22,8 @@
 # sudo route delete -host default
 # sudo route add default 192.168.1.1
 
+# 你还可以参考 https://github.com/yangchuansheng/love-gfw/blob/master/docs/gotun2socks-macos.md
+
 
 [[listen]]
 protocol = "tun"
