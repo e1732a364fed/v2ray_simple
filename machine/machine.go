@@ -91,6 +91,10 @@ func (m *M) Start() {
 				m.listenCloserList = append(m.listenCloserList, lis)
 			}
 		}
+
+		if dm := m.RoutingEnv.DnsMachine; dm != nil {
+			dm.StartListen()
+		}
 		m.Unlock()
 	}
 
@@ -112,6 +116,9 @@ func (m *M) Stop() {
 		if listener != nil {
 			listener.Close()
 		}
+	}
+	if dm := m.RoutingEnv.DnsMachine; dm != nil {
+		dm.Stop()
 	}
 	m.Unlock()
 }

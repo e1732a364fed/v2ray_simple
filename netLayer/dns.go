@@ -46,7 +46,8 @@ func Is_DNSQuery_returnType_ReadFatalErr(err error) bool {
 }
 
 // domain必须是 dns.Fqdn 函数 包过的, 本函数不检查是否包过。如果不包过就传入，会报错。
-// dns_type 为 miekg/dns 包中定义的类型, 如 TypeA, TypeAAAA, TypeCNAME.
+// dns_type 为 miekg/dns 包中定义的类型, 目前只实现了 TypeA, TypeAAAA, TypeCNAME.
+//
 // conn是一个建立好的 dns.Conn, 必须非空, 本函数不检查.
 // theMux是与 conn相匹配的mutex, 这是为了防止同时有多个请求导致无法对口；内部若判断为nil,会主动使用一个全局mux.
 // recursionCount 使用者统一填0 即可，用于内部 遇到cname时进一步查询时防止无限递归.
@@ -152,10 +153,11 @@ type IPRecord struct {
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询。
 type DNSMachine struct {
 	TypeStrategy int64  // 0, 4, 6, 40, 60
-	TTLStrategy  uint64 // 0, 1, arbitrary
-	defaultConn  DnsConn
-	conns        map[string]*DnsConn
-	cache        map[string]IPRecord //cache的key统一为 未经 Fqdn包装过的域名. 即尾部没有点号
+	TTLStrategy  uint32 // 0, 1, arbitrary，见 DnsConf 中的定义
+
+	defaultConn DnsConn
+	conns       map[string]*DnsConn
+	cache       map[string]IPRecord //cache的key统一为 未经 Fqdn包装过的域名. 即尾部没有点号
 
 	SpecialIPPollicy map[string][]netip.Addr
 
@@ -163,6 +165,9 @@ type DNSMachine struct {
 
 	mutex sync.RWMutex //读写 conns, cache, SpecialIPPollicy, SpecialServerPollicy 时所使用的 mutex
 
+	listening bool
+	listenUrl string
+	server    *dns.Server
 }
 
 // Dial通过 c 内部设置好的地址进行拨号,并将 c.Conn.Conn 设为 新建立好的连接
@@ -249,29 +254,29 @@ func (dm *DNSMachine) Query(domain string) (ip net.IP) {
 	default:
 		fallthrough
 	case 0, 4:
-		ip = dm.QueryType(domain, dns.TypeA)
+		ip, _ = dm.QueryType(domain, dns.TypeA)
 		if ip == nil {
-			ip = dm.QueryType(domain, dns.TypeAAAA)
+			ip, _ = dm.QueryType(domain, dns.TypeAAAA)
 		}
 	case 6:
-		ip = dm.QueryType(domain, dns.TypeAAAA)
+		ip, _ = dm.QueryType(domain, dns.TypeAAAA)
 		if ip == nil {
-			ip = dm.QueryType(domain, dns.TypeA)
+			ip, _ = dm.QueryType(domain, dns.TypeA)
 		}
 	case 40:
-		ip = dm.QueryType(domain, dns.TypeA)
+		ip, _ = dm.QueryType(domain, dns.TypeA)
 	case 60:
-		ip = dm.QueryType(domain, dns.TypeAAAA)
+		ip, _ = dm.QueryType(domain, dns.TypeAAAA)
 	}
 	return
 }
 
 // 传入的domain必须是不带尾缀点号的domain, 即没有包过 Fqdn
-func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
+func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP, ttl uint32) {
 	var generalCacheHit bool // 若读到了 cache 或 SpecialIPPollicy 的项, 则 generalCacheHit 为 true
 
 	var theDNSServerConn *DnsConn
-	var ttl uint32
+	// ttl  //用于cache
 
 	defer func() {
 		if theDNSServerConn != nil && theDNSServerConn.garbageMark {
@@ -381,7 +386,7 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 					if a.Is4() || a.Is4In6() {
 						aa := a.As4()
 						generalCacheHit = true
-						return aa[:]
+						return aa[:], uint32(dm.TTLStrategy)
 					}
 				}
 			case dns.TypeAAAA:
@@ -389,7 +394,7 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 					if a.Is6() {
 						aa := a.As16()
 						generalCacheHit = true
-						return aa[:]
+						return aa[:], uint32(dm.TTLStrategy)
 					}
 				}
 			}
@@ -444,4 +449,101 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 
 	}
 	return
+}
+
+// 使用通过配置设置好的监听地址进行监听
+func (dm *DNSMachine) StartListen() {
+	if dm.listenUrl == "" {
+		return
+	}
+	e := dm.ListenUrl(dm.listenUrl)
+	if e != nil {
+		if ce := utils.CanLogErr("Failed in LoadDnsMachine, try listen failed "); ce != nil {
+			ce.Write(zap.Error(e))
+		}
+	}
+
+}
+
+// 非阻塞, addr 为 url格式
+func (dm *DNSMachine) ListenUrl(addr string) error {
+
+	//测试: nslookup -port=8053 www.myfake.com  127.0.0.1
+
+	a, e := NewAddrByURL(addr)
+	network := a.Network
+
+	if e != nil || network == "" {
+		return utils.ErrInErr{ErrDesc: "dns listen url format wrong", ErrDetail: e, Data: addr}
+	}
+	if network == "tls" {
+		network = "tcp-tls" //见 github.com/miekg/dns@v1.1.50/server.go 第315行
+	}
+	addr = a.String()
+
+	server := &dns.Server{Addr: addr, Net: network, Handler: dm}
+
+	if ce := utils.CanLogInfo("Start Dns server..."); ce != nil {
+		ce.Write(zap.String("addr", addr))
+	}
+
+	go server.ListenAndServe()
+	dm.server = server
+	dm.listening = true
+
+	return nil
+}
+
+// 如果调用过Listen，则Stop会关闭 dns监听
+func (dm *DNSMachine) Stop() {
+	if dm.listening {
+		dm.listening = false
+
+		if ce := utils.CanLogInfo("Stop Dns server..."); ce != nil {
+			ce.Write()
+		}
+
+		dm.server.Shutdown()
+		dm.server = nil
+	}
+}
+
+// 实现 miekg/dns.Handler, 用于监听。不要直接调用该方法。
+// 只查第一个question
+func (dm *DNSMachine) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
+	if r == nil || len(r.Question) == 0 {
+		return
+	}
+	name := r.Question[0].Name
+	qtype := r.Question[0].Qtype
+	noDotName := strings.TrimSuffix(name, ".")
+
+	if ce := utils.CanLogDebug("Dns got"); ce != nil {
+		ce.Write(zap.String("name", noDotName), zap.Uint16("qtype", qtype))
+	}
+
+	ip, ttl := dm.QueryType(noDotName, qtype)
+
+	if ce := utils.CanLogDebug("Dns ip for"); ce != nil {
+		ce.Write(zap.String("name", noDotName), zap.String("ip", ip.String()))
+	}
+
+	// 构建返回信息
+	m := new(dns.Msg)
+	m.SetReply(r)
+	m.Authoritative = true
+
+	var dnsRR []dns.RR
+
+	rr := new(dns.A)
+
+	if dm.TTLStrategy != 1 {
+		ttl = uint32(dm.TTLStrategy)
+	}
+	rr.Hdr = dns.RR_Header{Name: name, Rrtype: qtype, Class: dns.ClassINET, Ttl: ttl}
+	rr.A = ip
+	dnsRR = append(dnsRR, rr)
+
+	m.Answer = dnsRR
+	w.WriteMsg(m)
 }

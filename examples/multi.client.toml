@@ -23,10 +23,15 @@ admin_pass = "adfadfadfadfa"	# 用于 api服务器的登陆密码.只要给出, 
 # ttl_strategy = 1
 # ttl_strategy 为缓存过期时间的配置，小白暂时可以不管. 0表示默认(记录永不过期), 1表示严格按照dns查询到的TTL, 其他值则为自定义的秒数，然后程序会按这个时间周期性清理缓存。 (不可为负）
 
+# listen = "udp://127.0.0.1:8053" 	# 如果listen给出, 则会开启一个dns监听, 你可以配置系统dns指向这里. 
+
+# 如果没有listen，则 vs的dns模块只用于 代理中传来域名信息的解析, 与外部无关
+
+# listen与 下面配置的dokodemo方法有所不同, dokodemo只是全转发, 不参照我们配置的dns解析, 而listen则完全走 servers 和 hosts 的配置。
 
 servers = [
 	"udp://114.114.114.114:53",      # 如果把该url指向我们dokodemo监听的端口，就可以达到通过节点请求dns的目的.
-	#"udp://127.0.0.1:63782",      # 如这一行 就是通过我们节点请求dns
+	#"udp://127.0.0.1:63782",      # 如这一行 就是通过下面配置的dokodemo端口, 经过我们节点请求dns
 	
 	#{ addr = "udp://8.8.8.8:53", domain = [ "google.com" ] },	# 还可以为特定域名指定特定服务器
 	#{ addr = "tls://223.5.5.5:853", domain = [ "twitter.com" ] }	# 还可以 用 dns over tls

@@ -9,8 +9,10 @@ import (
 )
 
 type DnsConf struct {
+	Listen string `toml:"listen"` // 格式: udp://127.0.0.1:8053 , 如果有效，则尝试监听该地址，否则不监听. 可以为 udp,tcp 或 tls
+
 	Strategy    int64          `toml:"strategy"`     //0表示默认(和4含义相同), 4表示先查ip4后查ip6, 6表示先查6后查4; 40表示只查ipv4, 60 表示只查ipv6
-	TTLStrategy uint64         `toml:"ttl_strategy"` //0表示默认(记录永不过期), 1表示严格按照dns查询到的TTL, 其他值则为自定义的秒数，然后程序会按这个时间周期性清理缓存。
+	TTLStrategy uint32         `toml:"ttl_strategy"` //0表示默认(记录永不过期), 1表示严格按照dns查询到的TTL, 其他值则为自定义的秒数，然后程序会按这个时间周期性清理缓存。
 	Hosts       map[string]any `toml:"hosts"`        //用于强制指定哪些域名会被解析为哪些具体的ip；可以为一个ip字符串，or a []string, 内可以是A,AAAA或CNAME
 	Servers     []any          `toml:"servers"`      //可以为一个地址url字符串，or a SpecialDnsServerConf; 如果第一个元素是url字符串形式，则此第一个元素将会被用作默认dns服务器
 }
@@ -179,5 +181,10 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 	if !ok {
 		return nil
 	}
+	if conf.Listen != "" {
+		dm.listenUrl = conf.Listen
+
+	}
+
 	return dm
 }
