@@ -50,7 +50,9 @@ Tags
 本包提供 noquic, grpc_full 这两个 build tag。
 
 若 grpc_full 给出，则引用 advLayer/grpc 包，否则默认引用 advLayer/grpcSimple 包。
-grpcSimple 比 grpc 节省 大概 4MB 大小。
+
+比较：
+grpcSimple 比 grpc 节省 大概 4MB 大小，而且支持回落到 h2c; 而 grpc包 支持 multiMode。
 
 若 noquic给出，则不引用 advLayer/quic，否则 默认引用 advLayer/quic。
 quic大概占用 2MB 大小。

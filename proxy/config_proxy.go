@@ -62,8 +62,8 @@ type CommonConf struct {
 
 	/////////////////// 代理层 ///////////////////
 
-	Protocol string `toml:"protocol"` //代理层; 约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
-	Uuid     string `toml:"uuid"`     //代理层用户的唯一标识，视代理层协议而定，一般使用uuid，但trojan协议是随便的.
+	Protocol string `toml:"protocol"` //代理层; 约定，如果一个Protocol尾缀去掉了一个's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
+	Uuid     string `toml:"uuid"`     //代理层用户的唯一标识，视代理层协议而定，一般使用uuid，但trojan协议是随便的password, 而socks5 和 http 则使用 user+pass 的形式。 我们为了简洁、一致，就统一放到了 这个字段里。
 	Version  int    `toml:"version"`  //可选，代理层协议版本号，vless v1 要用到。
 
 }

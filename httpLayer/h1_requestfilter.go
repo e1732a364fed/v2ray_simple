@@ -184,7 +184,7 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, head
 			return
 		}
 	}
-	failreason = last //!isproxy时, 我们只判断了前64字节，如果访问url更长的话，这里还是会返回failreason的
+	failreason = last //!isproxy时, 我们只判断了前 MaxParseUrlLen 字节，如果访问url更长的话，这里还是会返回failreason的
 	return
 
 }

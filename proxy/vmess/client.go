@@ -115,7 +115,7 @@ func (c *Client) specifySecurityByStr(security string) error {
 		c.opt = OptBasicFormat
 		c.security = SecurityNone
 	default:
-		return errors.New("unknown security type: " + security)
+		return utils.ErrInErr{ErrDesc: "unknown security type", ErrDetail: utils.ErrInvalidData, Data: security}
 	}
 	return nil
 }
@@ -202,7 +202,7 @@ func (c *ClientConn) CloseConnWithRaddr(_ netLayer.Addr) error {
 	return c.Conn.Close()
 }
 
-//vmess 标准 是不支持 fullcone的，和vless v0相同
+//return false; vmess 标准 是不支持 fullcone的，和vless v0相同
 func (c *ClientConn) Fullcone() bool {
 	return false
 }
