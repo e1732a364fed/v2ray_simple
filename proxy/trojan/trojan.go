@@ -178,7 +178,7 @@ func GetAddrFrom(buf utils.ByteReader, ismux bool) (addr netLayer.Addr, err erro
 		if err != nil {
 			return
 		}
-		if n != 4 {
+		if n != net.IPv6len {
 			err = utils.ErrShortRead
 			return
 		}
