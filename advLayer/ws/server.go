@@ -35,8 +35,11 @@ type Server struct {
 	responseHeader              ws.HandshakeHeader
 }
 
-// 这里默认: 传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查.
+// 这里默认: 传入的path必须 以 "/" 为前缀. 若path为空，本函数 将自动使用 "/"
 func NewServer(path string, headers *httpLayer.HeaderPreset, UseEarlyData bool) *Server {
+	if path == "" {
+		path = "/"
+	}
 
 	noNeedToCheckRequestHeaders := headers == nil || headers.Request == nil || len(headers.Request.Headers) == 0
 
