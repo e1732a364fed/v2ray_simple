@@ -88,7 +88,7 @@ func TestWs(t *testing.T) {
 		t.Log(err)
 		t.FailNow()
 	}
-	wsConn, err := cli.Handshake(tcpConn, nil)
+	wsConn, err := cli.Handshake(tcpConn, 0)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()

@@ -1301,13 +1301,12 @@ advLayerHandshakeStep:
 		//ws
 		default:
 
-			var ed []byte
+			var edlen int
 
 			if !hasInnerMux && advClient.IsEarly() && wlc != nil {
-				//若配置了 MaxEarlyDataLen，则我们先读一段;
-				ed = iics.firstPayload
-				iics.fallbackFirstBuffer = nil
-				iics.firstPayload = nil //防止vless 再写一遍firstpayload.
+
+				edlen = len(iics.firstPayload)
+
 			}
 
 			// 我们verysimple的架构是 ws握手之后，再进行vless握手
@@ -1318,7 +1317,7 @@ advLayerHandshakeStep:
 
 			wcs := advClient.(advLayer.SingleClient)
 
-			wc, err = wcs.Handshake(clientConn, ed)
+			wc, err = wcs.Handshake(clientConn, edlen)
 
 			if err != nil {
 				if ce := iics.CanLogErr("Failed in handshake Single AdvLayer"); ce != nil {

@@ -54,14 +54,13 @@ func (c *Client) IsEarly() bool {
 }
 
 //与服务端进行 websocket握手，并返回可直接用于读写 websocket 二进制数据的 net.Conn
-func (c *Client) Handshake(underlay net.Conn, ed []byte) (net.Conn, error) {
+func (c *Client) Handshake(underlay net.Conn, firstPayloadLen int) (net.Conn, error) {
 
-	if len(ed) > 0 {
+	if c.IsEarly() && firstPayloadLen > 0 && firstPayloadLen <= MaxEarlyDataLen {
 		// 我们要先返回一个 Conn, 然后读取到内层的 vless等协议的握手后，再进行实际的 ws握手
 		return &EarlyDataConn{
 			Conn: underlay,
 
-			earlyData:            ed,
 			requestURL:           c.requestURL,
 			firstHandshakeOkChan: make(chan int, 1),
 			dialer: &ws.Dialer{
@@ -134,7 +133,6 @@ type EarlyDataConn struct {
 	realWsConn net.Conn
 
 	notFirst             bool
-	earlyData            []byte
 	requestURL           *url.URL
 	firstHandshakeOkChan chan int
 
@@ -152,8 +150,7 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 		outBuf := utils.GetBuf()
 		encoder := base64.NewEncoder(base64.RawURLEncoding, outBuf)
 
-		multiReader := io.MultiReader(bytes.NewReader(p), bytes.NewReader(edc.earlyData))
-		_, encerr := io.Copy(encoder, multiReader)
+		_, encerr := io.Copy(encoder, bytes.NewReader(p))
 		if encerr != nil {
 			close(edc.firstHandshakeOkChan)
 			return 0, utils.ErrInErr{ErrDesc: "Err when encode early data", ErrDetail: encerr}

@@ -78,8 +78,8 @@ type Client interface {
 type SingleClient interface {
 	Client
 
-	//it's 0-rtt if payload is provided
-	Handshake(underlay net.Conn, payload []byte) (net.Conn, error)
+	//it may use 0-rtt if firstPayloadLen>0 && IsEarly() == true
+	Handshake(underlay net.Conn, firstPayloadLen int) (net.Conn, error)
 }
 
 //like grpc (h2) and quic (h3)
