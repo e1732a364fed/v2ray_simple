@@ -1,4 +1,4 @@
-name: Build For Release Extra
+name: Build aar
 
 on:
   workflow_dispatch:
