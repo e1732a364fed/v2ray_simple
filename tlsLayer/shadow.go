@@ -251,7 +251,7 @@ func shadowCopyHandshakeClientToFake(fakeConn, clientConn net.Conn, hashW *utils
 
 }
 
-// 第一次写时写入一个hash，其余直接使用 FakeAppDataConn
+// 第一次写时写入一个hash，其余直接使用 FakeAppDataConn. 实现 utils.MultiWriter
 type shadowClientConn struct {
 	*FakeAppDataConn
 	sum []byte
@@ -277,4 +277,27 @@ func (c *shadowClientConn) Write(p []byte) (n int, err error) {
 		return
 	}
 	return c.FakeAppDataConn.Write(p)
+}
+
+func (c *shadowClientConn) WriteBuffers(bss [][]byte) (int64, error) {
+	if c.sum != nil {
+		sum := c.sum
+		c.sum = nil
+
+		result, dup := utils.MergeBuffersWithPrefix(sum, bss)
+
+		allDataLen := len(result) - len(sum)
+
+		_, err := c.FakeAppDataConn.Write(result)
+
+		if dup {
+			utils.PutPacket(result)
+		}
+		if err != nil {
+			return 0, err
+		}
+		return int64(allDataLen), nil
+
+	}
+	return c.FakeAppDataConn.WriteBuffers(bss)
 }

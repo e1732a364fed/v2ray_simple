@@ -53,7 +53,8 @@ func NewClient(conf Conf) *Client {
 	return c
 }
 
-func (c *Client) Handshake(underlay net.Conn) (tlsConn Conn, err error) {
+// utls和tls时返回tlsLayer.Conn, shadowTls1时返回underlay, shadowTls2时返回 普通 net.Conn
+func (c *Client) Handshake(underlay net.Conn) (result net.Conn, err error) {
 
 	switch c.tlsType {
 	case UTls_t:
@@ -65,7 +66,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn Conn, err error) {
 		if err != nil {
 			return
 		}
-		tlsConn = &conn{
+		result = &conn{
 			Conn:    utlsConn,
 			ptr:     unsafe.Pointer(utlsConn.Conn),
 			tlsType: UTls_t,
@@ -77,7 +78,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn Conn, err error) {
 			return
 		}
 
-		tlsConn = &conn{
+		result = &conn{
 			Conn:    officialConn,
 			ptr:     unsafe.Pointer(officialConn),
 			tlsType: Tls_t,
@@ -89,10 +90,7 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn Conn, err error) {
 			return
 		}
 
-		tlsConn = &conn{
-			Conn:    underlay,
-			tlsType: ShadowTls_t,
-		}
+		result = underlay
 
 	case ShadowTls2_t:
 
@@ -110,17 +108,9 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn Conn, err error) {
 			return
 		}
 
-		// err = tls.Client(rw, c.tlsConfig).Handshake()
-		// if err != nil {
-		// 	return
-		// }
-
-		tlsConn = &conn{
-			Conn: &shadowClientConn{
-				FakeAppDataConn: &FakeAppDataConn{Conn: rw},
-				sum:             hashR.Sum(),
-			},
-			tlsType: ShadowTls2_t,
+		result = &shadowClientConn{
+			FakeAppDataConn: &FakeAppDataConn{Conn: rw},
+			sum:             hashR.Sum(),
 		}
 
 	}

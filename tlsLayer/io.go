@@ -2,6 +2,7 @@ package tlsLayer
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -83,4 +84,47 @@ func CopyTls12Handshake(isSrcClient bool, dst, src net.Conn) error {
 		}
 	}
 	return nil
+}
+
+func WriteAppData(conn io.Writer, buf *bytes.Buffer, d []byte) (n int, err error) {
+
+	shouldPut := false
+
+	if buf == nil {
+		buf = utils.GetBuf()
+		shouldPut = true
+	}
+	WriteAppDataHeader(buf, len(d))
+
+	buf.Write(d)
+
+	n, err = conn.Write(buf.Bytes())
+
+	if shouldPut {
+		utils.PutBuf(buf)
+
+	}
+	return
+}
+
+// 一般conn直接为tcp连接，而它是有系统缓存的，因此我们一般不需要特地创建一个缓存
+// 写两遍之后在发出
+func WriteAppDataNoBuf(w io.Writer, d []byte) (n int, err error) {
+
+	err = WriteAppDataHeader(w, len(d))
+	if err != nil {
+		return
+	}
+	return w.Write(d)
+
+}
+
+func WriteAppDataHeader(w io.Writer, len int) (err error) {
+	var h [5]byte
+	h[0] = 23
+	binary.BigEndian.PutUint16(h[1:3], tls.VersionTLS12)
+	binary.BigEndian.PutUint16(h[3:], uint16(len))
+
+	_, err = w.Write(h[:])
+	return
 }

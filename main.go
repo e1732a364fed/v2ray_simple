@@ -418,47 +418,49 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 			wsConn, err := singleSer.Handshake(wrappedConn)
 
-			if errors.Is(err, httpLayer.ErrShouldFallback) {
+			if err != nil {
+				if errors.Is(err, httpLayer.ErrShouldFallback) {
 
-				meta := wsConn.(httpLayer.FallbackMeta)
+					meta := wsConn.(httpLayer.FallbackMeta)
 
-				iics.fallbackRequestPath = meta.Path
-				iics.fallbackFirstBuffer = meta.H1RequestBuf
-				iics.wrappedConn = meta.Conn
-				if meta.XFF != nil {
-					iics.cachedRemoteAddr = meta.XFF.String()
+					iics.fallbackRequestPath = meta.Path
+					iics.fallbackFirstBuffer = meta.H1RequestBuf
+					iics.wrappedConn = meta.Conn
+					if meta.XFF != nil {
+						iics.cachedRemoteAddr = meta.XFF.String()
+
+					}
+
+					if ce := iics.CanLogDebug("Single AdvLayer Check failed, will fallback."); ce != nil {
+
+						ce.Write(
+							zap.String("handler", inServer.AddrStr()),
+							zap.String("advLayer", adv),
+							zap.String("Reason", meta.Reason),
+							zap.String("validPath", advSer.GetPath()),
+							zap.String("gotMethod", meta.Method),
+							zap.String("gotPath", meta.Path),
+							zap.String("from", iics.cachedRemoteAddr),
+						)
+					}
+
+					passToOutClient(iics, true, nil, nil, netLayer.Addr{})
+					return
+
+				} else {
+					if ce := iics.CanLogErr("InServer Single AdvLayer handshake failed"); ce != nil {
+
+						ce.Write(
+							zap.String("handler", inServer.AddrStr()),
+							zap.String("advLayer", adv),
+							zap.Error(err),
+						)
+					}
+
+					wrappedConn.Close()
+					return
 
 				}
-
-				if ce := iics.CanLogDebug("Single AdvLayer Check failed, will fallback."); ce != nil {
-
-					ce.Write(
-						zap.String("handler", inServer.AddrStr()),
-						zap.String("advLayer", adv),
-						zap.String("Reason", meta.Reason),
-						zap.String("validPath", advSer.GetPath()),
-						zap.String("gotMethod", meta.Method),
-						zap.String("gotPath", meta.Path),
-						zap.String("from", iics.cachedRemoteAddr),
-					)
-				}
-
-				passToOutClient(iics, true, nil, nil, netLayer.Addr{})
-				return
-
-			} else if err != nil {
-				if ce := iics.CanLogErr("InServer Single AdvLayer handshake failed"); ce != nil {
-
-					ce.Write(
-						zap.String("handler", inServer.AddrStr()),
-						zap.String("advLayer", adv),
-						zap.Error(err),
-					)
-				}
-
-				wrappedConn.Close()
-				return
-
 			} else {
 				wrappedConn = wsConn
 

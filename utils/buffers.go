@@ -71,7 +71,9 @@ type SystemReadver interface {
 
 	所以websocket很有必要实现 WriteBuffers 方法.
 
-	目前实现 的有 vless/trojan 的 UserTCPConn ,  ws.Conn 以及 grpc 的 multiConn
+	目前实现 的有 vless/trojan 的 UserTCPConn ,  ws.Conn
+
+	WriteV本身几乎没什么加速，但是因为ReadV有加速，所以通过WriteV写入ReadV读到的数组才能配合ReadV加速
 */
 type MultiWriter interface {
 	WriteBuffers([][]byte) (int64, error)
@@ -90,7 +92,7 @@ type MultiReader interface {
 type BuffersReader interface {
 	ReadBuffers() ([][]byte, error)
 
-	//将 ReadBuffers 放回缓存，以便重复利用内存
+	//将 ReadBuffers 放回缓存，以便重复利用内存. 因为这里不确定这个buffers是如何获取到的, 所以由实现者自行确定
 	PutBuffers([][]byte)
 }
 
@@ -204,4 +206,40 @@ func BuffersToMultiReader(bs [][]byte) io.Reader {
 		bufs[i] = bytes.NewBuffer(v)
 	}
 	return io.MultiReader(bufs...)
+}
+
+// similar to MergeBuffers. prefix must has content
+func MergeBuffersWithPrefix(prefix []byte, bs [][]byte) (result []byte, duplicate bool) {
+
+	b0 := prefix
+	if len(bs) == 0 {
+		return prefix, false
+	}
+	allLen := BuffersLen(bs) + len(prefix)
+
+	if allLen <= cap(b0) {
+		b0 = b0[:allLen]
+		cursor := len(b0)
+		for i := 0; i < len(bs); i++ {
+			cursor += copy(b0[cursor:], bs[i])
+		}
+		return b0, false
+	}
+
+	if allLen <= MaxPacketLen {
+		result = GetPacket()
+
+	} else {
+		result = make([]byte, allLen) //实际目前的readv实现也很难出现这种情况
+		// 一定要尽量避免这种情况，如果 MaxBufLen小于readv buf总长度，会导致严重的内存泄漏问题,
+		// 见github issue #24
+	}
+
+	cursor := copy(result, prefix)
+
+	for i := 0; i < len(bs); i++ {
+		cursor += copy(result[cursor:], bs[i])
+	}
+
+	return result[:allLen], true
 }
