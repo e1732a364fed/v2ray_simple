@@ -22,10 +22,25 @@ import (
 	"go.uber.org/zap"
 )
 
+const name = "tun"
+
 var AddManualRunCmdsListFunc func([]string)
 var manualRoute bool
 
-const name = "tun"
+const manualPrompt = "Please try run these commands manually(Administrator):"
+
+var rememberedRouterIP string
+
+func promptManual(strs []string) {
+	utils.Warn(manualPrompt)
+	for _, s := range strs {
+		utils.Warn(s)
+	}
+
+	if AddManualRunCmdsListFunc != nil {
+		AddManualRunCmdsListFunc(strs)
+	}
+}
 
 func init() {
 	proxy.RegisterServer(name, &ServerCreator{})
@@ -97,7 +112,7 @@ func (ServerCreator) AfterCommonConfServer(ps proxy.Server) (err error) {
 
 	const defaultSelfIP = "10.1.0.10"
 	const defaultRealIP = "10.1.0.20"
-	const defaultMask = "255.255.255.0"
+	//const defaultMask = "255.255.255.0"
 
 	//上面两个默认ip取自water项目给出的示例
 

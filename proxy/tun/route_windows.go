@@ -11,8 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var rememberedRouterIP string
-
 func init() {
 	/*
 		经过测试发现，完全一样的路由命令，自动执行和 手动在控制台输入执行，效果竟然不一样; 手动的能正常运行, 自动的就不行, 怪
@@ -87,14 +85,7 @@ func init() {
 		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
 
 		if manualRoute {
-			utils.Warn("Please try run these commands manually(Administrator):")
-			for _, s := range strs {
-				utils.Warn(s)
-			}
-
-			if AddManualRunCmdsListFunc != nil {
-				AddManualRunCmdsListFunc(strs)
-			}
+			promptManual(strs)
 		} else {
 			if e := utils.ExecCmdList(strs[:len(strs)-1]); e != nil {
 				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
@@ -127,12 +118,17 @@ func init() {
 			strs = append(strs, "route delete "+v+" "+rememberedRouterIP)
 		}
 
-		log.Println("running these commands", strs)
+		if manualRoute {
+			promptManual(strs)
+		} else {
+			log.Println("running these commands", strs)
 
-		if e := utils.ExecCmdList(strs); e != nil {
-			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
-				ce.Write(zap.Error(e))
+			if e := utils.ExecCmdList(strs); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
 			}
 		}
+
 	}
 }

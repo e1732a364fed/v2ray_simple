@@ -1,14 +1,13 @@
 package tun
 
 import (
+	"log"
 	"os/exec"
 	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
-
-var rememberedRouterIP string
 
 func init() {
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
@@ -103,30 +102,31 @@ func init() {
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
+		if rememberedRouterIP == "" {
+			return
+		}
 		if len(directList) == 0 {
 			utils.Warn("tun auto route down called, but no direct list given. auto route will not run.")
 		}
-		//恢复路由表
-		params := "delete -host default"
-		out1, _ := exec.Command("route", strings.Split(params, " ")...).Output()
 
-		if ce := utils.CanLogInfo("auto route delete tun route"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
-		}
-
-		params = "add default " + rememberedRouterIP
-		out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
-
-		if ce := utils.CanLogInfo("auto route recover default route"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
+		strs := []string{
+			"route delete delete -host default",
+			"route add default " + rememberedRouterIP,
 		}
 
 		for _, v := range directList {
-			params = "delete -host " + v
-			out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
+			strs = append(strs, "route delete -host "+v)
+		}
 
-			if ce := utils.CanLogInfo("auto route delete direct"); ce != nil {
-				ce.Write(zap.String("output", string(out1)))
+		if manualRoute {
+			promptManual(strs)
+		} else {
+			log.Println("running these commands", strs)
+
+			if e := utils.ExecCmdList(strs); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
 			}
 		}
 	}
