@@ -201,86 +201,53 @@ func NewAddrByHostPort(hostPortStr string) (Addr, error) {
 }
 
 // 如 tcp://127.0.0.1:443 , tcp://google.com:443 ;
-// 不支持unix domain socket, 因为它是文件路径, / 还需要转义，太麻烦;不是我们代码麻烦, 而是怕用户嫌麻烦
+// 不使用转义的方式, 不使用url包，直接用分割字符串的办法。
+// 会把 [xxx] 格式的字符串当作 ipv6地址, 去掉中括号并试图解析
 func NewAddrByURL(addrStr string) (Addr, error) {
+	indexOfColonSlash := strings.Index(addrStr, "://")
 
-	/*
-		u, err := url.Parse(addrStr)
-		if err != nil {
-			return Addr{}, err
-		}
-		if u.Scheme == "unix" {
-			return Addr{}, errors.New("parse unix domain socket by url is not supported")
-		}
-		addrStr = u.Host
-
-		host, portStr, err := net.SplitHostPort(addrStr)
-		if err != nil {
-			return Addr{}, err
-		}
-		if host == "" {
-			host = "127.0.0.1"
-		}
-		port, err := strconv.Atoi(portStr)
-		if err != nil {
-			return Addr{}, err
-		}
-
-		a := Addr{Port: port}
-		if ip := net.ParseIP(host); ip != nil {
-			a.IP = ip
-		} else {
-			a.Name = host
-		}
-
-		a.Network = u.Scheme
-		return a, nil
-
-	*/
-	//后来发现，这种方式无法应用于ipv6的情况，因为ipv6必须要给出中括号，
-	// 但是中括号会被url转义, 而我们作为配置字符串，不需要转义
-
-	if !strings.Contains(addrStr, "://") {
+	if indexOfColonSlash < 0 {
 		return Addr{}, errors.New("not a url")
 	}
 
-	network := ""
-	var supported bool
-	var supportedList = []string{
-		"tcp://", "udp://", "tls://", "ip://", "ip6://", "ipv6://",
-	}
-	realindex := 0
-	for _, v := range supportedList {
-		if strings.HasPrefix(addrStr, v) {
-			realindex = len(v)
-			supported = true
-			network = addrStr[:strings.Index(addrStr, "://")]
-			break
-		}
-	}
-
-	if !supported {
-		return Addr{}, errors.New("unsupported url")
-	}
+	realindex := indexOfColonSlash + 3
+	network := addrStr[:indexOfColonSlash]
 
 	addrStr = addrStr[realindex:]
 
 	lastColonIndex := strings.LastIndex(addrStr, ":")
+	noPortField := NetworkHasNoPortField(network)
 	if lastColonIndex == -1 {
-		return Addr{}, errors.New("unsupported url, no colon")
+		if !noPortField {
+			return Addr{}, errors.New("unsupported url, no colon")
+
+		} else {
+			lastColonIndex = len(addrStr)
+		}
 	}
 	host := addrStr[:lastColonIndex]
+	var port int
+	var err error
 
-	portStr := addrStr[lastColonIndex+1:]
+	if !noPortField {
+		portStr := addrStr[lastColonIndex+1:]
 
-	port, err := strconv.Atoi(portStr)
-	if err != nil {
-		return Addr{}, err
+		port, err = strconv.Atoi(portStr)
+		if err != nil {
+			return Addr{}, err
+		}
 	}
+
 	if host == "" {
 		host = "127.0.0.1"
 	}
 	a := Addr{Port: port, Network: network}
+
+	//[::1]
+	if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+		host = strings.TrimLeft(host, "[")
+		host = strings.TrimRight(host, "]")
+	}
 	if ip := net.ParseIP(host); ip != nil {
 		a.IP = ip
 	} else {

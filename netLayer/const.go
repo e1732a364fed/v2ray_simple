@@ -19,6 +19,8 @@ func StrToTransportProtocol(s string) uint16 {
 	switch s {
 	case "tcp", "tcp4", "tcp6", "TCP", "TCP4", "TCP6":
 		return TCP
+	case "ip", "ipv4", "ipv6", "ip4", "ip6":
+		return IP
 	case "udp", "udp4", "udp6", "UDP", "UDP4", "UDP6":
 		return UDP
 	case DualNetworkName, "mix", "mixed", "Mix", "MIX":
@@ -33,4 +35,13 @@ func StrToTransportProtocol(s string) uint16 {
 		return Quic
 	}
 	return UnknownNetwork
+}
+
+func NetworkHasNoPortField(s string) bool {
+	n := StrToTransportProtocol(s)
+	switch n {
+	case UNIX, IP, Raw_socket:
+		return true
+	}
+	return false
 }
