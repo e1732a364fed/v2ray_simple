@@ -24,6 +24,8 @@ https://github.com/libp2p/go-netroute
 
 https://github.com/jackpal/gateway/issues/27
 
+https://github.com/GameXG/gonet/blob/master/route/route_windows.go
+
 除了 GetGateway之外，还可以使用更多其他代码
 */
 func GetGateway() (ip net.IP, err error) {

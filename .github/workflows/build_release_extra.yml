@@ -37,7 +37,7 @@ jobs:
             wget https://go.dev/dl/go1.19.4.linux-arm64.tar.gz
             tar -C /usr/local -xzf go1.19.4.linux-arm64.tar.gz
 
-          #run-on-arch-action中，不能使用 GITHUB_PATH 会显示 line 8: GITHUB_PATH: unbound variable
+          #run-on-arch-action中，不能使用 GITHUB_PATH; 否则会显示 line 8: GITHUB_PATH: unbound variable
           run: |
             export PATH=$PATH:/usr/local/go/bin
             cd cmd/verysimple/ && make -f Makefile_r_gui PACKNAME=vs_gui_ubuntu_arm64 BUILD_VERSION=${{ github.event.inputs.tagName }} && touch -mt $(date +%Y01010000) *.tar.xz
@@ -97,18 +97,17 @@ jobs:
       - name: Build
         run: |
           cd cmd/verysimple
-          go build -tags "gui"  -trimpath -ldflags "-X 'main.Version=${{ github.event.inputs.tagName }}' -s -w -buildid="
+          make -f Makefile_r_gui build BUILD_VERSION=${{ github.event.inputs.tagName }}
 
       - if: ${{ matrix.os  != 'macos-latest' }}
         name: tar (!macos)
         run: |
-          cd cmd/verysimple && tar -cJf ${{ env.ASSET_NAME }}.tar.xz verysimple* -C ../../ examples/
+          cd cmd/verysimple && make -f Makefile_r_gui pack PACKNAME=${{ env.ASSET_NAME }}
       
       - if: ${{ matrix.os  == 'macos-latest' }}
         name: gtar (macos)
         run: |
-          cd cmd/verysimple && gtar -cJf ${{ env.ASSET_NAME }}.tar.xz verysimple* -C ../../ examples/
-
+          cd cmd/verysimple && make -f Makefile_r_gui pack_gtar PACKNAME=${{ env.ASSET_NAME }}
 
       - name: touch xz archive
         shell: bash
