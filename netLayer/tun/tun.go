@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -51,6 +52,7 @@ type handler struct {
 	udpChan chan netLayer.UDPRequestInfo
 
 	udpmap map[netLayer.HashableAddr]*coreUDPConnAdapter
+	sync.RWMutex
 }
 
 func newHandler() *handler {
@@ -85,14 +87,21 @@ func (h *handler) ReceiveTo(conn core.UDPConn, data []byte, addr *net.UDPAddr) e
 	uad := netLayer.NewAddrFromUDPAddr(addr)
 
 	ha := uad.GetHashable()
+	h.RLock()
+
 	if adapter, ok := h.udpmap[ha]; ok {
+		h.RUnlock()
 		adapter.readChan <- netLayer.UDPAddrData{Data: data, Addr: *addr}
 
 	} else {
+		h.RUnlock()
 		adapter := newUdpAdapter()
 		adapter.UDPConn = conn
 
+		h.Lock()
 		h.udpmap[ha] = adapter
+		h.Unlock()
+
 		adapter.readChan <- netLayer.UDPAddrData{Data: data, Addr: *addr}
 
 		h.udpChan <- netLayer.UDPRequestInfo{Target: uad, MsgConn: adapter}
