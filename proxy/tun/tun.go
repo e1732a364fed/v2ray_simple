@@ -3,7 +3,9 @@
 	tun Server使用 host 配置作为 tun device name
 	使用 ip 配置作为 gateway 的ip
 	使用 extra.tun_selfip 作为 tun向外拨号的ip
-	使用 extra.tun_mask 作为 子网掩码
+
+	mac默认 utun5, windows 默认 vs_wintun
+
 */
 package tun
 
@@ -21,6 +23,7 @@ import (
 )
 
 var AddManualRunCmdsListFunc func([]string)
+var manualRoute bool
 
 const name = "tun"
 
@@ -54,11 +57,6 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 				s.selfip = str
 			}
 		}
-		if thing := lc.Extra["tun_mask"]; thing != nil {
-			if str, ok := thing.(string); ok {
-				s.mask = str
-			}
-		}
 
 		if thing := lc.Extra["tun_auto_route"]; thing != nil {
 			if auto, autoOk := utils.AnyToBool(thing); autoOk && auto {
@@ -81,14 +79,10 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 				}
 
-				if thing := lc.Extra["tun_dns_list"]; thing != nil {
+				if thing := lc.Extra["tun_auto_route_manual"]; thing != nil {
 
-					if list, ok := thing.([]any); ok {
-						for _, v := range list {
-							if str, ok := v.(string); ok && str != "" {
-								s.tun_dnsList = append(s.tun_dnsList, str)
-							}
-						}
+					if manual, ok := utils.AnyToBool(thing); ok && manual {
+						manualRoute = true
 					}
 				}
 			}
@@ -113,9 +107,6 @@ func (ServerCreator) AfterCommonConfServer(ps proxy.Server) (err error) {
 	if s.selfip == "" {
 		s.selfip = defaultSelfIP
 	}
-	if s.mask == "" {
-		s.mask = defaultMask
-	}
 
 	return
 }
@@ -129,17 +120,29 @@ type Server struct {
 	udpRequestChan chan<- netLayer.UDPRequestInfo
 	lwipCloser     io.Closer
 
-	devName, realIP, selfip, mask    string
-	autoRoute                        bool
-	autoRouteDirectList, tun_dnsList []string
+	devName, realIP, selfip string
+	autoRoute               bool
+	autoRouteDirectList     []string
 }
 
 func (*Server) Name() string { return name }
 
-func (s *Server) SelfListen() (is, tcp, udp bool) {
+func (s *Server) SelfListen() (is bool, tcp, udp int) {
+	switch n := s.Network(); n {
+	case "", netLayer.DualNetworkName:
+		tcp = 1
+		udp = 1
+
+	case "tcp":
+		tcp = 1
+		udp = -1
+	case "udp":
+		udp = 1
+		tcp = -1
+	}
+
 	is = true
-	tcp = true
-	udp = true
+
 	return
 }
 
@@ -167,7 +170,7 @@ func (s *Server) Stop() {
 
 func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
 	s.stopped = false
-	//log.Println(s.devName, s.selfip, s.realIP, s.mask)
+
 	if s.devName == "" {
 		switch runtime.GOOS {
 		case "darwin":
@@ -202,7 +205,6 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 		return nil
 	}
 
-	//newTchan, newUchan, lwipcloser := tun.Listen(tunDev)
 	go func() {
 		for tr := range newTchan {
 			if s.stopped {

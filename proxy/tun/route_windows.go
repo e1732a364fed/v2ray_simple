@@ -14,13 +14,17 @@ import (
 var rememberedRouterIP string
 
 func init() {
-	//经过测试发现，完全一样的路由命令，自动执行和 手动在控制台输入执行，效果竟然不一样; 手动的能正常运行, 自动的就不行, 怪
-	//似乎是需要等待几秒钟
 	/*
-		netsh interface ip set address name="vs_wintun" source=static addr=192.168.123.1 mask=255.255.255.0 gateway=none
+		经过测试发现，完全一样的路由命令，自动执行和 手动在控制台输入执行，效果竟然不一样; 手动的能正常运行, 自动的就不行, 怪
+		  后发现，是需要等待4秒钟；3秒都不够；
 
-		route add vps_ip router_ip
-		route add 0.0.0.0 mask 0.0.0.0 vps_ip metric 5
+		要确保wintun的 Gateway显示为 On-link, Interface显示为 设置好的地址；
+		错误时显示的是 Geteway 是 设置好的地址，Interface为原始路由器的地址
+
+			netsh interface ip set address name="vs_wintun" source=static addr=192.168.123.1 mask=255.255.255.0 gateway=none
+
+			route add vps_ip router_ip
+			route add 0.0.0.0 mask 0.0.0.0 vps_ip metric 5
 
 		而且wintun的自动执行行为 和 go-tun2socks 的 tap的行为还是不一样。
 
@@ -82,27 +86,30 @@ func init() {
 
 		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
 
-		// utils.Warn("Please try run these commands manually(Administrator):")
-		// for _, s := range strs {
-		// 	utils.Warn(s)
-		// }
+		if manualRoute {
+			utils.Warn("Please try run these commands manually(Administrator):")
+			for _, s := range strs {
+				utils.Warn(s)
+			}
 
-		// if AddManualRunCmdsListFunc != nil {
-		// 	AddManualRunCmdsListFunc(strs)
-		// }
+			if AddManualRunCmdsListFunc != nil {
+				AddManualRunCmdsListFunc(strs)
+			}
+		} else {
+			if e := utils.ExecCmdList(strs[:len(strs)-1]); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+			}
 
-		if e := utils.ExecCmdList(strs[:len(strs)-1]); e != nil {
-			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
-				ce.Write(zap.Error(e))
+			time.Sleep(time.Second * 4)
+			if e := utils.ExecCmd(strs[len(strs)-1]); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
 			}
 		}
 
-		time.Sleep(time.Second * 2)
-		if e := utils.ExecCmd(strs[len(strs)-1]); e != nil {
-			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
-				ce.Write(zap.Error(e))
-			}
-		}
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {

@@ -74,7 +74,8 @@ non-blocking. closer used to stop listening. It means listening failed if closer
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv, gi *GlobalInfo) (closer io.Closer) {
 	var extraCloser io.Closer
 
-	var is, tcp, udp bool
+	var is bool
+	var tcp, udp int
 	//tproxy,tun/tap 和 shadowsocks(udp) 都用到了 SelfListen
 	if is, tcp, udp = inServer.SelfListen(); is {
 		var chantcp chan netLayer.TCPRequestInfo
@@ -91,7 +92,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 			)
 		}
 
-		if tcp {
+		if tcp == 1 {
 			chantcp = make(chan netLayer.TCPRequestInfo, 2)
 			go func() {
 				for tcpInfo := range chantcp {
@@ -107,7 +108,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 			}()
 
 		}
-		if udp {
+		if udp == 1 {
 			chanudp = make(chan netLayer.UDPRequestInfo, 2)
 
 			go func() {
@@ -125,7 +126,9 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		}
 		closer = inServer.(proxy.ListenerServer).StartListen(chantcp, chanudp)
 
-		if tcp && udp {
+		//可以直接return的值: 1,1 1,-1, -1,1 ;
+		//还需继续监听的值: 1,0 0,1
+		if tcp+udp != 1 {
 			return
 
 		} else {
@@ -197,8 +200,9 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 	network := inServer.Network()
 	if network == netLayer.DualNetworkName && is {
-		if is != tcp && udp {
-			if tcp {
+		//设置这里实际监听的传输层协议
+		if is != (tcp == 1 && udp == 1) {
+			if tcp == 1 {
 				network = "udp"
 			} else {
 				network = "tcp"

@@ -69,9 +69,12 @@ func NewServer() (proxy.Server, error) {
 }
 func (*Server) Name() string { return name }
 
-func (s *Server) SelfListen() (is, tcp, udp bool) {
-	return true, true, true //darwin的tproxy不支持udp，但是如果传入false，则v2ray_simple包会试图自行监听udp。
-	//所以暂时的解决方案是欺骗它告诉他我们都监听
+func (s *Server) SelfListen() (is bool, tcp, udp int) {
+	udp = -1
+	tcp = 1
+	is = true
+
+	return
 }
 
 func (s *Server) Close() error {
@@ -96,7 +99,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 	tm := new(tproxy.Machine)
 	_, lt, _ := s.SelfListen()
 
-	if lt {
+	if lt > 0 {
 		s.infoChan = infoChan
 
 		lis, err := netLayer.ListenAndAccept("tcp", s.Addr, s.Sockopt, 0, func(conn net.Conn) {

@@ -98,18 +98,18 @@ func (s *Server) Network() string {
 	}
 }
 
-func (s *Server) SelfListen() (is, _, udp bool) {
+func (s *Server) SelfListen() (is bool, _, udp int) {
 	switch n := s.Network(); n {
 	case "", netLayer.DualNetworkName:
-		udp = true
+		udp = 1
 
 	case "tcp":
 
 	case "udp":
-		udp = true
+		udp = 1
 	}
 
-	is = udp
+	is = udp > 0
 
 	return
 }

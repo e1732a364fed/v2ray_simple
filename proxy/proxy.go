@@ -91,7 +91,7 @@ type Server interface {
 	//get/listen a useable inner mux
 	GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session
 
-	SelfListen() (is, tcp, udp bool)
+	SelfListen() (is bool, tcp, udp int) //is表示开启自监听; 此时若 tcp=1, 表示监听tcp, 若tcp=0, 表示自己不监听tcp, 但需要vs进行监听; 若tcp<0, 则表示自己不监听, 也不要vs监听; udp同理
 }
 
 type ListenerServer interface {
