@@ -14,6 +14,8 @@ type Server struct {
 
 	tlstype int
 
+	//用于shadowTls，使用shadowTls时 我们不使用 tlsConfig
+	serverName string
 	shadowpass string
 }
 
@@ -37,25 +39,32 @@ func NewServer(conf Conf) (*Server, error) {
 	}
 
 	s := &Server{
-		tlsConfig: GetTlsConfig(true, conf),
-		tlstype:   conf.Tls_type,
+		tlstype: conf.Tls_type,
 	}
 
-	if conf.Tls_type == ShadowTls2_t {
-		s.shadowpass = getShadowTlsPasswordFromExtra(conf.Extra)
+	if conf.IsShadowTls() {
+		s.serverName = conf.Host
+
+		if conf.Tls_type == ShadowTls2_t {
+			s.shadowpass = getShadowTlsPasswordFromExtra(conf.Extra)
+		}
+	} else {
+		s.tlsConfig = GetTlsConfig(true, conf)
 
 	}
 
 	return s, nil
 }
 
-func (s *Server) Handshake(clientConn net.Conn) (tlsConn Conn, err error) {
+// tls时返回 tlsLayer.Conn, shadowTls1时返回原 clientConn, shadowTls2时返回 FakeAppDataConn
+func (s *Server) Handshake(clientConn net.Conn) (result net.Conn, err error) {
 
 	switch s.tlstype {
 	case ShadowTls_t:
-		return shadowTls1(s.tlsConfig.ServerName, clientConn)
+
+		return clientConn, shadowTls1(s.serverName, clientConn)
 	case ShadowTls2_t:
-		return shadowTls2(s.tlsConfig.ServerName, clientConn, s.shadowpass)
+		return shadowTls2(s.serverName, clientConn, s.shadowpass)
 
 	}
 
@@ -67,7 +76,7 @@ func (s *Server) Handshake(clientConn net.Conn) (tlsConn Conn, err error) {
 		return
 	}
 
-	tlsConn = &conn{
+	result = &conn{
 		Conn: rawTlsConn,
 		ptr:  unsafe.Pointer(rawTlsConn),
 	}

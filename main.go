@@ -338,7 +338,12 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			iics.inServerTlsRawReadRecorder.StartRecord()
 		}
 
-		iics.inServerTlsConn = tlsConn
+		realtlsConn, ok := tlsConn.(tlsLayer.Conn)
+		if ok {
+			iics.inServerTlsConn = realtlsConn
+
+		}
+
 		wrappedConn = tlsConn
 
 	}

@@ -5,8 +5,6 @@ import (
 	"net"
 	"os"
 	"sync"
-
-	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 // 选择性从 OptionalReader读取, 直到 RemainFirstBufLen 小于等于0 为止；
@@ -27,16 +25,6 @@ func (rw *ReadWrapper) Read(p []byte) (n int, err error) {
 	} else {
 		return rw.Conn.Read(p)
 	}
-
-}
-
-func (rw *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
-	bigbs, dup := utils.MergeBuffers(buffers)
-	n, e := rw.Write(bigbs)
-	if dup {
-		utils.PutPacket(bigbs)
-	}
-	return int64(n), e
 
 }
 

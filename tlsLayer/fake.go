@@ -18,11 +18,22 @@ type FakeAppDataConn struct {
 	net.Conn
 	readRemaining int
 
+	OptionalReader          io.Reader
+	OptionalReaderRemainLen int
+
 	//for readv
 	rr syscall.RawConn
 }
 
 func (c *FakeAppDataConn) Read(p []byte) (n int, err error) {
+	if c.OptionalReaderRemainLen > 0 {
+		n, err := c.OptionalReader.Read(p)
+		if n > 0 {
+			c.OptionalReaderRemainLen -= n
+		}
+		return n, err
+	}
+
 	if c.readRemaining > 0 {
 		if len(p) > c.readRemaining {
 			p = p[:c.readRemaining]
