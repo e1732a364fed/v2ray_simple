@@ -116,8 +116,8 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	c1 := v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
-	c2 := v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
+	c1 := v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil, nil)
+	c2 := v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil, nil)
 	if c1 != nil {
 		defer c1.Close()
 	}

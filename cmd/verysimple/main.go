@@ -348,7 +348,7 @@ func mainFunc() (result int) {
 	if (defaultMachine.DefaultOutClient != nil) && (len(defaultMachine.AllServers) > 0) {
 
 		for _, inServer := range defaultMachine.AllServers {
-			lis := vs.ListenSer(inServer, defaultMachine.DefaultOutClient, &defaultMachine.RoutingEnv)
+			lis := vs.ListenSer(inServer, defaultMachine.DefaultOutClient, &defaultMachine.RoutingEnv, &defaultMachine.GlobalInfo)
 
 			if lis != nil {
 				defaultMachine.ListenCloserList = append(defaultMachine.ListenCloserList, lis)

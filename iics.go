@@ -24,7 +24,7 @@ var iicsZapWriterPool = sync.Pool{
 	},
 }
 
-//专用于 iics的结构
+// 专用于 iics的结构
 type iicsZapWriter struct {
 	ce             *zapcore.CheckedEntry
 	assignedFields []zapcore.Field //始终保持 有且只有 一项
@@ -36,7 +36,7 @@ func (zw *iicsZapWriter) setid(id uint32) {
 	zw.id = id
 }
 
-//只能调用Write一次，调用之后，zw 便不再可用。
+// 只能调用Write一次，调用之后，zw 便不再可用。
 func (zw *iicsZapWriter) Write(fields ...zapcore.Field) {
 	if len(fields) > 0 {
 		realFields := append(zw.assignedFields, fields...)
@@ -51,9 +51,11 @@ func (zw *iicsZapWriter) Write(fields ...zapcore.Field) {
 	iicsZapWriterPool.Put(zw)
 }
 
-//一个贯穿转发流程的关键结构,简称iics
+// 一个贯穿转发流程的关键结构,简称iics
 type incomingInserverConnState struct {
 	id uint32 //十进制固定6位随机数, 用于标识每一个连接.
+
+	GlobalInfo *GlobalInfo
 
 	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
@@ -100,7 +102,7 @@ type heapObj struct {
 	wholeBuffer *bytes.Buffer
 }
 
-//每个iics使用之前，必须调用 genID
+// 每个iics使用之前，必须调用 genID
 func (iics *incomingInserverConnState) genID() {
 	const low = 100000
 	const hi = low*10 - 1
@@ -161,7 +163,7 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 	return true
 }
 
-//查看当前配置 是否支持fallback, 并获得回落地址。
+// 查看当前配置 是否支持fallback, 并获得回落地址。
 // 被 passToOutClient 调用. 若 无fallback则 result < 0, 否则返回所使用的 PROXY protocol 版本, 0 表示 回落但是不用 PROXY protocol.
 //
 // 本方法不会修改 iics的任何内容.

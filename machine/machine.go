@@ -12,15 +12,14 @@ import (
 	"io"
 	"os"
 
+	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
 type M struct {
 	ApiServerConf
 
-	ActiveConnectionCount      int32
-	AllDownloadBytesSinceStart uint64
-	AllUploadBytesSinceStart   uint64
+	v2ray_simple.GlobalInfo
 
 	DirectClient proxy.Client
 

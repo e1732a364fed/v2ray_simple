@@ -51,7 +51,7 @@ func TestUDP_trojan_through_udp(t *testing.T) {
 	testUDP(t, "trojan", 0, "udp", false, false, false)
 }
 
-//udp测试我们直接使用dns请求来测试.
+// udp测试我们直接使用dns请求来测试.
 func testUDP(t *testing.T, protocol string, version int, network string, multi bool, fullcone bool, mux bool) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog("")
@@ -191,10 +191,10 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	c1 := v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
-	c2 := v2ray_simple.ListenSer(clientEndInServer2, clientEndOutClient, nil)
-	c3 := v2ray_simple.ListenSer(clientEndInServer3, clientEndOutClient, nil)
-	c4 := v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
+	c1 := v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil, nil)
+	c2 := v2ray_simple.ListenSer(clientEndInServer2, clientEndOutClient, nil, nil)
+	c3 := v2ray_simple.ListenSer(clientEndInServer3, clientEndOutClient, nil, nil)
+	c4 := v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil, nil)
 
 	if c1 != nil {
 		defer c1.Close()

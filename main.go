@@ -35,11 +35,11 @@ import (
 )
 
 // statistics
-var (
+type GlobalInfo struct {
 	ActiveConnectionCount      int32
 	AllDownloadBytesSinceStart uint64
 	AllUploadBytesSinceStart   uint64
-)
+}
 
 var (
 
@@ -71,7 +71,7 @@ Use cases: refer to tcp_test.go, udp_test.go or cmd/verysimple.
 
 non-blocking. closer used to stop listening. It means listening failed if closer == nil,
 */
-func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
+func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv, gi *GlobalInfo) (closer io.Closer) {
 	var extraCloser io.Closer
 
 	var is, tcp, udp bool
@@ -90,6 +90,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 						wrappedConn:   tcpInfo.Conn,
 						defaultClient: defaultOutClient,
 						routingEnv:    env,
+						GlobalInfo:    gi,
 					}, false, tcpInfo.Conn, nil, tcpInfo.Target)
 				}
 			}()
@@ -105,6 +106,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 						useSniffing:   inServer.Sniffing(),
 						defaultClient: defaultOutClient,
 						routingEnv:    env,
+						GlobalInfo:    gi,
 					}, false, nil, udpInfo.MsgConn, udpInfo.Target)
 				}
 			}()
@@ -161,6 +163,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 					inServer:      inServer,
 					defaultClient: defaultOutClient,
 					routingEnv:    env,
+					GlobalInfo:    gi,
 				}
 				iics.genID()
 
@@ -198,7 +201,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		inServer.GetSockopt(),
 		inServer.GetXver(),
 		func(conn net.Conn) {
-			handleNewIncomeConnection(inServer, defaultOutClient, conn, env)
+			handleNewIncomeConnection(inServer, defaultOutClient, conn, env, gi)
 		},
 	)
 
@@ -238,7 +241,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
 //
 // 在 ListenSer 中被调用。
-func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, env *proxy.RoutingEnv) {
+func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, env *proxy.RoutingEnv, gi *GlobalInfo) {
 
 	iics := incomingInserverConnState{
 		baseLocalConn:      thisLocalConnectionInstance,
@@ -246,6 +249,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		defaultClient:      defaultClientForThis,
 		routingEnv:         env,
 		isTlsLazyServerEnd: inServer.IsLazyTls() && CanLazyEncrypt(inServer),
+		GlobalInfo:         gi,
 	}
 	iics.genID()
 
@@ -1616,11 +1620,16 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		}
 
-		atomic.AddInt32(&ActiveConnectionCount, 1)
+		if gi := iics.GlobalInfo; gi != nil {
+			atomic.AddInt32(&gi.ActiveConnectionCount, 1)
 
-		netLayer.Relay(&realTargetAddr, wrc, wlc, iics.id, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart)
+			netLayer.Relay(&realTargetAddr, wrc, wlc, iics.id, &gi.AllDownloadBytesSinceStart, &gi.AllUploadBytesSinceStart)
 
-		atomic.AddInt32(&ActiveConnectionCount, -1)
+			atomic.AddInt32(&gi.ActiveConnectionCount, -1)
+		} else {
+			netLayer.Relay(&realTargetAddr, wrc, wlc, iics.id, nil, nil)
+
+		}
 
 		return
 
@@ -1630,14 +1639,23 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			udp_wrc.WriteMsgTo(ffb.Bytes(), targetAddr)
 		}
 
-		atomic.AddInt32(&ActiveConnectionCount, 1)
+		var ac *int32
+		var adc *uint64
+		var auc *uint64
+		if iics.GlobalInfo != nil {
+			ac = &iics.GlobalInfo.ActiveConnectionCount
+			adc = &iics.GlobalInfo.AllDownloadBytesSinceStart
+			auc = &iics.GlobalInfo.AllUploadBytesSinceStart
+			atomic.AddInt32(ac, 1)
+
+		}
 
 		if client.IsUDP_MultiChannel() {
 			if ce := iics.CanLogDebug("Relaying UDP with MultiChannel"); ce != nil {
 				ce.Write()
 			}
 
-			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
+			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, adc, auc, func(raddr netLayer.Addr) netLayer.MsgConn {
 				if ce := iics.CanLogDebug("Relaying UDP with MultiChannel,dialfunc called"); ce != nil {
 					ce.Write()
 				}
@@ -1656,11 +1674,14 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			})
 
 		} else {
-			netLayer.RelayUDP(udp_wrc, udp_wlc, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart)
+			netLayer.RelayUDP(udp_wrc, udp_wlc, adc, auc)
 
 		}
 
-		atomic.AddInt32(&ActiveConnectionCount, -1)
+		if ac != nil {
+			atomic.AddInt32(ac, -1)
+
+		}
 
 		return
 	}

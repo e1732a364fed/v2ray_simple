@@ -145,7 +145,7 @@ func tryDownloadMMDB() {
 			return
 		}
 
-		listener = vs.ListenSer(clientEndInServer, outClient, nil)
+		listener = vs.ListenSer(clientEndInServer, outClient, nil, nil)
 		if listener != nil {
 			proxyUrl = proxyurl
 			defer listener.Close()
@@ -209,7 +209,7 @@ func tryDownloadGeositeSource() {
 			return
 		}
 
-		listener = vs.ListenSer(clientEndInServer, outClient, nil)
+		listener = vs.ListenSer(clientEndInServer, outClient, nil, nil)
 		if listener != nil {
 			proxyUrl = proxyurl
 			defer listener.Close()

@@ -60,10 +60,9 @@ jobs:
             goarch: arm64
       fail-fast: false
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }} #因为采用了cgo，所以没办法全在ubuntu上编译
 
     env:
-      THEOS: ${{ matrix.os }}
       GOARCH: ${{ matrix.goarch }}
       CGO_ENABLED: 1
 
@@ -111,7 +110,7 @@ jobs:
           tag: ${{ github.event.inputs.tagName }}
           file_glob: true
 
-  build:
+  build_extra:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
