@@ -15,15 +15,34 @@ jobs:
         goos: [windows, linux, darwin]
         goarch: [amd64, arm64]
 
+    env:
+      GOOS: ${{ matrix.goos }}
+      GOARCH: ${{ matrix.goarch }}
+      GOARM: ${{ matrix.goarm }}
+      CGO_ENABLED: 1
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.tagName }}
 
+      - name: Show workflow information 
+        id: get_filename
+        run: |
+          export _NAME=$(jq ".[\"$GOOS-$GOARCH$GOARM$GOMIPS\"].friendlyName" -r < .github/build/friendly-filenames.json)
+          echo "GOOS: $GOOS, GOARCH: $GOARCH, GOARM: $GOARM, GOMIPS: $GOMIPS, RELEASE_NAME: $_NAME"
+          echo "::set-output name=ASSET_NAME::$_NAME"
+          echo "ASSET_NAME=$_NAME" >> $GITHUB_ENV
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.19
+
       - name: Build
         run: |
-          cd cmd/verysimple/ && make -f Makefile_r_vsc PACK=1 BUILD_VERSION=${{ github.event.inputs.tagName }}
+          cd cmd/verysimple/ && make -f Makefile_r_vsc PACKNAME=vs_gui_${{ steps.get_filename.outputs.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
       
       - name: touch xz archive
         shell: bash
