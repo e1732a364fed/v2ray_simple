@@ -27,8 +27,8 @@ func init() {
 
 }
 
-//有TLS, network为tcp或者unix, 无AdvLayer.
-//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，但暂不考虑
+// 有TLS, network为tcp或者unix, 无AdvLayer.
+// grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，但暂不考虑
 func CanLazyEncrypt(x proxy.BaseInterface) bool {
 
 	return x.IsUseTLS() && CanNetwork_tlsLazy(x.Network()) && x.AdvancedLayer() == ""
@@ -43,7 +43,9 @@ func CanNetwork_tlsLazy(n string) bool {
 }
 
 // tryTlsLazyRawRelay 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发.
-//  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
+//
+//	如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
+//
 // 我们内部先 使用 SniffConn 进行过滤分析，然后再判断进化为splice / 退化为普通拷贝.
 //
 // useSecureMethod仅用于 tls_lazy_secure
@@ -109,7 +111,7 @@ func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.
 				rawWRC = tlsConn.GetRaw(true)
 			} else {
 				wrcWrapper := wrc.(netLayer.ConnWrapper)
-				tlsConn := wrcWrapper.GetRawConn().(*tlsLayer.Conn)
+				tlsConn := wrcWrapper.Upstream().(*tlsLayer.Conn)
 				rawWRC = tlsConn.GetRaw(true)
 			}
 

@@ -36,7 +36,7 @@ func (u *UserTCPConn) GetProtocolVersion() int {
 	return int(u.version)
 }
 
-func (c *UserTCPConn) GetRawConn() net.Conn {
+func (c *UserTCPConn) Upstream() net.Conn {
 	return c.Conn
 }
 

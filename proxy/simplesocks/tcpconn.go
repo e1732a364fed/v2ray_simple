@@ -19,7 +19,7 @@ type TCPConn struct {
 	isServerEnd bool
 }
 
-func (c *TCPConn) GetRawConn() net.Conn {
+func (c *TCPConn) Upstream() net.Conn {
 	return c.Conn
 }
 

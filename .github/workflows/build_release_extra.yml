@@ -88,20 +88,26 @@ jobs:
         run: |
           echo "ASSET_NAME=vs_gui_${{ matrix.os }}_${{ matrix.goarch }}" | Out-File -FilePath $env:GITHUB_ENV -Append 
 
-      - if: ${{ matrix.os  == 'macos-latest' }}
-        name: macos gnu-tar extra step
-        run: |
-          echo "PATH=\"$(brew --prefix)/opt/gnu-tar/libexec/gnubin:$PATH\"" >> $GITHUB_ENV
 
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
           go-version: 1.19
 
-      - name: Build
+      - if: ${{ matrix.os  != 'macos-latest' }}
+        name: Build
         run: |
           cd cmd/verysimple/ && make -f Makefile_r_gui PACKNAME=${{ env.ASSET_NAME }} BUILD_VERSION=${{ github.event.inputs.tagName }}
       
+      - if: ${{ matrix.os  == 'macos-latest' }}
+        name: macos Build
+        run: |
+          cd cmd/verysimple
+          go build -tags "gui"  -trimpath -ldflags "-X 'main.Version=${{ github.event.inputs.tagName }}' -s -w -buildid="
+          gtar -cJf ${{ env.ASSET_NAME }}.tar.xz verysimple* -C ../../ examples/
+          rm verysimple*
+
+
       - name: touch xz archive
         shell: bash
         run: |
