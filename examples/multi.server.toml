@@ -27,6 +27,8 @@ users = [ {user = "a684455c-b14f-11ea-bf0d-42010aaa0004"} , {user = "a684455c-b1
 
 # extra.tls_rejectUnknownSni = true # 这个开启了的话，防御效果更佳, 不过, 这要求你有真实证书
 
+#sockopt.bbr = true #用户空间的bbr拥塞控制, 仅限linux, see issue #237
+
 [[listen]]
 tag = "my_ws1"
 protocol = "vlesss"

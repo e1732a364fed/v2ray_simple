@@ -9,6 +9,7 @@ import (
 type Sockopt struct {
 	TProxy bool   `toml:"tproxy"` //only linux
 	Somark int    `toml:"mark"`   //only linux
+	BBR    bool   `toml:"bbr"`    //only linux
 	Device string `toml:"device"`
 
 	//fastopen 不予支持, 因为自己客户端在重重网关之下，不可能让层层网关都支持tcp fast open；

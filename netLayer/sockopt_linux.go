@@ -1,9 +1,10 @@
 package netLayer
 
 import (
+	"syscall"
+
 	"go.uber.org/zap"
 	"golang.org/x/sys/unix"
-	"syscall"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
@@ -27,6 +28,14 @@ func SetSockOpt(fd int, sockopt *Sockopt, isudp bool, isipv6 bool) {
 
 	if sockopt.Device != "" {
 		bindToDevice(fd, sockopt.Device)
+	}
+
+	if sockopt.BBR {
+		if err := syscall.SetsockoptString(fd, syscall.SOL_TCP, syscall.TCP_CONGESTION, "bbr"); err != nil {
+			if ce := utils.CanLogErr("bbr failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+		}
 	}
 
 }
