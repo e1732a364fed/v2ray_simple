@@ -687,15 +687,19 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				if err != nil {
 
 					if !errors.Is(err, os.ErrDeadlineExceeded) {
-						if ce := iics.CanLogErr("Failed in reading first payload, not because of timeout, will hung up"); ce != nil {
-							ce.Write(
-								zap.String("target", targetAddr.String()),
-								zap.Error(err),
-							)
+
+						if n <= 0 {
+							if ce := iics.CanLogErr("Failed in reading first payload, not because of timeout, will hung up"); ce != nil {
+								ce.Write(
+									zap.String("target", targetAddr.String()),
+									zap.Error(err),
+								)
+							}
+
+							wlc.Close()
+							return
 						}
 
-						wlc.Close()
-						return
 					} else {
 						if ce := iics.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
 							ce.Write(
