@@ -1,6 +1,19 @@
 # 本文件用于编译release版的 vs_gui, 用于github action中的matrix, 所以不需要在这里指定GOOS
 
+tarName          :=tar
+
+ifeq ($(OS),Windows_NT) 
+    detected_OS   :=Windows
+else
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+endif
+
+
+ifeq ($(detected_OS),Darwin)
+	tarName :=gtar
+endif
+
 all:
 	go build -tags "gui $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
-	tar -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
+	${tarName} -cJf ${PACKNAME}.tar.xz verysimple* -C ../../ examples/
 	rm verysimple*
