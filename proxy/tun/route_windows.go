@@ -85,6 +85,8 @@ func init() {
 
 		}
 
+		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", rememberedRouterIP))
+
 		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
 
 		if manualRoute {
@@ -114,6 +116,7 @@ func init() {
 
 		strs := []string{
 			"route delete 0.0.0.0 mask 0.0.0.0 " + tunGateway,
+			"route delete 0.0.0.0 mask 0.0.0.0 " + rememberedRouterIP,
 			"route add 0.0.0.0 mask 0.0.0.0 " + rememberedRouterIP + " metric 50",
 		}
 
