@@ -63,7 +63,13 @@ tcp:
 	}
 
 defaultPart:
-	resultConn, err = net.DialTimeout(a.Network, a.String(), time.Second*15)
+	if istls {
+		resultConn, err = net.DialTimeout("tcp", a.String(), time.Second*15)
+
+	} else {
+		resultConn, err = net.DialTimeout(a.Network, a.String(), time.Second*15)
+
+	}
 
 dialedPart:
 	if istls && err == nil {
