@@ -26,6 +26,9 @@ var theTunStartCmds []string
 var multilineEntry *ui.MultilineEntry //用于向用户提供一些随机的有用的需要复制的字符串
 var entriesGroup *ui.Group            //父 of multilineEntry
 
+type GuiPreference struct {
+}
+
 func init() {
 
 	flag.BoolVar(&gui_mode, "g", true, "gui mode")

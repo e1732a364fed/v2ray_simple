@@ -1,5 +1,5 @@
 /*
-Package main 读取配置文件，然后进行代理转发, 并选择性运行 交互模式和 apiServer.
+Package main 读取配置文件，然后进行代理转发, 并选择性运行 cli/gui/apiServer.
 
 命令行参数请使用 --help / -h 查看详情，配置文件示例请参考 ../../examples/ .
 

@@ -4,6 +4,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
+
+	"github.com/BurntSushi/toml"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 /*
@@ -21,13 +26,12 @@ var (
 	disablePreferenceFeature bool
 	currentUserPreference    UserPreference
 
-	preference_saveFunclist []func()
 	preference_loadFunclist []func()
 )
 
 type UserPreference struct {
-	CliCmdOrder []int `toml:"cli_cmd_order"`
-	AutoArrange bool  `toml:"auto_arrange"`
+	Cli *CliPreference `toml:"cli"`
+	Gui *GuiPreference `toml:"gui"`
 }
 
 func init() {
@@ -36,12 +40,45 @@ func init() {
 }
 
 func savePerferences() {
-	for _, f := range preference_saveFunclist {
-		f()
+	if disablePreferenceFeature {
+		return
+	}
+	fmt.Println("Saving preferences")
+
+	buf := utils.GetBuf()
+	defer utils.PutBuf(buf)
+	if err := toml.NewEncoder(buf).Encode(currentUserPreference); err != nil {
+		fmt.Println("err encountered during saving preferences,", err)
+		return
+	}
+	err := os.WriteFile(preferencesFileName, buf.Bytes(), os.ModePerm)
+	if err != nil {
+		fmt.Println("err encountered during saving preferences,", err)
+		return
 	}
 }
 
 func loadPreferences() {
+	if disablePreferenceFeature {
+		return
+	}
+	if !utils.FileExist(preferencesFileName) {
+		return
+	}
+
+	fmt.Println("Loading preferences")
+
+	bs, err := os.ReadFile(preferencesFileName)
+	if err != nil {
+		fmt.Println("Failed loading preferences file,", err)
+		return
+	}
+	err = toml.Unmarshal(bs, &currentUserPreference)
+	if err != nil {
+		fmt.Println("Failed Unmarshal preferences toml,", err)
+		return
+	}
+
 	for _, f := range preference_loadFunclist {
 		f()
 	}

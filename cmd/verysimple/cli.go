@@ -146,8 +146,10 @@ func runCli_func() {
 			f()
 		}
 
-		if currentUserPreference.AutoArrange {
-			updateMostRecentCli(i)
+		if cp := currentUserPreference.Cli; cp != nil {
+			if cp.AutoArrange {
+				updateMostRecentCli(i)
+			}
 		}
 
 	}

@@ -4,9 +4,7 @@ package main
 
 import (
 	"fmt"
-	"os"
 
-	"github.com/BurntSushi/toml"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
@@ -18,92 +16,94 @@ var (
 	toggleAutoRearrangeCliCmd = &CliCmd{Name: openAutoRearrangeStr}
 )
 
+type CliPreference struct {
+	CliCmdOrder []int `toml:"cli_cmd_order"`
+	AutoArrange bool  `toml:"auto_arrange"`
+}
+
 func init() {
 	cliCmdList = append(cliCmdList, toggleAutoRearrangeCliCmd)
 
 	toggleAutoRearrangeCliCmd.f = func() {
-		currentUserPreference.AutoArrange = !currentUserPreference.AutoArrange
+		cp := currentUserPreference.Cli
+		if cp == nil {
+			cp = new(CliPreference)
+			currentUserPreference.Cli = cp
+		}
+
+		cp.AutoArrange = !cp.AutoArrange
 		doWhenUpdateAutoRearrangeCli()
+
 	}
 
 	preference_loadFunclist = append(preference_loadFunclist, loadPreferences_cli)
-	preference_saveFunclist = append(preference_saveFunclist, savePerferences_cli)
 }
 
 func doWhenUpdateAutoRearrangeCli() {
-	if !currentUserPreference.AutoArrange {
+
+	cp := currentUserPreference.Cli
+	if cp == nil {
+		cp = new(CliPreference)
+		currentUserPreference.Cli = cp
+	}
+
+	if !cp.AutoArrange {
 		toggleAutoRearrangeCliCmd.Name = openAutoRearrangeStr
 
 	} else {
 
-		if len(currentUserPreference.CliCmdOrder) == 0 {
+		if len(cp.CliCmdOrder) == 0 {
 			initOrderList()
 		}
 		toggleAutoRearrangeCliCmd.Name = "关闭自动将最近运行的交互命令提升到首位"
 	}
+
 }
 
 func initOrderList() {
-	currentUserPreference.CliCmdOrder = nil
-	for i := range cliCmdList {
-		currentUserPreference.CliCmdOrder = append(currentUserPreference.CliCmdOrder, i)
+	cp := currentUserPreference.Cli
+	if cp == nil {
+		cp = new(CliPreference)
+		currentUserPreference.Cli = cp
 	}
+	cp.CliCmdOrder = nil
+	for i := range cliCmdList {
+		cp.CliCmdOrder = append(cp.CliCmdOrder, i)
+	}
+
 }
 
 func updateMostRecentCli(i int) {
+
+	cp := currentUserPreference.Cli
+	if cp == nil {
+		cp = new(CliPreference)
+		currentUserPreference.Cli = cp
+	}
+
 	utils.MoveItem(&cliCmdList, i, 0)
-	utils.MoveItem(&currentUserPreference.CliCmdOrder, i, 0)
-}
-
-func savePerferences_cli() {
-	if disablePreferenceFeature {
-		return
-	}
-
-	buf := utils.GetBuf()
-	defer utils.PutBuf(buf)
-	if err := toml.NewEncoder(buf).Encode(currentUserPreference); err != nil {
-		fmt.Println("err encountered during saving preferences,", err)
-		return
-	}
-	err := os.WriteFile(preferencesFileName, buf.Bytes(), os.ModePerm)
-	if err != nil {
-		fmt.Println("err encountered during saving preferences,", err)
-		return
-	}
+	utils.MoveItem(&cp.CliCmdOrder, i, 0)
 }
 
 func loadPreferences_cli() {
-	if disablePreferenceFeature {
+	cp := currentUserPreference.Cli
+	if cp == nil {
 		return
 	}
-	if !utils.FileExist(preferencesFileName) {
-		return
 
-	}
-	bs, err := os.ReadFile(preferencesFileName)
-	if err != nil {
-		fmt.Println("err encountered during loading preferences file,", err)
-		return
-	}
-	err = toml.Unmarshal(bs, &currentUserPreference)
-	if err != nil {
-		fmt.Println("err encountered during toml.Unmarshal preferences file,", err)
-		return
-	}
 	doWhenUpdateAutoRearrangeCli()
-	if len(currentUserPreference.CliCmdOrder) == 0 {
+	if len(cp.CliCmdOrder) == 0 {
 		return
 	}
-	if len(currentUserPreference.CliCmdOrder) <= len(cliCmdList) {
+	if len(cp.CliCmdOrder) <= len(cliCmdList) {
 		var neworder []int
 		var ei int
-		cliCmdList, neworder, ei = utils.SortByOrder(cliCmdList, currentUserPreference.CliCmdOrder)
+		cliCmdList, neworder, ei = utils.SortByOrder(cliCmdList, cp.CliCmdOrder)
 		if ei != 0 {
 			fmt.Println("utils.SortByOrder got ei", ei)
 		}
 		if neworder != nil {
-			currentUserPreference.CliCmdOrder = neworder
+			cp.CliCmdOrder = neworder
 		}
 
 	} else {
