@@ -20,6 +20,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var AddManualRunCmdsListFunc func([]string)
+
 const name = "tun"
 
 func init() {

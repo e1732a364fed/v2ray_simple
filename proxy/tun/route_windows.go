@@ -2,6 +2,7 @@ package tun
 
 import (
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 
@@ -68,14 +69,6 @@ func init() {
 		}
 		rememberedRouterIP = routerIP
 
-		// params1 := "delete 0.0.0.0 mask 0.0.0.0"
-		// out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
-
-		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
-
-		// if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
-		// 	ce.Write(zap.String("output", string(out1)))
-		// }
 		var strs = []string{
 			fmt.Sprintf(`netsh interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=none`, tunDevName, tunGateway),
 		}
@@ -87,9 +80,13 @@ func init() {
 
 		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
 
-		utils.Info("Please try run these commands manually:")
+		utils.Warn("Please try run these commands manually(Administrator):")
 		for _, s := range strs {
-			utils.Info(s)
+			utils.Warn(s)
+		}
+
+		if AddManualRunCmdsListFunc != nil {
+			AddManualRunCmdsListFunc(strs)
 		}
 
 	}
@@ -99,26 +96,21 @@ func init() {
 			return
 		}
 		//恢复路由表
-		params := "delete 0.0.0.0 mask 0.0.0.0"
-		out1, _ := exec.Command("route", strings.Split(params, " ")...).Output()
 
-		if ce := utils.CanLogInfo("auto route delete tun route"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
-		}
-
-		params = "add 0.0.0.0 mask 0.0.0.0 " + rememberedRouterIP + " metric 50"
-		out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
-
-		if ce := utils.CanLogInfo("auto route recover default route"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
+		strs := []string{
+			"route delete 0.0.0.0 mask 0.0.0.0 " + tunGateway,
+			"route add 0.0.0.0 mask 0.0.0.0 " + rememberedRouterIP + " metric 50",
 		}
 
 		for _, v := range directList {
-			params = "delete " + v + " " + rememberedRouterIP
-			out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
+			strs = append(strs, "route delete "+v+" "+rememberedRouterIP)
+		}
 
-			if ce := utils.CanLogInfo("auto route delete direct"); ce != nil {
-				ce.Write(zap.String("output", string(out1)))
+		log.Println("running these commands", strs)
+
+		if e := utils.ExecCmdList(strs); e != nil {
+			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+				ce.Write(zap.Error(e))
 			}
 		}
 	}
