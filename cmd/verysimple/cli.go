@@ -1,7 +1,10 @@
+//go:build !nocli
+
 package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -14,7 +17,52 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+type CliCmd struct {
+	Name string
+	f    func()
+}
+
+func (cc CliCmd) String() string {
+	return cc.Name
+}
+
+// func nlist(list []CliCmd) (result []string) {
+// 	for _, v := range list {
+// 		result = append(result, v.Name)
+// 	}
+// 	return
+// }
+
+func flist(list []*CliCmd) (result []func()) {
+	for _, v := range list {
+		result = append(result, v.f)
+	}
+	return
+}
+
+// cliCmdList 包含所有交互模式中可执行的命令；
+// 本文件 中添加的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
+var cliCmdList = []*CliCmd{
+	{
+		"查询当前状态", func() {
+			printAllState(os.Stdout)
+		},
+	}, {
+		"打印当前版本所支持的所有协议", printSupportedProtocols,
+	}, {
+		"生成随机ssl证书", generateRandomSSlCert,
+	}, {
+		"生成一个随机的uuid供你参考", generateAndPrintUUID,
+	}, {
+		"下载geosite文件夹", tryDownloadGeositeSource,
+	}, {
+		"下载geoip文件(GeoLite2-Country.mmdb)", tryDownloadMMDB,
+	},
+}
+
 func init() {
+	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
+
 	//cli.go 中添加的 CliCmd都是需进一步交互的命令
 
 	var getStandardConfFromCurrentState = func() (sc proxy.StandardConf) {
@@ -49,12 +97,13 @@ func init() {
 		"调节日志等级", interactively_adjust_loglevel,
 	})
 
+	runCli = runCli_func
 }
 
 // 交互式命令行用户界面
 //
 // 阻塞，可按ctrl+C退出或回退到上一级
-func runCli() {
+func runCli_func() {
 	defer func() {
 		utils.PrintStr("Interactive Mode exited. \n")
 		if ce := utils.CanLogInfo("Interactive Mode exited"); ce != nil {

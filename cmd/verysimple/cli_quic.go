@@ -1,4 +1,4 @@
-//go:build !noquic
+//go:build !noquic && !nocli
 
 package main
 

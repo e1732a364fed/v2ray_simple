@@ -1,6 +1,9 @@
+//go:build !nocli
+
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -32,6 +35,8 @@ type UserPreference struct {
 }
 
 func init() {
+	flag.BoolVar(&disablePreferenceFeature, "dp", false, "if given, vs won't save your interactive mode preferences.")
+
 	cliCmdList = append(cliCmdList, toggleAutoRearrangeCliCmd)
 
 	toggleAutoRearrangeCliCmd.f = func() {

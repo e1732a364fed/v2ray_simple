@@ -30,53 +30,9 @@ var (
 	download         bool
 )
 
-type CliCmd struct {
-	Name string
-	f    func()
-}
-
-func (cc CliCmd) String() string {
-	return cc.Name
-}
-
-// func nlist(list []CliCmd) (result []string) {
-// 	for _, v := range list {
-// 		result = append(result, v.Name)
-// 	}
-// 	return
-// }
-
-func flist(list []*CliCmd) (result []func()) {
-	for _, v := range list {
-		result = append(result, v.f)
-	}
-	return
-}
-
-// cliCmdList 包含所有交互模式中可执行的命令；
-// 本文件 中添加的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
-var cliCmdList = []*CliCmd{
-	{
-		"查询当前状态", func() {
-			printAllState(os.Stdout)
-		},
-	}, {
-		"打印当前版本所支持的所有协议", printSupportedProtocols,
-	}, {
-		"生成随机ssl证书", generateRandomSSlCert,
-	}, {
-		"生成一个随机的uuid供你参考", generateAndPrintUUID,
-	}, {
-		"下载geosite文件夹", tryDownloadGeositeSource,
-	}, {
-		"下载geoip文件(GeoLite2-Country.mmdb)", tryDownloadMMDB,
-	},
-}
-
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
-	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
 
 }

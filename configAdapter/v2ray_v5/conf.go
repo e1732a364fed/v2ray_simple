@@ -1,5 +1,17 @@
-// Package v2ray_v5 supports v2ray v5 config
-// See https://www.v2fly.org/v5/config/
+/*
+Package v2ray_v5 supports v2ray v5 config and convertion methods between vs standard toml config format
+See https://www.v2fly.org/v5/config/
+
+v2ray v5的配置看起来比v4配置简介不少，整体形态更接近vs的配置
+
+v2ray和 vs之间的配置的显著差别是，v2ray没有vs的 fallback配置部分。
+
+vs的fallback配置是单独列出来的，而v2ray则是藏在各个inbounds和outbounds中
+
+vs 没有Log项，因为日志部分直接放在app项中。vs也没有services项，如果有的话，也会加到app项中
+
+而app项不属于vs的proxy包，而属于app实现的部分，vs的app是cmd/verysimple
+*/
 package v2ray_v5
 
 type Conf struct {
@@ -80,9 +92,9 @@ type CIDRObject struct {
 }
 
 type RoutingObject struct {
-	S  string     `json:"domainStrategy"` //AsIs | UseIp | IpIfNonMatch | IpOnDemand
-	R  RuleObject `json:"rule"`
-	BR any        `json:"balancingRule"`
+	S  string       `json:"domainStrategy"` //AsIs | UseIp | IpIfNonMatch | IpOnDemand
+	R  []RuleObject `json:"rule"`
+	BR any          `json:"balancingRule"`
 }
 type RuleObject struct {
 	Code     string       `json:"tag"`

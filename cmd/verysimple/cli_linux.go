@@ -1,3 +1,5 @@
+//go:build !nocli
+
 package main
 
 import (

@@ -42,6 +42,8 @@ var (
 	defaultOutClient proxy.Client
 
 	routingEnv proxy.RoutingEnv
+
+	runCli func()
 )
 
 const (
@@ -68,7 +70,6 @@ func init() {
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 
 	flag.BoolVar(&disableSplice, "ds", false, "if given, then the app won't use splice.")
-	flag.BoolVar(&disablePreferenceFeature, "dp", false, "if given, vs won't save your interactive mode preferences.")
 
 	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 
@@ -386,7 +387,10 @@ func mainFunc() (result int) {
 	}
 
 	if interactive_mode {
-		runCli()
+		if runCli != nil {
+			runCli()
+
+		}
 
 		interactive_mode = false
 	}
