@@ -139,11 +139,11 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 	}
 
 	{
-		var readv_mem *readvMem
+		var readv_mem *utils.ReadvMem
 
 		if !readv_withMultiReader {
-			readv_mem = get_readvMem()
-			defer put_readvMem(readv_mem)
+			readv_mem = utils.Get_readvMem()
+			defer utils.Put_readvMem(readv_mem)
 		}
 
 		//这个for循环 只会通过 return 跳出, 不会落到外部
@@ -154,7 +154,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 				buffers, err = mr.ReadBuffers()
 
 			} else {
-				buffers, err = readvFrom(rawReadConn, readv_mem)
+				buffers, err = ReadvFrom(rawReadConn, readv_mem)
 
 			}
 
@@ -192,7 +192,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum i
 			}
 
 			if !readv_withMultiReader {
-				buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+				buffers = utils.RecoverBuffers(buffers, utils.Readv_buffer_allocLen, utils.ReadvSingleBufLen)
 
 			}
 
@@ -215,7 +215,7 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	var buffers net.Buffers
 	var rawConn syscall.RawConn
 
-	var rm *readvMem
+	var rm *utils.ReadvMem
 
 	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
 		ce.Write(
@@ -240,10 +240,10 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 		ce.Write()
 	}
 
-	rm = get_readvMem()
-	defer put_readvMem(rm)
+	rm = utils.Get_readvMem()
+	defer utils.Put_readvMem(rm)
 
-	buffers, err = readvFrom(rawConn, rm)
+	buffers, err = ReadvFrom(rawConn, rm)
 	if err != nil {
 		return 0, err
 	}
