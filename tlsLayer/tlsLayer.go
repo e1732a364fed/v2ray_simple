@@ -1,5 +1,5 @@
 /*
-Package tlsLayer provides facilities for tls, including sniffing.
+Package tlsLayer provides facilities for tls, including uTls, sniffing and random certificate.
 */
 package tlsLayer
 

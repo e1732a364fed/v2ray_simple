@@ -29,6 +29,7 @@ import (
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/socks5http"
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/trojan"
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/vmess"
 )
 
 //statistics

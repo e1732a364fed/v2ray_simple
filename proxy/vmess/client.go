@@ -3,8 +3,8 @@ package vmess
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"hash/fnv"
@@ -67,6 +67,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 				if err = c.specifySecurityByStr(str); err != nil {
 					return nil, err
 				}
+
 			}
 		}
 	}
@@ -121,20 +122,28 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 	conn.addr, conn.atyp = target.AddressBytes()
 	conn.port = uint16(target.Port)
 
-	randBytes := utils.GetBytes(32)
+	randBytes := utils.GetBytes(33)
 	rand.Read(randBytes)
 	copy(conn.reqBodyIV[:], randBytes[:16])
 	copy(conn.reqBodyKey[:], randBytes[16:32])
 	utils.PutBytes(randBytes)
-	conn.reqRespV = byte(rand.Intn(1 << 8))
-	conn.respBodyIV = md5.Sum(conn.reqBodyIV[:])
-	conn.respBodyKey = md5.Sum(conn.reqBodyKey[:])
+	conn.reqRespV = randBytes[32]
+
+	//non-aead
+	//conn.respBodyIV = md5.Sum(conn.reqBodyIV[:])
+	//conn.respBodyKey = md5.Sum(conn.reqBodyKey[:])
+
+	bodyKey := sha256.Sum256(conn.reqBodyKey[:])
+	bodyIV := sha256.Sum256(conn.reqBodyIV[:])
+	copy(conn.respBodyKey[:], bodyKey[:16])
+	copy(conn.respBodyIV[:], bodyIV[:16])
 
 	// Auth
-	err := conn.auth()
-	if err != nil {
-		return nil, err
-	}
+	//err := conn.non_aead_auth()
+	//if err != nil {
+	//	return nil, err
+	//}
+	var err error
 
 	// Request
 	if target.IsUDP() {
@@ -145,11 +154,15 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 		err = conn.handshake(CmdTCP)
 
 	}
+
 	if err != nil {
 		return nil, err
 	}
+	if len(firstPayload) > 0 {
+		_, err = conn.Write(firstPayload)
+	}
 
-	return conn, nil
+	return conn, err
 }
 
 // ClientConn is a connection to vmess server
@@ -188,7 +201,7 @@ func (c *ClientConn) Fullcone() bool {
 func (c *ClientConn) ReadMsgFrom() (bs []byte, target netLayer.Addr, err error) {
 	bs = utils.GetPacket()
 	var n int
-	n, err = c.Conn.Read(bs)
+	n, err = c.Read(bs)
 	if err != nil {
 		utils.PutPacket(bs)
 		bs = nil
@@ -202,20 +215,6 @@ func (c *ClientConn) ReadMsgFrom() (bs []byte, target netLayer.Addr, err error) 
 func (c *ClientConn) WriteMsgTo(b []byte, _ netLayer.Addr) error {
 	_, e := c.Write(b)
 	return e
-}
-
-// send auth info: HMAC("md5", UUID, UTC)
-func (c *ClientConn) auth() error {
-	ts := utils.GetBytes(8)
-	defer utils.PutBytes(ts)
-
-	binary.BigEndian.PutUint64(ts, uint64(time.Now().UTC().Unix()))
-
-	h := hmac.New(md5.New, c.user.IdentityBytes())
-	h.Write(ts)
-
-	_, err := c.Conn.Write(h.Sum(nil))
-	return err
 }
 
 // handshake sends request to server.
@@ -264,45 +263,68 @@ func (c *ClientConn) handshake(cmd byte) error {
 	buf.Write(fnv1a.Sum(nil))
 
 	// log.Printf("Request Send %v", buf.Bytes())
+	/*
+		//non-aead procedure
 
-	block, err := aes.NewCipher(GetKey(c.user))
-	if err != nil {
-		return err
-	}
+		block, err := aes.NewCipher(GetKey(c.user))
+		if err != nil {
+			return err
+		}
 
-	stream := cipher.NewCFBEncrypter(block, TimestampHash(time.Now().UTC().Unix()))
-	stream.XORKeyStream(buf.Bytes(), buf.Bytes())
+		stream := cipher.NewCFBEncrypter(block, TimestampHash(time.Now().UTC().Unix()))
+		stream.XORKeyStream(buf.Bytes(), buf.Bytes())
+	*/
 
-	_, err = c.Conn.Write(buf.Bytes())
-
+	var fixedLengthCmdKey [16]byte
+	copy(fixedLengthCmdKey[:], GetKey(c.user))
+	vmessout := sealVMessAEADHeader(fixedLengthCmdKey, buf.Bytes(), time.Now())
+	_, err = c.Conn.Write(vmessout)
 	return err
+
 }
 
-// DecodeRespHeader decodes response header.
-func (c *ClientConn) DecodeRespHeader() error {
-	block, err := aes.NewCipher(c.respBodyKey[:])
+func (vc *ClientConn) aead_decodeRespHeader() error {
+	var buf []byte
+	aeadResponseHeaderLengthEncryptionKey := kdf(vc.respBodyKey[:], kdfSaltConstAEADRespHeaderLenKey)[:16]
+	aeadResponseHeaderLengthEncryptionIV := kdf(vc.respBodyIV[:], kdfSaltConstAEADRespHeaderLenIV)[:12]
+
+	aeadResponseHeaderLengthEncryptionKeyAESBlock, _ := aes.NewCipher(aeadResponseHeaderLengthEncryptionKey)
+	aeadResponseHeaderLengthEncryptionAEAD, _ := cipher.NewGCM(aeadResponseHeaderLengthEncryptionKeyAESBlock)
+
+	aeadEncryptedResponseHeaderLength := make([]byte, 18)
+	if _, err := io.ReadFull(vc.Conn, aeadEncryptedResponseHeaderLength); err != nil {
+		return err
+	}
+
+	decryptedResponseHeaderLengthBinaryBuffer, err := aeadResponseHeaderLengthEncryptionAEAD.Open(nil, aeadResponseHeaderLengthEncryptionIV, aeadEncryptedResponseHeaderLength[:], nil)
+	if err != nil {
+		return err
+	}
+	decryptedResponseHeaderLength := binary.BigEndian.Uint16(decryptedResponseHeaderLengthBinaryBuffer)
+	aeadResponseHeaderPayloadEncryptionKey := kdf(vc.respBodyKey[:], kdfSaltConstAEADRespHeaderPayloadKey)[:16]
+	aeadResponseHeaderPayloadEncryptionIV := kdf(vc.respBodyIV[:], kdfSaltConstAEADRespHeaderPayloadIV)[:12]
+	aeadResponseHeaderPayloadEncryptionKeyAESBlock, _ := aes.NewCipher(aeadResponseHeaderPayloadEncryptionKey)
+	aeadResponseHeaderPayloadEncryptionAEAD, _ := cipher.NewGCM(aeadResponseHeaderPayloadEncryptionKeyAESBlock)
+
+	encryptedResponseHeaderBuffer := make([]byte, decryptedResponseHeaderLength+16)
+	if _, err := io.ReadFull(vc.Conn, encryptedResponseHeaderBuffer); err != nil {
+		return err
+	}
+
+	buf, err = aeadResponseHeaderPayloadEncryptionAEAD.Open(nil, aeadResponseHeaderPayloadEncryptionIV, encryptedResponseHeaderBuffer, nil)
 	if err != nil {
 		return err
 	}
 
-	stream := cipher.NewCFBDecrypter(block, c.respBodyIV[:])
-
-	b := utils.GetBytes(4)
-	defer utils.PutBytes(b)
-
-	_, err = io.ReadFull(c.Conn, b)
-	if err != nil {
-		return err
+	if len(buf) < 4 {
+		return errors.New("unexpected buffer length")
 	}
 
-	stream.XORKeyStream(b, b)
-
-	if b[0] != c.reqRespV {
+	if buf[0] != vc.reqRespV {
 		return errors.New("unexpected response header")
 	}
 
-	if b[2] != 0 {
-		// dataLen := int32(buf[3])
+	if buf[2] != 0 {
 		return errors.New("dynamic port is not supported now")
 	}
 
@@ -345,7 +367,8 @@ func (c *ClientConn) Read(b []byte) (n int, err error) {
 		return c.dataReader.Read(b)
 	}
 
-	err = c.DecodeRespHeader()
+	err = c.aead_decodeRespHeader()
+
 	if err != nil {
 		return 0, err
 	}

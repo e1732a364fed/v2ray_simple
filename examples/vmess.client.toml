@@ -1,0 +1,12 @@
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10800
+
+
+[[dial]]
+protocol = "vmess"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "127.0.0.1"
+port = 4434
+extra = { vmess_security = "aes-128-gcm" }
