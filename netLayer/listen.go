@@ -14,6 +14,7 @@ import (
 )
 
 var (
+	//你可以通过向这个map插入 自定义函数的方式 来拓展 vs的 监听功能, 可以监听 其它 net包无法监听的 network
 	CustomListenerMap = make(map[string]func(address string) (net.Listener, error))
 )
 
@@ -153,11 +154,17 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 
 		if len(CustomListenerMap) > 0 {
 			if f := CustomListenerMap[network]; f != nil {
-				return f(addr)
+				listener, err = f(addr)
+				if err != nil {
+					return
+				}
 			}
 		}
 
-		listener, err = net.Listen(network, addr)
+		if listener == nil {
+			listener, err = net.Listen(network, addr)
+		}
+
 		if err != nil {
 			return
 		}

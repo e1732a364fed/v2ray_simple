@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	//你可以通过向这个map插入 自定义函数的方式 来拓展 vs的 拨号功能, 可以拨号 其它 net包无法拨号的 network
 	CustomDialerMap = make(map[string]func(address string, timeout time.Duration) (net.Conn, error))
 )
 
