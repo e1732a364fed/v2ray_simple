@@ -1,0 +1,37 @@
+# tun; vs的tun功能仅在 vs_gui 系列中存在。
+
+# 你要配置好路由表才能让tun正常使用。 
+# 在mac/windows上，路由表不是那么好配置，尤其是没有linux那么灵活
+# 而如果是在linux上的话，直接推荐使用tproxy
+
+# 对于小白来说，下面的指导太过于高级，难以看懂，因此对于小白来说推荐全自动化的方案。
+
+# 在macos上, 配置路由表还需要在tun设备建立之后才能进行，因为tun设备的名称是无法自定义的
+
+# 下面给出macos上的路由表配置指导
+# 首先删除默认路由，然后将路由指向 utun3 (用户自己运行的到的名称可能不同)
+# 最后将自己的服务器的ip (我们的例子是127.0.0.1，请你改成实际服务器ip) 的路由指向原来的 路由器地址
+# 这个方案只适用于
+
+# sudo route delete -host default
+# sudo route add default -interface utun3
+# sudo route add -host 127.0.0.1 192.168.1.1
+
+# 关闭vs后，要将原来的路由添回。不会的话，重启可以复原。
+
+# sudo route delete -host default
+# sudo route add default 192.168.1.1
+
+
+[[listen]]
+protocol = "tun"
+
+
+[[dial]]
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "127.0.0.1"
+port = 4433
+version = 0
+insecure = true
+utls = true

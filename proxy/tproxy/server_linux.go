@@ -127,7 +127,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 				Target: targetAddr,
 			}
 
-			if ce := utils.CanLogInfo("TProxy loop read got new tcp"); ce != nil {
+			if ce := utils.CanLogInfo("TProxy got new tcp"); ce != nil {
 				ce.Write(zap.String("->", targetAddr.String()))
 			}
 			if tm.Closed() {
@@ -175,7 +175,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 					}
 					break
 				} else {
-					if ce := utils.CanLogInfo("TProxy loop read got new udp"); ce != nil {
+					if ce := utils.CanLogInfo("TProxy got new udp"); ce != nil {
 						ce.Write(zap.String("->", raddr.String()))
 					}
 				}

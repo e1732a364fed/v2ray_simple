@@ -9,6 +9,8 @@ import (
 	_ "github.com/e1732a364fed/ui/winmanifest"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
+
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/tun"
 )
 
 var testFunc func()

@@ -14,6 +14,10 @@ import (
 
 const name = "tun"
 
+func init() {
+	proxy.RegisterServer(name, &ServerCreator{})
+}
+
 type ServerCreator struct{ proxy.CreatorCommonStruct }
 
 func (ServerCreator) URLToListenConf(url *url.URL, lc *proxy.ListenConf, format int) (*proxy.ListenConf, error) {
@@ -36,7 +40,8 @@ type Server struct {
 
 	stopped bool
 
-	infoChan chan<- netLayer.TCPRequestInfo
+	infoChan   chan<- netLayer.TCPRequestInfo
+	lwipCloser io.Closer
 }
 
 func (*Server) Name() string { return name }
@@ -56,6 +61,7 @@ func (s *Server) Close() error {
 func (s *Server) Stop() {
 	if !s.stopped {
 		s.stopped = true
+		s.lwipCloser.Close()
 		close(s.infoChan)
 	}
 
@@ -71,16 +77,20 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 	}
 	s.infoChan = infoChan
 
-	tchan, _ := tun.HandleTun(tunDev)
+	tchan, _, lwipcloser := tun.HandleTun(tunDev)
 	go func() {
 		for tr := range tchan {
 			if s.stopped {
 				return
 			}
+			if ce := utils.CanLogInfo("tun got new tcp"); ce != nil {
+				ce.Write(zap.String("->", tr.Target.String()))
+			}
 			infoChan <- tr
 
 		}
 	}()
+	s.lwipCloser = lwipcloser
 
 	return s
 }

@@ -36,13 +36,11 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 		}
 	}
 
-	if m.DefaultOutClient == nil {
-		if len(m.allClients) > 0 {
-			m.DefaultOutClient = m.allClients[0]
+	if len(m.allClients) > 0 {
+		m.DefaultOutClient = m.allClients[0]
 
-		} else {
-			m.DefaultOutClient = v2ray_simple.DirectClient
-		}
+	} else {
+		m.DefaultOutClient = v2ray_simple.DirectClient
 	}
 	return
 

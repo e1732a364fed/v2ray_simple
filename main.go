@@ -75,10 +75,21 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 	var extraCloser io.Closer
 
 	var is, tcp, udp bool
-	//tproxy 和 shadowsocks 都用到了 SelfListen
+	//tproxy,tun/tap 和 shadowsocks(udp) 都用到了 SelfListen
 	if is, tcp, udp = inServer.SelfListen(); is {
 		var chantcp chan netLayer.TCPRequestInfo
 		var chanudp chan netLayer.UDPRequestInfo
+
+		if ce := utils.CanLogInfo("Listening"); ce != nil {
+
+			ce.Write(
+				zap.String("tag", inServer.GetTag()),
+				zap.String("protocol", proxy.GetFullName(inServer)),
+				zap.String("listen_addr", inServer.AddrStr()),
+				zap.String("defaultClient", proxy.GetFullName(defaultOutClient)),
+				zap.String("dial_addr", defaultOutClient.AddrStr()),
+			)
+		}
 
 		if tcp {
 			chantcp = make(chan netLayer.TCPRequestInfo, 2)

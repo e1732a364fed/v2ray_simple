@@ -264,18 +264,20 @@ func CommonSplit_regex(s, e1, e2 string) (ok bool, v1, v2 string) {
 
 // the first part of synonyms is the one to be replaced, the last part of synonyms is the persistent one.
 func ReplaceBytesSynonyms(bs []byte, synonyms [][2][]byte) (result []byte) {
+	result = bs
 	for _, ss := range synonyms {
 
-		result = bytes.Replace(bs, ss[0], ss[1], -1)
+		result = bytes.Replace(result, ss[0], ss[1], -1)
 	}
 	return result
 }
 
 // same as ReplaceBytesSynonyms
 func ReplaceStringsSynonyms(bs string, synonyms [][2]string) (result string) {
+	result = bs
 	for _, ss := range synonyms {
 
-		result = strings.Replace(bs, ss[0], ss[1], -1)
+		result = strings.Replace(result, ss[0], ss[1], -1)
 	}
 	return result
 }
