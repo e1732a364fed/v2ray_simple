@@ -23,6 +23,32 @@ func (c *TCPConn) Upstream() net.Conn {
 	return c.Conn
 }
 
+// 当底层链接可以暴露为 tcp或 unix链接时，返回true
+func (c *TCPConn) EverPossibleToSpliceRead() bool {
+	if netLayer.IsTCP(c.Conn) != nil {
+		return true
+	}
+	if netLayer.IsUnix(c.Conn) != nil {
+		return true
+	}
+
+	if s, ok := c.Conn.(netLayer.SpliceReader); ok {
+		return s.EverPossibleToSpliceRead()
+	}
+
+	return false
+}
+
+func (c *TCPConn) CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
+	if c.isServerEnd {
+		if c.remainFirstBufLen > 0 {
+			return false, nil, nil
+		}
+	}
+
+	return netLayer.ReturnSpliceRead(c.Conn)
+}
+
 func (c *TCPConn) Read(p []byte) (int, error) {
 	if c.remainFirstBufLen > 0 {
 		n, err := c.optionalReader.Read(p)

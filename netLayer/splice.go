@@ -168,3 +168,19 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceW io.Writer, r io.
 	}
 
 }
+
+func ReturnSpliceRead(c net.Conn) (bool, *net.TCPConn, *net.UnixConn) {
+	if tc := IsTCP(c); tc != nil {
+		return true, tc, nil
+	}
+	if uc := IsUnix(c); uc != nil {
+		return true, nil, uc
+	}
+
+	if s, ok := c.(SpliceReader); ok {
+		return s.CanSpliceRead()
+	}
+
+	return false, nil, nil
+
+}

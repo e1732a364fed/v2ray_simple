@@ -61,22 +61,6 @@ func (c *UserTCPConn) EverPossibleToSpliceRead() bool {
 	return false
 }
 
-func (c *UserTCPConn) returnSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
-	if tc := netLayer.IsTCP(c.Conn); tc != nil {
-		return true, tc, nil
-	}
-	if uc := netLayer.IsUnix(c.Conn); uc != nil {
-		return true, nil, uc
-	}
-
-	if s, ok := c.Conn.(netLayer.SpliceReader); ok {
-		return s.CanSpliceRead()
-	}
-
-	return false, nil, nil
-
-}
-
 func (c *UserTCPConn) CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
 	if c.isServerEnd {
 		if c.remainFirstBufLen > 0 {
@@ -89,7 +73,7 @@ func (c *UserTCPConn) CanSpliceRead() (bool, *net.TCPConn, *net.UnixConn) {
 		}
 	}
 
-	return c.returnSpliceRead()
+	return netLayer.ReturnSpliceRead(c.Conn)
 
 }
 
