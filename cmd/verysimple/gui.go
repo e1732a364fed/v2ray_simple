@@ -5,6 +5,7 @@ package main
 // gui界面, 所属计划为 vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
 
 import (
+	"os"
 	"syscall"
 
 	"github.com/e1732a364fed/ui"
@@ -298,7 +299,13 @@ func setupUI() {
 		filesM.AppendItem("Open github").OnClicked(openUrlFunc(weblink))
 		filesM.AppendItem("Check github releases").OnClicked(openUrlFunc(weblink + "releases"))
 		filesM.AppendItem("Quit App").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-			syscall.Kill(syscall.Getpid(), syscall.SIGINT) //退出app
+			//syscall.Kill(syscall.Getpid(), syscall.SIGINT) //退出app ,syscall.Kill 在windows上不存在
+
+			if p, err := os.FindProcess(os.Getpid()); err != nil {
+
+			} else {
+				p.Signal(syscall.SIGINT)
+			}
 		})
 
 		var y = ui.NewMenu("Debug")
