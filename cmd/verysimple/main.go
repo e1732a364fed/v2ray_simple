@@ -148,11 +148,14 @@ func mainFunc() (result int) {
 
 	var configFileName string
 
-	if len(configFiles) == 1 {
+	switch len(configFiles) {
+	case 0:
+		configFileName = defaultConfFn
+
+	case 1:
 		configFileName = configFiles[0]
 
-	} else if len(configFiles) > 1 {
-
+	default:
 		tomlBuf = utils.GetBuf()
 
 		for _, fn := range configFiles {
