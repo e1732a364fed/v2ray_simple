@@ -676,14 +676,15 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 						transport = &http2.Transport{
 							DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
 
+								//实测如果是uds，这里的a会为 :443, 丢失了uds监听文件信息
+
 								return net.Dial("unix", targetAddr.String())
 							},
 							AllowHTTP: true,
 						}
 
-						if ce := utils.CanLogDebug("fallback grpc"); ce != nil {
-							ce.Write(zap.String("path", iics.fallbackRequestPath))
-						}
+						rq.Host = "127.0.0.1" //如果host设成了 unix的地址，依然无法被nginx正常响应
+
 						rq.URL, _ = url.Parse("http://127.0.0.1" + iics.fallbackRequestPath)
 					}
 

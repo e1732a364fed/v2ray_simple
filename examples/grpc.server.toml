@@ -15,6 +15,15 @@ path = "ohmygod_verysimple_is_very_simple"  #前面加斜杠了话, 程序会自
 # 如需使用 Nginx、Caddy 等软件进行分流，其设置的分流路径应为 /${path}/Tun
 #   比如当前示例的情况下，Nginx的配置就是 /ohmygod_verysimple_is_very_simple/Tun
 
+tag = "vless-grpc-tls-in"
+
 [[dial]]
 protocol = "direct"
 
+
+[[fallback]]    # grpcSimple 回落到nginx的 grpc h2c
+from = ["vless-grpc-tls-in"]
+alpn = ["h2"]
+dest = "127.0.0.1:80"
+
+#dest = "/home/me/shm.sock" # 回落到unix domain socket

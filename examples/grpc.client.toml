@@ -15,6 +15,8 @@ utls = true
 advancedLayer = "grpc"
 path = "ohmygod_verysimple_is_very_simple"  #path这里填写grpc的servicename
 
-# extra = { grpc_multi = true }    # 是否开启MultiMode, 只需客户端配置，服务端自动适配. 注意，v2ray不支持multiMode, 这个功能只与 xray 兼容. 
+# extra = { grpc_multi = true }    # 是否开启MultiMode, 只需客户端配置，服务端自动适配. 注意，v2ray不支持multiMode, 这个功能只与 xray 兼容.
 
 # 且默认的 verysimple 发布包不支持该功能，需要自行用 go build -tags grpc_full 来编译得到 支持 multiMode 的版本。
+
+# VS 只在 1.2.4 以及更老版本中支持 grpc_multi
