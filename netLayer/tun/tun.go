@@ -19,7 +19,7 @@ import (
 	"io"
 	"log"
 	"net"
-	"runtime"
+	"strconv"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -40,18 +40,18 @@ import (
 	"gvisor.dev/gvisor/pkg/waiter"
 )
 
-// 若name为空则会返回错误
+// 若name为空则会返回错误. 若name可转换为数字，则会将其解析为fd 号
 func Open(name string) (device.Device, error) {
 	if name == "" {
 		return nil, errors.New("tun: dev name can't be empty")
 	}
 
-	if runtime.GOOS == "android" {
+	_, err := strconv.Atoi(name)
+	if err == nil {
 		return fdbased.Open(name, uint32(utils.MTU))
-
-	} else {
-		return tun.Open(name, uint32(utils.MTU))
 	}
+
+	return tun.Open(name, uint32(utils.MTU))
 }
 
 type StackCloser struct {
