@@ -169,7 +169,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
 //
-// 在 listenSer 中被调用。
+// 在 ListenSer 中被调用。
 func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, env *proxy.RoutingEnv) {
 
 	iics := incomingInserverConnState{
@@ -380,111 +380,117 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 
 	wlc, udp_wlc, targetAddr, err = inServer.Handshake(iics.wrappedConn)
 
-	if err == nil {
-		if udp_wlc != nil && inServer.Name() == "socks5" {
-			// socks5的 udp associate返回的是 clientFutureAddr, 而不是实际客户的第一个请求.
-			//所以我们要读一次才能进行下一步。
+	if err != nil {
+		return
+	}
+	if udp_wlc != nil && inServer.Name() == "socks5" {
+		// socks5的 udp associate返回的是 clientFutureAddr, 而不是实际客户的第一个请求.
+		//所以我们要读一次才能进行下一步。
 
-			firstSocks5RequestData, firstSocks5RequestAddr, err2 := udp_wlc.ReadMsgFrom()
-			if err2 != nil {
-				if ce := iics.CanLogWarn("failed in socks5 read"); ce != nil {
-					ce.Write(
-						zap.String("handler", inServer.AddrStr()),
-						zap.Error(err2),
-					)
-				}
-				err = err2
-				return
+		firstSocks5RequestData, firstSocks5RequestAddr, err2 := udp_wlc.ReadMsgFrom()
+		if err2 != nil {
+			if ce := iics.CanLogWarn("failed in socks5 read"); ce != nil {
+				ce.Write(
+					zap.String("handler", inServer.AddrStr()),
+					zap.Error(err2),
+				)
 			}
-
-			iics.fallbackFirstBuffer = bytes.NewBuffer(firstSocks5RequestData)
-
-			targetAddr = firstSocks5RequestAddr
+			err = err2
+			return
 		}
 
-		////////////////////////////// 内层mux阶段 /////////////////////////////////////
+		iics.fallbackFirstBuffer = bytes.NewBuffer(firstSocks5RequestData)
 
-		if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
-			if mh, ok := wlc.(proxy.MuxMarker); ok {
+		targetAddr = firstSocks5RequestAddr
+	}
 
-				innerSerConf := proxy.ListenConf{
-					CommonConf: proxy.CommonConf{
-						Protocol: innerProxyName,
-					},
+	////////////////////////////// 内层mux阶段 /////////////////////////////////////
+
+	if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
+		mh, ok := wlc.(proxy.MuxMarker)
+		if !ok {
+			return
+		}
+
+		innerSerConf := proxy.ListenConf{
+			CommonConf: proxy.CommonConf{
+				Protocol: innerProxyName,
+			},
+		}
+
+		innerSer, err2 := proxy.NewServer(&innerSerConf)
+		if err2 != nil {
+			if ce := iics.CanLogDebug("mux inner proxy server creation failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			err = err2
+			return
+		}
+
+		session := inServer.GetServerInnerMuxSession(mh)
+
+		if session == nil {
+			err = utils.ErrFailed
+			return
+		}
+
+		//内层mux要对每一个子连接单独进行 子代理协议握手 以及 outClient的拨号。
+
+		go func() {
+
+			for {
+				if ce := iics.CanLogDebug("inServer try accept smux stream "); ce != nil {
+					ce.Write()
 				}
 
-				innerSer, err2 := proxy.NewServer(&innerSerConf)
-				if err2 != nil {
-					if ce := iics.CanLogDebug("mux inner proxy server creation failed"); ce != nil {
+				stream, err := session.AcceptStream()
+				if err != nil {
+					if ce := iics.CanLogDebug("mux inServer try accept stream failed"); ce != nil {
 						ce.Write(zap.Error(err))
 					}
-					err = err2
+
+					session.Close()
 					return
 				}
-
-				session := inServer.GetServerInnerMuxSession(mh)
-
-				if session == nil {
-					err = utils.ErrFailed
-					return
+				if ce := iics.CanLogDebug("inServer got inner mux stream"); ce != nil {
+					ce.Write(zap.String("innerProxyName", innerProxyName))
 				}
-
-				//内层mux要对每一个子连接单独进行 子代理协议握手 以及 outClient的拨号。
 
 				go func() {
 
-					for {
-						if ce := iics.CanLogDebug("inServer try accept smux stream "); ce != nil {
-							ce.Write()
+					wlc1, udp_wlc1, targetAddr1, err1 := innerSer.Handshake(stream)
+
+					if err1 != nil {
+						if ce := iics.CanLogDebug("inServer mux inner proxy handshake failed"); ce != nil {
+							ce.Write(zap.Error(err1))
 						}
+						newiics := *iics
 
-						stream, err := session.AcceptStream()
-						if err != nil {
-							if ce := iics.CanLogDebug("mux inServer try accept stream failed"); ce != nil {
-								ce.Write(zap.Error(err))
-							}
-
-							session.Close()
+						if !newiics.extractFirstBufFromErr(err1) {
 							return
 						}
-						if ce := iics.CanLogDebug("inServer got inner mux stream"); ce != nil {
-							ce.Write(zap.String("innerProxyName", innerProxyName))
+						passToOutClient(newiics, true, wlc1, udp_wlc1, targetAddr1)
+
+					} else {
+
+						if ce := iics.CanLogDebug("inServer mux stream handshake ok"); ce != nil {
+							ce.Write(zap.String("targetAddr", targetAddr1.String()))
 						}
 
-						go func() {
+						newiics := *iics
+						newiics.isInner = true
 
-							wlc1, udp_wlc1, targetAddr1, err1 := innerSer.Handshake(stream)
-
-							if err1 != nil {
-								if ce := iics.CanLogDebug("inServer mux inner proxy handshake failed"); ce != nil {
-									ce.Write(zap.Error(err1))
-								}
-								newiics := *iics
-
-								if !newiics.extractFirstBufFromErr(err1) {
-									return
-								}
-								passToOutClient(newiics, true, wlc1, udp_wlc1, targetAddr1)
-
-							} else {
-
-								if ce := iics.CanLogDebug("inServer mux stream handshake ok"); ce != nil {
-									ce.Write(zap.String("targetAddr1", targetAddr1.String()))
-								}
-
-								passToOutClient(*iics, false, wlc1, udp_wlc1, targetAddr1)
-
-							}
-
-						}()
+						passToOutClient(newiics, false, wlc1, udp_wlc1, targetAddr1)
 
 					}
+
 				}()
 
-				err = utils.ErrHandled
-				return
 			}
-		}
+		}()
+
+		err = utils.ErrHandled
+		return
 
 	}
 
@@ -494,7 +500,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 // 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
 //
-//被 handleNewIncomeConnection 调用。
+//被 handleNewIncomeConnection 和 ListenSer 调用。
 func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	wlc, udp_wlc, targetAddr, err := handshakeInserver(&iics)
@@ -953,7 +959,12 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			hasInnerMux = true
 
 			//先过滤掉 innermux 通道已经建立的情况, 此时我们不必再次外部拨号，而是直接进行内层拨号.
+
+			client.Lock()
+
 			if client.InnerMuxEstablished() {
+				client.Unlock()
+
 				wrc1, realudp_wrc, result1 := dialInnerProxy(client, wlc, nil, iics, innerProxyName, targetAddr, isudp)
 
 				if result1 == 0 {
@@ -966,11 +977,20 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 					result = result1
 					return
 				} else {
-					if ce := iics.CanLogDebug("mux failed, will redial"); ce != nil {
+					if ce := iics.CanLogDebug("client inner mux dial innerProxy failed, will redial"); ce != nil {
 						ce.Write()
 					}
 				}
 
+			} else {
+				//在实测时 发现，可能出现并发问题，比如在加载图多的网页时，很容易碰到
+				//此时如果是两个连接同时 发出，而且 尚未 建立 innerMux，
+				// 则如果不加锁的话 ，两个连接 会同时 获取到 client.InnerMuxEstablished() 为 false
+				// 这会导致同时试图拨号 innerMux，而这是错误的
+				//我们只允许有一个 innerMux 连接存在，如果有多个的话，那么最新拨号的innerMux 会覆盖以前的拨号，
+				// 导致 以前的 innerMux 成为了 悬垂连接，而且会导致 相关联的请求卡住。
+
+				defer client.Unlock()
 			}
 		}
 	}
@@ -1372,7 +1392,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 	//在内层mux时, 不能因为单个传输完毕就关闭整个连接
 	if innerMuxResult, _ := client.HasInnerMux(); innerMuxResult == 0 {
-		if iics.shouldCloseInSerBaseConnWhenFinish {
+		if iics.shouldCloseInSerBaseConnWhenFinish && !iics.isInner {
 			if iics.baseLocalConn != nil {
 				defer iics.baseLocalConn.Close()
 			}

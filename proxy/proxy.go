@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -58,6 +59,8 @@ type Client interface {
 	GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session
 	InnerMuxEstablished() bool
 	CloseInnerMuxSession()
+
+	sync.Locker //用于锁定 innerMux
 }
 
 type UserClient interface {

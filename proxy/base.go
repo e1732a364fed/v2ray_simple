@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -110,6 +111,7 @@ type Base struct {
 
 	Innermux *smux.Session //用于存储 client的已拨号的mux连接
 
+	sync.Mutex
 }
 
 func (b *Base) GetBase() *Base {
@@ -171,6 +173,7 @@ func (b *Base) Sniffing() bool {
 }
 
 func (b *Base) InnerMuxEstablished() bool {
+
 	return b.Innermux != nil && !b.Innermux.IsClosed()
 }
 
@@ -194,14 +197,14 @@ func (*Base) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
 }
 
 func (b *Base) CloseInnerMuxSession() {
-	if b.Innermux != nil && !b.Innermux.IsClosed() {
+	if b.InnerMuxEstablished() {
 		b.Innermux.Close()
 		b.Innermux = nil
 	}
 }
 
 func (b *Base) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
-	if b.Innermux != nil && !b.Innermux.IsClosed() {
+	if b.InnerMuxEstablished() {
 		return b.Innermux
 	} else {
 		smuxConfig := smux.DefaultConfig()
