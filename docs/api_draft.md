@@ -16,7 +16,7 @@
 
 使用 https + basic auth + (plain text)/(json)
 
-api在不复杂时，可以使用纯空格、换行符 分隔的字符串形式 or toml.
+api在不复杂时，可以使用纯空格、换行符 分隔的字符串形式 (plain text) or toml/json.
 
 ### 功能列表
 1. 生成toml配置文件功能【已实现】
