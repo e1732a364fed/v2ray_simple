@@ -83,7 +83,7 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 		if err != nil {
 			return
 		}
-		if n != 4 {
+		if n != net.IPv6len {
 			err = utils.ErrShortRead
 			return
 		}
