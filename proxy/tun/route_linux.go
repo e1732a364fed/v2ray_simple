@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -93,8 +94,8 @@ func init() {
 		}
 
 		var strs = []string{
-			"ip route del default",
-			"ip route add default via " + rememberedRouterIP,
+			//"ip route del default",
+			//"ip route add default via " + rememberedRouterIP,
 
 			"ip link set dev " + tunDevName + " down",
 			"ip tuntap del mode tun dev " + tunDevName,
@@ -107,7 +108,16 @@ func init() {
 		if manualRoute {
 			promptManual(strs)
 		} else {
-			if e := utils.LogExecCmdList(strs); e != nil {
+			if e := utils.LogExecCmdList(strs[:1]); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+				return
+
+			}
+			time.Sleep(time.Second) //似乎不能太快紧接着 down 执行ip tuntap del
+
+			if e := utils.LogExecCmdList(strs[1:]); e != nil {
 				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
 					ce.Write(zap.Error(e))
 				}
