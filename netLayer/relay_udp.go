@@ -3,7 +3,6 @@ package netLayer
 import (
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -134,7 +133,7 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 		}
 
 		if uploadByteCount != nil {
-			atomic.AddUint64(uploadByteCount, count)
+			utils.AtomicAddUint64(uploadByteCount, count)
 		}
 
 	}()
@@ -185,7 +184,7 @@ func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWM
 	}
 
 	if downloadByteCount != nil {
-		atomic.AddUint64(downloadByteCount, count)
+		utils.AtomicAddUint64(downloadByteCount, count)
 	}
 
 	return count, rcwrong
@@ -289,7 +288,7 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 		lc.Close()
 
 		if uploadByteCount != nil {
-			atomic.AddUint64(uploadByteCount, count)
+			utils.AtomicAddUint64(uploadByteCount, count)
 		}
 
 	}()
@@ -329,7 +328,7 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 // 	CopyMsgFromP2C(rc, lc, &dbc)
 
 // 	if downloadByteCount != nil {
-// 		atomic.AddUint64(downloadByteCount, dbc)
+// 		utils.AtomicAddUint64(downloadByteCount, dbc)
 // 	}
 // 	return dbc
 
@@ -351,7 +350,7 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 // 	}
 
 // 	if countPtr != nil {
-// 		atomic.AddUint64(countPtr, bc)
+// 		utils.AtomicAddUint64(countPtr, bc)
 // 	}
 
 // }

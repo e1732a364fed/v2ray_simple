@@ -4,7 +4,6 @@ import (
 	"io"
 	"net"
 	"reflect"
-	"sync/atomic"
 	"syscall"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -339,7 +338,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, identity uint32, dow
 			rc.Close()
 
 			if uploadByteCount != nil {
-				atomic.AddUint64(uploadByteCount, uint64(n))
+				utils.AtomicAddUint64(uploadByteCount, uint64(n))
 			}
 
 		}()
@@ -357,7 +356,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, identity uint32, dow
 		rc.Close()
 
 		if downloadByteCount != nil {
-			atomic.AddUint64(downloadByteCount, uint64(n))
+			utils.AtomicAddUint64(downloadByteCount, uint64(n))
 		}
 		return n
 	} else {
@@ -368,7 +367,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, identity uint32, dow
 			rc.Close()
 
 			if uploadByteCount != nil {
-				atomic.AddUint64(uploadByteCount, uint64(n))
+				utils.AtomicAddUint64(uploadByteCount, uint64(n))
 			}
 
 		}()
@@ -379,7 +378,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, identity uint32, dow
 		rc.Close()
 
 		if downloadByteCount != nil {
-			atomic.AddUint64(downloadByteCount, uint64(n))
+			utils.AtomicAddUint64(downloadByteCount, uint64(n))
 		}
 		return n
 	}
