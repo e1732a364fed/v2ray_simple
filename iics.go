@@ -102,12 +102,6 @@ func (iics *incomingInserverConnState) genID() {
 
 // 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
 func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
-	if ce := iics.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
-		ce.Write(
-			zap.String("handler", iics.inServer.AddrStr()),
-			zap.Error(err),
-		)
-	}
 
 	if !iics.inServer.CanFallback() {
 		if iics.wrappedConn != nil {

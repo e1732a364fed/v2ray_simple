@@ -242,7 +242,15 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 
 		//verysimple 不支持v2ray中的 vmess 的 mux.cool
 	default:
-		returnErr = utils.ErrInErr{ErrDesc: "Vmess Invalid command ", ErrDetail: utils.ErrInvalidData, Data: sc.cmd}
+		//mux.cool的command的定义 在 v2ray源代码的 common/protocol/headers.go 的 RequestCommandMux。
+
+		if sc.cmd == 3 {
+			returnErr = utils.ErrInErr{ErrDesc: "Vmess mux.cool is not supported by verysimple ", ErrDetail: utils.ErrInvalidData}
+
+		} else {
+			returnErr = utils.ErrInErr{ErrDesc: "Vmess Invalid command ", ErrDetail: utils.ErrInvalidData, Data: sc.cmd}
+
+		}
 		return
 	}
 

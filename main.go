@@ -384,7 +384,11 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 	if err != nil {
 
 		if ce := iics.CanLogWarn("Failed handshakeInserver"); ce != nil {
-			ce.Write(zap.String("client RemoteAddr", iics.getRealRAddr()))
+			ce.Write(
+				zap.String("handler", iics.inServer.AddrStr()),
+				zap.String("client RemoteAddr", iics.getRealRAddr()),
+				zap.Error(err),
+			)
 		}
 
 		return
