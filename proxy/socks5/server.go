@@ -458,7 +458,7 @@ func (u *ServerUDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 }
 
 // 从 客户端读取 udp请求
-func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (u *ServerUDPConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 
 	var clientSupposedAddrIsNothing bool
 	if u.clientSupposedAddr == nil || len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {

@@ -10,7 +10,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//从一个透明代理tcp连接中读取到实际地址
+// 从一个透明代理tcp连接中读取到实际地址
 func HandshakeTCP(tcpConn *net.TCPConn) netLayer.Addr {
 	targetTCPAddr := tcpConn.LocalAddr().(*net.TCPAddr)
 
@@ -28,7 +28,7 @@ func (m *Machine) removeUDPByHash(hash netLayer.HashableAddr) {
 	m.Unlock()
 }
 
-//从一个透明代理udp连接中读取到实际地址，并返回 *MsgConn
+// 从一个透明代理udp连接中读取到实际地址，并返回 *MsgConn
 func (m *Machine) HandshakeUDP(underlay *net.UDPConn) (*MsgConn, netLayer.Addr, error) {
 
 	for {
@@ -96,7 +96,7 @@ func (mc *MsgConn) SetFullcone(f bool) {
 	mc.fullcone = f
 }
 
-func (mc *MsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (mc *MsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 
 	must_timeoutChan := time.After(netLayer.UDP_timeout)
 	select {

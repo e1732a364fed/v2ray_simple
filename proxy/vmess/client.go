@@ -238,7 +238,7 @@ func (c *ClientConn) Fullcone() bool {
 	return false
 }
 
-func (c *ClientConn) ReadMsgFrom() (bs []byte, target netLayer.Addr, err error) {
+func (c *ClientConn) ReadMsg() (bs []byte, target netLayer.Addr, err error) {
 	bs = utils.GetPacket()
 	var n int
 	n, err = c.Read(bs)

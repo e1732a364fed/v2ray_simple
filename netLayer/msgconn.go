@@ -15,18 +15,17 @@ import (
 //
 // 实现 MsgConn接口 的类型 可以被用于 RelayUDP 进行转发。
 //
-// ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝。
+//	ReadMsg直接返回数据, 这样可以尽量避免多次数据拷贝。
 //
 // 使用Addr，是因为有可能请求地址是个域名，而不是ip; 而且通过Addr, MsgConn实际上有可能支持通用的情况,
 // 即可以用于 客户端 一会 请求tcp，一会又请求udp，一会又请求什么其它网络层 这种奇葩情况.
 type MsgConn interface {
 	NetDeadliner
 
-	//Addr为该数据实际要发送到的地址
-	ReadMsgFrom() ([]byte, Addr, error)
+	ReadMsg() (data []byte, peer Addr, err error)
 
-	//Addr为该数据的来源
-	WriteMsgTo([]byte, Addr) error
+	WriteMsgTo(data []byte, target Addr) error
+
 	CloseConnWithRaddr(raddr Addr) error //关闭特定连接
 	Close() error                        //关闭所有连接
 	Fullcone() bool                      //若Fullcone, 则在转发因另一端关闭而结束后, RelayUDP函数不会Close它.
@@ -39,7 +38,7 @@ type MsgConnNetAdapter struct {
 }
 
 func (ma MsgConnNetAdapter) Read(p []byte) (int, error) {
-	bs, _, err := ma.MsgConn.ReadMsgFrom()
+	bs, _, err := ma.MsgConn.ReadMsg()
 	return copy(p, bs), err
 }
 
@@ -66,7 +65,7 @@ func (u UniTargetMsgConn) Fullcone() bool {
 	return false
 }
 
-func (u UniTargetMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
+func (u UniTargetMsgConn) ReadMsg() ([]byte, Addr, error) {
 	bs := utils.GetPacket()
 
 	n, err := u.Conn.Read(bs)
@@ -172,7 +171,7 @@ func (u *UDPMsgConn) readSymmetricMsgFromConn(conn *net.UDPConn, thishash Hashab
 
 }
 
-func (u *UDPMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
+func (u *UDPMsgConn) ReadMsg() ([]byte, Addr, error) {
 	if u.fullcone {
 		bs := utils.GetPacket()
 
@@ -288,7 +287,7 @@ func (u *UDPMsgConn) Close() error {
 func (uc *UDPMsgConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	var bs []byte
 	var a Addr
-	bs, a, err = uc.ReadMsgFrom()
+	bs, a, err = uc.ReadMsg()
 	if err == nil {
 		n = copy(p, bs)
 		addr = a.ToUDPAddr()
@@ -316,7 +315,7 @@ type MsgConnForPacketConn struct {
 	net.PacketConn
 }
 
-func (mc *MsgConnForPacketConn) ReadMsgFrom() ([]byte, Addr, error) {
+func (mc *MsgConnForPacketConn) ReadMsg() ([]byte, Addr, error) {
 	bs := utils.GetPacket()
 	n, addr, err := mc.ReadFrom(bs)
 	if err != nil {
@@ -350,7 +349,7 @@ type UniSourceMsgConnForPacketConn struct {
 	Source Addr
 }
 
-func (mc *UniSourceMsgConnForPacketConn) ReadMsgFrom() ([]byte, Addr, error) {
+func (mc *UniSourceMsgConnForPacketConn) ReadMsg() ([]byte, Addr, error) {
 	bs := utils.GetPacket()
 	n, _, err := mc.ReadFrom(bs)
 	if err != nil {

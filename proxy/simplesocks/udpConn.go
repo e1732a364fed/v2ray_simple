@@ -37,7 +37,7 @@ func (u *UDPConn) Fullcone() bool {
 func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
-func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (u *UDPConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 
 	//simplesocks 文档里并没有提及udp如何传输，而在trojan-go的代码里, 发现simplesocks完全使用trojan的udp格式。
 	// https://github.com/p4gefau1t/trojan-go/blob/2dc60f52e79ff8b910e78e444f1e80678e936450/tunnel/simplesocks/conn.go#L41

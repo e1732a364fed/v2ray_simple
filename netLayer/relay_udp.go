@@ -62,7 +62,7 @@ udp是无连接的，所以需要考虑超时问题。
 
 	4. fullcone, 此时不能对整个监听端口进行close，会影响其它外部链接发来的连接。
 
-	5. vless v1 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
+	5. vless v1 这种单路client的udp转发方式, 此时需要判断lc.ReadMsg得到的 raddr是否是已知地址,
 		如果是未知的, 则不会再使用原来的rc，而是要拨号新通道
 
 		也就是说，lc是有且仅有一个的, 因为是socks5 / dokodemo都是采用的单信道的方式,
@@ -100,7 +100,7 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 		var lcReadErr bool
 
 		for {
-			bs, raddr, err := lc.ReadMsgFrom()
+			bs, raddr, err := lc.ReadMsg()
 			if err != nil {
 				lcReadErr = true
 				break
@@ -161,7 +161,7 @@ func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWM
 	var count uint64
 	var rcwrong bool
 	for {
-		bs, raddr, err := rc.ReadMsgFrom()
+		bs, raddr, err := rc.ReadMsg()
 		if err != nil {
 			rcwrong = true
 			break
@@ -218,7 +218,7 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 		// 因为是多通道的, 所以涉及到了 对 lc 写入的 并发抢占问题, 要加锁。
 
 		for {
-			bs, raddr, err := lc.ReadMsgFrom()
+			bs, raddr, err := lc.ReadMsg()
 			if err != nil {
 				break
 			}

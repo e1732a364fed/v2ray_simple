@@ -24,7 +24,7 @@ func (c *clientUDPMsgConn) Fullcone() bool {
 	return true
 }
 
-func (c *clientUDPMsgConn) ReadMsgFrom() (bs []byte, targetAddr netLayer.Addr, err error) {
+func (c *clientUDPMsgConn) ReadMsg() (bs []byte, targetAddr netLayer.Addr, err error) {
 	buf := utils.GetPacket()
 
 	var n int
@@ -116,7 +116,7 @@ func (mc *serverMsgConn) SetFullcone(f bool) {
 	mc.fullcone = f
 }
 
-func (mc *serverMsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (mc *serverMsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 
 	must_timeoutChan := time.After(netLayer.UDP_timeout)
 	select {

@@ -14,13 +14,13 @@ type UDPAddrData struct {
 	Data []byte
 }
 
-//UDPConn 将一个udp连接包装成一个 向单一目标发送数据的 连接。
+// UDPConn 将一个udp连接包装成一个 向单一目标发送数据的 连接。
 // UDPConn 主要服务于 UDPListener。如果有udp客户端需求, 最好使用 UDPMsgConn, 以更好地支持 fullcone或symmetric.
 //
 // UDPConn 也有能力接收来自其它目标的数据，以及向其它目标发送数据。然而, 本结构并没有记录链接端口, 所以无法实现 symmetric.
 // 如果用 DialUDP 函数初始化的 UDPConn, 则无法使用 WriteMsgTo方法向其它地址发消息.
 //
-//UDPConn 实现了 net.Conn , net.PacketConn , MsgConn.
+// UDPConn 实现了 net.Conn , net.PacketConn , MsgConn.
 type UDPConn struct {
 	peerAddr *net.UDPAddr
 	realConn *net.UDPConn
@@ -37,7 +37,7 @@ type UDPConn struct {
 	isClient bool //如果realConn是用 net.DialUDP 产生的, 则为 client，否则认为是server
 }
 
-//DialUDP 对raddr拨号后调用 NewUDPConn
+// DialUDP 对raddr拨号后调用 NewUDPConn
 func DialUDP(raddr *net.UDPAddr) (*UDPConn, error) {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
@@ -46,10 +46,10 @@ func DialUDP(raddr *net.UDPAddr) (*UDPConn, error) {
 	return NewUDPConn(raddr, conn, true), nil
 }
 
-//如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的。
+// 如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的。
 // 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
 //
-//我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
+// 我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
 // 主动设置了 内层udp连接的 read的 timeout为 UDP_timeout。
 // 你依然可以设置 DialUDP 所返回的 net.Conn 的 Deadline, 这属于外层的Deadline,
 // 不会影响底层 udp所强制设置的 deadline.
@@ -102,7 +102,7 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	return theUDPConn
 }
 
-func (uc *UDPConn) ReadMsgFrom() ([]byte, Addr, error) {
+func (uc *UDPConn) ReadMsg() ([]byte, Addr, error) {
 	select {
 	case msg, ok := <-uc.inMsgChan:
 		if !ok {
@@ -115,21 +115,21 @@ func (uc *UDPConn) ReadMsgFrom() ([]byte, Addr, error) {
 	}
 }
 
-func (uc *UDPConn) ReadMsg() (b []byte, err error) {
+// func (uc *UDPConn) ReadMsg() (b []byte, err error) {
 
-	select {
-	case msg, ok := <-uc.inMsgChan:
-		if !ok {
-			return nil, io.EOF
-		}
-		return msg.Data, nil
+// 	select {
+// 	case msg, ok := <-uc.inMsgChan:
+// 		if !ok {
+// 			return nil, io.EOF
+// 		}
+// 		return msg.Data, nil
 
-	case <-uc.readDeadline.Wait():
-		return nil, os.ErrDeadlineExceeded
-	}
-}
+// 	case <-uc.readDeadline.Wait():
+// 		return nil, os.ErrDeadlineExceeded
+// 	}
+// }
 
-//实现 net.PacketConn， 可以与 miekg/dns 配合。返回的 addr 只可能为 之前预先配置的远程目标地址
+// 实现 net.PacketConn， 可以与 miekg/dns 配合。返回的 addr 只可能为 之前预先配置的远程目标地址
 func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	select {
 	case msg, ok := <-uc.inMsgChan:
@@ -144,7 +144,7 @@ func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	}
 }
 
-//实现 net.PacketConn， 可以与 miekg/dns 配合。会无视传入的地址, 而使用 之前预先配置的远程目标地址
+// 实现 net.PacketConn， 可以与 miekg/dns 配合。会无视传入的地址, 而使用 之前预先配置的远程目标地址
 func (uc *UDPConn) WriteTo(p []byte, _ net.Addr) (n int, err error) {
 	return uc.Write(p)
 
@@ -162,7 +162,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 	}
 	var msg []byte
 
-	msg, err = uc.ReadMsg()
+	msg, _, err = uc.ReadMsg()
 	if err != nil {
 		return
 	}

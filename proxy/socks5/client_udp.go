@@ -102,7 +102,7 @@ func (cpc *ClientUDPConn) Read(p []byte) (n int, err error) {
 func (cpc *ClientUDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	var data []byte
 	var target netLayer.Addr
-	data, target, err = cpc.ReadMsgFrom()
+	data, target, err = cpc.ReadMsg()
 	if err != nil {
 		return
 	}
@@ -114,7 +114,7 @@ func (cpc *ClientUDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	return
 }
 
-func (cpc *ClientUDPConn) ReadMsgFrom() (data []byte, target netLayer.Addr, err error) {
+func (cpc *ClientUDPConn) ReadMsg() (data []byte, target netLayer.Addr, err error) {
 	err = cpc.Associate()
 	if err != nil {
 		return

@@ -147,7 +147,7 @@ func (u *UDPConn) writeDataTo(writeBuf *bytes.Buffer, p []byte) error {
 
 }
 
-func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (u *UDPConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 	var from io.Reader = u.Conn
 	if u.optionalReader != nil {
 		from = u.optionalReader

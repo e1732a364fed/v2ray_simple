@@ -41,7 +41,7 @@ func (u *UDPConn) Fullcone() bool {
 func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
-func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (u *UDPConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 
 	addr, err := GetAddrFrom(u.bufr, false)
 	if err != nil {

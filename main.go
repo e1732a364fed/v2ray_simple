@@ -473,7 +473,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 		// socks5的 udp associate返回的是 clientFutureAddr, 而不是实际客户的第一个请求.
 		//所以我们要读一次才能进行下一步。
 
-		firstSocks5RequestData, firstSocks5RequestAddr, err2 := udp_wlc.ReadMsgFrom()
+		firstSocks5RequestData, firstSocks5RequestAddr, err2 := udp_wlc.ReadMsg()
 		if err2 != nil {
 			if ce := iics.CanLogWarn("Failed in socks5 read"); ce != nil {
 				ce.Write(
@@ -819,7 +819,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			} else if isudp && udp_wlc != nil {
 
 				udp_wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
-				bs, targetAd, err := udp_wlc.ReadMsgFrom()
+				bs, targetAd, err := udp_wlc.ReadMsg()
 				udp_wlc.SetReadDeadline(time.Time{})
 
 				if err != nil {

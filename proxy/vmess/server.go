@@ -509,7 +509,7 @@ func (c *ServerConn) Read(b []byte) (n int, err error) {
 
 }
 
-func (c *ServerConn) ReadMsgFrom() (bs []byte, target netLayer.Addr, err error) {
+func (c *ServerConn) ReadMsg() (bs []byte, target netLayer.Addr, err error) {
 	bs = utils.GetPacket()
 	var n int
 	n, err = c.Read(bs)

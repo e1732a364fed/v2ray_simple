@@ -262,7 +262,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 				//发现既可能读取 firstbuf，也可能读取 wlc，随机发生？
 
 				t.Log(protocol + " read from wlc")
-				bs, raddr, _ := wlc.ReadMsgFrom()
+				bs, raddr, _ := wlc.ReadMsg()
 
 				t.Log(protocol+" got wlc", bs)
 
@@ -293,10 +293,10 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 					return
 				}
 
-				bs, _, err = wrc.ReadMsgFrom()
+				bs, _, err = wrc.ReadMsg()
 
 				if err != nil {
-					t.Logf("failed wrc.ReadMsgFrom : %v", err)
+					t.Logf("failed wrc.ReadMsg : %v", err)
 					t.Fail()
 					return
 				}
@@ -337,7 +337,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 
 	t.Log("client write hello success")
 
-	bs, _, err := wrc.ReadMsgFrom()
+	bs, _, err := wrc.ReadMsg()
 	if !bytes.Equal(bs, replydata) {
 		t.Log("!bytes.Equal(world[:], replydata) ", bs, replydata, err)
 		t.FailNow()
@@ -367,7 +367,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 
 		t.Log("data written")
 
-		bs, _, _ := wrc.ReadMsgFrom()
+		bs, _, _ := wrc.ReadMsg()
 		if err != nil {
 			t.Log("ReadFull err ", err)
 			t.FailNow()

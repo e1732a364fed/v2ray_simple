@@ -232,7 +232,7 @@ type UdpMsgConn struct {
 	tunSrcAddr net.Addr
 }
 
-func (mc *UdpMsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (mc *UdpMsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 	bs := utils.GetPacket()
 	n, ad, err := mc.ReadFrom(bs)
 	if err != nil {
