@@ -18,6 +18,8 @@ verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母�
 
 verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富。
 
+本作的想法是，使用自己的代码，实现v2ray的所有的好的功能（并摒弃差的功能），而且使用自主研发的更简单的架构，结合自主研发的新技术，实现反超。
+
 verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
 
 只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。本作过于极简，极简得连logo也没有.
@@ -30,7 +32,7 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 多用户,
+socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1)/vmess(客户端), 多用户,
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
 
