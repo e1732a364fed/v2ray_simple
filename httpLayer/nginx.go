@@ -19,6 +19,8 @@ const (
 	// real nginx response,to generate it,  curl -iv --raw 127.0.0.1/not_exist_path > response
 	Err404response_nginx = "HTTP/1.1 404 Not Found\r\nServer: nginx/1.21.5\r\nDate: Sat, 02 Jan 2006 15:04:05 MST\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 19\r\nConnection: keep-alive\r\nCache-Control: no-cache, no-store, no-transform, must-revalidate, private, max-age=0\r\nExpires: Thu, 01 Jan 1970 08:00:00 AWST\r\nPragma: no-cache\r\nVary: Origin\r\nX-Content-Type-Options: nosniff\r\n\r\n404 page not found\n"
 
+	//nginx应该是可以专门配置一个404页面的，所以没有该页面时，就会返回 404 page not found
+
 	Nginx403_html = "<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body bgcolor=\"white\">\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx/1.21.5</center>\r\n</body>\r\n</html>\r\n"
 
 	/* real nginx response, to generate it,  set nginx config like:
@@ -50,13 +52,17 @@ func GetNginx404Response() string {
 	return GetNginxResponse(Err404response_nginx)
 }
 
+func GetNginxWeekdayStr(t *time.Time) string {
+	return t.Weekday().String()[:3]
+}
+
 //Get real a response that looks like it comes from nginx.
 func GetNginxResponse(template string) string {
 	t := time.Now().UTC().In(nginxTimezone)
 
 	tStr := t.Format(Nginx_timeFormatStr)
 	str := strings.Replace(template, Nginx_timeFormatStr, tStr, 1)
-	str = strings.Replace(str, "Sat", t.Weekday().String()[:3], 1)
+	str = strings.Replace(str, "Sat", GetNginxWeekdayStr(&t), 1)
 
 	return str
 }
@@ -66,16 +72,16 @@ func SetNginx400Response(rw http.ResponseWriter) {
 
 	//不过发现，给h2 的rw 设置 头部是没用的，不知何故。
 
-	rw.WriteHeader(http.StatusBadRequest)
 	rw.Header().Add("Server", "nginx/1.21.5")
 	rw.Header().Add("Content-Type", "text/html")
 	rw.Header().Add("Connection", "close")
 
 	t := time.Now().UTC().In(nginxTimezone)
 	tStr := t.Format(Nginx_timeFormatStr)
-	tStr = t.Weekday().String()[:3] + ", " + tStr
+	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
 
 	rw.Header().Add("Date", tStr)
+	rw.WriteHeader(http.StatusBadRequest)
 
 	rw.Write([]byte(Nginx400_html))
 	if flusher, ok := rw.(http.Flusher); ok {
@@ -85,16 +91,16 @@ func SetNginx400Response(rw http.ResponseWriter) {
 }
 
 func SetNginx403Response(rw http.ResponseWriter) {
-	rw.WriteHeader(http.StatusForbidden)
 	rw.Header().Add("Server", "nginx/1.21.5")
 	rw.Header().Add("Content-Type", "text/html")
 	rw.Header().Add("Connection", "close")
 
 	t := time.Now().UTC().In(nginxTimezone)
 	tStr := t.Format(Nginx_timeFormatStr)
-	tStr = t.Weekday().String()[:3] + ", " + tStr
+	tStr = GetNginxWeekdayStr(&t) + ", " + tStr
 
 	rw.Header().Add("Date", tStr)
+	rw.WriteHeader(http.StatusForbidden)
 
 	rw.Write([]byte(Nginx403_html))
 	if flusher, ok := rw.(http.Flusher); ok {
