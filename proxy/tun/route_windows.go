@@ -53,7 +53,7 @@ func init() {
 							return
 						}
 
-						params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunAddr + " metric 6"
+						params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunGateway + " metric 6"
 						out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
 						if err != nil {
 							goto errStep
