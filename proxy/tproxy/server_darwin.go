@@ -1,4 +1,5 @@
 // Package tproxy implements proxy.Server for tproxy.
+// 在darwin上，代码相当于linux上的精简版本, 不提供udp支持
 package tproxy
 
 import (
@@ -13,8 +14,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
-
-//在darwin上，代码相当于linux上的精简版本, 不提供udp支持
 
 const name = "tproxy"
 

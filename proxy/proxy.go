@@ -15,7 +15,7 @@ import (
 // 规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
 type MuxMarker interface {
 	io.ReadWriteCloser
-	IsMux()
+	IsMux() bool
 }
 
 // 实现 MuxMarker
@@ -23,7 +23,7 @@ type MuxMarkerConn struct {
 	netLayer.ReadWrapper
 }
 
-func (mh *MuxMarkerConn) IsMux() {}
+func (mh *MuxMarkerConn) IsMux() bool { return true }
 
 // some client may 建立tcp连接后首先由客户端读服务端的数据？虽较少见但确实存在.
 // Anyway firstpayload might not be read, and we should try to reduce this delay.

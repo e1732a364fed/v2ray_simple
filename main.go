@@ -520,8 +520,11 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 	////////////////////////////// 内层mux阶段 /////////////////////////////////////
 
 	if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
-		mh, ok := wlc.(proxy.MuxMarker)
+		mm, ok := wlc.(proxy.MuxMarker)
 		if !ok {
+			return
+		}
+		if !mm.IsMux() {
 			return
 		}
 
@@ -540,7 +543,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 			return
 		}
 
-		session := inServer.GetServerInnerMuxSession(mh)
+		session := inServer.GetServerInnerMuxSession(mm)
 
 		if session == nil {
 			err = utils.ErrFailed
@@ -558,7 +561,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 
 				stream, err := session.AcceptStream()
 				if err != nil {
-					if ce := iics.CanLogDebug("Failed try mux inServer accept stream "); ce != nil {
+					if ce := iics.CanLogWarn("Failed try mux inServer accept stream "); ce != nil {
 						ce.Write(zap.Error(err))
 					}
 
@@ -1210,6 +1213,8 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 				//我们只允许有一个 innerMux 连接存在，如果有多个的话，那么最新拨号的innerMux 会覆盖以前的拨号，
 				// 导致 以前的 innerMux 成为了 悬垂连接，而且会导致 相关联的请求卡住。
 
+				// 所以使用defer, 来确保同一时间只有一个smux的拨号
+
 				defer client.Unlock()
 			}
 		}
@@ -1525,7 +1530,7 @@ shakeStep:
 		//udp但是有innermux时 依然用handshake, 而不是 EstablishUDPChannel
 		var ed []byte
 		if !hasInnerMux {
-			//如果有内层mux，则 firstPayload 不在本 dialClient 函数写入, 要在 dialInnerProxy 里 写入,  因为还有 innerMux层 和 inner Proxy 层是 尚未拨号
+			//如果有内层mux，则 firstPayload 不在本 dialClient 函数写入, 要在 dialInnerProxy 里 写入,  因为还有 innerMux层 和 inner Proxy 层 尚未拨号
 
 			if l := len(iics.firstPayload); l > 0 {
 
@@ -1576,7 +1581,7 @@ shakeStep:
 
 	////////////////////////////// 建立内层 mux 阶段 /////////////////////////////////////
 	if hasInnerMux {
-		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan的实现。
+		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan-go的实现。
 
 		wrc, udp_wrc, result = dialInnerProxy(iics, client, wlc, wrc, innerProxyName, targetAddr, isudp)
 	}
@@ -1590,7 +1595,7 @@ func dialInnerProxy(iics incomingInserverConnState, client proxy.Client, wlc net
 	smuxSession := client.GetClientInnerMuxSession(wrc)
 	if smuxSession == nil {
 		result = -1
-		if ce := iics.CanLogDebug("dialInnerProxy return fail 1"); ce != nil {
+		if ce := iics.CanLogErr("Failed dialInnerProxy, smuxSession == nil"); ce != nil {
 			ce.Write()
 		}
 		return
@@ -1600,7 +1605,7 @@ func dialInnerProxy(iics incomingInserverConnState, client proxy.Client, wlc net
 	if err != nil {
 		client.CloseInnerMuxSession() //发现就算 OpenStream 失败, session也不会自动被关闭, 需要我们手动关一下。
 
-		if ce := iics.CanLogDebug("dialInnerProxy return fail 2"); ce != nil {
+		if ce := iics.CanLogWarn("Failed dialInnerProxy"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		result = -1

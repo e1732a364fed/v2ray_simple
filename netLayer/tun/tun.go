@@ -192,14 +192,14 @@ func setSocketOptions(s *stack.Stack, ep tcpip.Endpoint) tcpip.Error {
 	{ /* TCP keepalive options */
 		ep.SocketOptions().SetKeepAlive(true)
 
-		const tcpKeepaliveIdle time.Duration = 60000000000
+		const tcpKeepaliveIdle time.Duration = time.Minute
 
 		idle := tcpip.KeepaliveIdleOption(tcpKeepaliveIdle)
 		if err := ep.SetSockOpt(&idle); err != nil {
 			return err
 		}
 
-		const tcpKeepaliveInterval time.Duration = 30000000000
+		const tcpKeepaliveInterval time.Duration = 30 * time.Second
 		interval := tcpip.KeepaliveIntervalOption(tcpKeepaliveInterval)
 		if err := ep.SetSockOpt(&interval); err != nil {
 			return err

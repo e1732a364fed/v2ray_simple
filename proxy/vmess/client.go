@@ -198,7 +198,7 @@ func (c *Client) commonHandshake(underlay net.Conn, firstPayload []byte, target 
 		return nil, err
 	}
 
-	return conn, err
+	return conn, nil
 }
 
 // ClientConn is a connection to vmess server

@@ -301,18 +301,9 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 
 	if ismux {
 
-		mh := &proxy.MuxMarkerConn{
-			ReadWrapper: netLayer.ReadWrapper{
-				Conn: sc,
-			},
-		}
+		sc.ismux = true
 
-		if l := remainBuf.Len(); l > 0 {
-			mh.RemainFirstBufLen = l
-			mh.OptionalReader = io.MultiReader(remainBuf, underlay)
-		}
-
-		return mh, nil, targetAddr, nil
+		return sc, nil, targetAddr, nil
 	}
 
 	if sc.cmd == CmdTCP {
@@ -346,6 +337,13 @@ type ServerConn struct {
 
 	dataReader io.Reader
 	dataWriter io.Writer
+
+	ismux bool
+}
+
+// 实现 proxy.MuxMarker
+func (s *ServerConn) IsMux() bool {
+	return s.ismux
 }
 
 func (s *ServerConn) aead_encodeRespHeader(outBuf *bytes.Buffer) error {

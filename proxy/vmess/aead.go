@@ -4,7 +4,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/binary"
-	"fmt"
 	"io"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -157,9 +156,11 @@ func (r *aeadReader) Read(b []byte) (int, error) {
 	if l == 0 {
 		return 0, nil
 	}
-	if l > chunkSize && r.shakeParser == nil {
-		return 0, fmt.Errorf("l>chunkSize(16k), %d", l) //有可能出现这种情况
-	}
+
+	//有可能出现这种情况, 特别是在开启mux之后, 不过实测这并不能算是错误, 如果报错返回的话, 反倒会影响运行
+	//if l > chunkSize && r.shakeParser == nil {
+	//return 0, fmt.Errorf("vmess aead: l>chunkSize(16k), %d", l)
+	//}
 
 	// get payload
 	buf := r.buf[:l]
