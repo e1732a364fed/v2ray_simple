@@ -14,28 +14,28 @@ type RoutingEnv struct {
 	MainFallback *httpLayer.ClassicFallback
 	DnsMachine   *netLayer.DNSMachine
 
-	ClientsTagMap      map[string]Client //用于分流到某个tag的Client, 所以需要知道所有的client
-	ClientsTagMapMutex sync.RWMutex
+	ClientsTagMap      map[string]Client //ClientsTagMap 存储 tag 对应的 Client；因为分流时，需要通过某个tag找到Client对象。 若要访问map，请用 Get*, Set*, Del* 方法
+	clientsTagMapMutex sync.RWMutex
 }
 
 func (re *RoutingEnv) GetClient(tag string) (c Client) {
-	re.ClientsTagMapMutex.RLock()
+	re.clientsTagMapMutex.RLock()
 
 	c = re.ClientsTagMap[tag]
-	re.ClientsTagMapMutex.RUnlock()
+	re.clientsTagMapMutex.RUnlock()
 	return
 }
 func (re *RoutingEnv) SetClient(tag string, c Client) {
-	re.ClientsTagMapMutex.Lock()
+	re.clientsTagMapMutex.Lock()
 
 	re.ClientsTagMap[tag] = c
-	re.ClientsTagMapMutex.Unlock()
+	re.clientsTagMapMutex.Unlock()
 }
 func (re *RoutingEnv) DelClient(tag string) {
-	re.ClientsTagMapMutex.Lock()
+	re.clientsTagMapMutex.Lock()
 
 	delete(re.ClientsTagMap, tag)
-	re.ClientsTagMapMutex.Unlock()
+	re.clientsTagMapMutex.Unlock()
 }
 
 func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv) {

@@ -148,7 +148,7 @@ macos:
 	$(call compile,$(macFn),darwin,amd64)
 
 #macos apple silicon
-macm1:
+macm:
 	$(call compile,$(macM1Fn),darwin,arm64)
 
 win10:

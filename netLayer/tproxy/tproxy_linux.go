@@ -15,8 +15,9 @@ func HandshakeTCP(tcpConn *net.TCPConn) netLayer.Addr {
 	targetTCPAddr := tcpConn.LocalAddr().(*net.TCPAddr)
 
 	return netLayer.Addr{
-		IP:   targetTCPAddr.IP,
-		Port: targetTCPAddr.Port,
+		IP:      targetTCPAddr.IP,
+		Port:    targetTCPAddr.Port,
+		Network: "tcp",
 	}
 
 }

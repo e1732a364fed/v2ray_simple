@@ -119,11 +119,11 @@ func NewFullRouteSet() *RouteSet {
 	}
 }
 
-func (sg *RouteSet) IsIn(td *TargetDescription) bool {
+func (rs *RouteSet) IsIn(td *TargetDescription) bool {
 	var tagOk bool
-	if len(sg.InTags) > 0 {
+	if len(rs.InTags) > 0 {
 		if td.InTag != "" {
-			_, tagOk = sg.InTags[td.InTag]
+			_, tagOk = rs.InTags[td.InTag]
 		}
 	} else {
 		tagOk = true
@@ -134,9 +134,9 @@ func (sg *RouteSet) IsIn(td *TargetDescription) bool {
 
 	var userOk bool
 
-	if len(sg.Users) > 0 {
+	if len(rs.Users) > 0 {
 		if td.UserIdentityStr != "" {
-			_, userOk = sg.Users[td.UserIdentityStr]
+			_, userOk = rs.Users[td.UserIdentityStr]
 		}
 	} else {
 		userOk = true
@@ -146,70 +146,75 @@ func (sg *RouteSet) IsIn(td *TargetDescription) bool {
 		return false
 	}
 
-	if sg.IsNoLimitForNetworkLayer() { //necessary
+	if rs.IsNoLimitForNetworkLayer() { //necessary
 		return true
 	}
 
-	return sg.IsAddrIn(td.Addr)
+	return rs.IsAddrIn(td.Addr)
 
 }
 
-func (sg *RouteSet) IsTransportProtocolAllowed(p uint16) bool {
-	return sg.AllowedTransportLayerProtocols&p > 0
+func (rs *RouteSet) IsTransportProtocolAllowed(p uint16) bool {
+	return rs.AllowedTransportLayerProtocols&p > 0
 }
 
-func (sg *RouteSet) IsAddrNetworkAllowed(a Addr) bool {
+func (rs *RouteSet) IsAddrNetworkAllowed(a Addr) bool {
 
 	if a.Network == "" {
-		return sg.IsTransportProtocolAllowed(TCP)
+		return rs.IsTransportProtocolAllowed(TCP)
 	}
 
 	p := StrToTransportProtocol(a.Network)
 
-	return sg.IsTransportProtocolAllowed(p)
+	if p != UnknownNetwork {
+		return rs.IsTransportProtocolAllowed(p)
+
+	} else {
+		return true //未知网络类型的话，不太建议阻拦，因为每个新的网络类型都需要加入代码中进行准确判断。
+	}
 }
 
-func (sg *RouteSet) IsUDPAllowed() bool {
-	return sg.IsTransportProtocolAllowed(UDP)
+func (rs *RouteSet) IsUDPAllowed() bool {
+	return rs.IsTransportProtocolAllowed(UDP)
 }
 
-func (sg *RouteSet) IsTCPAllowed() bool {
-	return sg.IsTransportProtocolAllowed(TCP)
+func (rs *RouteSet) IsTCPAllowed() bool {
+	return rs.IsTransportProtocolAllowed(TCP)
 }
 
-func (sg *RouteSet) IsNoLimitForNetworkLayer() bool {
-	if (sg.NetRanger == nil || sg.NetRanger.Len() == 0) && len(sg.IPs) == 0 && len(sg.Match) == 0 && len(sg.Domains) == 0 && len(sg.Full) == 0 && len(sg.Countries) == 0 && len(sg.Geosites) == 0 {
+func (rs *RouteSet) IsNoLimitForNetworkLayer() bool {
+	if (rs.NetRanger == nil || rs.NetRanger.Len() == 0) && len(rs.IPs) == 0 && len(rs.Match) == 0 && len(rs.Domains) == 0 && len(rs.Full) == 0 && len(rs.Countries) == 0 && len(rs.Geosites) == 0 {
 		//如果仅限制了一个传输层协议，且本集合里没有任何其它内容，那就直接通过
 		return true
 	}
 	return false
 }
 
-func (sg *RouteSet) IsAddrIn(a Addr) bool {
+func (rs *RouteSet) IsAddrIn(a Addr) bool {
 	//我们先过滤传输层，再过滤网络层, 因为传输层过滤非常简单。
 
-	if !sg.IsAddrNetworkAllowed(a) {
+	if !rs.IsAddrNetworkAllowed(a) {
 		return false
 	}
 
 	//开始网络层判断
 	if len(a.IP) > 0 {
-		if sg.NetRanger != nil && sg.NetRanger.Len() > 0 {
-			if has, _ := sg.NetRanger.Contains(a.IP); has {
+		if rs.NetRanger != nil && rs.NetRanger.Len() > 0 {
+			if has, _ := rs.NetRanger.Contains(a.IP); has {
 				return true
 			}
 		}
-		if len(sg.Countries) > 0 {
+		if len(rs.Countries) > 0 {
 
 			if isoStr := GetIP_ISO(a.IP); isoStr != "" {
-				if _, found := sg.Countries[isoStr]; found {
+				if _, found := rs.Countries[isoStr]; found {
 					return true
 				}
 			}
 
 		}
-		if len(sg.IPs) > 0 {
-			if _, found := sg.IPs[a.GetNetIPAddr()]; found {
+		if len(rs.IPs) > 0 {
+			if _, found := rs.IPs[a.GetNetIPAddr()]; found {
 				return true
 			}
 		}
@@ -217,39 +222,39 @@ func (sg *RouteSet) IsAddrIn(a Addr) bool {
 
 	if a.Name != "" {
 
-		if len(sg.Full) > 0 {
-			if _, found := sg.Full[a.Name]; found {
+		if len(rs.Full) > 0 {
+			if _, found := rs.Full[a.Name]; found {
 				return true
 			}
 		}
 
-		if len(sg.Domains) > 0 {
+		if len(rs.Domains) > 0 {
 
-			if HasFullOrSubDomain(a.Name, MapDomainHaser(sg.Domains)) {
+			if HasFullOrSubDomain(a.Name, MapDomainHaser(rs.Domains)) {
 				return true
 			}
 
 		}
 
-		if len(sg.Match) > 0 {
-			for _, m := range sg.Match {
+		if len(rs.Match) > 0 {
+			for _, m := range rs.Match {
 				if strings.Contains(a.Name, m) {
 					return true
 				}
 			}
 		}
 
-		if len(sg.Regex) > 0 {
-			for _, reg := range sg.Regex {
+		if len(rs.Regex) > 0 {
+			for _, reg := range rs.Regex {
 				if reg.MatchString(a.Name) {
 					return true
 				}
 			}
 		}
 
-		if len(sg.Geosites) > 0 && len(GeositeListMap) > 0 {
+		if len(rs.Geosites) > 0 && len(GeositeListMap) > 0 {
 
-			for _, g := range sg.Geosites {
+			for _, g := range rs.Geosites {
 				if IsDomainInsideGeosite(g, a.Name) {
 					return true
 				}
@@ -283,15 +288,15 @@ func (rp *RoutePolicy) AddRouteSet(rs *RouteSet) {
 // 默认情况下，始终具有direct这个tag以及 proxy这个tag，无需用户额外在配置文件中指定。
 // 默认如果不匹配任何值的话，就会流向 "proxy" tag，也就是客户设置的 remoteClient的值。
 func (rp *RoutePolicy) GetOutTag(td *TargetDescription) string {
-	for _, s := range rp.List {
-		if s.IsIn(td) {
-			switch n := len(s.OutTags); n {
+	for _, rs := range rp.List {
+		if rs.IsIn(td) {
+			switch n := len(rs.OutTags); n {
 			case 0:
-				return s.OutTag
+				return rs.OutTag
 			case 1:
-				return s.OutTags[0]
+				return rs.OutTags[0]
 			default:
-				return s.OutTags[rand.Intn(n)]
+				return rs.OutTags[rand.Intn(n)]
 			}
 
 		}
