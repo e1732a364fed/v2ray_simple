@@ -28,7 +28,7 @@ func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, rou
 		}
 		return
 	}
-	udpConn := startLoopUDP(ad, lc.Fullcone, lc, defaultOutClientForThis, &proxy.RoutingEnv{
+	udpConn := startLoopUDP(ad, lc, defaultOutClientForThis, &proxy.RoutingEnv{
 		RoutePolicy: routePolicy,
 	})
 
@@ -59,7 +59,7 @@ func startLoopTCP(ad netLayer.Addr, lc proxy.LesserConf, defaultOutClientForThis
 }
 
 //非阻塞
-func startLoopUDP(ad netLayer.Addr, fullcone bool, lc proxy.LesserConf, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) *net.UDPConn {
+func startLoopUDP(ad netLayer.Addr, lc proxy.LesserConf, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) *net.UDPConn {
 	ad.Network = "udp"
 	conn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
 	if err != nil {
@@ -83,7 +83,7 @@ func startLoopUDP(ad netLayer.Addr, fullcone bool, lc proxy.LesserConf, defaultO
 					ce.Write(zap.String("->", raddr.String()))
 				}
 			}
-			msgConn.SetFullcone(fullcone)
+			msgConn.SetFullcone(lc.Fullcone)
 
 			go passToOutClient(incomingInserverConnState{
 				inTag:         lc.Tag,
