@@ -76,7 +76,7 @@ func NewClient(dc *DialConf) (Client, error) {
 			return newclient(creator, dc, true)
 		}
 	}
-	return nil, utils.ErrInErr{ErrDesc: "unknown client protocol ", Data: protocol}
+	return nil, utils.ErrInErr{ErrDesc: "Unknown client protocol ", Data: protocol}
 
 }
 
@@ -128,7 +128,7 @@ func NewServer(lc *ListenConf) (Server, error) {
 		}
 	}
 
-	return nil, utils.ErrInErr{ErrDesc: "unknown server protocol ", Data: protocol}
+	return nil, utils.ErrInErr{ErrDesc: "Unknown server protocol ", Data: protocol}
 }
 
 func newserver(creator ServerCreator, lc *ListenConf, knownTls bool) (Server, error) {
@@ -145,7 +145,7 @@ func newserver(creator ServerCreator, lc *ListenConf, knownTls bool) (Server, er
 		ser.GetBase().TLS = true
 		err = prepareTLS_forServer(ser, lc)
 		if err != nil {
-			return nil, utils.ErrInErr{ErrDesc: "prepareTLS failed", ErrDetail: err}
+			return nil, utils.ErrInErr{ErrDesc: "Failed, prepareTLS", ErrDetail: err}
 
 		}
 	}
@@ -169,7 +169,7 @@ func configCommonForServer(ser BaseInterface, lc *ListenConf) error {
 		fa, err := netLayer.NewAddrFromAny(fallbackThing)
 
 		if err != nil {
-			return utils.ErrInErr{ErrDesc: "configCommonURLQueryForServer failed", Data: fallbackThing}
+			return utils.ErrInErr{ErrDesc: "Failed, configCommonURLQueryForServer", Data: fallbackThing}
 
 		}
 

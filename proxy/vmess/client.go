@@ -112,7 +112,7 @@ func (c *Client) specifySecurityByStr(security string) error {
 	case "none":
 		c.security = SecurityNone
 
-	case "", "zero": // NOTE: use basic format when no method specified.
+	case "", "zero", "0": // NOTE: use basic format when no method specified.
 
 		c.opt = OptBasicFormat
 		c.security = SecurityNone
@@ -317,15 +317,15 @@ func (vc *ClientConn) aead_decodeRespHeader() error {
 	}
 
 	if len(buf) < 4 {
-		return errors.New("unexpected buffer length")
+		return errors.New("vless aead_decodeRespHeader unexpected buffer length")
 	}
 
 	if buf[0] != vc.reqRespV {
-		return errors.New("unexpected response header")
+		return errors.New("vless aead_decodeRespHeader unexpected response header")
 	}
 
 	if buf[2] != 0 {
-		return errors.New("dynamic port is not supported now")
+		return errors.New("vless aead_decodeRespHeader, dynamic port is not supported now")
 	}
 
 	return nil

@@ -191,7 +191,7 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 				}
 				switch b1 {
 				default:
-					return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "udp_multi client read first byte unexpected", ErrDetail: utils.ErrInvalidData, Data: b1}
+					return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "Vless udp_multi client read first byte unexpected", ErrDetail: utils.ErrInvalidData, Data: b1}
 				case 0:
 					bs, err := u.readData_with_len()
 					return bs, u.raddr, err

@@ -114,7 +114,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		returnErr = utils.ErrInErr{ErrDesc: "read err", ErrDetail: err, Data: wholeReadLen}
+		returnErr = utils.ErrInErr{ErrDesc: "Vless read err", ErrDetail: err, Data: wholeReadLen}
 		return
 	}
 
@@ -122,7 +122,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
 		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
 
-		returnErr = utils.ErrInErr{ErrDesc: "msg too short", Data: wholeReadLen}
+		returnErr = utils.ErrInErr{ErrDesc: "Vless msg too short", Data: wholeReadLen}
 		return
 	}
 
@@ -149,7 +149,7 @@ realPart:
 	version := auth[0]
 	if version > 1 {
 
-		returnErr = utils.ErrInErr{ErrDesc: "invalid version ", ErrDetail: utils.ErrInvalidData, Data: version}
+		returnErr = utils.ErrInErr{ErrDesc: "Vless Invalid version ", ErrDetail: utils.ErrInvalidData, Data: version}
 		goto errorPart
 
 	}
@@ -160,7 +160,7 @@ realPart:
 
 	if s.AuthUserByBytes(thisUUIDBytes[:]) != nil {
 	} else {
-		returnErr = utils.ErrInErr{ErrDesc: "invalid user ", ErrDetail: utils.ErrInvalidData, Data: utils.UUIDToStr(thisUUIDBytes[:])}
+		returnErr = utils.ErrInErr{ErrDesc: "Vless Invalid user ", ErrDetail: utils.ErrInvalidData, Data: utils.UUIDToStr(thisUUIDBytes[:])}
 		goto errorPart
 	}
 
@@ -174,7 +174,7 @@ realPart:
 		if addonLenByte != 0 {
 			//v2ray的vless中没有对应的任何处理。
 			//v2ray 的 vless 虽然有一个没用的Flow，但是 EncodeBodyAddons里根本没向里写任何数据。所以理论上正常这部分始终应该为0
-			if ce := utils.CanLogWarn("potential illegal client"); ce != nil {
+			if ce := utils.CanLogWarn("Vless potential illegal client"); ce != nil {
 				ce.Write(zap.Uint8("addonLenByte", addonLenByte))
 			}
 
@@ -201,7 +201,7 @@ realPart:
 
 	if err != nil {
 
-		returnErr = utils.ErrInErr{ErrDesc: "read commandByte failed ", ErrDetail: err}
+		returnErr = utils.ErrInErr{ErrDesc: "Vless read commandByte failed ", ErrDetail: err}
 		goto errorPart
 	}
 
@@ -228,7 +228,7 @@ realPart:
 		targetAddr, err = netLayer.V2rayGetAddrFrom(readbuf)
 		if err != nil {
 
-			returnErr = utils.ErrInErr{ErrDesc: "parse addr failed", ErrDetail: err}
+			returnErr = utils.ErrInErr{ErrDesc: "Vless parse addr failed", ErrDetail: err}
 			goto errorPart
 		}
 
@@ -239,7 +239,7 @@ realPart:
 
 	default:
 
-		returnErr = utils.ErrInErr{ErrDesc: "invalid command ", ErrDetail: utils.ErrInvalidData, Data: commandByte}
+		returnErr = utils.ErrInErr{ErrDesc: "Vless Invalid command ", ErrDetail: utils.ErrInvalidData, Data: commandByte}
 		goto errorPart
 	}
 

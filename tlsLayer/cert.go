@@ -54,7 +54,7 @@ func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
 
 	companyName := utils.GetRandomWord()
 
-	if ce := utils.CanLogInfo("generate random cert with"); ce != nil {
+	if ce := utils.CanLogInfo("Generate random cert with"); ce != nil {
 		ce.Write(zap.String("country", country.Info().Name), zap.String("company", companyName))
 	}
 
@@ -149,7 +149,7 @@ func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate
 		cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))
 		if err != nil {
 
-			if ce := utils.CanLogErr("GetCertArrayFromFile failed, will use generated random cert in memory"); ce != nil {
+			if ce := utils.CanLogErr("Failed in GetCertArrayFromFile reading cert and key files, will use generated random cert in memory"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 

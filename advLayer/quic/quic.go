@@ -85,7 +85,7 @@ func CloseConn(conn any) {
 	if ok && qc != nil {
 		qc.CloseWithError(0, "")
 	} else {
-		if ce := utils.CanLogErr("quic.CloseConn called with illegal parameter"); ce != nil {
+		if ce := utils.CanLogErr("Quic.CloseConn called with illegal parameter"); ce != nil {
 			ce.Write(zap.String("type", reflect.TypeOf(conn).String()), zap.Any("value", conn))
 		}
 
@@ -185,16 +185,17 @@ func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
 	}, nil
 }
 
+//从配置map中读取更多配置信息。一般在程序刚运行时调用。为了保证信息绝对能输出，就是用了 log包来以防万一。
 func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 	maxbyteCount int,
 	maxStreamsInOneConn int64) {
 
 	if thing := extra["maxStreamsInOneConn"]; thing != nil {
 		if count, ok := thing.(int64); ok && count > 0 {
-			if ce := utils.CanLogInfo("quic max Streams In One Conn"); ce != nil {
+			if ce := utils.CanLogInfo("Quic max Streams In One Conn"); ce != nil {
 				ce.Write(zap.Int("count,", int(count)))
 			} else {
-				log.Println("quic maxStreamsInOneConn,", count)
+				log.Println("Quic maxStreamsInOneConn,", count)
 
 			}
 			maxStreamsInOneConn = count

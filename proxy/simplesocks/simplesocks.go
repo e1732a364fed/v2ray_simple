@@ -89,7 +89,7 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 		}
 		addr.IP = bs
 	default:
-		err = utils.ErrInErr{ErrDesc: "simplesocks GetAddrFrom err", ErrDetail: utils.ErrInvalidData, Data: b1}
+		err = utils.ErrInErr{ErrDesc: "Err, simplesocks GetAddrFrom", ErrDetail: utils.ErrInvalidData, Data: b1}
 		return
 	}
 
@@ -105,7 +105,7 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 
 	port := uint16(pb1)<<8 + uint16(pb2)
 	if port == 0 {
-		err = utils.ErrInErr{ErrDesc: "simplesocks port is zero, which is bad", ErrDetail: utils.ErrInvalidData}
+		err = utils.ErrInErr{ErrDesc: "Err, simplesocks port is zero, which is bad", ErrDetail: utils.ErrInvalidData}
 
 		return
 	}

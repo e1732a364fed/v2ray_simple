@@ -58,7 +58,7 @@ func GetIP_ISO(ip net.IP) string {
 	return GetIP_ISO_byReader(the_geoipdb, ip)
 }
 
-//返回 iso 3166 字符串， 见 https://dev.maxmind.com/geoip/legacy/codes?lang=en ，大写，两字节
+//返回 iso 3166 字符串 ，大写，两字节， 见 https://dev.maxmind.com/geoip/legacy/codes?lang=en
 func GetIP_ISO_byReader(db *maxminddb.Reader, ip net.IP) string {
 
 	var record struct {

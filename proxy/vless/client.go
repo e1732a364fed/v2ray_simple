@@ -88,7 +88,7 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 				}
 
 			default:
-				return nil, utils.ErrInErr{ErrDesc: "given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
+				return nil, utils.ErrInErr{ErrDesc: "Vless given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
 			}
 		}
 	}

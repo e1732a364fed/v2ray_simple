@@ -180,7 +180,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 		returnErr = errorReason
 
 		if ce := utils.CanLogWarn("vmess openAEADHeader err"); ce != nil {
-			//看v2ray有一个 "drain"的用法，
+			//v2ray代码中有一个 "drain"的用法，
 			//然而，我们这里是不需要drain的，区别在于，v2ray 不是一次性读取一大串数据，
 			// 而是用一个 reader 一点一点读，这就会产生一些可探测的问题，所以才要drain
 			// 而我们直接用 64K 的大buf 一下子读取整个客户端发来的整个数据， 没有读取长度的差别。
@@ -228,7 +228,7 @@ func (s *Server) Handshake(underlay net.Conn) (tcpConn net.Conn, msgConn netLaye
 	}
 
 	switch sc.cmd {
-	//我们 不支持vmess 的 mux.cool
+	//verysimple 不支持v2ray中的 vmess 的 mux.cool
 	case CmdTCP, CmdUDP:
 		ad, err := netLayer.V2rayGetAddrFrom(aeadDataBuf)
 		if err != nil {
@@ -348,7 +348,7 @@ func (c *ServerConn) Write(b []byte) (n int, err error) {
 	}
 	switchChan := make(chan struct{})
 
-	//使用 WriteSwitcher 来 粘连 服务器vmess响应 以及第一个数据响应
+	//使用 utils.WriteSwitcher 来 粘连 服务器vmess响应 以及第一个数据响应
 	writer := &utils.WriteSwitcher{
 		Old:        c.firstWriteBuf,
 		New:        c.Conn,

@@ -66,7 +66,7 @@ func (c *commonPart) Read(b []byte) (n int, err error) {
 
 	protobufPayloadLen, err := binary.ReadUvarint(c.br)
 	if err != nil {
-		return 0, utils.ErrInErr{ErrDesc: "grpc Read, binary.ReadUvarint failed", ErrDetail: err, ExtraIs: []error{utils.ErrInvalidData}}
+		return 0, utils.ErrInErr{ErrDesc: "Failed in grpc Read, binary.ReadUvarint", ErrDetail: err, ExtraIs: []error{utils.ErrInvalidData}}
 	}
 
 	size := int(protobufPayloadLen)

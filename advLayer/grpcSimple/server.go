@@ -93,7 +93,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 	firstBuf := bytes.NewBuffer(bs[:n])
 
 	if notH2c {
-		if ce := utils.CanLogInfo("grpc got not h2c request"); ce != nil {
+		if ce := utils.CanLogInfo("Grpc got not h2c request"); ce != nil {
 			ce.Write()
 		}
 
@@ -174,7 +174,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 				} else {
 
-					if ce := utils.CanLogInfo("grpc will fallback"); ce != nil {
+					if ce := utils.CanLogInfo("GrpcSimple will fallback"); ce != nil {
 						ce.Write(
 							zap.String("path", p),
 							zap.String("method", rq.Method),
@@ -247,7 +247,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 	if e == nil {
 		sc.ra = ta
 	} else {
-		if ce := utils.CanLogErr("grpcSimple parse addr failed, which is weird; Will try X-Forwarded-For"); ce != nil {
+		if ce := utils.CanLogErr("Failed in grpcSimple parse addr; Will try X-Forwarded-For"); ce != nil {
 			ce.Write(zap.String("raddr", rq.RemoteAddr), zap.Error(e))
 		}
 
@@ -266,7 +266,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 			if e == nil {
 				sc.ra = ta
 			} else {
-				if ce := utils.CanLogErr("grpcSimple parse X-Forwarded-For failed, which is weird"); ce != nil {
+				if ce := utils.CanLogErr("Failed in grpcSimple parse X-Forwarded-For"); ce != nil {
 					ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
 				}
 			}

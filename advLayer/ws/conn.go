@@ -34,8 +34,6 @@ type Conn struct {
 //Read websocket binary frames
 func (c *Conn) Read(p []byte) (int, error) {
 
-	//log.Println("real ws read called", len(p))
-
 	if len(c.serverEndGotEarlyData) > 0 {
 		n := copy(p, c.serverEndGotEarlyData)
 		c.serverEndGotEarlyData = c.serverEndGotEarlyData[n:]
@@ -52,9 +50,9 @@ func (c *Conn) Read(p []byte) (int, error) {
 	//关于读 的完整过程，建议参考 ws/example.autoban.go 里的 wsHandler 函数
 
 	if c.remainLenForLastFrame > 0 {
-		//log.Println("c.remainLenForLastFrame > 0", c.remainLenForLastFrame)
+
 		n, e := c.r.Read(p)
-		//log.Println("c.remainLenForLastFrame > 0, read ok", n, e, c.remainLenForLastFrame-int64(n))
+
 		if e != nil && e != io.EOF {
 			return n, e
 		}
@@ -68,7 +66,6 @@ func (c *Conn) Read(p []byte) (int, error) {
 		return 0, e
 	}
 	if h.OpCode.IsControl() {
-		//log.Println("Got control frame")
 
 		// 控制帧已经在我们的 OnIntermediate 里被处理了, 直接读取下一个数据即可
 		return c.Read(p)
@@ -88,7 +85,6 @@ func (c *Conn) Read(p []byte) (int, error) {
 
 		return 0, utils.ErrInErr{ErrDesc: "ws OpCode not OpBinary/OpContinuation", Data: h.OpCode}
 	}
-	//log.Println("Read next frame header ok,", h.Length, c.r.State.Fragmented(), "givenbuf len", len(p))
 
 	c.remainLenForLastFrame = h.Length
 
@@ -104,13 +100,11 @@ func (c *Conn) Read(p []byte) (int, error) {
 	//这种产生EOF的情况，是 gobwas/ws包的一种特性，这样可以说每一次读取都能有明确的EOF边界，便于使用 io.ReadAll
 
 	n, e := c.r.Read(p)
-	//log.Println("read data result", e, n, h.Length)
 
 	c.remainLenForLastFrame -= int64(n)
 
 	if e != nil && e != io.EOF {
 
-		//log.Println("e", e, n, string(p[:n]), p[:n])
 		return n, e
 
 	}
@@ -249,7 +243,6 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 //Write websocket binary frames
 func (c *Conn) Write(p []byte) (n int, e error) {
-	//log.Println("ws Write called", len(p))
 
 	//查看了代码，wsutil.WriteClientBinary 等类似函数会直接调用 ws.WriteFrame， 是不分片的.
 	// 不分片的效率更高,因为无需缓存,zero copy
@@ -259,7 +252,6 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 	} else {
 		e = wsutil.WriteServerBinary(c.Conn, p)
 	}
-	//log.Println("ws Write finished", n, e, len(p))
 
 	if e == nil {
 		n = len(p)

@@ -385,7 +385,7 @@ func (b *Base) InitAdvLayer() {
 		advClient, err := creator.NewClientFromConf(aConf)
 		if err != nil {
 
-			if ce := utils.CanLogErr("InitAdvLayer client failed "); ce != nil {
+			if ce := utils.CanLogErr("Failed in InitAdvLayer client"); ce != nil {
 				ce.Write(
 					zap.String("protocol", b.AdvancedL),
 					zap.Error(err),
@@ -428,7 +428,7 @@ func (b *Base) InitAdvLayer() {
 		advSer, err := creator.NewServerFromConf(aConf)
 		if err != nil {
 
-			if ce := utils.CanLogErr("InitAdvLayer server failed "); ce != nil {
+			if ce := utils.CanLogErr("Failed in InitAdvLayer server"); ce != nil {
 				ce.Write(
 					zap.String("protocol", b.AdvancedL),
 					zap.Error(err),

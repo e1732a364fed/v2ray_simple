@@ -29,14 +29,14 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newCon
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
-		if ce := utils.CanLogErr("QUIC ResolveUDPAddr failed"); ce != nil {
+		if ce := utils.CanLogErr("Failed in QUIC ResolveUDPAddr"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return
 	}
 	conn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		if ce := utils.CanLogErr("QUIC listen udp failed"); ce != nil {
+		if ce := utils.CanLogErr("Failed in QUIC listen udp"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return
@@ -52,7 +52,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newCon
 
 	}
 	if err != nil {
-		if ce := utils.CanLogErr("QUIC listen failed"); ce != nil {
+		if ce := utils.CanLogErr("Failed in QUIC listen"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return
@@ -84,7 +84,7 @@ func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hyster
 
 		conn, err := l.Accept(context.Background())
 		if err != nil {
-			if ce := utils.CanLogErr("QUIC accept failed"); ce != nil {
+			if ce := utils.CanLogErr("Failed in QUIC accept"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 			//close(theChan)	//不应关闭chan，因为listen虽然不好使但是也许现存的stream还是好使的...
@@ -107,7 +107,7 @@ func loopAcceptEarly(el quic.EarlyListener, theChan chan net.Conn, useHysteria b
 
 		conn, err := el.Accept(context.Background())
 		if err != nil {
-			if ce := utils.CanLogErr("QUIC early accept failed"); ce != nil {
+			if ce := utils.CanLogErr("Failed in QUIC early accept"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 			return
@@ -140,7 +140,7 @@ func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
 	for {
 		stream, err := conn.AcceptStream(context.Background())
 		if err != nil {
-			if ce := utils.CanLogDebug("QUIC stream accept failed"); ce != nil {
+			if ce := utils.CanLogDebug("Failed in QUIC stream accept"); ce != nil {
 				//只要某个连接idle时间一长，超过了idleTimeout，服务端就会出现此错误:
 				// timeout: no recent network activity，即 quic.IdleTimeoutError
 				//这不能说是错误, 而是quic的udp特性所致，所以放到debug 输出中.

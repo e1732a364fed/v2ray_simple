@@ -103,11 +103,11 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	if re != nil {
 		if errors.Is(re, httpLayer.ErrNotHTTP_Request) {
 
-			return nil, utils.ErrInErr{ErrDesc: "WS check parse http failed", ErrDetail: httpLayer.ErrNotHTTP_Request}
+			return nil, utils.ErrInErr{ErrDesc: "Failed in WS check parse http", ErrDetail: httpLayer.ErrNotHTTP_Request}
 
 		} else {
 
-			return nil, utils.ErrInErr{ErrDesc: "WS check handshake read failed", ErrDetail: re}
+			return nil, utils.ErrInErr{ErrDesc: "Failed in WS check handshake read", ErrDetail: re}
 
 		}
 	}
@@ -183,7 +183,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 					if e == nil {
 						realAddr = ta
 					} else {
-						if ce := utils.CanLogErr("ws parse X-Forwarded-For failed, which is weird"); ce != nil {
+						if ce := utils.CanLogErr("Failed in ws parse X-Forwarded-For"); ce != nil {
 							ce.Write(zap.Error(e), zap.Any(httpLayer.XForwardStr, xffs))
 						}
 					}
@@ -208,7 +208,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 		Header: s.responseHeader,
 		OnBeforeUpgrade: func() (header ws.HandshakeHeader, err error) {
 			if requestHeaderNotGivenCount > 0 {
-				if ce := utils.CanLogWarn("ws headers not match"); ce != nil {
+				if ce := utils.CanLogWarn("WS headers not match"); ce != nil {
 					ce.Write(zap.Int("requestHeaderNotGivenCount", requestHeaderNotGivenCount))
 				}
 				return nil, ws.RejectConnectionError(ws.RejectionStatus(http.StatusBadRequest))

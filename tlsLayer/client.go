@@ -32,7 +32,7 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string, cer
 
 		c.uTlsConfig = GetUTlsConfig(insecure, alpnList, host, certConf, minver)
 
-		if ce := utils.CanLogInfo("using uTls and Chrome fingerprint for"); ce != nil {
+		if ce := utils.CanLogInfo("Using uTls and Chrome fingerprint for"); ce != nil {
 			ce.Write(zap.String("host", host))
 		}
 	} else {

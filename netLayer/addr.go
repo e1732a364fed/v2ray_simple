@@ -240,14 +240,14 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	case float64: //json 默认把数字转换成float64，就算是整数也一样
 
 		if value > 65535 || value < 0 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 
 		integer = int(value)
 	case float32:
 		if value > 65535 || value < 0 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 
@@ -255,13 +255,13 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	case int64: //toml包 默认把整数转换成int64
 
 		if value > 65535 || value < 0 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 		integer = int(value)
 	case int:
 		if value > 65535 || value < 0 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 
@@ -269,7 +269,7 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	case int32:
 
 		if value > 65535 || value < 0 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 		integer = int(value)
@@ -281,20 +281,20 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	case uint64:
 
 		if value > 65535 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 		integer = int(value)
 	case uint:
 
 		if value > 65535 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 		integer = int(value)
 	case uint32:
 		if value > 65535 {
-			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			err = utils.ErrInErr{ErrDesc: "Invalid port", Data: value}
 			return
 		}
 		integer = int(value)
@@ -340,7 +340,7 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 		return
 
 	default:
-		err = utils.ErrInErr{ErrDesc: "Fallback dest config type err", Data: reflect.TypeOf(thing)}
+		err = utils.ErrInErr{ErrDesc: "Failed in Fallback dest config type", Data: reflect.TypeOf(thing)}
 		return
 	}
 
@@ -353,7 +353,7 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	case 1:
 		addr, err = NewAddrByHostPort(dest_string)
 		if err != nil {
-			err = utils.ErrInErr{ErrDesc: "addr create with given string failed", ErrDetail: err, Data: dest_string}
+			err = utils.ErrInErr{ErrDesc: "Failed in addr create with given string", ErrDetail: err, Data: dest_string}
 			return
 		}
 	case 2:

@@ -43,7 +43,7 @@ func (s *Server) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 	rawTlsConn := tls.Server(underlay, s.tlsConfig)
 	err = rawTlsConn.Handshake()
 	if err != nil {
-		err = utils.ErrInErr{ErrDesc: "tlsLayer: tls握手失败", ErrDetail: err}
+		err = utils.ErrInErr{ErrDesc: "Failed in Tls handshake", ErrDetail: err}
 
 		return
 	}

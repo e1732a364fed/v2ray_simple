@@ -43,7 +43,7 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 
 		if err != nil {
 
-			if ce := utils.CanLogErr("can't create tls cert"); ce != nil {
+			if ce := utils.CanLogErr("Can't create tls cert"); ce != nil {
 				ce.Write(zap.String("cert", certConf.CertFile), zap.String("key", certConf.KeyFile), zap.Error(err))
 			}
 
@@ -63,7 +63,7 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 	if certConf != nil && certConf.CA != "" {
 		certPool, err := LoadCA(certConf.CA)
 		if err != nil {
-			if ce := utils.CanLogErr("load CA failed"); ce != nil {
+			if ce := utils.CanLogErr("Failed in loading CA"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 		} else {
@@ -81,7 +81,7 @@ func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf
 		tlscertArray, err := GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
 
 		if err != nil {
-			if ce := utils.CanLogErr("load client cert file failed"); ce != nil {
+			if ce := utils.CanLogErr("Failed in loading client cert file"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 			certArray = nil
@@ -106,7 +106,7 @@ func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf
 	if certConf != nil && certConf.CA != "" {
 		certPool, err := LoadCA(certConf.CA)
 		if err != nil {
-			if ce := utils.CanLogErr("load CA failed"); ce != nil {
+			if ce := utils.CanLogErr("Err, load CA"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 		} else {

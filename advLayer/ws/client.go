@@ -156,7 +156,7 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 		_, encerr := io.Copy(encoder, multiReader)
 		if encerr != nil {
 			close(edc.firstHandshakeOkChan)
-			return 0, utils.ErrInErr{ErrDesc: "encode early data err", ErrDetail: encerr}
+			return 0, utils.ErrInErr{ErrDesc: "Err when encode early data", ErrDetail: encerr}
 		}
 		encoder.Close()
 
@@ -208,7 +208,7 @@ func (edc *EarlyDataConn) Read(p []byte) (int, error) {
 	if !edc.notFirstRead {
 		_, ok := <-edc.firstHandshakeOkChan
 		if !ok {
-			return 0, errors.New("EarlyDataConn read failed because handshake failed")
+			return 0, errors.New("failed in EarlyDataConn read because handshake failed")
 		}
 		edc.notFirstRead = true
 

@@ -15,7 +15,7 @@ func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {
 
-		return nil, true, utils.ErrInErr{ErrDesc: "can not parse client url", ErrDetail: err, Data: s}
+		return nil, true, utils.ErrInErr{ErrDesc: "Can't parse client url", ErrDetail: err, Data: s}
 	}
 
 	schemeName := strings.ToLower(u.Scheme)
@@ -35,13 +35,13 @@ func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 
 	}
 
-	return nil, false, utils.ErrInErr{ErrDesc: "unknown client protocol ", Data: u.Scheme}
+	return nil, false, utils.ErrInErr{ErrDesc: "Unknown client protocol ", Data: u.Scheme}
 }
 
 func clientFromURL(creator ClientCreator, u *url.URL, knownTLS bool) (Client, bool, utils.ErrInErr) {
 	c, e := creator.NewClientFromURL(u)
 	if e != nil {
-		return nil, true, utils.ErrInErr{ErrDesc: "creator.NewClientFromURL err", ErrDetail: e}
+		return nil, true, utils.ErrInErr{ErrDesc: "Err, creator.NewClientFromURL", ErrDetail: e}
 	}
 	configCommonByURL(c, u)
 
@@ -64,7 +64,7 @@ func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {
 		return nil, true, utils.ErrInErr{
-			ErrDesc:   "can not parse server url ",
+			ErrDesc:   "Can't parse server url ",
 			ErrDetail: err,
 			Data:      s,
 		}
@@ -84,14 +84,14 @@ func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 		}
 	}
 
-	return nil, true, utils.ErrInErr{ErrDesc: "unknown server protocol ", Data: u.Scheme}
+	return nil, true, utils.ErrInErr{ErrDesc: "Unknown server protocol ", Data: u.Scheme}
 }
 
 func serverFromURL(creator ServerCreator, u *url.URL, knownTLS bool) (Server, bool, utils.ErrInErr) {
 	server, err := creator.NewServerFromURL(u)
 	if err != nil {
 		return nil, true, utils.ErrInErr{
-			ErrDesc:   "creator.NewServerFromURL err ",
+			ErrDesc:   "Err, creator.NewServerFromURL",
 			ErrDetail: err,
 		}
 	}
@@ -128,9 +128,9 @@ func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
 
 		if err != nil {
 			if utils.ZapLogger != nil {
-				utils.ZapLogger.Fatal("configCommonURLQueryForServer failed", zap.String("invalid fallback", fallbackStr))
+				utils.ZapLogger.Fatal("Failed, configCommonURLQueryForServer", zap.String("Invalid fallback", fallbackStr))
 			} else {
-				log.Fatalf("invalid fallback %s\n", fallbackStr)
+				log.Fatalf("Invalid fallback %s\n", fallbackStr)
 
 			}
 		}

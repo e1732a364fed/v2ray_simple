@@ -51,12 +51,12 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		returnErr = utils.ErrInErr{ErrDesc: "read underlay failed", ErrDetail: err, Data: wholeReadLen}
+		returnErr = utils.ErrInErr{ErrDesc: "Err, simplesocks handshake, read underlay", ErrDetail: err, Data: wholeReadLen}
 		return
 	}
 
 	if wholeReadLen < 4 {
-		returnErr = utils.ErrInErr{ErrDesc: "fallback, msg too short", Data: wholeReadLen}
+		returnErr = utils.ErrInErr{ErrDesc: "Err, simplesocks, msg too short", Data: wholeReadLen}
 		return
 	}
 
@@ -80,7 +80,7 @@ realPart:
 	var isudp bool
 	switch cmdb {
 	default:
-		returnErr = utils.ErrInErr{ErrDesc: "cmd byte wrong", ErrDetail: utils.ErrInvalidData, Data: cmdb}
+		returnErr = utils.ErrInErr{ErrDesc: "Err, simplesocks, cmd byte wrong", ErrDetail: utils.ErrInvalidData, Data: cmdb}
 		goto errorPart
 	case CmdTCP:
 
