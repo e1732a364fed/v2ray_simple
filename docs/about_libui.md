@@ -35,3 +35,4 @@ see https://github.com/libui-ng/libui-ng/issues/160
 for windows, use a script I provided in 
 https://github.com/libui-ng/libui-ng/issues/161
 
+这个windows修复会恢复正常的速度，但是会让label的背景颜色变灰一些，并且如果动态show或者hide某个控件，看不出变化直到你resize窗口。

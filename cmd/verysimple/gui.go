@@ -7,6 +7,9 @@ package main
 
 import (
 	"flag"
+	"image"
+	"image/draw"
+	"log"
 	"os"
 	"strings"
 	"syscall"
@@ -41,14 +44,17 @@ func init() {
 
 	runGui = func() {
 		testFunc = func() {
+			ce := utils.CanLogDebug("testFunc")
 
-			if ce := utils.CanLogDebug("testFunc"); ce != nil {
-				ce.Write()
-				var strs = []string{"sfdsf", "sdfdsfdfj"}
-				if multilineEntry != nil {
-					entriesGroup.Show()
-					multilineEntry.SetText(strings.Join(strs, "\n"))
-				}
+			if ce == nil {
+				return
+			}
+
+			ce.Write()
+			var strs = []string{"sfdsf", "sdfdsfdfj"}
+			if multilineEntry != nil {
+				entriesGroup.Show()
+				multilineEntry.SetText(strings.Join(strs, "\n"))
 			}
 
 			var qr *qrcode.QRCode
@@ -335,11 +341,11 @@ func makeDataChoosersPage() ui.Control {
 	vbox.SetPadded(true)
 	hbox.Append(vbox, false)
 
-	vbox.Append(ui.NewDatePicker(), false)
-	vbox.Append(ui.NewTimePicker(), false)
-	vbox.Append(ui.NewDateTimePicker(), false)
-	vbox.Append(ui.NewFontButton(), false)
-	vbox.Append(ui.NewColorButton(), false)
+	// vbox.Append(ui.NewDatePicker(), false)
+	// vbox.Append(ui.NewTimePicker(), false)
+	// vbox.Append(ui.NewDateTimePicker(), false)
+	// vbox.Append(ui.NewFontButton(), false)
+	// vbox.Append(ui.NewColorButton(), false)
 
 	hbox.Append(ui.NewVerticalSeparator(), false)
 
@@ -385,30 +391,30 @@ func makeDataChoosersPage() ui.Control {
 		1, 1, 1, 1,
 		true, ui.AlignFill, false, ui.AlignFill)
 
-	msggrid := ui.NewGrid()
-	msggrid.SetPadded(true)
-	grid.Append(msggrid,
-		0, 2, 2, 1,
-		false, ui.AlignCenter, false, ui.AlignStart)
+	// msggrid := ui.NewGrid()
+	// msggrid.SetPadded(true)
+	// grid.Append(msggrid,
+	// 	0, 2, 2, 1,
+	// 	false, ui.AlignCenter, false, ui.AlignStart)
 
-	button = ui.NewButton("Message Box")
-	button.OnClicked(func(*ui.Button) {
-		ui.MsgBox(mainwin,
-			"This is a normal message box.",
-			"More detailed information can be shown here.")
-	})
-	msggrid.Append(button,
-		0, 0, 1, 1,
-		false, ui.AlignFill, false, ui.AlignFill)
-	button = ui.NewButton("Error Box")
-	button.OnClicked(func(*ui.Button) {
-		ui.MsgBoxError(mainwin,
-			"This message box describes an error.",
-			"More detailed information can be shown here.")
-	})
-	msggrid.Append(button,
-		1, 0, 1, 1,
-		false, ui.AlignFill, false, ui.AlignFill)
+	// button = ui.NewButton("Message Box")
+	// button.OnClicked(func(*ui.Button) {
+	// 	ui.MsgBox(mainwin,
+	// 		"This is a normal message box.",
+	// 		"More detailed information can be shown here.")
+	// })
+	// msggrid.Append(button,
+	// 	0, 0, 1, 1,
+	// 	false, ui.AlignFill, false, ui.AlignFill)
+	// button = ui.NewButton("Error Box")
+	// button.OnClicked(func(*ui.Button) {
+	// 	ui.MsgBoxError(mainwin,
+	// 		"This message box describes an error.",
+	// 		"More detailed information can be shown here.")
+	// })
+	// msggrid.Append(button,
+	// 	1, 0, 1, 1,
+	// 	false, ui.AlignFill, false, ui.AlignFill)
 
 	return hbox
 }
@@ -467,6 +473,47 @@ func setupUI() {
 			}
 		})
 
+		y.AppendItem("test2").OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+			qr, err := qrcode.New("https://example.org", qrcode.Medium)
+			if err != nil {
+				return
+			}
+			nw := ui.NewWindow("img", 320, 320, false)
+			uiimg := ui.NewImage(320, 320)
+			rect := image.Rect(0, 0, 320, 320)
+			rgbaImg := image.NewRGBA(rect)
+			draw.Draw(rgbaImg, rect, qr.Image(256), image.Point{}, draw.Over)
+			uiimg.Append(rgbaImg)
+
+			mh := newImgTableHandler()
+			mh.img = uiimg
+			model := ui.NewTableModel(mh)
+
+			table := ui.NewTable(&ui.TableParams{
+				Model:                         model,
+				RowBackgroundColorModelColumn: 3,
+			})
+			table.OnRowClicked(func(t *ui.Table, i int) {
+				log.Println("tc", i)
+			})
+			table.OnRowDoubleClicked(func(t *ui.Table, i int) {
+				log.Println("tc", i)
+			})
+			table.OnHeaderClicked(func(t *ui.Table, i int) {
+				log.Println("tc h", i)
+			})
+			//table.SetHeaderVisible(false)
+
+			table.AppendImageColumn("QRCode", 0)
+			table.AppendImageColumn("QRCode", 1)
+			table.SetHeaderSortIndicator(0, 1)
+			log.Println("tcsi", table.HeaderSortIndicator(0))
+			table.SetColumnWidth(0, 2)
+			nw.SetChild(table)
+			nw.SetMargined(true)
+			nw.OnClosing(func(w *ui.Window) bool { return true })
+			nw.Show()
+		})
 	}
 	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
 
@@ -494,5 +541,36 @@ func setupUI() {
 		tab.SetMargined(i, true)
 	}
 	mainwin.Show()
+
+}
+
+type imgTableH struct {
+	img *ui.Image
+}
+
+func newImgTableHandler() *imgTableH {
+	m := new(imgTableH)
+	return m
+}
+
+func (mh *imgTableH) ColumnTypes(m *ui.TableModel) []ui.TableValue {
+	return []ui.TableValue{
+
+		ui.TableImage{}, // column 1 image
+
+	}
+}
+
+func (mh *imgTableH) NumRows(m *ui.TableModel) int {
+	return 2
+}
+
+func (mh *imgTableH) CellValue(m *ui.TableModel, row, column int) ui.TableValue {
+
+	return ui.TableImage{I: mh.img}
+
+}
+
+func (mh *imgTableH) SetCellValue(m *ui.TableModel, row, column int, value ui.TableValue) {
 
 }
