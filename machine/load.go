@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/e1732a364fed/v2ray_simple"
-	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -138,7 +137,7 @@ func (m *M) LoadSimpleConf(hot bool) (result int) {
 }
 
 // load failed if result <0,
-func (m *M) loadSimpleServer(simpleConf proxy.SimpleConf) (result int, server proxy.Server) {
+func (m *M) loadSimpleServer(simpleConf proxy.UrlConf) (result int, server proxy.Server) {
 	var e error
 	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
 	if e != nil {
@@ -151,21 +150,10 @@ func (m *M) loadSimpleServer(simpleConf proxy.SimpleConf) (result int, server pr
 
 	m.allServers = append(m.allServers, server)
 
-	if !server.CantRoute() && simpleConf.Route != nil {
-
-		netLayer.LoadMaxmindGeoipFile("")
-
-		//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
-		m.RoutingEnv.RoutePolicy = netLayer.NewRoutePolicy()
-		if simpleConf.MyCountryISO_3166 != "" {
-			m.RoutingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
-
-		}
-	}
 	return
 }
 
-func (m *M) loadSimpleClient(simpleConf proxy.SimpleConf) (result int, client proxy.Client) {
+func (m *M) loadSimpleClient(simpleConf proxy.UrlConf) (result int, client proxy.Client) {
 	var e error
 	client, e = proxy.ClientFromURL(simpleConf.DialUrl)
 	if e != nil {

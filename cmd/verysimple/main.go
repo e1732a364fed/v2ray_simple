@@ -254,7 +254,7 @@ func mainFunc() (result int) {
 	}
 
 	switch configMode {
-	case proxy.SimpleMode:
+	case proxy.UrlMode:
 		result = mainM.LoadSimpleConf(false)
 		if result < 0 {
 			return result

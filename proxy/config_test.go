@@ -1,12 +1,6 @@
 package proxy_test
 
-import (
-	"net/url"
-	"testing"
-
-	"github.com/e1732a364fed/v2ray_simple/proxy"
-)
-
+/*
 func TestClientSimpleConfig(t *testing.T) {
 	confstr1 := `{
 	"local": "socks5://0.0.0.0:10800#taglocal",
@@ -38,12 +32,14 @@ func TestClientSimpleConfig(t *testing.T) {
 	}
 	t.Log(u.Fragment)
 	t.Log(mc.ListenUrl)
-	t.Log(mc.MyCountryISO_3166)
-	if mc.MyCountryISO_3166 != "CN" {
-		t.FailNow()
-	}
-	t.Log(mc.Fallbacks, len(mc.Fallbacks))
-	for i, v := range mc.Fallbacks {
-		t.Log(i, v)
-	}
+	// t.Log(mc.MyCountryISO_3166)
+	// if mc.MyCountryISO_3166 != "CN" {
+	// 	t.FailNow()
+	// }
+	// t.Log(mc.Fallbacks, len(mc.Fallbacks))
+	// for i, v := range mc.Fallbacks {
+	// 	t.Log(i, v)
+	// }
 }
+
+*/

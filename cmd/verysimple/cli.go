@@ -535,7 +535,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	switch confMode {
 	case proxy.StandardMode:
 		m.LoadStandardConf()
-	case proxy.SimpleMode:
+	case proxy.UrlMode:
 		result := m.LoadSimpleConf(true)
 		if result < 0 {
 			utils.PrintStr("添加失败！当前状态：\n")

@@ -94,12 +94,12 @@ cd v2ray_simple/cmd/verysimple && go build
 
 本作支持多种运行模式，方便不同需求的同学使用
 
-1. 命令行模式
-2. 极简模式
-3. 标准模式
-4. 兼容模式
-5. 交互模式
+1. 命令行模式 (也称 URL模式)
+2. 标准模式 (也称 toml模式)
+3. 兼容模式
+4. 交互模式
 
+本项目自 v1.2.5开始，移除了 json格式的"极简模式".
 
 ### 运行前的准备
 
@@ -107,34 +107,9 @@ cd v2ray_simple/cmd/verysimple && go build
 
 可以通过 [交互模式](#交互模式) 来生成自定义的配置。
 
-### 极简模式
+### 命令行模式 (也称 URL模式)
 
-```sh
-#客户端, 极简模式
-verysimple -c client.json
-
-#服务端, 极简模式
-verysimple -c server.json
-```
-
-极简模式使用json格式，内部使用链接url的方式，所以非常节省空间;
-
-关于url格式的具体写法，见： [url标准定义](docs/url.md)，我们定义了一种通用url格式。
-
-查看 [examples/vs.server.json](examples/vs.server.json) 和 [examples/vs.client.json](examples/vs.client.json) 就知道了，很简单的。
-
-目前极简模式配置文件最短情况一共就4行，其中两行还是花括号
-
-极简模式 不支持 复杂分流，dns 等高级特性。极简模式只支持通过 mycountry进行 geoip分流 这一种分流情况。
-
-极简模式继承自 v2simple, 理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
-
-另外，verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
-
-
-### 命令行模式
-
-学会了极简模式里的url配置后，还可以用如下命令来运行，无需配置文件. -D如果不指定，默认为direct
+可以用如下命令来运行，无需配置文件. -D如果不指定，默认为direct
 
 ```sh
 #客户端
@@ -146,9 +121,15 @@ verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.k
 
 不细心的人要注意了，vlesss，要三个s，不然的话你就是裸奔状态,加了第三个s才表示套tls
 
-命令行模式 实际上就是把命令行的内容转化成极简模式的配置 然后再处理
-
 命令行模式 不支持dns、分流、复杂回落 等特性。只能在url中配置 默认回落。
+
+关于url格式的具体写法，见： [url标准定义](docs/url.md)，vs定义了一种通用url格式。
+
+命令行模式继承自 v2simple, 理念是字越少越好。
+
+不过推荐没有极简需求的同学直接使用标准模式。
+
+另外，verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
 ### 标准模式
 

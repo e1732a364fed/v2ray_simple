@@ -9,7 +9,7 @@ import (
 
 // 配置文件格式
 const (
-	SimpleMode = iota
+	UrlMode = iota
 	StandardMode
 	V2rayCompatibleMode
 
