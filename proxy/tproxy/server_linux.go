@@ -49,7 +49,7 @@ func (ServerCreator) AfterCommonConfServer(ps proxy.Server) (err error) {
 		s.Sockopt = &netLayer.Sockopt{TProxy: true}
 	}
 	if s.shouldSetIPTable {
-		err = tproxy.SetIPTablesByPort(s.ListenConf.Port)
+		err = tproxy.SetRouteByPort(s.ListenConf.Port)
 	}
 	return
 }
