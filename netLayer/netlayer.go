@@ -151,6 +151,7 @@ func HasIpv6Interface() bool {
 	return false
 }
 
+//用于定义拒绝响应的行为；可参考 httpLayer.RejectConn
 type RejectConn interface {
 	RejectBehaviorDefined() bool //若为false，则只能直接Close
 	Reject()

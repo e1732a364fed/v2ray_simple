@@ -272,3 +272,16 @@ func (iics *incomingInserverConnState) CanLogLevel(level int, msg string) *iicsZ
 		return nil
 	}
 }
+func (iics *incomingInserverConnState) getRealRAddr() (raddr string) {
+	raddr = iics.cachedRemoteAddr
+	if iics.wrappedConn != nil {
+		if realRA := iics.wrappedConn.RemoteAddr(); realRA != nil {
+			//大部分情况下，realRA.String() == iics.cachedRemoteAddr
+			// 但是在 ws/grpc 下，我们的代码 会读取 X-Forwarded-For, 来试图找出反代之前的客户端真实ip
+			//此时 RemoteAddr就 不相等了
+
+			raddr = realRA.String()
+		}
+	}
+	return
+}

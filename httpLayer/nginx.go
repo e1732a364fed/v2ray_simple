@@ -119,6 +119,7 @@ func SetNginx403Response(rw http.ResponseWriter) {
 
 }
 
+//implements netLayer.RejectConn
 type RejectConn struct {
 	http.ResponseWriter
 }
@@ -127,6 +128,8 @@ func (RejectConn) RejectBehaviorDefined() bool {
 
 	return true
 }
+
+//call SetNginx403Response
 func (rc RejectConn) Reject() {
 	SetNginx403Response(rc.ResponseWriter)
 

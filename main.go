@@ -381,6 +381,11 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 	wlc, udp_wlc, targetAddr, err = inServer.Handshake(iics.wrappedConn)
 
 	if err != nil {
+
+		if ce := iics.CanLogWarn("handshake inServer failed"); ce != nil {
+			ce.Write(zap.String("client RemoteAddr", iics.getRealRAddr()))
+		}
+
 		return
 	}
 	if udp_wlc != nil && inServer.Name() == "socks5" {
@@ -614,8 +619,9 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	if wlc == nil && udp_wlc == nil {
 		//证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
-		if ce := iics.CanLogDebug("invalid request and no matched fallback, hung up"); ce != nil {
-			ce.Write()
+
+		if ce := iics.CanLogWarn("invalid request and no matched fallback, hung up"); ce != nil {
+			ce.Write(zap.String("client RemoteAddr", iics.getRealRAddr()))
 		}
 
 		if wc := iics.wrappedConn; wc != nil {
