@@ -148,3 +148,22 @@ func ToggleSystemProxy(isSocks5 bool, addr, port string, enable bool) {
 	}
 
 }
+
+func GetSystemDNS() string {
+	switch runtime.GOOS {
+	case "darwin":
+		out, e := LogRunCmd("networksetup", "-getdnsservers", "Wi-Fi")
+		if e == nil {
+			return out
+		}
+	}
+	return ""
+}
+
+func SetSystemDNS(dns string) {
+	switch runtime.GOOS {
+	case "darwin":
+		LogRunCmd("networksetup", "-setdnsservers", "Wi-Fi", dns)
+
+	}
+}
