@@ -414,7 +414,7 @@ func (u *UDPMsgConn) readSymmetricMsgFromConn(conn *net.UDPConn, thishash Hashab
 
 		n, ad, err := conn.ReadFromUDP(bs)
 
-		if err != nil {
+		if err != nil || u.closed {
 			break
 		}
 
