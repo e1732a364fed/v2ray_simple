@@ -7,7 +7,7 @@ Package main 读取配置文件，然后进行代理转发, 并选择性运行 c
 
 # Tags
 
-提供 noquic,notun,gui 这几个 build tag。
+提供 noquic,notun,noutils, gui 这几个 build tag。
 
 若 noquic给出，则不引用 advLayer/quic，否则 默认引用 advLayer/quic。
 quic大概占用 2MB 大小。

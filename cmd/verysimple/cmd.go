@@ -30,18 +30,9 @@ var (
 	exitCmds = []exitCmd{
 		{name: "sp", desc: "print supported protocols", f: printSupportedProtocols},
 		{name: "v", desc: "print the version string then exit", f: func() { printVersion_simple(os.Stdout) }},
-		{name: "gu", desc: "automatically generate a uuid for you", f: generateAndPrintUUID},
 		{name: "pifs", desc: "print all network interfaces", f: func() {
 			netLayer.PrintAllInterface(os.Stdout)
 		}},
-		{name: "cvqxtvs", isStr: true, desc: "if given, convert qx server config string to vs toml config", fs: convertQxToVs},
-		{name: "eqxrs", isStr: true, desc: "if given, automatically extract remote servers from quantumultX config for you", fs: extractQxRemoteServers},
-
-		// {name: "test", desc: "test func", f: func() {
-		// 	utils.InitLog("")
-		// 	dns := netLayer.GetSystemDNS()
-		// 	log.Println(len(dns), dns)
-		// }},
 	}
 )
 

@@ -117,17 +117,6 @@ func interactively_generate_share(conf *proxy.StandardConf) {
 
 func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 
-	select0 := promptui.Select{
-		Label: "【提醒】我们交互模式生成的配置都是直接带tls的,且客户端【默认使用utls】模拟chrome指纹",
-		Items: []string{"知道了"},
-	}
-
-	_, _, err := select0.Run()
-	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return
-	}
-
 	select2 := promptui.Select{
 		Label: "请选择你客户端想监听的协议",
 		Items: []string{
@@ -230,7 +219,6 @@ func interactively_generateConf(confClient, confServer *proxy.StandardConf) {
 	clientDial.Protocol = theProtocol
 	clientDial.TLS = true
 	clientDial.Tag = "my_proxy"
-	//clientDial.Utls = true
 
 	select4 := promptui.Select{
 		Label: "请选择你客户端拨号想使用的高级层(与服务端监听的高级层相同)",

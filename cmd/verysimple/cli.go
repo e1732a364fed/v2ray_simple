@@ -29,13 +29,6 @@ func (cc CliCmd) String() string {
 	return cc.Name
 }
 
-// func nlist(list []CliCmd) (result []string) {
-// 	for _, v := range list {
-// 		result = append(result, v.Name)
-// 	}
-// 	return
-// }
-
 func flist(list []*CliCmd) (result []func()) {
 	for _, v := range list {
 		result = append(result, v.f)

@@ -11,3 +11,7 @@ uuid = "method:AES-128-GCM\npass:iloveverysimple"
 # 如果设为 tcp的话，则 该ss只传递tcp，并拒绝 任何对udp的请求; 设为udp时同理。
 
 # vs的 ss 目前还没有 udp over tcp 功能
+
+#[[route]]
+#user = ["iloveverysimple"] #可通过password来分流
+# toTag = "mySpecialTag_for_iloveverysimple"

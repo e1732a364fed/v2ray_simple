@@ -3,7 +3,10 @@ protocol = "trojans"
 #uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"  #使用uuid或者users都可以，可共存, 如果有多个用户就用users, 否则用uuid更简洁。
 users = [ {user = "a684455c-b14f-11ea-bf0d-42010aaa0003"} ] 
 
-# 虽然trojan-go 的配置文件中 叫 password, 但是因为它没有用户名，所以依然是完全 根据password 的不同 来区分用户， 所以我们这里依然填到 user 或者 uuid中 , 而不是 users里的 pass中.
+# 虽然trojan-go 的配置文件中 叫 password, 但是因为它没有用户名，所以依然是完全 根据password 的不同 来区分用户
+# 所以我们这里依然填到  uuid 或者 users 的user 中 , 而不是 users里的 pass中. 比较一下 socks5.toml中的内容.
+# trojan的 password 不一定是这种uuid形式, 不过我们示例统一用uuid形式
+
 
 ip = "0.0.0.0"
 host = "your-domain-name.com"
@@ -17,3 +20,7 @@ key = "cert.key"
 [[dial]]
 protocol = "direct"
 # fullcone = true # 默认的fullcone是关闭状态, 可以取消注释以打开. trojan的udp是可以做到fullcone的.
+
+#[[route]]
+#user = ["a684455c-b14f-11ea-bf0d-42010aaa0003"] #可通过password来分流
+# toTag = "mySpecialTag_for_iloveverysimple"

@@ -8,6 +8,7 @@ import (
 	"flag"
 	"log"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -16,8 +17,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
-
-	qrcode "github.com/skip2/go-qrcode"
+	"rsc.io/qr"
 )
 
 var mainwin *ui.Window
@@ -52,16 +52,16 @@ func init() {
 				multilineEntry.SetText(strings.Join(strs, "\n"))
 			}
 
-			var qr *qrcode.QRCode
-
-			qr, err := qrcode.New("https://example.org", qrcode.Medium)
-
-			if err != nil {
-				return
-			}
-
 			const qrname = "vs_qrcode.png"
-			qr.WriteFile(256, qrname)
+
+			c, err := qr.Encode("https://example.org", qr.L)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pngdat := c.PNG()
+			if true {
+				os.WriteFile(qrname, pngdat, 0666)
+			}
 			utils.OpenFile(qrname)
 
 		}

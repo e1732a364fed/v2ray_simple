@@ -12,6 +12,7 @@ require (
 	github.com/lucas-clemente/quic-go v0.0.0-00010101000000-000000000000
 	github.com/manifoldco/promptui v0.9.0
 	github.com/marten-seemann/qtls v0.10.0
+	github.com/mdp/qrterminal v1.0.1
 	github.com/miekg/dns v1.1.50
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/oschwald/maxminddb-golang v1.9.0
@@ -44,6 +45,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 // indirect
+	rsc.io/qr v0.2.0 // indirect
 )
 
 require (
