@@ -1,0 +1,6 @@
+[[listen]]
+protocol = "reject"
+ip = "0.0.0.0"
+port = 4433
+extra = { type = "nginx"}
+

@@ -25,9 +25,9 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 			bs = bs[:n]
 			_, _, _, _, failreason := httpLayer.ParseH1Request(bs, false)
 			if failreason == 0 {
-				underlay.Write([]byte(httpLayer.GetReal403Response()))
-			} else {
 				underlay.Write([]byte(httpLayer.GetReal400Response()))
+			} else {
+				underlay.Write([]byte(httpLayer.GetReal403Response()))
 			}
 		}
 
@@ -73,6 +73,8 @@ func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 而且 理想情况下 应该分析一下请求，如果请求是合法的http请求，则返回403，否则 应该返回 400错误.
 
 所以我们在v2ray的基础上，再推出一个 "nginx"类型，来达到上面的分类返回不同错误的效果。
+
+默认为 "" 空类型，直接 close，不反回任何信息。 若设为 http，则返回一个403错误；若设为nginx，则分类返回400/403错误。
 */
 type RejectClient struct {
 	Base
