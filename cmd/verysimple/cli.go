@@ -17,6 +17,8 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+//cli = command line interface
+
 var interactive_mode bool
 
 type CliCmd struct {
