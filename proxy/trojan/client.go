@@ -20,10 +20,6 @@ func init() {
 
 type ClientCreator struct{ proxy.CreatorCommonStruct }
 
-func (ClientCreator) UseUDPAsMsgConn() bool {
-	return false
-}
-
 func (ClientCreator) URLToDialConf(url *url.URL, dc *proxy.DialConf, format int) (*proxy.DialConf, error) {
 	switch format {
 	case proxy.UrlStandardFormat:

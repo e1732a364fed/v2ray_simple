@@ -1200,12 +1200,12 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 		realTargetAddr.Network = targetAddr.Network
 	}
 
-	dialhere := !(realTargetAddr.Network == "udp" && client.GetCreator().UseUDPAsMsgConn())
+	dialhere := !(client.Name() == proxy.DirectName)
 
 	/*
-		direct和shadowsocks的udp是自己拨号的，因为它用到了udp的包特性
+		direct的udp是自己拨号的，因为它用到了udp的fullcone
 
-		不是上面情况的话，也要分情况:
+		不是的话，也要分情况:
 		如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
 		Instead, 我们要试图 取出已经拨号好了的 连接
 	*/
@@ -1251,8 +1251,6 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 			na = client.LocalTCPAddr()
 		case "udp":
 			na = client.LocalUDPAddr()
-		case netLayer.DualNetworkName:
-			realTargetAddr.Network = targetAddr.Network
 		}
 
 		clientConn, err = realTargetAddr.Dial(client.GetSockopt(), na)

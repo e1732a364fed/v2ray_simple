@@ -18,10 +18,6 @@ func init() {
 
 type ClientCreator struct{ proxy.CreatorCommonStruct }
 
-func (ClientCreator) UseUDPAsMsgConn() bool {
-	return false
-}
-
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid

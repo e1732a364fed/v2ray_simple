@@ -58,9 +58,6 @@ func tryRejectWithHttpRespAndClose(rejectType string, underlay net.Conn) {
 // implements ClientCreator and ServerCreator for reject
 type RejectCreator struct{ CreatorCommonStruct }
 
-func (RejectCreator) UseUDPAsMsgConn() bool {
-	return false
-}
 func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	r := &RejectClient{}
 

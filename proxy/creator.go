@@ -61,8 +61,6 @@ type ClientCreator interface {
 	URLToDialConf(url *url.URL, iv *DialConf, format int) (*DialConf, error)
 	//DialConfToURL(url *DialConf, format int) (*url.URL, error)
 
-	UseUDPAsMsgConn() bool //默认情况下，UDP会被包装成流式协议，除非指出需要利用udp的固定包长度特性; direct 和 shadowsocks会返回true.
-
 }
 
 // 可通过标准配置或url 来初始化。

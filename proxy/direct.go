@@ -18,10 +18,6 @@ const (
 // implements ClientCreator for direct
 type DirectCreator struct{ CreatorCommonStruct }
 
-func (DirectCreator) UseUDPAsMsgConn() bool {
-	return true
-}
-
 // true
 func (DirectCreator) MultiTransportLayer() bool {
 	return true
