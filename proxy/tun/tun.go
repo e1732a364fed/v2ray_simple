@@ -4,7 +4,7 @@
 	使用 ip 配置作为 gateway 的ip
 	使用 extra.tun_selfip 作为 tun向外拨号的ip
 
-	tun device name的默认值约定： mac: utun5, windows: vs_wintun， linux: vs_tun
+	tun device name的默认值约定： mac: 系统指派, windows: vs_wintun， linux: vs_tun
 
 */
 package tun
@@ -196,12 +196,14 @@ func (s *Server) Stop() {
 // 非阻塞
 func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func(netLayer.UDPRequestInfo)) io.Closer {
 	s.stopped = false
+	autoName := false
 
 	if s.devName == "" {
 		utils.Warn("tun: dev name not given, OS: " + runtime.GOOS)
+		autoName = true
 		switch runtime.GOOS {
 		case "darwin":
-			s.devName = "utun5"
+			s.devName = "utun" //根据 wireguard/tun/tun_darwin.go CreateTUN, 如果传入 utun，就会系统指派一个可用名称
 		case "windows":
 			s.devName = "vs_wintun"
 		case "linux":
@@ -236,6 +238,13 @@ func (s *Server) StartListen(tcpFunc func(netLayer.TCPRequestInfo), udpFunc func
 		}
 		s.stopped = true
 		return nil
+	}
+
+	if autoName {
+		s.devName = tunDev.Name()
+		if ce := utils.CanLogInfo("tun dev"); ce != nil {
+			ce.Write(zap.String("name", s.devName))
+		}
 	}
 
 	if s.autoRoute && autoRouteFunc != nil {

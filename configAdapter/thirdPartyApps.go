@@ -221,12 +221,16 @@ func FromQX(str string) (dc proxy.DialConf) {
 				dc.Tag = v
 			case "obfs-uri":
 				dc.Path = v
+
+			case "tls-host":
+				fallthrough
 			case "obfs-host":
 				dc.Host = v
-			case "udp-relay":
-				if v == "false" {
-					dc.Network = "tcp"
-				}
+
+			// case "udp-relay":	//vs暂无对应配置
+			// 	if v == "false" {
+			// 		dc.Network = "tcp"
+			// 	}
 			case "obfs":
 				switch v {
 				case "ws":
@@ -237,6 +241,16 @@ func FromQX(str string) (dc proxy.DialConf) {
 				case "tls", "over-tls":
 					dc.TLS = true
 				}
+			case "over-tls":
+				dc.TLS = true
+			case "tls-verification":
+				if v == "false" {
+					dc.Insecure = true
+				}
+			case "tls13":
+				dc.Extra = map[string]any{
+					"tls_minVersion": "1.3",
+				}
 			}
 		}
 	}
@@ -244,6 +258,11 @@ func FromQX(str string) (dc proxy.DialConf) {
 	if dc.Protocol == "shadowsocks" {
 		if dc.Uuid != "" && dc.EncryptAlgo != "" {
 			dc.Uuid = "method:" + dc.EncryptAlgo + "\n" + "pass:" + dc.Uuid
+		}
+	}
+	if dc.Extra == nil {
+		dc.Extra = map[string]any{
+			"tls_minVersion": "1.2",
 		}
 	}
 	return
