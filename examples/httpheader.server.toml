@@ -8,15 +8,18 @@ fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
 
- advancedLayer = "ws"
+advancedLayer = "ws"
 path = "/very"
 
 
-# 用于读取 回落到 真实http服务器的情况，此时我们就不用自定义的响应，而是用 真实服务器的响应。
-# no_resp_h_c 意思是 no response header conditional
-
+# 用于读取 回落到 真实http服务器的情况，此时我们就不用自定义的响应（或默认响应），而是用 真实服务器的响应。
+# no_resp_h_c 意思是 no response header conditional.
+# 一般与fallback配合。一种最简单的例子，可以参考 reject.server.toml, 把其中内容复制到本配置中, 就可以在自定义http头的情况下进行回落了。
 # header.no_resp_h_c = true 
 
+# 我们vs的header验证比v2ray严格，必须所有的header 均匹配才能通过。而v2ray默认只验证path等，不验证header。
+# 不过该严格检查默认是关闭状态
+# header.strict = true 
 
 # 下面是 http伪装头的 配置
 # 完全兼容v2ray, 可参考 https://www.v2fly.org/config/transport/tcp.html#httprequestobject
@@ -26,7 +29,7 @@ path = "/very"
 [listen.header.request]
 version = "1.1"
 method = "GET"
-path = ["/very","/simple"]  # 每次请求随机选择一个值。
+path = ["/very", "/simple"] # 每次请求随机选择一个值。
 
 # 每个header所配置的 数组, 每次请求随机选择一个值。 
 
@@ -34,22 +37,21 @@ path = ["/very","/simple"]  # 每次请求随机选择一个值。
 
 # 如果使用 ws, 则 listen的 Connection头 不用给出，因为必须是Upgrade; 你给出也是可以的，但是会被无视。
 
-# 如果你给出的Header的首字母小写的，则首字母自动被转换成大写.
+# 如果你给出的Header的首字母小写的，则首字母在实际传输中会自动被转换成大写.
 headers.mycustom1 = ["verysimple_is_so_good"]
 
 
-headers.Host = ["www.baidu.com","www.bing.com"]
-headers.User-Agent = [ "Mozilla/5.0 (my fake system)"]
-headers.Accept-Encoding = [ "gzip, deflate"  ]
+headers.Host = ["www.baidu.com", "www.bing.com"]
+headers.User-Agent = ["Mozilla/5.0 (my fake system)"]
+headers.Accept-Encoding = ["gzip, deflate"]
 headers.Pragma = ["no-cache"]
-
 
 
 # 还可以配置 response, 道理一样。这里直接省略了,就是使用默认值, 参考 v2ray文档。
 
 [listen.header.response]
 # 如果使用 ws, 则 listen.header.response 的 Connection头必须指明为 Upgrade
-headers.Connection = [  "Upgrade"   ]
+headers.Connection = ["Upgrade"]
 
 headers.mycustom2 = ["i_agree"]
 

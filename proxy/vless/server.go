@@ -268,18 +268,18 @@ realPart:
 	}
 
 	if ismux {
-		mh := &proxy.MuxMarkerConn{
+		mm := &proxy.MuxMarkerConn{
 			ReadWrapper: netLayer.ReadWrapper{
 				Conn: underlay,
 			},
 		}
 
 		if l := readbuf.Len(); l > 0 {
-			mh.RemainFirstBufLen = l
-			mh.OptionalReader = io.MultiReader(readbuf, underlay)
+			mm.RemainFirstBufLen = l
+			mm.OptionalReader = io.MultiReader(readbuf, underlay)
 		}
 
-		return mh, nil, targetAddr, nil
+		return mm, nil, targetAddr, nil
 	}
 
 	if isudp {

@@ -13,11 +13,6 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const (
-	toLower = 'a' - 'A'      // for use with OR.
-	toUpper = ^byte(toLower) // for use with AND.
-)
-
 //return a clone of m with headers trimmed to one value
 func TrimHeaders(m map[string][]string) (result map[string][]string) {
 
@@ -32,6 +27,12 @@ func TrimHeaders(m map[string][]string) (result map[string][]string) {
 // Algorithm below is like standard textproto/CanonicalMIMEHeaderKey, except
 // that it operates with slice of bytes and modifies it inplace without copying. copied from gobwas/ws
 func CanonicalizeHeaderKey(k []byte) {
+
+	const (
+		toLower = 'a' - 'A'      // for use with OR.
+		toUpper = ^byte(toLower) // for use with AND.
+	)
+
 	upper := true
 	for i, c := range k {
 		if upper && 'a' <= c && c <= 'z' {

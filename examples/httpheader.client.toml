@@ -12,34 +12,31 @@ port = 4434
 version = 0
 insecure = true
 utls = true
- advancedLayer = "ws"  # ws也可应用我们的http header
+advancedLayer = "ws"                          # ws也可应用我们的http header
 
 path = "/very"
 
 [dial.header.request]
-version = "1.1" #如果你用ws, 则这一项不会被用到
-method = "GET"  #如果你用ws, 则这一项不会被用到
-path = ["/very","/simple"]  # 每次请求随机选择一个值。如果你用ws, 则这一项不会被用到
+version = "1.1"             #如果你用ws, 则这一项不会被用到
+method = "GET"              #如果你用ws, 则这一项不会被用到
+path = ["/very", "/simple"] # 每次请求随机选择一个值。如果你用ws, 则这一项不会被用到
 
 
 # 如果使用 ws, 且request没有任何 其他的header给出, 则 dial.header.request 的 Connection头必须指明为 Upgrade, 这是因为, headers配置的默认行为是，如果你不给出任何header, 就会配置一个默认的header给你，而默认的header的 Connection 是 keep-alive, 这个对于ws的握手是无效的。
 
-headers.Connection = [  "Upgrade"   ]
+headers.Connection = ["Upgrade"]
 
 headers.mycustom1 = ["verysimple_is_so_good"]
 
 
-headers.Host = ["www.baidu.com","www.bing.com"]
-headers.User-Agent = [ "Mozilla/5.0 (my fake system)"]
-headers.Accept-Encoding = [ "gzip, deflate"  ]
+headers.Host = ["www.baidu.com", "www.bing.com"]
+headers.User-Agent = ["Mozilla/5.0 (my fake system)"]
+headers.Accept-Encoding = ["gzip, deflate"]
 headers.Pragma = ["no-cache"]
 
 
 # 如果 User-Agent没给出，则golang会主动添加一个 User-Agent: Go-http-client/1.1
 # 所以最好明示给出 User-Agent; 若 服务端没配置 User-Agent, 我们的vs 服务端 会发现 客户端 多了一项 User-Agent项 而认为非法，而关闭连接。
-
-# 我们vs的header验证比v2ray严格，必须所有的header 均匹配才能通过。而v2ray默认只验证path等，不验证header。
-
 
 
 [dial.header.response]
@@ -48,4 +45,4 @@ headers.Pragma = ["no-cache"]
 headers.mycustom2 = ["i_agree"]
 
 
-# dial.header.strict = true # 只有在strict开关打开时才会那么严格地检查header，默认是关闭的。
+# dial.header.strict = true # 只有在strict开关打开时才会严格地检查header，默认是关闭的。
