@@ -356,6 +356,10 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 		integer = int(value)
 
 	case string:
+		if value == "" {
+			err = utils.ErrInErr{ErrDetail: utils.ErrNilParameter, ErrDesc: "empty string given"}
+			return
+		}
 		//先判断是不是url
 		addr, err = NewAddrByURL(value)
 		if err == nil {

@@ -265,7 +265,9 @@ func URLToListenConf(u *url.URL, conf *ListenConf) error {
 
 	conf.NoRoute = utils.QueryPositive(q, "noroute")
 
-	conf.Fallback = q.Get("fallback")
+	if f := q.Get("fallback"); f != "" {
+		conf.Fallback = f
+	}
 
 	if conf.HttpHeader != nil {
 		rh := &httpLayer.ResponseHeader{
