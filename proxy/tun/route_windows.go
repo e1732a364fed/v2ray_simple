@@ -20,8 +20,7 @@ func init() {
 	*/
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
 
-		params := "netstat -nr"
-		out, err := exec.Command("", params).Output()
+		out, err := exec.Command("netstat", "-nr").Output()
 		if err != nil {
 			if ce := utils.CanLogErr("auto route failed"); ce != nil {
 				ce.Write(zap.Error(err))
