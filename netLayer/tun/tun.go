@@ -15,6 +15,7 @@ windows中,
 package tun
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -37,7 +38,11 @@ import (
 	"gvisor.dev/gvisor/pkg/waiter"
 )
 
+// 若name为空则会返回错误
 func Open(name string) (device.Device, error) {
+	if name == "" {
+		return nil, errors.New("tun: dev name can't be empty")
+	}
 	return tun.Open(name, uint32(utils.MTU))
 }
 

@@ -38,4 +38,25 @@ utls = true
 
 sockopt.mark = 255  #linux 上, 根据上面 toutyrater 给出的 iptables命令，我们这里要设置 mark为255. 看一下 上面 toutyrater的教程吧！
 
-# sockopt.device = "eth32423"   # vs还支持 bindToDevice功能，可以指定 某一个网卡 来监听 或者拨号.
+# sockopt.device = "eth32423"   
+
+# vs还支持 bindToDevice功能，可以指定 某一个网卡 来监听 或者拨号.
+# 绑定网卡也是一个 避免回环的办法。如果你看了 toutyrater的教程，你就知道，它的iptable的命令很复杂，还包括
+# 打 somark，都是为了避免回环存在的。如果你用 bindToDevice，你的iptable所需的命令就会减少
+
+
+# macOS 透明代理路由命令参考：
+
+# sudo sysctl -w net.inet.ip.forwarding=1
+
+# 创建一个文件，pf.conf , 内容为:
+
+# rdr pass on en0 inet proto tcp to any port {80, 443} -> 127.0.0.1 port 8080
+
+# sudo pfctl -f pf.conf
+# sudo pfctl -e
+
+# 查看效果
+# sudo pfctl -s nat
+
+# 如果想停止使用透明代理访问，禁用pf(sudo pfctl -d)或者清空pf规则(sudo pfctl -F all)即可。
