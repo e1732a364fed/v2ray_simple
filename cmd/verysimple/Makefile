@@ -52,7 +52,7 @@ defaultOutFn    :=${prefix}${defaultSuffix}
 BUILD_VERSION   :=[ commit: $(shell git rev-parse --short HEAD), all_go_files_md5: $(shell $(md5cmdline)), tags:$(tags) ]
 
 
-cmd:=go build -tags "$(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid=" -o
+cmd:=go build -tags "androidNotAAR $(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid=" -o
 
 
 ifdef PACK
