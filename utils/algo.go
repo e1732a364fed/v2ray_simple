@@ -85,6 +85,9 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以
 }
 
+// 根据传入的order来对arr重新排序；order必须长度与arr一致，而且包含所有索引
+// 若erri>0 则证明传入的order内容有误。1表示过长，2表示过短，3表示内容出错.
+// 在 erri>0 时，本函数会试图修复order，生成一个neworder并用该 neworder 对arr排序。
 func SortByOrder[T any](arr []T, order []int) (result []T, neworder []int, erri int) {
 	//检查长度
 	if len(order) != len(arr) {
