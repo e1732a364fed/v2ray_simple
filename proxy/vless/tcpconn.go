@@ -45,18 +45,18 @@ func (c *UserTCPConn) canDirectWrite() bool {
 	return c.version == 1 || (c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket))
 }
 
-func (c *UserTCPConn) EverPossibleToSplice() bool {
+func (c *UserTCPConn) EverPossibleToSpliceWrite() bool {
 
 	if netLayer.IsTCP(c.Conn) != nil {
 		return true
 	}
 	if s, ok := c.Conn.(netLayer.Splicer); ok {
-		return s.EverPossibleToSplice()
+		return s.EverPossibleToSpliceWrite()
 	}
 	return false
 }
 
-func (c *UserTCPConn) CanSplice() (r bool, conn *net.TCPConn) {
+func (c *UserTCPConn) CanSpliceWrite() (r bool, conn *net.TCPConn) {
 
 	if !c.canDirectWrite() {
 		return
@@ -67,7 +67,7 @@ func (c *UserTCPConn) CanSplice() (r bool, conn *net.TCPConn) {
 		conn = tc
 
 	} else if s, ok := c.Conn.(netLayer.Splicer); ok {
-		r, conn = s.CanSplice()
+		r, conn = s.CanSpliceWrite()
 	}
 
 	return

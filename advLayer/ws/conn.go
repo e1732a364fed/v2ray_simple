@@ -32,7 +32,7 @@ type Conn struct {
 	realRaddr net.Addr //可从 X-Forwarded-For 读取用户真实ip，用于反代等情况
 }
 
-//Read websocket binary frames
+// Read websocket binary frames
 func (c *Conn) Read(p []byte) (int, error) {
 
 	if len(c.serverEndGotEarlyData) > 0 {
@@ -112,11 +112,11 @@ func (c *Conn) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-func (c *Conn) EverPossibleToSplice() bool {
+func (c *Conn) EverPossibleToSpliceWrite() bool {
 	return c.underlayIsTCP && c.state == ws.StateServerSide
 }
 
-//采用 “超长包” 的办法 试图进行splice
+// 采用 “超长包” 的办法 试图进行splice
 func (c *Conn) tryWriteBigHeader() (e error) {
 	if c.bigHeaderEverUsed {
 		return
@@ -134,8 +134,8 @@ func (c *Conn) tryWriteBigHeader() (e error) {
 	return
 }
 
-func (c *Conn) CanSplice() (r bool, conn *net.TCPConn) {
-	if !c.EverPossibleToSplice() {
+func (c *Conn) CanSpliceWrite() (r bool, conn *net.TCPConn) {
+	if !c.EverPossibleToSpliceWrite() {
 		return
 	}
 
@@ -177,7 +177,7 @@ func (c *Conn) ReadFrom(r io.Reader) (written int64, err error) {
 	})
 }
 
-//实现 utils.MultiWriter
+// 实现 utils.MultiWriter
 // 主要是针对一串数据的情况，如果底层连接可以用writev， 此时我们不要每一小段都包包头 然后写N次，
 // 而是只在最前面包数据头，然后即可用writev 一次发送出去
 // 比如从 socks5 读数据，写入 tcp +ws + vless 协议, 就是这种情况
@@ -249,7 +249,7 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 	}
 }
 
-//Write websocket binary frames
+// Write websocket binary frames
 func (c *Conn) Write(p []byte) (n int, e error) {
 
 	//查看了代码，wsutil.WriteClientBinary 等类似函数会直接调用 ws.WriteFrame， 是不分片的.
