@@ -1,6 +1,7 @@
 package tlsLayer
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/binary"
 	"io"
@@ -29,7 +30,7 @@ func (c *FakeAppDataConn) Read(p []byte) (n int, err error) {
 	if err != nil {
 		return
 	}
-	length := int(binary.BigEndian.Uint16(tlsHeader[3:5]))
+	length := int(binary.BigEndian.Uint16(tlsHeader[3:]))
 	if tlsHeader[0] != 23 {
 		return 0, utils.ErrInErr{ErrDesc: "unexpected TLS record type: ", Data: tlsHeader[0]}
 	}
@@ -45,41 +46,67 @@ func (c *FakeAppDataConn) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (c *FakeAppDataConn) Write(p []byte) (n int, err error) {
-	var header [5]byte
+func WriteAppData(conn io.Writer, buf *bytes.Buffer, d []byte) (n int, err error) {
+	var h [5]byte
+	h[0] = 23
+	binary.BigEndian.PutUint16(h[1:3], tls.VersionTLS12)
+	binary.BigEndian.PutUint16(h[3:], uint16(len(d)))
 
-	header[0] = 23
-	const maxlen = 16384
-	for len(p) > maxlen {
-		binary.BigEndian.PutUint16(header[1:3], tls.VersionTLS12)
-		binary.BigEndian.PutUint16(header[3:5], uint16(maxlen))
+	shouldPut := false
 
-		buf := utils.GetBuf()
-		buf.Write(header[:])
-		buf.Write(p[:maxlen])
+	if buf == nil {
+		buf = utils.GetBuf()
+		shouldPut = true
+	}
+	buf.Write(h[:])
+	buf.Write(d)
 
-		c.Conn.Write(buf.Bytes())
+	n, err = conn.Write(buf.Bytes())
+
+	if shouldPut {
 		utils.PutBuf(buf)
+
+	}
+	return
+}
+
+// 一般conn直接为tcp连接，而它是有系统缓存的，因此我们一般不需要特地创建一个缓存
+// 写两遍之后在发出
+func WriteAppDataNoBuf(conn io.Writer, d []byte) (n int, err error) {
+	var h [5]byte
+	h[0] = 23
+	binary.BigEndian.PutUint16(h[1:3], tls.VersionTLS12)
+	binary.BigEndian.PutUint16(h[3:], uint16(len(d)))
+
+	_, err = conn.Write(h[:])
+	if err != nil {
+		return
+	}
+	return conn.Write(d)
+
+}
+
+func (c *FakeAppDataConn) Write(p []byte) (n int, err error) {
+
+	const maxlen = 1 << 14
+	var nn int
+
+	for len(p) > maxlen {
+		nn, err = WriteAppDataNoBuf(c.Conn, p[:maxlen])
+
+		n += nn
 
 		if err != nil {
 			return
 		}
-		n += maxlen
 		p = p[maxlen:]
+
 	}
-	binary.BigEndian.PutUint16(header[1:3], tls.VersionTLS12)
-	binary.BigEndian.PutUint16(header[3:5], uint16(len(p)))
 
-	buf := utils.GetBuf()
-	buf.Write(header[:])
-	buf.Write(p)
+	nn, err = WriteAppDataNoBuf(c.Conn, p)
 
-	c.Conn.Write(buf.Bytes())
-	utils.PutBuf(buf)
+	n += nn
 
-	if err == nil {
-		n += len(p)
-	}
 	return
 }
 

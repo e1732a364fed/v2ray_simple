@@ -47,12 +47,10 @@ var (
 )
 
 type exitCmd struct {
-	enable, defaultBoolValue           bool
-	name                               string
-	isStr                              bool
-	desc, defaultStringValue, strValue string
-	f                                  func()
-	fs                                 func(string)
+	enable, defaultBoolValue, isStr          bool
+	name, desc, defaultStringValue, strValue string
+	f                                        func()
+	fs                                       func(string)
 }
 
 func init() {
