@@ -25,6 +25,7 @@ type M struct {
 	DefaultUUID string
 
 	standardConf proxy.StandardConf
+	simpleConf   proxy.SimpleConf
 	appConf      *AppConf
 
 	v2ray_simple.GlobalInfo

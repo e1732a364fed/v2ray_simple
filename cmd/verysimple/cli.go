@@ -503,8 +503,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	fmt.Printf("你输入了 %s\n", fpath)
 
 	var confMode int
-	var simpleConf proxy.SimpleConf
-	confMode, simpleConf, _, err = defaultMachine.LoadConfig(fpath, "", "")
+	confMode, err = defaultMachine.LoadConfig(fpath, "", "")
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)
@@ -525,7 +524,7 @@ func interactively_hotLoadConfigFile(m *machine.M) {
 	case proxy.StandardMode:
 		m.LoadStandardConf()
 	case proxy.SimpleMode:
-		result := m.HotLoadSimpleConf(simpleConf)
+		result := m.LoadSimpleConf(true)
 		if result < 0 {
 			utils.PrintStr("添加失败！当前状态：\n")
 			utils.PrintStr(delimiter)

@@ -15,7 +15,6 @@ import (
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 
-	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/machine"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -178,7 +177,6 @@ func mainFunc() (result int) {
 	}
 
 	var configMode int
-	var fallback *httpLayer.ClassicFallback
 
 	var loadConfigErr error
 
@@ -195,15 +193,7 @@ func mainFunc() (result int) {
 
 	}
 
-	var simpleConf proxy.SimpleConf
-
-	configMode, simpleConf, fallback, loadConfigErr = defaultMachine.LoadConfig(configFileName, listenURL, dialURL)
-
-	if loadConfigErr == nil {
-
-		defaultMachine.SetupAppConf()
-
-	}
+	configMode, loadConfigErr = defaultMachine.LoadConfig(configFileName, listenURL, dialURL)
 
 	if utils.LogOutFileName == defaultLogFile {
 
@@ -238,7 +228,6 @@ func mainFunc() (result int) {
 			ce.Write(zap.Error(loadConfigErr))
 		} else {
 			log.Print(willExitStr)
-
 		}
 
 		return -1
@@ -257,34 +246,16 @@ func mainFunc() (result int) {
 		fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
 	}
 
-	if fallback != nil {
-		defaultMachine.RoutingEnv.Fallback = fallback
-	}
-
-	//load inServers and RoutingEnv
 	switch configMode {
 	case proxy.SimpleMode:
-		result, _ = defaultMachine.LoadSimpleServer(simpleConf)
+		result = defaultMachine.LoadSimpleConf(false)
 		if result < 0 {
 			return result
 		}
 
 	case proxy.StandardMode:
-
-		defaultMachine.SetupListen()
-	}
-
-	// load outClients
-	switch configMode {
-	case proxy.SimpleMode:
-		result, defaultMachine.DefaultOutClient = defaultMachine.LoadSimpleClient(simpleConf)
-		if result < 0 {
-			return result
-		}
-	case proxy.StandardMode:
-
+		defaultMachine.SetupListenAndRoute()
 		defaultMachine.SetupDial()
-
 	}
 
 	runPreCommands()
@@ -314,17 +285,13 @@ func mainFunc() (result int) {
 	}
 
 	if defaultMachine.EnableApiServer {
-
 		defaultMachine.ApiServerConf = defaultApiServerConf
-
 		defaultMachine.TryRunApiServer()
-
 	}
 
 	if interactive_mode {
 		if runCli != nil {
 			runCli()
-
 		}
 
 		interactive_mode = false

@@ -111,29 +111,34 @@ func (m *M) HotDeleteServer(index int) {
 	m.listenCloserList = utils.TrimSlice(m.listenCloserList, index)
 }
 
-func (m *M) HotLoadSimpleConf(simpleConf proxy.SimpleConf) (result int) {
+func (m *M) LoadSimpleConf(hot bool) (result int) {
 	var ser proxy.Server
-	result, ser = m.LoadSimpleServer(simpleConf)
+	result, ser = m.loadSimpleServer(m.simpleConf)
 	if result < 0 {
 		return
 	}
 	var cli proxy.Client
-	result, cli = m.LoadSimpleClient(simpleConf)
+	result, cli = m.loadSimpleClient(m.simpleConf)
 	if result < 0 {
 		return
 	}
 
-	lis := v2ray_simple.ListenSer(ser, cli, &m.RoutingEnv, &m.GlobalInfo)
-	if lis != nil {
-		m.listenCloserList = append(m.listenCloserList, lis)
+	if hot {
+		lis := v2ray_simple.ListenSer(ser, cli, &m.RoutingEnv, &m.GlobalInfo)
+		if lis != nil {
+			m.listenCloserList = append(m.listenCloserList, lis)
+		} else {
+			result = -1
+		}
 	} else {
-		result = -1
+		m.DefaultOutClient = cli
 	}
+
 	return
 }
 
 // load failed if result <0,
-func (m *M) LoadSimpleServer(simpleConf proxy.SimpleConf) (result int, server proxy.Server) {
+func (m *M) loadSimpleServer(simpleConf proxy.SimpleConf) (result int, server proxy.Server) {
 	var e error
 	server, e = proxy.ServerFromURL(simpleConf.ListenUrl)
 	if e != nil {
@@ -160,7 +165,7 @@ func (m *M) LoadSimpleServer(simpleConf proxy.SimpleConf) (result int, server pr
 	return
 }
 
-func (m *M) LoadSimpleClient(simpleConf proxy.SimpleConf) (result int, client proxy.Client) {
+func (m *M) loadSimpleClient(simpleConf proxy.SimpleConf) (result int, client proxy.Client) {
 	var e error
 	client, e = proxy.ClientFromURL(simpleConf.DialUrl)
 	if e != nil {

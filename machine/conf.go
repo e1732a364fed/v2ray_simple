@@ -57,53 +57,53 @@ func LoadVSConfFromBs(bs []byte) (sc proxy.StandardConf, ac *AppConf, err error)
 }
 
 func SetupByAppConf(ac *AppConf) {
-	if ac != nil {
+	if ac == nil {
+		return
+	}
 
-		if ac.LogFile != nil && utils.GivenFlags["lf"] == nil {
-			utils.LogOutFileName = *ac.LogFile
+	if ac.LogFile != nil && utils.GivenFlags["lf"] == nil {
+		utils.LogOutFileName = *ac.LogFile
+
+	}
+
+	if ac.LogLevel != nil && utils.GivenFlags["ll"] == nil {
+		utils.LogLevel = *ac.LogLevel
+
+	}
+	if ac.NoReadV && utils.GivenFlags["readv"] == nil {
+		netLayer.UseReadv = false
+	}
+
+	if ac.UDP_timeout != nil {
+
+		if minutes := *ac.UDP_timeout; minutes > 0 {
+			netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
+		}
+	}
+
+	if ac.DialTimeoutSeconds != nil {
+		if s := *ac.DialTimeoutSeconds; s > 0 {
+			netLayer.DialTimeout = time.Duration(s) * time.Second
 
 		}
+	}
 
-		if ac.LogLevel != nil && utils.GivenFlags["ll"] == nil {
-			utils.LogLevel = *ac.LogLevel
-
+	if ac.ReadTimeoutSeconds != nil {
+		if s := *ac.ReadTimeoutSeconds; s > 0 {
+			proxy.CommonReadTimeout = time.Duration(s) * time.Second
 		}
-		if ac.NoReadV && utils.GivenFlags["readv"] == nil {
-			netLayer.UseReadv = false
-		}
+	}
 
-		if ac.UDP_timeout != nil {
-
-			if minutes := *ac.UDP_timeout; minutes > 0 {
-				netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
-			}
-		}
-
-		if ac.DialTimeoutSeconds != nil {
-			if s := *ac.DialTimeoutSeconds; s > 0 {
-				netLayer.DialTimeout = time.Duration(s) * time.Second
-
-			}
-		}
-
-		if ac.ReadTimeoutSeconds != nil {
-			if s := *ac.ReadTimeoutSeconds; s > 0 {
-				proxy.CommonReadTimeout = time.Duration(s) * time.Second
-			}
-		}
-
-		if ac.GeoipFile != nil {
-			netLayer.GeoipFileName = *ac.GeoipFile
-		}
-		if ac.GeositeFolder != nil {
-			netLayer.GeositeFolder = *ac.GeositeFolder
-		}
+	if ac.GeoipFile != nil {
+		netLayer.GeoipFileName = *ac.GeoipFile
+	}
+	if ac.GeositeFolder != nil {
+		netLayer.GeositeFolder = *ac.GeositeFolder
 	}
 }
 
-// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf or simpleConf，否则尝试 listenURL, dialURL 参数.
-// 若 返回的是 simpleConf, 则还可能返回 mainFallback.
-func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int, simpleConf proxy.SimpleConf, mainFallback *httpLayer.ClassicFallback, err error) {
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf or simpleConf，否则尝试通过 listenURL, dialURL 参数 创建simpleConf
+func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
 	if fpath != "" {
@@ -124,13 +124,19 @@ func (m *M) LoadConfig(configFileName, listenURL, dialURL string) (confMode int,
 				}
 
 				confMode = proxy.StandardMode
+				m.setupAppConf()
 
 			}
 
 		} else {
+			var mainFallback *httpLayer.ClassicFallback
 
 			confMode = proxy.SimpleMode
-			simpleConf, mainFallback, err = proxy.LoadSimpleConf_byFile(fpath)
+			m.simpleConf, mainFallback, err = proxy.LoadSimpleConf_byFile(fpath)
+
+			if mainFallback != nil {
+				m.RoutingEnv.Fallback = mainFallback
+			}
 
 		}
 
@@ -142,7 +148,7 @@ url:
 		log.Printf("trying listenURL and dialURL \n")
 
 		confMode = proxy.SimpleMode
-		simpleConf, err = proxy.LoadSimpleConf_byUrl(listenURL, dialURL)
+		m.simpleConf, err = proxy.LoadSimpleConf_byUrl(listenURL, dialURL)
 	} else {
 
 		log.Println(proxy.ErrStrNoListenUrl)
@@ -154,46 +160,42 @@ url:
 	return
 }
 
-func (m *M) SetupAppConf() {
+func (m *M) setupAppConf() {
 	SetupByAppConf(m.appConf)
 }
 
-func (defaultMachine *M) SetupListen() {
-	if defaultMachine.appConf != nil {
-		defaultMachine.DefaultUUID = defaultMachine.appConf.DefaultUUID
+func (m *M) SetupListenAndRoute() {
+	var myCountryISO_3166 string
+	if m.appConf != nil {
+		myCountryISO_3166 = m.appConf.MyCountryISO_3166
+
+		m.DefaultUUID = m.appConf.DefaultUUID
 	}
 
-	//虽然标准模式支持多个Server，目前先只考虑一个
-	//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
-
-	if len(defaultMachine.standardConf.Listen) < 1 {
+	if len(m.standardConf.Listen) < 1 {
 		utils.Warn("no listen in config settings")
 		return
 	}
 
-	defaultMachine.LoadListenConf(defaultMachine.standardConf.Listen, false)
+	m.LoadListenConf(m.standardConf.Listen, false)
 
-	if len(defaultMachine.standardConf.Fallbacks) > 0 {
-		defaultMachine.ParseFallbacksAtSymbol(defaultMachine.standardConf.Fallbacks)
-	}
-	var myCountryISO_3166 string
-	if defaultMachine.appConf != nil {
-		myCountryISO_3166 = defaultMachine.appConf.MyCountryISO_3166
+	if len(m.standardConf.Fallbacks) > 0 {
+		m.ParseFallbacksAtSymbol(m.standardConf.Fallbacks)
 	}
 
-	defaultMachine.RoutingEnv = proxy.LoadEnvFromStandardConf(&defaultMachine.standardConf, myCountryISO_3166)
+	m.RoutingEnv = proxy.LoadEnvFromStandardConf(&m.standardConf, myCountryISO_3166)
 
 }
-func (defaultMachine *M) SetupDial() {
-	if len(defaultMachine.standardConf.Dial) < 1 {
+func (m *M) SetupDial() {
+	if len(m.standardConf.Dial) < 1 && m.DefaultOutClient == nil {
 		utils.Warn("no dial in config settings, will add 'direct'")
 
-		defaultMachine.SetDefaultDirectClient()
+		m.SetDefaultDirectClient()
 
 		return
 	}
 
-	defaultMachine.LoadDialConf(defaultMachine.standardConf.Dial)
+	m.LoadDialConf(m.standardConf.Dial)
 }
 func (m *M) LoadStandardConf() {
 	if len(m.standardConf.Dial) > 0 {
