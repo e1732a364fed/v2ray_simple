@@ -144,7 +144,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
 	if target.Port <= 0 {
-		return nil, errors.New("trojan Client EstablishUDPChannel failed, target port invalid")
+		return nil, utils.ErrInErr{ErrDesc: "trojan Client EstablishUDPChannel failed, target port invalid", Data: target}
 
 	}
 	buf := utils.GetBuf()

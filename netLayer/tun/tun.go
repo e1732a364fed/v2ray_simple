@@ -153,14 +153,18 @@ func Listen(dev device.Device, tcpFunc func(netLayer.TCPRequestInfo), udpFunc fu
 
 		udpConn := gonet.NewUDPConn(s, &wq, ep)
 
-		info := netLayer.UDPRequestInfo{
-			MsgConn: &netLayer.MsgConnForPacketConn{PacketConn: udpConn},
+		ad := netLayer.Addr{
+			Network: "udp",
+			IP:      net.IP(id.LocalAddress),
+			Port:    int(id.LocalPort),
+		}
 
-			Target: netLayer.Addr{
-				Network: "udp",
-				IP:      net.IP(id.LocalAddress),
-				Port:    int(id.LocalPort),
+		info := netLayer.UDPRequestInfo{
+			MsgConn: &UdpMsgConn{
+				PacketConn: udpConn,
+				RealTarget: ad,
 			},
+			Target: ad,
 		}
 
 		go udpFunc(info)
@@ -218,4 +222,42 @@ func setSocketOptions(s *stack.Stack, ep tcpip.Endpoint) tcpip.Error {
 		}
 	}
 	return nil
+}
+
+// Wraps net.PacketConn and implements MsgConn
+type UdpMsgConn struct {
+	net.PacketConn
+	RealTarget netLayer.Addr
+
+	tunSrcAddr net.Addr
+}
+
+func (mc *UdpMsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+	bs := utils.GetPacket()
+	n, ad, err := mc.ReadFrom(bs)
+	if err != nil {
+		return nil, mc.RealTarget, err
+	}
+	mc.tunSrcAddr = ad
+
+	return bs[:n], mc.RealTarget, nil
+}
+
+func (mc *UdpMsgConn) WriteMsgTo(p []byte, a netLayer.Addr) error {
+	//_, err := mc.WriteTo(p, a.ToAddr())
+	//这里的a是 远程地址，不是我们要写向的地址。在tun中我们要发向之前的tun的地址
+
+	_, err := mc.WriteTo(p, mc.tunSrcAddr)
+
+	return err
+}
+func (mc *UdpMsgConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+	return mc.PacketConn.Close()
+
+}
+func (mc *UdpMsgConn) Close() error {
+	return mc.PacketConn.Close()
+}
+func (mc *UdpMsgConn) Fullcone() bool {
+	return true
 }

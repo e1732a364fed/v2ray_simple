@@ -25,40 +25,6 @@ func init() {
 			return
 		}
 
-		// out, err = exec.Command("netstat", "-nr", "-f", "inet").Output()
-
-		// if err != nil {
-		// 	if ce := utils.CanLogErr("auto route failed"); ce != nil {
-		// 		ce.Write(zap.Error(err))
-		// 	}
-		// 	return
-		// }
-
-		// startLineIndex := -1
-		// fields := strings.Split(string(out), "\n")
-		// for i, l := range fields {
-		// 	if strings.HasPrefix(l, "Destination") {
-		// 		if i < len(fields)-1 && strings.HasPrefix(fields[i+1], "default") {
-		// 			startLineIndex = i + 1
-
-		// 		}
-		// 		break
-		// 	}
-		// }
-		// if startLineIndex < 0 {
-		// 	utils.Warn("auto route failed, parse netstat output failed,1")
-		// 	return
-		// }
-		// str := utils.StandardizeSpaces(fields[startLineIndex])
-		// fields = strings.Split(str, " ")
-
-		// if len(fields) <= 1 {
-		// 	utils.Warn("auto route failed, parse netstat output failed,2")
-		// 	return
-
-		// }
-		// routerIP := fields[1]
-
 		rip, ridx, err := netLayer.GetGateway() //oops, accidentally rest in peace
 
 		if err != nil {
@@ -79,7 +45,7 @@ func init() {
 		strs := []string{
 			"route delete -host default",
 			"route add default -interface " + tunDevName + " -hopcount 1",
-			"route add -net 0.0.0.0/1 " + rememberedRouterIP + " -hopcount 4",
+			//"route add -net 0.0.0.0/1 " + rememberedRouterIP + " -hopcount 4",
 			"route add " + rememberedRouterIP + " -interface " + rname,
 		}
 		//虽然添加了两个默认路由，但是tun的 hopcount (metric) 更低，所以tun的优先

@@ -11,6 +11,8 @@ import (
 )
 
 // MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装.
+// MsgConn专门针对代理进行设计。
+//
 // 实现 MsgConn接口 的类型 可以被用于 RelayUDP 进行转发。
 //
 // ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝。
@@ -20,7 +22,10 @@ import (
 type MsgConn interface {
 	NetDeadliner
 
+	//Addr为该数据实际要发送到的地址
 	ReadMsgFrom() ([]byte, Addr, error)
+
+	//Addr为该数据的来源
 	WriteMsgTo([]byte, Addr) error
 	CloseConnWithRaddr(raddr Addr) error //关闭特定连接
 	Close() error                        //关闭所有连接
