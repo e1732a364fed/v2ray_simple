@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -444,6 +445,13 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	bs := utils.GetPacket()
 
+	if u.fullcone {
+		u.UDPConn.SetReadDeadline(time.Now().Add(netLayer.UDP_fullcone_timeout))
+
+	} else {
+		u.UDPConn.SetReadDeadline(time.Now().Add(netLayer.UDP_timeout))
+
+	}
 	n, addr, err := u.UDPConn.ReadFromUDP(bs)
 	if err != nil {
 

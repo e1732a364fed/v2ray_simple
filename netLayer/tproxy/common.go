@@ -107,10 +107,28 @@ package tproxy
 import (
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
+
+//implements netLayer.MsgConn
+type MsgConn struct {
+	netLayer.EasyDeadline
+
+	parentMachine *Machine
+
+	hash netLayer.HashableAddr
+
+	ourSrcAddr *net.UDPAddr
+
+	readChan chan netLayer.AddrData
+
+	closeChan chan struct{}
+
+	fullcone bool
+}
 
 //一个tproxy状态机 具有 监听端口、tcplistener、udpConn 这三个要素。
 // 用于关闭 以及 储存所监听的 端口。
@@ -118,6 +136,19 @@ type Machine struct {
 	netLayer.Addr
 	net.Listener //tcpListener
 	*net.UDPConn
+
+	udpMsgConnMap map[netLayer.HashableAddr]*MsgConn
+	sync.RWMutex  //避免存储 与 移除  产生多线程冲突
+}
+
+func NewMachine() *Machine {
+	return &Machine{
+		udpMsgConnMap: make(map[netLayer.HashableAddr]*MsgConn),
+	}
+}
+
+func (m *Machine) Init() {
+	m.udpMsgConnMap = make(map[netLayer.HashableAddr]*MsgConn)
 }
 
 func (m *Machine) Stop() {

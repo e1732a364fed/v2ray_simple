@@ -21,46 +21,55 @@ func HandshakeTCP(tcpConn *net.TCPConn) netLayer.Addr {
 
 }
 
-var udpMsgConnMap = make(map[netLayer.HashableAddr]*MsgConn)
-
-//从一个透明代理udp连接中读取到实际地址，并返回 *MsgConn
-func HandshakeUDP(underlay *net.UDPConn) (*MsgConn, netLayer.Addr, error) {
-	bs := utils.GetPacket()
-	n, src, dst, err := ReadFromUDP(underlay, bs)
-	if err != nil {
-		return nil, netLayer.Addr{}, err
-	}
-	ad := netLayer.NewAddrFromUDPAddr(src)
-	hash := ad.GetHashable()
-	conn, found := udpMsgConnMap[hash]
-	if !found {
-		conn = &MsgConn{
-			ourSrcAddr: src,
-			readChan:   make(chan netLayer.AddrData, 5),
-			closeChan:  make(chan struct{}),
-		}
-		conn.InitEasyDeadline()
-
-		udpMsgConnMap[hash] = conn
-
-	}
-
-	conn.readChan <- netLayer.AddrData{Data: bs[:n], Addr: netLayer.NewAddrFromUDPAddr(dst)}
-
-	return conn, netLayer.NewAddrFromUDPAddr(dst), nil
+func (m *Machine) removeUDPByHash(hash netLayer.HashableAddr) {
+	m.Lock()
+	delete(m.udpMsgConnMap, hash)
+	m.Unlock()
 }
 
-//implements netLayer.MsgConn
-type MsgConn struct {
-	netLayer.EasyDeadline
+//从一个透明代理udp连接中读取到实际地址，并返回 *MsgConn
+func (m *Machine) HandshakeUDP(underlay *net.UDPConn) (*MsgConn, netLayer.Addr, error) {
 
-	ourSrcAddr *net.UDPAddr
+	for {
+		bs := utils.GetPacket()
+		n, src, dst, err := ReadFromUDP(underlay, bs)
+		if err != nil {
+			return nil, netLayer.Addr{}, err
+		}
+		ad := netLayer.NewAddrFromUDPAddr(src)
+		hash := ad.GetHashable()
 
-	readChan chan netLayer.AddrData
+		m.RLock()
+		conn, found := m.udpMsgConnMap[hash]
+		m.RUnlock()
 
-	closeChan chan struct{}
+		if !found {
+			conn = &MsgConn{
+				ourSrcAddr:    src,
+				readChan:      make(chan netLayer.AddrData, 5),
+				closeChan:     make(chan struct{}),
+				parentMachine: m,
+				hash:          hash,
+			}
+			conn.InitEasyDeadline()
 
-	fullcone bool
+			m.Lock()
+			m.udpMsgConnMap[hash] = conn
+			m.Unlock()
+
+		}
+
+		destAddr := netLayer.NewAddrFromUDPAddr(dst)
+
+		conn.readChan <- netLayer.AddrData{Data: bs[:n], Addr: destAddr}
+
+		if !found {
+			return conn, destAddr, nil
+
+		}
+
+	}
+
 }
 
 func (mc *MsgConn) Close() error {
@@ -68,12 +77,14 @@ func (mc *MsgConn) Close() error {
 	case <-mc.closeChan:
 	default:
 		close(mc.closeChan)
+		mc.parentMachine.removeUDPByHash(mc.hash)
+
 	}
 	return nil
 }
 
 func (mc *MsgConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
-	return nil
+	return mc.Close()
 }
 
 func (mc *MsgConn) Fullcone() bool {

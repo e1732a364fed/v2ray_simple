@@ -28,11 +28,24 @@ func ListenTproxy(lc proxy.LesserConf, defaultOutClientForThis proxy.Client, rou
 		}
 		return
 	}
-	udpConn := startLoopUDP(ad, lc, defaultOutClientForThis, &proxy.RoutingEnv{
-		RoutePolicy: routePolicy,
-	})
+
+	ad.Network = "udp"
+	uconn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
+	if err != nil {
+		if ce := utils.CanLogErr("TProxy startLoopUDP DialWithOpt failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		return nil
+	}
+
+	udpConn := uconn.(*net.UDPConn)
 
 	tm = &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn}
+	tm.Init()
+
+	go startLoopUDP(udpConn, tm, lc, defaultOutClientForThis, &proxy.RoutingEnv{
+		RoutePolicy: routePolicy,
+	})
 
 	return
 }
@@ -58,41 +71,29 @@ func startLoopTCP(ad netLayer.Addr, lc proxy.LesserConf, defaultOutClientForThis
 
 }
 
-//非阻塞
-func startLoopUDP(ad netLayer.Addr, lc proxy.LesserConf, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) *net.UDPConn {
-	ad.Network = "udp"
-	conn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
-	if err != nil {
-		if ce := utils.CanLogErr("TProxy startLoopUDP DialWithOpt failed"); ce != nil {
-			ce.Write(zap.Error(err))
-		}
-		return nil
-	}
-	udpConn := conn.(*net.UDPConn)
-	go func() {
+//阻塞
+func startLoopUDP(udpConn *net.UDPConn, tm *tproxy.Machine, lc proxy.LesserConf, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) {
 
-		for {
-			msgConn, raddr, err := tproxy.HandshakeUDP(udpConn)
-			if err != nil {
-				if ce := utils.CanLogErr("TProxy startLoopUDP loop read failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				break
-			} else {
-				if ce := utils.CanLogInfo("TProxy loop read got new udp"); ce != nil {
-					ce.Write(zap.String("->", raddr.String()))
-				}
+	for {
+		msgConn, raddr, err := tm.HandshakeUDP(udpConn)
+		if err != nil {
+			if ce := utils.CanLogErr("TProxy startLoopUDP loop read failed"); ce != nil {
+				ce.Write(zap.Error(err))
 			}
-			msgConn.SetFullcone(lc.Fullcone)
-
-			go passToOutClient(incomingInserverConnState{
-				inTag:         lc.Tag,
-				useSniffing:   lc.UseSniffing,
-				defaultClient: defaultOutClientForThis,
-				routingEnv:    env,
-			}, false, nil, msgConn, raddr)
+			break
+		} else {
+			if ce := utils.CanLogInfo("TProxy loop read got new udp"); ce != nil {
+				ce.Write(zap.String("->", raddr.String()))
+			}
 		}
+		msgConn.SetFullcone(lc.Fullcone)
 
-	}()
-	return udpConn
+		go passToOutClient(incomingInserverConnState{
+			inTag:         lc.Tag,
+			useSniffing:   lc.UseSniffing,
+			defaultClient: defaultOutClientForThis,
+			routingEnv:    env,
+		}, false, nil, msgConn, raddr)
+	}
+
 }
