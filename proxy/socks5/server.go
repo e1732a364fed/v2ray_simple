@@ -107,7 +107,7 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLa
 	// 一般免密握手包发来的是 [5 1 0]
 	n, err := underlay.Read(bs)
 	if err != nil || n < 3 {
-		returnErr = fmt.Errorf("failed to read hello: %w", err)
+		returnErr = fmt.Errorf("failed to read hello: %v, %d", err, n)
 		return
 	}
 	version := bs[0]
@@ -139,13 +139,17 @@ For:
 			}
 
 			dealtNone = true
-			returnErr = s.authNone(underlay)
-			if returnErr != nil {
-
+			if len(s.IDMap) != 0 {
 				continue
 			} else {
-				authed = true
-				break For
+				returnErr = s.authNone(underlay)
+				if returnErr != nil {
+
+					return
+				} else {
+					authed = true
+					break For
+				}
 			}
 
 		case AuthPassword:
@@ -257,7 +261,7 @@ For:
 	}
 
 	if err != nil || n < 7 { // Shortest length is 7
-		returnErr = fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
+		returnErr = fmt.Errorf("read socks5 failed, msgTooShort: %v, %d", err, n)
 		return
 	}
 
@@ -290,7 +294,7 @@ For:
 	}
 
 	if len(bs[off:]) < l {
-		returnErr = errors.New("short command request")
+		returnErr = utils.ErrInErr{ErrDesc: "short command request", ErrDetail: utils.ErrInvalidData, Data: []any{len(bs[off:]), l, bs[:n], string(bs[:n])}}
 		return
 	}
 

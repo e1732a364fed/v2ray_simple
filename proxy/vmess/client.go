@@ -271,10 +271,7 @@ func (c *ClientConn) handshake(cmd byte, firstpayload []byte) error {
 	}
 	buf.Write(fnv1a.Sum(nil))
 
-	var fixedLengthCmdKey [16]byte
-	copy(fixedLengthCmdKey[:], GetKey(c.V2rayUser))
-	vmessout := sealAEADHeader(fixedLengthCmdKey, buf.Bytes(), time.Now())
-	c.vmessout = vmessout
+	c.vmessout = sealAEADHeader(GetKey(c.V2rayUser), buf.Bytes(), time.Now())
 
 	_, err = c.Write(firstpayload)
 

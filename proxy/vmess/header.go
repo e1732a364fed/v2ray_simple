@@ -114,7 +114,8 @@ func tryMatchAuthIDByBlock(block cipher.Block, bs []byte) (failReason int) {
 	return 0
 }
 
-func sealAEADHeader(key [16]byte, data []byte, t time.Time) []byte {
+//key长度必须16位
+func sealAEADHeader(key []byte, data []byte, t time.Time) []byte {
 	generatedAuthID := createAuthID(key[:], t.Unix())
 	connectionNonce := make([]byte, 8)
 	rand.Read(connectionNonce)

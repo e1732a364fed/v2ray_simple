@@ -67,7 +67,8 @@ func PutBuf(buf *bytes.Buffer) {
 //建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte（MaxBufLen）
 func GetPacket() []byte {
 	bsPtr := packetPool.Get().(*[]byte)
-	return *bsPtr
+	returnValue := *bsPtr
+	return returnValue[:MaxPacketLen]
 }
 
 // 放回用 GetPacket 获取的 []byte
@@ -88,7 +89,8 @@ func PutPacket(bs []byte) {
 // 从Pool中获取一个 MTU 长度的 []byte
 func GetMTU() []byte {
 	bs := mtuPool.Get().(*[]byte)
-	return *bs
+	returnValue := *bs
+	return returnValue[:MTU]
 }
 
 // 从pool中获取 []byte, 根据给出长度不同，来源于的Pool会不同.
@@ -110,10 +112,8 @@ func PutBytes(bs []byte) {
 
 		return
 	} else if c < MaxPacketLen {
-		if c != MTU {
-			bs = bs[:MTU]
 
-		}
+		bs = bs[:MTU]
 		mtuPool.Put(&bs)
 	} else {
 		bs = bs[:MaxPacketLen]
