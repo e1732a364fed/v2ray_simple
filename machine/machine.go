@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -49,7 +50,7 @@ type M struct {
 
 	callbacks
 
-	ticker *time.Ticker
+	stateReportTicker *time.Ticker
 }
 
 func New() *M {
@@ -107,11 +108,17 @@ func (m *M) Start() {
 			dm.StartListen()
 		}
 
-		if m.ticker == nil {
-			m.ticker = time.NewTicker(time.Minute * 5) //每隔五分钟输出一次目前状态
+		if m.stateReportTicker == nil {
+			m.stateReportTicker = time.NewTicker(time.Minute * 5) //每隔五分钟输出一次目前状态
+
+			var sw = utils.PrefixWriter{
+				Writer: os.Stdout,
+			}
 			go func() {
-				for range m.ticker.C {
-					m.PrintAllState(os.Stdout)
+				for range m.stateReportTicker.C {
+					sw.Prefix = []byte(time.Now().Format("2006-01-02 15:04:05.999 "))
+					sw.Write([]byte("Current state:\n"))
+					m.PrintAllStateForHuman(&sw)
 				}
 			}()
 		}
@@ -153,9 +160,9 @@ func (m *M) Stop() {
 	if dm := m.routingEnv.DnsMachine; dm != nil {
 		dm.Stop()
 	}
-	if m.ticker != nil {
-		m.ticker.Stop()
-		m.ticker = nil
+	if m.stateReportTicker != nil {
+		m.stateReportTicker.Stop()
+		m.stateReportTicker = nil
 	}
 	m.Unlock()
 }
@@ -200,6 +207,25 @@ func (m *M) PrintAllState(w io.Writer) {
 	fmt.Fprintln(w, "activeConnectionCount", m.ActiveConnectionCount)
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", m.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", m.AllUploadBytesSinceStart)
+
+	for i, s := range m.allServers {
+		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))
+
+	}
+	for i, c := range m.allClients {
+		fmt.Fprintln(w, "outClient", i, proxy.GetVSI_url(c, ""))
+	}
+
+}
+
+// mimic PrintAllState
+func (m *M) PrintAllStateForHuman(w io.Writer) {
+	if w == nil {
+		w = os.Stdout
+	}
+	fmt.Fprintln(w, "activeConnectionCount", m.ActiveConnectionCount)
+	fmt.Fprintln(w, "allDownloadBytesSinceStart", humanize.Bytes(m.AllDownloadBytesSinceStart))
+	fmt.Fprintln(w, "allUploadBytesSinceStart", humanize.Bytes(m.AllUploadBytesSinceStart))
 
 	for i, s := range m.allServers {
 		fmt.Fprintln(w, "inServer", i, proxy.GetVSI_url(s, ""))

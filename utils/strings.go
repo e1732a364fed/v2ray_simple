@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"io"
 	"math/rand"
 	"os"
 	"strings"
@@ -88,4 +89,14 @@ func GetPurgedTomlBytes(v any) ([]byte, error) {
 	}
 	return sb.Bytes(), nil
 
+}
+
+type PrefixWriter struct {
+	io.Writer
+	Prefix []byte
+}
+
+func (lw *PrefixWriter) Write(p []byte) (n int, err error) {
+	lw.Writer.Write(lw.Prefix)
+	return lw.Writer.Write(p)
 }
