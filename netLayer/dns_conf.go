@@ -92,7 +92,13 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 					continue
 				}
 
-				dm.AddNewServer(server, &ad)
+				if err := dm.AddNewServer(server, &ad); err != nil {
+					if ce := utils.CanLogErr("LoadDnsMachine, AddNewServer by string failed"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+
+					continue
+				}
 
 			case map[string]any:
 
@@ -121,7 +127,7 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 
 				if err := dm.AddNewServer(realServer.AddrUrlStr, &addr); err != nil {
 
-					if ce := utils.CanLogErr("LoadDnsMachine, AddNewServer failed"); ce != nil {
+					if ce := utils.CanLogErr("LoadDnsMachine, AddNewServer by map failed"); ce != nil {
 						ce.Write(zap.Error(err))
 					}
 

@@ -207,6 +207,7 @@ func (dm *DNSMachine) AddNewServer(name string, addr *Addr) error {
 		dm.defaultConn = DnsConn{Conn: new(dns.Conn), raddr: addr, Name: name}
 		err := dm.defaultConn.Dial()
 		if err != nil {
+			dm.defaultConn.Conn = nil
 			return err
 		}
 	} else {
@@ -362,7 +363,7 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 		}
 	}
 
-	if theDNSServerConn.Conn == nil { //如果配置文件只配置了自定义映射, 而没配置dns服务器的话, 那么我们就无法进行实际的dns查询
+	if theDNSServerConn.Conn == nil { //如果配置文件只配置了自定义映射, 而没配置dns服务器的话, 那么我们就无法进行实际的dns查询; 或者配置了，但是因为Dial失败，导致没有 实际的Conn
 		if ce := utils.CanLogDebug("[DNSMachine] no server configured, return nil."); ce != nil {
 			ce.Write()
 		}
