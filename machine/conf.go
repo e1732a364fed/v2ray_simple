@@ -17,7 +17,7 @@ import (
 // VS 标准toml文件格式 由 proxy.StandardConf , ApiServerConf, AppConf 3部分组成
 type VSConf struct {
 	AppConf       *AppConf       `toml:"app"`
-	ApiServerConf *ApiServerConf `toml:"api_server"`
+	ApiServerConf *ApiServerConf `toml:"apiServer"`
 	proxy.StandardConf
 }
 
@@ -145,7 +145,7 @@ func (m *M) LoadConfigByTomlBytes(bs []byte) (err error) {
 		m.AppConf.Setup()
 	}
 	if vsConf.ApiServerConf != nil {
-		m.ApiServerConf = *vsConf.ApiServerConf
+		m.TomlApiServerConf = *vsConf.ApiServerConf
 	}
 
 	return nil

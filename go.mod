@@ -32,6 +32,7 @@ require (
 	golang.zx2c4.com/wireguard v0.0.0-20220920152132-bb719d3a6e2c
 	gonum.org/v1/gonum v0.11.0
 	gvisor.dev/gvisor v0.0.0-20221214043228-7501cb5e258d
+	rsc.io/qr v0.2.0
 
 )
 
@@ -45,7 +46,6 @@ require (
 	github.com/onsi/ginkgo/v2 v2.2.0 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 // indirect
-	rsc.io/qr v0.2.0 // indirect
 )
 
 require (

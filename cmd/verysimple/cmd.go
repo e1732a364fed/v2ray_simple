@@ -44,6 +44,15 @@ type exitCmd struct {
 }
 
 func init() {
+
+	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
+
+	//apiServer stuff
+
+	//defaultApiServerConf.SetupFlags()
+}
+
+func initExitCmds() {
 	for i, ec := range exitCmds {
 		if ec.isStr {
 			flag.StringVar(&exitCmds[i].strValue, ec.name, ec.defaultStringValue, ec.desc)
@@ -54,11 +63,6 @@ func init() {
 		}
 	}
 
-	flag.BoolVar(&download, "d", false, " automatically download required mmdb file")
-
-	//apiServer stuff
-
-	//defaultApiServerConf.SetupFlags()
 }
 
 // 运行一些 执行后立即退出程序的 命令

@@ -23,6 +23,9 @@ import (
 type M struct {
 	ApiServerConf
 
+	TomlApiServerConf ApiServerConf
+	CmdApiServerConf  ApiServerConf
+
 	AppConf
 
 	standardConf proxy.StandardConf
@@ -100,10 +103,19 @@ func (m *M) Start() {
 		}
 		m.Unlock()
 	}
+
 	if !m.ApiServerRunning && m.EnableApiServer {
 		m.TryRunApiServer()
 	}
 
+}
+
+// 融合 CmdApiServerConf 和 TomlApiServerConf, CmdApiServerConf 的值会覆盖 TomlApiServerConf
+func (m *M) SetupApiConf() {
+	m.ApiServerConf = NewApiServerConf()
+
+	m.ApiServerConf.SetUnDefault(&m.TomlApiServerConf)
+	m.ApiServerConf.SetUnDefault(&m.CmdApiServerConf)
 }
 
 func (m *M) Stop() {

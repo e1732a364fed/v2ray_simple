@@ -260,10 +260,10 @@ func makeBasicControlsPage() ui.Control {
 			}
 
 			fgrid.Append(button,
-				0, 0, 1, 1,
+				1, 0, 1, 1,
 				false, ui.AlignFill, false, ui.AlignFill)
 			fgrid.Append(confE,
-				1, 0, 1, 1,
+				0, 0, 1, 1,
 				true, ui.AlignFill, false, ui.AlignFill)
 
 			button = ui.NewButton("保存配置文件")
@@ -280,10 +280,10 @@ func makeBasicControlsPage() ui.Control {
 
 			})
 			fgrid.Append(button,
-				0, 1, 1, 1,
+				1, 1, 1, 1,
 				false, ui.AlignFill, false, ui.AlignFill)
 			fgrid.Append(saveFE,
-				1, 1, 1, 1,
+				0, 1, 1, 1,
 				true, ui.AlignFill, false, ui.AlignFill)
 
 		}
@@ -299,7 +299,7 @@ func makeBasicControlsPage() ui.Control {
 		systemGroup.SetMargined(true)
 		systemHbox.SetPadded(true)
 
-		vbox.Append(systemHbox, true)
+		vbox.Append(systemHbox, false)
 
 		proxyForm := ui.NewForm()
 		proxyForm.SetPadded(true)

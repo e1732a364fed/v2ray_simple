@@ -22,7 +22,7 @@ curl -k https://127.0.0.1:48345/api/allstate
 */
 
 type ApiServerConf struct {
-	EnableApiServer bool   `toml:"app"`
+	EnableApiServer bool   `toml:"enable"`
 	PlainHttp       bool   `toml:"plain"`
 	KeyFile         string `toml:"key"`
 	CertFile        string `toml:"cert"`
@@ -31,17 +31,55 @@ type ApiServerConf struct {
 	Addr            string `toml:"addr"`
 }
 
-func (asc *ApiServerConf) SetupFlags() {
-	flag.BoolVar(&asc.EnableApiServer, "ea", false, "enable api server")
+// 内含默认值的 ApiServerConf
+func NewApiServerConf() (ac ApiServerConf) {
+	ac.SetupFlags(flag.NewFlagSet("", 10))
+	return
+}
 
-	flag.BoolVar(&asc.PlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
+func (asc *ApiServerConf) SetupFlags(fs *flag.FlagSet) {
+	if fs == nil {
+		fs = flag.CommandLine
+	}
+	fs.BoolVar(&asc.EnableApiServer, "ea", false, "enable api server")
 
-	flag.StringVar(&asc.PathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
-	flag.StringVar(&asc.AdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
-	flag.StringVar(&asc.Addr, "sa", "127.0.0.1:48345", "api Server listen address")
-	flag.StringVar(&asc.CertFile, "scert", "", "api Server tls cert file path")
-	flag.StringVar(&asc.KeyFile, "skey", "", "api Server tls cert key path")
+	fs.BoolVar(&asc.PlainHttp, "sunsafe", false, "if given, api Server will use http instead of https")
 
+	fs.StringVar(&asc.PathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
+	fs.StringVar(&asc.AdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
+	fs.StringVar(&asc.Addr, "sa", "127.0.0.1:48345", "api Server listen address")
+	fs.StringVar(&asc.CertFile, "scert", "", "api Server tls cert file path")
+	fs.StringVar(&asc.KeyFile, "skey", "", "api Server tls cert key path")
+
+}
+
+// 若 acref 里有与默认值不同的项且字符串不为空, 将该项的值赋值给 asc
+func (asc *ApiServerConf) SetUnDefault(acref *ApiServerConf) {
+	defaultAc := NewApiServerConf()
+	var emptyAc ApiServerConf
+
+	if acref.PlainHttp != defaultAc.PlainHttp {
+		asc.PlainHttp = acref.PlainHttp
+	}
+	if acref.EnableApiServer != defaultAc.EnableApiServer {
+		asc.EnableApiServer = acref.EnableApiServer
+	}
+
+	if acref.Addr != defaultAc.Addr && acref.Addr != emptyAc.Addr {
+		asc.Addr = acref.Addr
+	}
+	if acref.AdminPass != defaultAc.AdminPass {
+		asc.AdminPass = acref.AdminPass
+	}
+	if acref.PathPrefix != defaultAc.PathPrefix && acref.PathPrefix != emptyAc.PathPrefix {
+		asc.PathPrefix = acref.PathPrefix
+	}
+	if acref.CertFile != defaultAc.CertFile {
+		asc.CertFile = acref.CertFile
+	}
+	if acref.KeyFile != defaultAc.KeyFile {
+		asc.KeyFile = acref.KeyFile
+	}
 }
 
 // 非阻塞,如果运行成功则 apiServerRunning 会被设为 true

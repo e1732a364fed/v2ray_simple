@@ -18,13 +18,6 @@ type MuxMarker interface {
 	IsMux() bool
 }
 
-// 实现 MuxMarker
-type MuxMarkerConn struct {
-	netLayer.ReadWrapper
-}
-
-func (mh *MuxMarkerConn) IsMux() bool { return true }
-
 // 实现 utils.MuxMarker, utils.User
 type UserReadWrapper struct {
 	utils.User

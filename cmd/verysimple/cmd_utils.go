@@ -41,6 +41,7 @@ func init() {
 		// 	// utils.InitLog("")
 		// 	// dns := netLayer.GetSystemDNS()
 		// 	// log.Println(len(dns), dns)
+		// 	log.Println(machine.NewApiServerConf())
 		// }},
 	}
 

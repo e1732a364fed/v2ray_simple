@@ -100,7 +100,9 @@ func main() {
 }
 
 func mainFunc() (result int) {
-	mainM.ApiServerConf.SetupFlags()
+
+	initExitCmds()
+	mainM.CmdApiServerConf.SetupFlags(nil)
 
 	defer func() {
 		//注意，这个recover代码并不是万能的，有时捕捉不到panic。
@@ -221,6 +223,8 @@ func mainFunc() (result int) {
 	if ce := utils.CanLogDebug("All Given Flags"); ce != nil {
 		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
 	}
+
+	mainM.SetupApiConf()
 
 	if loadConfigErr != nil && !IsFlexible(mainM) {
 
