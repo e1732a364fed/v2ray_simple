@@ -73,7 +73,8 @@ type UserClient interface {
 type Server interface {
 	BaseInterface
 
-	//ReadWriteCloser is for TCP request, net.PacketConn is for UDP request
+	//ReadWriteCloser is for TCP request, net.PacketConn is for UDP request.
+	// 约定，如果error返回的是 utils.ErrHandled， 则调用代码停止进一步处理。
 	Handshake(underlay net.Conn) (net.Conn, netLayer.MsgConn, netLayer.Addr, error)
 
 	//get/listen a useable inner mux

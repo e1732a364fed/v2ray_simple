@@ -9,7 +9,9 @@ import (
 )
 
 var (
-	serverCreatorMap = make(map[string]ServerCreator)
+	serverCreatorMap = map[string]ServerCreator{
+		RejectName: RejectCreator{},
+	}
 	clientCreatorMap = map[string]ClientCreator{
 		DirectName: DirectCreator{},
 		RejectName: RejectCreator{},
