@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -34,7 +35,8 @@ type Config struct {
 //implements net.Conn
 type ClientConn struct {
 	commonPart
-	timeouter
+	//timeouter
+	netLayer.EasyDeadline
 
 	client *Client
 
@@ -215,11 +217,13 @@ func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 		shouldClose: atomic.NewBool(false),
 		client:      c,
 	}
-	conn.timeouter = timeouter{
-		closeFunc: func() {
-			conn.Close()
-		},
-	}
+
+	/*
+		conn.timeouter = timeouter{
+			closeFunc: func() {
+				conn.Close()
+			},
+		}*/
 
 	go conn.handshakeOnce.Do(conn.handshake) //necessary。 因为 handshake不会立刻退出，所以必须要用 goroutine, 否则会卡住
 

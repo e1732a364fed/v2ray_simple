@@ -9,7 +9,6 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
-	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
@@ -92,6 +91,8 @@ func (c *commonPart) Read(b []byte) (n int, err error) {
 // timeouter一旦超时，就会直接关闭连接，这是无法恢复的。而且 读和写共用同一个deadline。
 // 如果要求高的话，还是建议使用 netLayer.EasyDeadline.
 // 但因为比较极简，所以我们保留了下来。
+
+/*
 type timeouter struct {
 	deadline *time.Timer
 
@@ -128,3 +129,5 @@ func (c *timeouter) SetDeadline(t time.Time) error {
 	return nil
 
 }
+
+*/

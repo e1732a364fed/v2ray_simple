@@ -273,17 +273,21 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 		}
 	}
 
-	sc.timeouter = timeouter{
-		closeFunc: func() {
-			sc.Close()
-		},
-	}
+	/*
+		sc.timeouter = timeouter{
+			closeFunc: func() {
+				sc.Close()
+			},
+		}
+	*/
+
 	return
 }
 
 type ServerConn struct {
 	commonPart
-	timeouter
+	//timeouter
+	netLayer.EasyDeadline
 
 	io.Closer
 	Writer http.ResponseWriter
