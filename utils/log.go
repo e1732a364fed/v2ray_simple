@@ -57,6 +57,14 @@ func getZapLogFileWriteSyncer(fn string) zapcore.WriteSyncer {
 	})
 }
 
+func LogLevel5CharList() (sl []string) {
+	sl = make([]string, 0, log_off)
+	for i := -1; i < log_off-1; i++ {
+		sl = append(sl, levelCapitalStrWith5Chars(zapcore.Level(i)))
+	}
+	return
+}
+
 // 为了输出日志保持整齐, 统一使用5字节长度的字符串, 少的加尾缀空格, 多的以 点号 进行缩写。
 func levelCapitalStrWith5Chars(l zapcore.Level) string {
 	switch l {

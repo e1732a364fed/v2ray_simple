@@ -46,13 +46,18 @@ func (m *M) LoadDialConf(conf []*proxy.DialConf) (ok bool) {
 
 }
 
-// add; when hot=true, listen the server
+// 试图通过 conf数组创建server，并保存到m中。若 hot = false, 如果有任何一个server创建出错，则不会有任何server被保存入m。
+// 若 hot=true, 监听每一个成功创建的server. hot = true只有在 m.IsRunning() 时有效，否则视为 false
 func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 	ok = true
 
 	if m.DefaultOutClient == nil {
 		m.DefaultOutClient = v2ray_simple.DirectClient
 	}
+
+	var tmplist []proxy.Server
+
+	h_r := hot && m.running
 
 	for _, l := range conf {
 		if l.UUID == "" && m.DefaultUUID != "" {
@@ -69,7 +74,7 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 			continue
 		}
 
-		if hot && m.running {
+		if h_r {
 			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.routingEnv, &m.GlobalInfo)
 			if lis != nil {
 				m.listenCloserList = append(m.listenCloserList, lis)
@@ -79,8 +84,13 @@ func (m *M) LoadListenConf(conf []*proxy.ListenConf, hot bool) (ok bool) {
 				ok = false
 			}
 		} else {
-			m.allServers = append(m.allServers, inServer)
+			tmplist = append(tmplist, inServer)
+
 		}
+	}
+
+	if ok && !h_r {
+		m.allServers = append(m.allServers, tmplist...)
 	}
 
 	return
@@ -261,6 +271,7 @@ func (m *M) HotLoadDialUrl(theUrlStr string, format int) error {
 
 }
 
+// 热加载url格式的listen配置。format为1表示vs标准url格式, 0表示协议原生url格式，一般为1。
 func (m *M) HotLoadListenUrl(theUrlStr string, format int) error {
 	u, sn, creator, okTls, err := proxy.GetRealProtocolFromServerUrl(theUrlStr)
 	if err != nil {
@@ -289,6 +300,7 @@ func (m *M) HotLoadListenUrl(theUrlStr string, format int) error {
 	return nil
 }
 
+// 热加载toml格式的listen配置
 func (m *M) HotLoadListenConfStr(theStr string) error {
 	bs := []byte(theStr)
 	bs = utils.ReplaceBytesSynonyms(bs, proxy.StandardConfBytesSynonyms)

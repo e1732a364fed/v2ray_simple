@@ -91,6 +91,55 @@ func setupDefaultPref() {
 
 }
 
+var tab *ui.Tab
+
+func setupUI() {
+
+	setMenu()
+
+	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
+
+	{
+		mainwin.OnClosing(func(*ui.Window) bool {
+			ui.Quit() //只是退出gui模式，不会退出app
+			mainwin = nil
+			return true
+		})
+		ui.OnShouldQuit(func() bool {
+			mainwin = nil
+			return true
+		})
+	}
+
+	setupTab()
+
+	mainwin.Show()
+
+}
+
+func setupTab() {
+	if tab != nil {
+		mainwin.SetChild(nil)
+		c := tab.NumPages()
+		for i := 0; i < c; i++ {
+			tab.Delete(0)
+		}
+	}
+	tab = ui.NewTab()
+	mainwin.SetChild(tab)
+	mainwin.SetMargined(true)
+
+	tab.Append("基础控制", makeBasicControlsPage())
+	tab.Append("代理控制", makeConfPage())
+	tab.Append("路由控制", makeRoutePage())
+	tab.Append("app控制", makeAppPage())
+	tab.Append("log查看器", makeLogPage())
+
+	//for i := 0; i < tab.NumPages(); i++ {
+	//tab.SetMargined(i, true)
+	//}
+}
+
 func makeBasicControlsPage() ui.Control {
 	vbox := ui.NewVerticalBox()
 	vbox.SetPadded(true)
@@ -445,58 +494,6 @@ func makeBasicControlsPage() ui.Control {
 	entryForm.Append("Multiline Entry", multilineEntry, true)
 
 	return vbox
-}
-
-func windowClose(*ui.Window) bool {
-	return true
-}
-
-var tab *ui.Tab
-
-func setupUI() {
-
-	setMenu()
-
-	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
-
-	{
-		mainwin.OnClosing(func(*ui.Window) bool {
-			ui.Quit() //只是退出gui模式，不会退出app
-			mainwin = nil
-			return true
-		})
-		ui.OnShouldQuit(func() bool {
-			mainwin = nil
-			return true
-		})
-	}
-
-	setupTab()
-
-	mainwin.Show()
-
-}
-
-func setupTab() {
-	if tab != nil {
-		mainwin.SetChild(nil)
-		c := tab.NumPages()
-		for i := 0; i < c; i++ {
-			tab.Delete(0)
-		}
-	}
-	tab = ui.NewTab()
-	mainwin.SetChild(tab)
-	mainwin.SetMargined(true)
-
-	tab.Append("基础控制", makeBasicControlsPage())
-	tab.Append("代理控制", makeConfPage())
-	tab.Append("路由控制", makeRoutePage())
-	tab.Append("app控制", makeAppPage())
-
-	//for i := 0; i < tab.NumPages(); i++ {
-	//tab.SetMargined(i, true)
-	//}
 }
 
 /*

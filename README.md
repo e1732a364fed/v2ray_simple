@@ -14,7 +14,7 @@
 ## 最新消息
 
 vsb项目已经支持了安卓vpn功能: 
-https://github.com/e1732a364fed/vsb/releases/tag/v0.0.3
+https://github.com/e1732a364fed/vsb/releases
 
 # verysimple
 

@@ -115,7 +115,7 @@ func (m *M) Start() {
 				for range m.stateReportTicker.C {
 					sw.Prefix = []byte(time.Now().Format("2006-01-02 15:04:05.999 "))
 					sw.Write([]byte("Current state:\n"))
-					m.PrintAllStateForHuman(&sw, false)
+					m.PrintAllStateForHuman(os.Stdout, false)
 				}
 			}()
 		}
