@@ -5,10 +5,10 @@ package main
 // gui界面, 所属计划为 vsc 计划，即versyimple client计划，使用图形界面. 服务端无需gui，所以我们叫client
 
 import (
-	"log"
-
 	"github.com/e1732a364fed/ui"
 	_ "github.com/e1732a364fed/ui/winmanifest"
+	"github.com/e1732a364fed/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 func init() {
@@ -27,10 +27,47 @@ func makeBasicControlsPage() ui.Control {
 	hbox := ui.NewHorizontalBox()
 	hbox.SetPadded(true)
 	vbox.Append(hbox, false)
-	cb := ui.NewCheckbox("Enable")
-	hbox.Append(cb, false)
 
-	hbox.Append(ui.NewButton("Button"), false)
+	toggleCheckbox := ui.NewCheckbox("Enable")
+	stopBtn := ui.NewButton("Stop")
+	startBtn := ui.NewButton("Start")
+
+	hbox.Append(toggleCheckbox, false)
+	hbox.Append(stopBtn, false)
+	hbox.Append(startBtn, false)
+
+	{
+
+		toggleCheckbox.SetChecked(defaultMachine.IsRunning())
+
+		defaultMachine.AddToggleCallback(func(i int) {
+			ok := i == 1
+			toggleCheckbox.SetChecked(ok) //SetChecked不会触发OnToggled
+			if ok {
+				stopBtn.Enable()
+				startBtn.Disable()
+			} else {
+				stopBtn.Disable()
+				startBtn.Enable()
+			}
+		})
+		toggleCheckbox.OnToggled(func(c *ui.Checkbox) {
+			if c.Checked() {
+				defaultMachine.Start()
+			} else {
+				defaultMachine.Stop()
+
+			}
+		})
+
+		stopBtn.OnClicked(func(b *ui.Button) {
+			defaultMachine.Stop()
+		})
+
+		startBtn.OnClicked(func(b *ui.Button) {
+			defaultMachine.Start()
+		})
+	}
 
 	vbox.Append(ui.NewLabel("This is a label. Right now, labels can only span one line."), false)
 
@@ -206,47 +243,56 @@ func windowClose(*ui.Window) bool {
 }
 
 func setupUI() {
-	var x = ui.NewMenu("Files")
-	x.AppendPreferencesItem()
-	x.AppendAboutItem().OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
-		log.Println("about")
 
-		ui.MsgBox(mainwin,
-			"verysimple, a very simple proxy",
-			versionStr()+"\n\nhttps://github.com/e1732a364fed/v2ray_simple/")
+	var filesM = ui.NewMenu("Files")
+	{
+		filesM.AppendPreferencesItem()
+		filesM.AppendAboutItem().OnClicked(func(mi *ui.MenuItem, w *ui.Window) {
+			ui.MsgBox(mainwin,
+				"verysimple, a very simple proxy",
+				versionStr()+"\n\n"+weblink)
+		})
+		filesM.AppendQuitItem()
+		openUrlFunc := func(url string) func(mi *ui.MenuItem, w *ui.Window) {
+			return func(mi *ui.MenuItem, w *ui.Window) {
+				if e := utils.Openbrowser(url); e != nil {
+					if ce := utils.CanLogErr("open github link failed"); ce != nil {
+						ce.Write(zap.Error(e))
+					}
+				}
+			}
+		}
+		filesM.AppendItem("Open github").OnClicked(openUrlFunc(weblink))
+		filesM.AppendItem("Check github releases").OnClicked(openUrlFunc(weblink + "releases"))
 
-	})
-	x.AppendQuitItem()
-	// x.AppendItem("xxx")
-	// x.AppendItem("xxx")
-	// x.AppendItem("xxx")
-	// x.AppendSeparator()
+		//var y = ui.NewMenu("Menu2")
+		//y.AppendItem("verysimple")
 
-	//var y = ui.NewMenu("Menu2")
-	//y.AppendItem("verysimple")
+	}
+	mainwin = ui.NewWindow("verysimple", 640, 480, true) //must create after menu; or it will panic
 
-	mainwin = ui.NewWindow("verysimple", 640, 480, true)
-	mainwin.OnClosing(func(*ui.Window) bool {
-		ui.Quit()
-		return true
-	})
-	ui.OnShouldQuit(func() bool {
-		mainwin.Destroy()
-		return true
-	})
+	{
+		mainwin.OnClosing(func(*ui.Window) bool {
+			ui.Quit()
+			return true
+		})
+		ui.OnShouldQuit(func() bool {
+			mainwin.Destroy()
+			return true
+		})
+	}
 
 	tab := ui.NewTab()
 	mainwin.SetChild(tab)
 	mainwin.SetMargined(true)
 
 	tab.Append("Basic Controls", makeBasicControlsPage())
-	tab.SetMargined(0, true)
-
 	tab.Append("Numbers and Lists", makeNumbersPage())
-	tab.SetMargined(1, true)
-
 	tab.Append("Data Choosers", makeDataChoosersPage())
-	tab.SetMargined(2, true)
+
+	for i := 0; i < tab.NumPages(); i++ {
+		tab.SetMargined(i, true)
+	}
 
 	mainwin.Show()
 

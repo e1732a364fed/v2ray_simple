@@ -46,7 +46,7 @@ const (
 	defaultConfFn  = "client.toml"
 	defaultGeoipFn = "GeoLite2-Country.mmdb"
 
-	willExitStr = "Neither valid proxy settings available, nor cli or apiServer running. Exit now.\n"
+	willExitStr = "Neither valid proxy settings available, nor cli/apiServer/gui running. Exit now.\n"
 )
 
 func init() {

@@ -3,7 +3,10 @@ package utils
 
 import (
 	"flag"
+	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -25,7 +28,7 @@ func IsFlagGiven(name string) bool {
 	return found
 }
 
-//flag包有个奇葩的缺点, 没法一下子获取所有的已经配置的参数, 只能遍历；
+// flag包有个奇葩的缺点, 没法一下子获取所有的已经配置的参数, 只能遍历；
 // 如果我们有大量的参数需要判断是否给出过, 那么不如先提取到到map里。
 //
 // 实际上flag包的底层也是用的一个map, 但是它是私有的, 而且我们也不宜用unsafe暴露出来.
@@ -40,13 +43,13 @@ func GetGivenFlags() (m map[string]*flag.Flag) {
 
 var GivenFlags map[string]*flag.Flag
 
-//call flag.Parse() and assign given flags to GivenFlags.
+// call flag.Parse() and assign given flags to GivenFlags.
 func ParseFlags() {
 	flag.Parse()
 	GivenFlags = GetGivenFlags()
 }
 
-//return kv pairs for GivenFlags
+// return kv pairs for GivenFlags
 func GivenFlagKVs() (r map[string]string) {
 	r = map[string]string{}
 
@@ -56,7 +59,7 @@ func GivenFlagKVs() (r map[string]string) {
 	return
 }
 
-//移除 = "" 和 = false 的项
+// 移除 = "" 和 = false 的项
 func GetPurgedTomlStr(v any) (string, error) {
 	buf := GetBuf()
 	defer PutBuf(buf)
@@ -84,4 +87,22 @@ func WrapFuncForPromptUI(f func(string) bool) func(string) error {
 		}
 		return ErrInvalidData
 	}
+}
+
+// https://gist.github.com/hyg/9c4afcd91fe24316cbf0
+func Openbrowser(url string) error {
+	var err error
+
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("unsupported platform")
+	}
+	return err
+
 }

@@ -32,10 +32,13 @@ type M struct {
 	DefaultOutClient proxy.Client
 	RoutingEnv       proxy.RoutingEnv
 
+	callbacks
+
 	allServers []proxy.Server
 	allClients []proxy.Client
 
 	listenCloserList []io.Closer
+	running          bool
 }
 
 func New() *M {
@@ -49,8 +52,8 @@ func New() *M {
 }
 
 // 具有 DefaultOutClient 且不是direct也不是reject; 一般表明该通向一个外界代理
-func (defaultMachine *M) DefaultClientUsable() bool {
-	dc := defaultMachine.DefaultOutClient
+func (m *M) DefaultClientUsable() bool {
+	dc := m.DefaultOutClient
 	if dc == nil {
 		return false
 	}
@@ -66,10 +69,16 @@ func (m *M) ClientCount() int {
 	return len(m.allClients)
 }
 
+func (m *M) IsRunning() bool {
+	return m.running
+}
+
 func (m *M) Start() {
 	if (m.DefaultOutClient != nil) && (len(m.allServers) > 0) {
 		utils.Info("Starting...")
 		m.Lock()
+		m.running = true
+		m.callToggleFallback(1)
 		for _, inServer := range m.allServers {
 			lis := v2ray_simple.ListenSer(inServer, m.DefaultOutClient, &m.RoutingEnv, &m.GlobalInfo)
 
@@ -86,6 +95,8 @@ func (m *M) Stop() {
 	utils.Info("Stopping...")
 
 	m.Lock()
+	m.running = false
+	m.callToggleFallback(0)
 	for _, ser := range m.allServers {
 		if ser != nil {
 			ser.Stop()
