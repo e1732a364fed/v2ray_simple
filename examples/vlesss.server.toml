@@ -31,9 +31,14 @@ key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不�
 
 #lazy = true
 
-# extra = { tls_minVersion = "1.2" }    # 默认的 minVersion 是1.3，你还可以设成1.2，其它值无效。
-
 # fullcone = true # 只有当listen和dial在 client和server配置 均为 fullcone时, 才会真正fullcone生效
+
+# 据说下面三行配置可以增强防御
+
+# extra.tls_minVersion = "1.2"   # 默认的 minVersion 是1.3，你还可以设成1.2，其它值无效。
+# extra.tls_maxVersion = "1.2"
+# extra.tls_cipherSuites = [ "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256", "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256"]    # 加密套件，所有可能的值请参考 golang的官方文档
+
 
 [[dial]]
 protocol = "direct"
