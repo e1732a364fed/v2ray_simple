@@ -107,7 +107,7 @@ func init() {
 		if manualRoute {
 			promptManual(strs)
 		} else {
-			if e := utils.ExecCmdList(strs); e != nil {
+			if e := utils.LogExecCmdList(strs); e != nil {
 				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
 					ce.Write(zap.Error(e))
 				}

@@ -50,8 +50,22 @@ func ExecCmdMultilineList(cmdStr string) (err error) {
 
 func ExecCmdList(strs []string) (err error) {
 
-	for _, str := range strs {
+	for i, str := range strs {
 		if err = ExecCmd(str); err != nil {
+			err = NumErr{N: i, E: err}
+			return
+		}
+	}
+
+	return
+}
+
+func LogExecCmdList(strs []string) (err error) {
+
+	for i, str := range strs {
+		ss := strings.Split(str, " ")
+		if _, err = LogRunCmd(ss[0], ss[1:]...); err != nil {
+			err = NumErr{N: i, E: err}
 			return
 		}
 	}
