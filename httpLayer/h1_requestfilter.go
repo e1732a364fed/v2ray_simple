@@ -12,6 +12,20 @@ type RawHeader struct {
 	Value []byte
 }
 
+const (
+	Fail_tooShort = iota + 1
+	Fail_not_for_h2c
+	Fail_method_len_wrong
+	Fail_unexpected_proxy
+	Fail_space_index_wrong
+	Fail_is_11proxy_butNot_11
+	Fail_no_slash
+	Fail_earlyLinefeed
+	Fail_firstline_less_than_10
+)
+
+const Fail_no_endMark = -12
+
 // 从数据中试图获取 http1.1, http1.0或 http0.9 请求的 version, path, method 和 headers.
 // failreason!=0 表示获取失败, 即表示不是合法的h1请求.
 //
@@ -19,12 +33,12 @@ type RawHeader struct {
 func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, headers []RawHeader, failreason int) {
 
 	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18
-		failreason = 1
+		failreason = Fail_tooShort
 		return
 	}
 
 	if bs[4] == '*' {
-		failreason = 2 //this method doesn't support h2c
+		failreason = Fail_not_for_h2c //this method doesn't support h2c
 		return
 
 	}
@@ -46,7 +60,7 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, head
 		//但是 Get / HTTP/1.1 也会遇到第6字节为空格的情况, put/pri 也一样, 所以还要过滤.
 
 		if bs[3] != ' ' {
-			failreason = 3
+			failreason = Fail_method_len_wrong
 			return
 		}
 	}
@@ -88,13 +102,13 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, head
 			method = "CONNECT"
 			if !isproxy {
 				//connect 只可能出现于 proxy代理中
-				failreason = 4
+				failreason = Fail_unexpected_proxy
 			}
 		}
 	}
 
 	if shouldSpaceIndex == 0 || bs[shouldSpaceIndex] != ' ' {
-		failreason = 5
+		failreason = Fail_space_index_wrong
 		return
 	}
 	shouldSlashIndex := shouldSpaceIndex + 1
@@ -106,13 +120,13 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, head
 		} else {
 			//http
 			if string(bs[shouldSlashIndex:shouldSlashIndex+7]) != "http://" {
-				failreason = 6
+				failreason = Fail_is_11proxy_butNot_11
 				return
 			}
 		}
 	} else {
 		if bs[shouldSlashIndex] != '/' {
-			failreason = 7
+			failreason = Fail_no_slash
 			return
 		}
 	}
@@ -130,14 +144,14 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, head
 	for i := shouldSlashIndex; i < last; i++ {
 		b := bs[i]
 		if b == '\r' || b == '\n' {
-			failreason = 8
+			failreason = Fail_earlyLinefeed
 			return
 		}
 		if b == ' ' {
 			// 空格后面至少还有 HTTP/1.1\r\n 这种字样，也就是说空格后长度至少为 10
 			//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
 			if len(bs)-i-1 < 10 {
-				failreason = 9
+				failreason = Fail_firstline_less_than_10
 				return
 			}
 
@@ -158,7 +172,7 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, head
 
 			indexOfEnding := bytes.Index(leftBs, HeaderENDING_bytes)
 			if indexOfEnding < 0 {
-				failreason = -12
+				failreason = Fail_no_endMark
 				return
 
 			}

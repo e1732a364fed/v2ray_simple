@@ -153,7 +153,7 @@ func (rhr *H1RequestParser) ReadAndParse_2(r net.Conn) error {
 	rhr.WholeRequestBuf = buf
 
 	rhr.Version, rhr.Method, rhr.Path, rhr.Headers, rhr.Failreason = ParseH1Request(data, false)
-	if rhr.Failreason == -12 {
+	if rhr.Failreason == Fail_no_endMark {
 
 		r.SetReadDeadline(time.Now().Add(time.Millisecond * 200))
 		n2, e2 := r.Read(bs[n:])

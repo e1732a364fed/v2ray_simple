@@ -103,11 +103,10 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	if re != nil {
 		if errors.Is(re, httpLayer.ErrNotHTTP_Request) {
 
-			if rp.Failreason == -12 && s.UseEarlyData {
-				//-12 是没有读到http尾部的错误，在earlyData开启时是可能存在的，一次读取到的数据不够长，没法完整表达整个http头时就会有这种情况。
-				//读到的长度可能是1186
+			if rp.Failreason == httpLayer.Fail_no_endMark && s.UseEarlyData {
+				//Fail_no_endMark 是没有读到http尾部的错误，在earlyData开启时是可能存在的，一次读取到的数据不够长，没法完整表达整个http头时就会有这种情况。
 
-				if ce := utils.CanLogDebug("ws, rp.Failreason == -12"); ce != nil {
+				if ce := utils.CanLogDebug("ws, check http Fail_no_endMark"); ce != nil {
 					ce.Write(zap.Int("len", rp.WholeRequestBuf.Len()), zap.String("header", rp.WholeRequestBuf.String()))
 				}
 
