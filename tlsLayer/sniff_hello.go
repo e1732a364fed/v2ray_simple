@@ -5,7 +5,7 @@ import (
 	"log"
 )
 
-//parse rand, session id, cipher_suites, compression_methods, return bytes after compression_methods.
+// parse rand, session id, cipher_suites, compression_methods, return bytes after compression_methods.
 func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 	pAfterRand := pAfter[32:]
 	sessionL := pAfterRand[0]
@@ -76,12 +76,12 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 
 }
 
-//需要判断到底是 tls 1.3 还是 tls1.2。
-//可参考 https://halfrost.com/https_tls1-3_handshake/ 。
+// 需要判断到底是 tls 1.3 还是 tls1.2。
+// 可参考 https://halfrost.com/https_tls1-3_handshake/ 。
 // 具体见最上面的注释，以及rfc。
-//解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
+// 解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
 //
-//会按情况在返回前 设置cd.DefinitelyNotTLS，cd.handshakeFailReason，cd.CantBeTLS13，cd.handshakeVer，cd.helloPacketPass
+// 会按情况在返回前 设置cd.DefinitelyNotTLS，cd.handshakeFailReason，cd.CantBeTLS13，cd.handshakeVer，cd.helloPacketPass
 func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bool) {
 	pAfterLegacy_compression_methods := cd.sniff_commonHelloPre(pAfter)
 
@@ -174,9 +174,9 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 
 	lenE := len(extensionsBs)
 
-	//if PDD {
-	//	log.Println("extensionsBs", extensionsBs)
-	//}
+	// if PDD {
+	// 	log.Println("extensionsBs", extensionsBs)
+	// }
 
 	cursor := 0
 	//虽然我们知道 extensionsBs的总长度 extensionsLen，但是
@@ -240,6 +240,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 
 				一个列表，前面两字节长度， 然后有n个域名提供; 一般用户只会带1个servername。
 			*/
+
 			ServerNameListLen := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
 			cursor += 2
 			if len(extensionsBs[cursor:]) < ServerNameListLen {
@@ -270,14 +271,15 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 				}
 
 				cd.SniffedServerName = string(extensionsBs[cursor : cursor+l])
-				if onlyForSni {
-					return
-				}
-				cursor += l
 
 				if PDD {
 					log.Println("cd.SniffedHostName", sn_count, cd.SniffedServerName)
 				}
+
+				if onlyForSni {
+					return
+				}
+				cursor += l
 
 			}
 
@@ -570,6 +572,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 				if PDD {
 					log.Println("supportedVersionsCount", supportedVersionsCount, extensionsBs[cursor:cursor+int(wholeL)])
 				}
+				tail := cursor + int(wholeL)
 
 				hasTls13 := false
 
@@ -582,10 +585,12 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 
 					if thisv == tls.VersionTLS13 {
 						hasTls13 = true
+
+						cursor = tail
 						break
 					}
 
-					cursor++
+					cursor += 2
 				}
 
 				if !hasTls13 {
@@ -594,7 +599,13 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 				//就算 申请的包含tls13，服务端也不一定支持，所以必须检验ServerHello才能确认服务端是否支持1.3
 				//我们的目的就是看看到底客户端申请过tls1.3没有，现在目的达到了，可以return了
 
-				return
+				if onlyForSni && cd.SniffedServerName == "" {
+
+				} else {
+					return
+
+				}
+
 			} else {
 				//固定2字节;
 				if thiseLen != 2 {

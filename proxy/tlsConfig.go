@@ -64,7 +64,7 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 		}
 	}
 
-	clic.Tls_c = tlsLayer.NewClient(tlsLayer.Conf{
+	conf := tlsLayer.Conf{
 		Host:         dc.Host,
 		Insecure:     dc.Insecure,
 		Use_uTls:     dc.Utls,
@@ -73,7 +73,9 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 		Minver:       getTlsMinVerFromExtra(dc.Extra),
 		Maxver:       getTlsMaxVerFromExtra(dc.Extra),
 		CipherSuites: getTlsCipherSuitesFromExtra(dc.Extra),
-	})
+	}
+
+	clic.Tls_c = tlsLayer.NewClient(conf)
 	return nil
 }
 
@@ -87,7 +89,7 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	alpnList := updateAlpnListByAdvLayer(com, lc.Alpn)
 
-	tlsserver, err := tlsLayer.NewServer(tlsLayer.Conf{
+	conf := tlsLayer.Conf{
 		Host: lc.Host,
 		CertConf: &tlsLayer.CertConf{
 			CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
@@ -99,10 +101,13 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 		RejectUnknownSni: getTlsRejectUnknownSniFromExtra(lc.Extra),
 		CipherSuites:     getTlsCipherSuitesFromExtra(lc.Extra),
-	})
+	}
+
+	tlsserver, err := tlsLayer.NewServer(conf)
 
 	if err == nil {
 		serc.Tls_s = tlsserver
+		serc.TlsConf = conf
 	} else {
 		return err
 	}

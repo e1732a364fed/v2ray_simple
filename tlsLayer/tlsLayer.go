@@ -8,7 +8,6 @@ package tlsLayer
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"strings"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -29,45 +28,10 @@ type Conf struct {
 	CipherSuites     []uint16
 }
 
-func rejectUnknownGetCertificateFunc(certs []*tls.Certificate) func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		if len(certs) == 0 {
-			return nil, utils.ErrInErr{ErrDesc: "len(certs) == 0", ErrDetail: utils.ErrInvalidData}
-		}
-		if hello == nil {
-			return nil, utils.ErrInErr{ErrDesc: "hello==nil", ErrDetail: utils.ErrInvalidData}
-		}
-		sni := strings.ToLower(hello.ServerName)
-
-		gsni := "*"
-		if index := strings.IndexByte(sni, '.'); index != -1 {
-			gsni += sni[index:]
-		}
-		for _, cert := range certs {
-			if cert.Leaf == nil {
-				var e error
-				cert.Leaf, e = x509.ParseCertificate(cert.Certificate[0])
-				if e != nil {
-					return nil, utils.ErrInErr{ErrDesc: "rejectUnknown: x509.ParseCertificate failed ", ErrDetail: e}
-				}
-			}
-
-			if cert.Leaf.Subject.CommonName == sni || cert.Leaf.Subject.CommonName == gsni {
-				return cert, nil
-			}
-			for _, name := range cert.Leaf.DNSNames {
-				if name == sni || name == gsni {
-					return cert, nil
-				}
-			}
-		}
-		return nil, utils.ErrInErr{ErrDesc: "rejectUnknownSNI", ErrDetail: utils.ErrInvalidData, Data: sni}
-	}
-}
-
 func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 	var certArray []tls.Certificate
 	var err error
+	var randcert bool
 
 	if conf.CertConf != nil || mustHasCert {
 
@@ -76,6 +40,7 @@ func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 
 		} else {
 			certArray, err = GetCertArrayFromFile("", "")
+			randcert = true
 
 		}
 
@@ -113,6 +78,10 @@ func GetTlsConfig(mustHasCert bool, conf Conf) *tls.Config {
 	}
 	if conf.RejectUnknownSni {
 		tConf.GetCertificate = rejectUnknownGetCertificateFunc(utils.ArrayToPtrArray(certArray))
+	}
+	if randcert && conf.Host == "" {
+		x, _ := x509.ParseCertificate(certArray[0].Certificate[0])
+		tConf.ServerName = x.Subject.CommonName
 	}
 	return tConf
 }

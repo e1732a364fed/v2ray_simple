@@ -97,8 +97,9 @@ type Base struct {
 
 	IsFullcone bool
 
-	Tls_s *tlsLayer.Server
-	Tls_c *tlsLayer.Client
+	Tls_s   *tlsLayer.Server
+	Tls_c   *tlsLayer.Client
+	TlsConf tlsLayer.Conf
 
 	Header *httpLayer.HeaderPreset
 

@@ -305,6 +305,33 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			wrappedConn = teeConn
 		}
 
+		if inServer.GetBase().TlsConf.RejectUnknownSni {
+			bs := utils.GetPacket()
+			n, e := wrappedConn.Read(bs)
+			if e != nil {
+				if ce := iics.CanLogWarn("tls preread failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+				wrappedConn.Close()
+				return
+			}
+			firstpayload := bs[:n]
+			tlsSniff := new(tlsLayer.ComSniff)
+			tlsSniff.CommonDetect(firstpayload, true, true)
+			if tlsSniff.SniffedServerName == "" {
+				if ce := iics.CanLogWarn("tls rejectUnknownSni, client didn't provide sni"); ce != nil {
+					ce.Write()
+				}
+				wrappedConn.Close()
+				return
+			}
+
+			wrappedConn = &netLayer.ReadWrapper{
+				Conn:           wrappedConn,
+				OptionalReader: io.MultiReader(bytes.NewBuffer(firstpayload), wrappedConn), RemainFirstBufLen: n,
+			}
+		}
+
 		tlsConn, err := inServer.GetTLS_Server().Handshake(wrappedConn)
 		if err != nil {
 

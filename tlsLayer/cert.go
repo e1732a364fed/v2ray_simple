@@ -3,6 +3,7 @@ package tlsLayer
 import (
 	"errors"
 	mathrand "math/rand"
+	"strings"
 
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -53,10 +54,6 @@ func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
 
 	companyName := utils.GetRandomWord()
 
-	if ce := utils.CanLogInfo("Generate random cert with"); ce != nil {
-		ce.Write(zap.String("country", country.Info().Name), zap.String("company", companyName))
-	}
-
 	subject := pkix.Name{
 		Country:            []string{country.Alpha2()},
 		Province:           []string{country.Capital().String()},
@@ -92,6 +89,11 @@ func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
 		panic(err)
 	}
 	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+
+	if ce := utils.CanLogInfo("Generate random cert with"); ce != nil {
+		ce.Write(zap.String("country", country.Info().Name), zap.String("company", companyName), zap.String("sni", template.Subject.CommonName))
+	}
+
 	return
 
 	/*
@@ -167,4 +169,40 @@ func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate
 	}
 
 	return
+}
+
+func rejectUnknownGetCertificateFunc(certs []*tls.Certificate) func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		if len(certs) == 0 {
+			return nil, utils.ErrInErr{ErrDesc: "len(certs) == 0", ErrDetail: utils.ErrInvalidData}
+		}
+		if hello == nil {
+			return nil, utils.ErrInErr{ErrDesc: "hello==nil", ErrDetail: utils.ErrInvalidData}
+		}
+		sni := strings.ToLower(hello.ServerName)
+
+		gsni := "*"
+		if index := strings.IndexByte(sni, '.'); index != -1 {
+			gsni += sni[index:]
+		}
+		for _, cert := range certs {
+			if cert.Leaf == nil {
+				var e error
+				cert.Leaf, e = x509.ParseCertificate(cert.Certificate[0])
+				if e != nil {
+					return nil, utils.ErrInErr{ErrDesc: "rejectUnknown: x509.ParseCertificate failed ", ErrDetail: e}
+				}
+			}
+
+			if cert.Leaf.Subject.CommonName == sni || cert.Leaf.Subject.CommonName == gsni {
+				return cert, nil
+			}
+			for _, name := range cert.Leaf.DNSNames {
+				if name == sni || name == gsni {
+					return cert, nil
+				}
+			}
+		}
+		return nil, utils.ErrInErr{ErrDesc: "rejectUnknownSNI", ErrDetail: utils.ErrInvalidData, Data: sni}
+	}
 }
