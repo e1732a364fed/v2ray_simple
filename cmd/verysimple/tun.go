@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	extra_preCommands = append(extra_preCommands, func() {
+	preCommands = append(preCommands, func() {
 		if download {
 			if runtime.GOOS == "windows" {
 				//自动下载wintun.dll

@@ -18,6 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
+const eIllegalParameter = "illegal parameter"
+
 /*
 curl -k https://127.0.0.1:48345/api/allstate
 */
@@ -38,6 +40,7 @@ func NewApiServerConf() (ac ApiServerConf) {
 	return
 }
 
+// if fs == nil, flag.CommandLine will be used
 func (asc *ApiServerConf) SetupFlags(fs *flag.FlagSet) {
 	if fs == nil {
 		fs = flag.CommandLine
@@ -91,8 +94,6 @@ func (m *M) TryRunApiServer() {
 	go m.runApiServer()
 
 }
-
-const eIllegalParameter = "illegal parameter"
 
 // 阻塞
 func (m *M) runApiServer() {

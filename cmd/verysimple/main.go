@@ -342,6 +342,7 @@ func exitBySignal() {
 	stopMachineAndExit(mainM)
 }
 
+// splice, pprof, urlFormat, dialtimeout
 func setupSystemParemeters() {
 	if disableSplice {
 		netLayer.SystemCanSplice = false

@@ -23,7 +23,7 @@ import (
 var (
 	download bool
 
-	extra_preCommands []func()
+	preCommands []func()
 
 	exitCmds = []exitCmd{
 		{name: "sp", desc: "print supported protocols", f: printSupportedProtocols},
@@ -81,16 +81,17 @@ func runExitCommands() (atLeastOneCalled bool) {
 	return
 }
 
+// 运行 一些 在 加载配置文件前 执行的 命令
 func runPreCommands() {
-	if len(extra_preCommands) > 0 {
-		for _, f := range extra_preCommands {
+	if len(preCommands) > 0 {
+		for _, f := range preCommands {
 			f()
 		}
 	}
 
 }
 
-// 在开始正式代理前, 先运行一些需要运行的命令与函数
+// 运行一些 在 加载配置文件后 、开始正式代理前 执行的 命令
 func runPreCommandsAfterLoadConf() {
 
 	if download {
