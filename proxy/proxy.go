@@ -127,7 +127,6 @@ func GetVSI_url(pc BaseInterface, targetNetwork string) string {
 
 	sb := getFullNameBuilder(pc, n)
 	sb.WriteString("://")
-	sb.WriteString(pc.AddrStr())
 	if n == DirectName {
 		if targetNetwork == "tcp" {
 			if lta := pc.GetBase().LTA; lta != nil {
@@ -139,6 +138,8 @@ func GetVSI_url(pc BaseInterface, targetNetwork string) string {
 			}
 		}
 
+	} else {
+		sb.WriteString(pc.AddrStr())
 	}
 
 	if t := pc.GetTag(); t != "" {

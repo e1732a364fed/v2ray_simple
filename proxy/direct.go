@@ -57,13 +57,6 @@ func (*DirectClient) GetCreator() ClientCreator {
 	return DirectCreator{}
 }
 
-func (d *DirectClient) AddrStr() string {
-	if d.LocalTCPAddr() != nil {
-		return d.LocalTCPAddr().String()
-	}
-	return ""
-}
-
 // 若 underlay 为nil，则会对target进行拨号, 否则返回underlay本身
 func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 	if d.Network() == "udp" {
