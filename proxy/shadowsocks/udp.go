@@ -2,28 +2,29 @@ package shadowsocks
 
 import (
 	"bytes"
+	"io"
 	"net"
+	"os"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-type shadowUDPPacketConn struct {
+type clientUDPMsgConn struct {
 	net.PacketConn
 	raddr net.Addr
-
-	handshakeBuf *bytes.Buffer
 }
 
-func (c *shadowUDPPacketConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+func (c *clientUDPMsgConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return c.PacketConn.Close()
 }
 
-func (c *shadowUDPPacketConn) Fullcone() bool {
+func (c *clientUDPMsgConn) Fullcone() bool {
 	return true
 }
 
-func (c *shadowUDPPacketConn) ReadMsgFrom() (bs []byte, targetAddr netLayer.Addr, err error) {
+func (c *clientUDPMsgConn) ReadMsgFrom() (bs []byte, targetAddr netLayer.Addr, err error) {
 	buf := utils.GetPacket()
 
 	var n int
@@ -44,17 +45,8 @@ func (c *shadowUDPPacketConn) ReadMsgFrom() (bs []byte, targetAddr netLayer.Addr
 
 }
 
-func (c *shadowUDPPacketConn) WriteMsgTo(bs []byte, addr netLayer.Addr) (err error) {
-	var buf *bytes.Buffer
-
-	if c.handshakeBuf != nil {
-		buf = c.handshakeBuf
-		c.handshakeBuf = nil
-
-	} else {
-		buf = utils.GetBuf()
-
-	}
+func makeWriteBuf(bs []byte, addr netLayer.Addr) *bytes.Buffer {
+	buf := utils.GetBuf()
 
 	abs, atype := addr.AddressBytes()
 
@@ -70,8 +62,78 @@ func (c *shadowUDPPacketConn) WriteMsgTo(bs []byte, addr netLayer.Addr) (err err
 	buf.WriteByte(byte(len(bs) << 8 >> 8))
 	buf.Write(bs)
 
+	return buf
+}
+
+func (c *clientUDPMsgConn) WriteMsgTo(bs []byte, addr netLayer.Addr) (err error) {
+
+	buf := makeWriteBuf(bs, addr)
+
 	_, err = c.PacketConn.WriteTo(buf.Bytes(), c.raddr)
 	utils.PutBuf(buf)
+
+	return err
+}
+
+// implements netLayer.serverMsgConn, 完全类似tproxy
+type serverMsgConn struct {
+	netLayer.EasyDeadline
+
+	hash netLayer.HashableAddr
+
+	ourPacketConn net.PacketConn
+	raddr         net.Addr
+
+	readChan chan netLayer.AddrData
+
+	closeChan chan struct{}
+
+	fullcone bool
+
+	server *Server
+}
+
+func (mc *serverMsgConn) Close() error {
+	select {
+	case <-mc.closeChan:
+	default:
+		close(mc.closeChan)
+		mc.server.removeUDPByHash(mc.hash)
+
+	}
+	return nil
+}
+
+func (mc *serverMsgConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+	return mc.Close()
+}
+
+func (mc *serverMsgConn) Fullcone() bool {
+	return mc.fullcone
+}
+
+func (mc *serverMsgConn) SetFullcone(f bool) {
+	mc.fullcone = f
+}
+
+func (mc *serverMsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+
+	must_timeoutChan := time.After(netLayer.UDP_timeout)
+	select {
+	case <-mc.closeChan:
+		return nil, netLayer.Addr{}, io.EOF
+	case <-must_timeoutChan:
+		return nil, netLayer.Addr{}, os.ErrDeadlineExceeded
+	case newmsg := <-mc.readChan:
+		return newmsg.Data, newmsg.Addr, nil
+
+	}
+
+}
+
+func (mc *serverMsgConn) WriteMsgTo(p []byte, addr netLayer.Addr) error {
+	buf := makeWriteBuf(p, addr)
+	_, err := mc.ourPacketConn.WriteTo(buf.Bytes(), mc.raddr)
 
 	return err
 }

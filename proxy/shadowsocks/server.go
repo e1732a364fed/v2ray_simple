@@ -3,6 +3,7 @@ package shadowsocks
 import (
 	"bytes"
 	"io"
+	"log"
 	"net"
 	"net/url"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/shadowsocks/go-shadowsocks2/core"
+	"go.uber.org/zap"
 )
 
 func init() {
@@ -63,12 +65,13 @@ type Server struct {
 	cipher core.Cipher
 
 	m             sync.RWMutex
-	udpMsgConnMap map[netLayer.HashableAddr]*shadowUDPPacketConn
+	udpMsgConnMap map[netLayer.HashableAddr]*serverMsgConn
 }
 
 func newServer(info MethodPass, lc *proxy.ListenConf) *Server {
 	s := &Server{
-		cipher: initShadowCipher(info),
+		cipher:        initShadowCipher(info),
+		udpMsgConnMap: make(map[netLayer.HashableAddr]*serverMsgConn),
 	}
 
 	return s
@@ -77,9 +80,19 @@ func (*Server) Name() string {
 	return Name
 }
 
-func (s *Server) SelfListen() (is, tcp, udp bool) {
-	udp = true
-	is = true
+func (s *Server) SelfListen() (is, _, udp bool) {
+	switch n := s.Network(); n {
+	case "", netLayer.DualNetworkName:
+		udp = true
+
+	case "tcp":
+
+	case "udp":
+		udp = true
+	}
+
+	is = udp
+
 	return
 }
 
@@ -125,64 +138,80 @@ realPart:
 	return
 }
 
-func (ss *Server) StartListen(_ chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- proxy.IncomeUDPInfo) io.Closer {
-	// uc, err := net.ListenUDP("udp", ss.LUA)
-	// if err != nil {
-	// 	log.Panicln("shadowsocks listen udp failed", err)
-	// }
-	// pc := ss.cipher.PacketConn(uc)
+func (m *Server) removeUDPByHash(hash netLayer.HashableAddr) {
+	m.Lock()
+	delete(m.udpMsgConnMap, hash)
+	m.Unlock()
+}
 
-	// sp := &shadowUDPPacketConn{
-	// 	PacketConn: pc,
-	// }
+func (s *Server) StartListen(_ chan<- proxy.IncomeTCPInfo, udpInfoChan chan<- proxy.IncomeUDPInfo) io.Closer {
+	uc, err := net.ListenUDP("udp", s.LUA)
+	if err != nil {
+		log.Panicln("shadowsocks listen udp failed", err)
+	}
+	pc := s.cipher.PacketConn(uc)
 
+	//逻辑完全类似tproxy，使用一个map存储不同终端的链接
 	go func() {
 
-		// for {
-		// 	bs := utils.GetPacket()
+		for {
+			bs := utils.GetPacket()
 
-		// 	n, addr, err := pc.ReadFrom(bs)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// 	ad, err := netLayer.NewAddrFromAny(addr)
-		// 	if err != nil {
-		// 		return
-		// 	}
-		// 	hash := ad.GetHashable()
+			n, addr, err := pc.ReadFrom(bs)
+			if err != nil {
+				return
+			}
+			ad, err := netLayer.NewAddrFromAny(addr)
+			if err != nil {
+				if ce := utils.CanLogWarn("shadowsocks GetAddrFrom err"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				return
+			}
+			hash := ad.GetHashable()
 
-		// 	ss.m.RLock()
-		// 	conn, found := ss.udpMsgConnMap[hash]
-		// 	ss.m.RUnlock()
+			s.m.RLock()
+			conn, found := s.udpMsgConnMap[hash]
+			s.m.RUnlock()
 
-		// 	if !found {
-		// 		conn = &shadowUDPPacketConn{
-		// 			ourSrcAddr:    src,
-		// 			readChan:      make(chan netLayer.AddrData, 5),
-		// 			closeChan:     make(chan struct{}),
-		// 			parentMachine: m,
-		// 			hash:          hash,
-		// 		}
-		// 		conn.InitEasyDeadline()
+			if !found {
+				conn = &serverMsgConn{
+					raddr:         addr,
+					ourPacketConn: pc,
+					readChan:      make(chan netLayer.AddrData, 5),
+					closeChan:     make(chan struct{}),
+					server:        s,
+					hash:          hash,
+				}
+				conn.InitEasyDeadline()
 
-		// 		m.Lock()
-		// 		m.udpMsgConnMap[hash] = conn
-		// 		m.Unlock()
+				s.m.Lock()
+				s.udpMsgConnMap[hash] = conn
+				s.m.Unlock()
 
-		// 	}
+			}
 
-		// 	destAddr := netLayer.NewAddrFromUDPAddr(dst)
+			readbuf := bytes.NewBuffer(bs[:n])
 
-		// 	conn.readChan <- netLayer.AddrData{Data: bs[:n], Addr: destAddr}
+			destAddr, err := GetAddrFrom(readbuf)
+			if err != nil {
+				if ce := utils.CanLogWarn("shadowsocks GetAddrFrom err"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				continue
+			}
 
-		// 	if !found {
-		// 		return conn, destAddr, nil
+			conn.readChan <- netLayer.AddrData{Data: readbuf.Bytes(), Addr: destAddr}
 
-		// 	}
+			if !found {
+				udpInfoChan <- proxy.IncomeUDPInfo{
+					MsgConn: conn, Target: destAddr,
+				}
+			}
 
-		// }
+		}
 
 	}()
-	return nil
+	return uc
 
 }

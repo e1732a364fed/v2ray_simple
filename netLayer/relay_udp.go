@@ -309,7 +309,9 @@ relay udp  有两种针对不同通道的技术
 
 如此，一个 UDPConn就相当于一个 MsgProducer, 它的to 可以由 tproxy 或者 msg内部的数据提取出来
 
-而且 这个模型也可以实现 单来源，所以更实用
+不过，这种抽象一样需要map进行记忆，才能区分不同来源的from。针对不同的from，要使用以前对它发信号所使用的端口。
+
+所以两种技术可能是等价的。
 */
 func RelayMsg(rc, lc MsgHub, downloadByteCount, uploadByteCount *uint64) uint64 {
 	go CopyMsgFromP2C(lc, rc, uploadByteCount)

@@ -106,7 +106,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 		pc = c.cipher.PacketConn(pc)
 	}
 
-	mc = &shadowUDPPacketConn{
+	mc = &clientUDPMsgConn{
 		PacketConn: pc,
 		raddr:      underlay.RemoteAddr(),
 	}

@@ -79,7 +79,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		var chanudp chan proxy.IncomeUDPInfo
 
 		if tcp {
-			chantcp = make(chan proxy.IncomeTCPInfo)
+			chantcp = make(chan proxy.IncomeTCPInfo, 2)
 			go func() {
 				for tcpInfo := range chantcp {
 					go passToOutClient(incomingInserverConnState{
@@ -94,7 +94,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 		}
 		if udp {
-			chanudp = make(chan proxy.IncomeUDPInfo)
+			chanudp = make(chan proxy.IncomeUDPInfo, 2)
 
 			go func() {
 				for udpInfo := range chanudp {
