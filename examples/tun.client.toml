@@ -70,6 +70,13 @@ extra.tun_auto_route = true
 
 # extra.tun_auto_route_manual = true # 若这项开启，则生成路由命令但不执行，由你自行拷贝到终端并执行。
 
+# extra.tun_dns = "1.1.1.1" 
+
+# 若auto_route开启，在 extra.tun_dns 给出你的dns地址后，vs会自动帮你 配置tun设备(win)或者实际网卡(macOS)的dns目标地址。
+# 如果不配置这一项，则会因为tun默认不路由本地ip地址，而dns默认设的都是本地的路由器ip地址，导致使用了默认的被污染的dns。
+
+
+
 [[dial]]
 protocol = "vlesss"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
@@ -86,7 +93,7 @@ utls = true
 # 之所以注释掉，是因为每个人的deivce名称可能都不一样，需要自行确认, 
 
 # windows 上可能为 WLAN / Ethernet
-# mac 上可能为 eth0
+# mac 上可能为 en0
 
 # sockopt.device = "WLAN"   
 # sockopt.device = "Ethernet"   
@@ -94,6 +101,13 @@ utls = true
 
 ###############################################################
 # 其他
+
+# 〇、为什么单独有一个 extra.tun_dns, 而不是直接用 vs的 [dns] 模块
+
+# vs的dns模块是用于解析 socks5 服务传来的域名的, 而在tun中，没有任何东西给我们传域名
+# 因为系统使用了默认路由器作为dns服务器
+
+# 此时 extra.tun_dns 配置 就告诉我们用哪个dns服务器来取代 路由器的dns
 
 # 一、自动模式失败后的紧急修复
 # 如果自动路由发生错误，则可能导致电脑路由出错，连不上网，除了重启解决以外，可以按如下指导进行恢复
