@@ -621,7 +621,7 @@ func V2rayGetAddrFrom(buf utils.ByteReader) (addr Addr, err error) {
 		if err != nil {
 			return
 		}
-		if n != 4 {
+		if n != net.IPv6len {
 			err = utils.ErrShortRead
 			return
 		}
