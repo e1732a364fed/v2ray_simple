@@ -15,15 +15,15 @@ require (
 	github.com/oschwald/maxminddb-golang v1.9.0
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/profile v1.6.0
-	github.com/refraction-networking/utls v1.1.0
+	github.com/refraction-networking/utls v1.1.5
 	github.com/xtaci/smux v1.5.16
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/atomic v1.9.0
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
+	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
-	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
-	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150
+	golang.org/x/net v0.0.0-20220909164309-bea034e7d591
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
 	gonum.org/v1/gonum v0.11.0
 	google.golang.org/grpc v1.46.0
 	google.golang.org/protobuf v1.28.0
@@ -31,6 +31,8 @@ require (
 
 require (
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
+	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/klauspost/compress v1.15.9 // indirect
 	github.com/riobard/go-bloom v0.0.0-20200614022211-cdc8013cb5b3 // indirect
 )
 
