@@ -286,9 +286,9 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 					return
 				}
 
-				err = wrc.WriteMsgTo(bs, na)
+				err = wrc.WriteMsg(bs, na)
 				if err != nil {
-					t.Logf("failed wrc.WriteMsgTo : %v", err)
+					t.Logf("failed wrc.WriteMsg : %v", err)
 					t.Fail()
 					return
 				}
@@ -301,9 +301,9 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 					return
 				}
 
-				err = wlc.WriteMsgTo(bs, raddr)
+				err = wlc.WriteMsg(bs, raddr)
 				if err != nil {
-					t.Logf("failed wlc.WriteMsgTo : %v", err)
+					t.Logf("failed wlc.WriteMsg : %v", err)
 					t.Fail()
 					return
 				}
@@ -329,7 +329,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 
 	t.Log("client handshake success")
 
-	err = wrc.WriteMsgTo(hellodata, targetStruct_forFakeUDPServer)
+	err = wrc.WriteMsg(hellodata, targetStruct_forFakeUDPServer)
 	if err != nil {
 		t.Log("failed in write to ", fakeServerEndLocalServer.AddrStr(), err)
 		t.FailNow()
@@ -359,7 +359,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 
 		t.Log("rand generated", len(longbs), longbs[:5])
 
-		err = wrc.WriteMsgTo(longbs, targetStruct_forFakeUDPServer)
+		err = wrc.WriteMsg(longbs, targetStruct_forFakeUDPServer)
 		if err != nil {
 			t.Log("failed in write long data to ", fakeServerEndLocalServer.AddrStr(), err)
 			t.FailNow()

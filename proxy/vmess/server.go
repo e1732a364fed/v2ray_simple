@@ -523,7 +523,7 @@ func (c *ServerConn) ReadMsg() (bs []byte, target netLayer.Addr, err error) {
 	return
 }
 
-func (c *ServerConn) WriteMsgTo(b []byte, _ netLayer.Addr) error {
+func (c *ServerConn) WriteMsg(b []byte, _ netLayer.Addr) error {
 	_, e := c.Write(b)
 	return e
 }

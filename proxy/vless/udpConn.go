@@ -50,7 +50,7 @@ func (u *UDPConn) GetProtocolVersion() int {
 	return int(u.version)
 }
 
-func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
+func (u *UDPConn) WriteMsg(p []byte, raddr netLayer.Addr) error {
 
 	var writeBuf *bytes.Buffer
 	if u.handshakeBuf != nil {

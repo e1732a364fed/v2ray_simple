@@ -100,7 +100,7 @@ func (d *DirectClient) EstablishUDPChannel(_ net.Conn, firstPayload []byte, targ
 		if err != nil {
 			return nil, err
 		}
-		return mc, mc.WriteMsgTo(firstPayload, target)
+		return mc, mc.WriteMsg(firstPayload, target)
 
 	}
 }

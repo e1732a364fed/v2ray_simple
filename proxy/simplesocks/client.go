@@ -106,6 +106,6 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, tar
 		return uc, nil
 
 	} else {
-		return uc, uc.WriteMsgTo(firstPayload, target)
+		return uc, uc.WriteMsg(firstPayload, target)
 	}
 }

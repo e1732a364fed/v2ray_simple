@@ -89,7 +89,7 @@ func (u *UDPConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 	return bs[:n], addr, nil
 }
 
-func (u *UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
+func (u *UDPConn) WriteMsg(bs []byte, addr netLayer.Addr) error {
 
 	var buf *bytes.Buffer
 	if u.handshakeBuf != nil {

@@ -110,7 +110,7 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 				ce.Write(zap.String("src addr", raddr.String()), zap.Int("len", len(bs)))
 			}
 
-			err = rc.WriteMsgTo(bs, raddr)
+			err = rc.WriteMsg(bs, raddr)
 			if err != nil {
 				break
 			}
@@ -154,7 +154,7 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 
 /*
 循环从rc读取数据，并写入lc，直到错误发生。若 downloadByteCount 给出，会更新 下载总字节数。
-返回此次所下载的字节数。如果是rc读取产生了错误导致的退出, 返回的bool为true。若mutex给出，则 内部调用 lc.WriteMsgTo 时会进行 锁定。
+返回此次所下载的字节数。如果是rc读取产生了错误导致的退出, 返回的bool为true。若mutex给出，则 内部调用 lc.WriteMsg 时会进行 锁定。
 */
 func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWMutex) (uint64, bool) {
 
@@ -169,11 +169,11 @@ func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64, mutex *sync.RWM
 
 		if mutex != nil {
 			mutex.Lock()
-			err = lc.WriteMsgTo(bs, raddr)
+			err = lc.WriteMsg(bs, raddr)
 			mutex.Unlock()
 
 		} else {
-			err = lc.WriteMsgTo(bs, raddr)
+			err = lc.WriteMsg(bs, raddr)
 
 		}
 		if err != nil {
@@ -259,7 +259,7 @@ func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploa
 				}()
 			}
 
-			err = rc.WriteMsgTo(bs, raddr)
+			err = rc.WriteMsg(bs, raddr)
 			if err != nil {
 
 				lc_mutex.Lock()

@@ -131,7 +131,7 @@ func (cpc *ClientUDPConn) ReadMsg() (data []byte, target netLayer.Addr, err erro
 	return
 }
 
-func (cpc *ClientUDPConn) WriteMsgTo(p []byte, addr netLayer.Addr) (err error) {
+func (cpc *ClientUDPConn) WriteMsg(p []byte, addr netLayer.Addr) (err error) {
 
 	err = cpc.Associate()
 	if err != nil {

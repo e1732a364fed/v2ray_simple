@@ -1646,7 +1646,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 	} else {
 
 		if ffb := iics.fallbackFirstBuffer; ffb != nil {
-			udp_wrc.WriteMsgTo(ffb.Bytes(), targetAddr)
+			udp_wrc.WriteMsg(ffb.Bytes(), targetAddr)
 		}
 
 		var ac *int32

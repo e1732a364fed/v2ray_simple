@@ -71,7 +71,7 @@ func TestUDP(t *testing.T) {
 						t.Fail()
 						return
 					}
-					err = msgConn.WriteMsgTo(bs, addr)
+					err = msgConn.WriteMsg(bs, addr)
 					if err != nil {
 						t.Log("socks5 server Write To direct failed,", len(bs), err)
 					}
@@ -81,7 +81,7 @@ func TestUDP(t *testing.T) {
 							if err != nil {
 								break
 							}
-							wlc.WriteMsgTo(rbs, raddr)
+							wlc.WriteMsg(rbs, raddr)
 						}
 					}()
 				}

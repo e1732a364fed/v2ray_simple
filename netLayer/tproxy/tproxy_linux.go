@@ -112,7 +112,7 @@ func (mc *MsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 }
 
 // 通过透明代理 写回 客户端
-func (mc *MsgConn) WriteMsgTo(p []byte, addr netLayer.Addr) error {
+func (mc *MsgConn) WriteMsg(p []byte, addr netLayer.Addr) error {
 	back, err := DialUDP(
 		"udp",
 		&net.UDPAddr{

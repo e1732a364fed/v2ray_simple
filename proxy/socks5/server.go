@@ -432,7 +432,7 @@ func (u *ServerUDPConn) Fullcone() bool {
 }
 
 // 将远程地址发来的响应 传给客户端
-func (u *ServerUDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
+func (u *ServerUDPConn) WriteMsg(bs []byte, raddr netLayer.Addr) error {
 
 	buf := &bytes.Buffer{}
 	buf.WriteByte(0) //rsv

@@ -24,7 +24,7 @@ type MsgConn interface {
 
 	ReadMsg() (data []byte, peer Addr, err error)
 
-	WriteMsgTo(data []byte, target Addr) error
+	WriteMsg(data []byte, peer Addr) error
 
 	CloseConnWithRaddr(raddr Addr) error //关闭特定连接
 	Close() error                        //关闭所有连接
@@ -45,7 +45,7 @@ func (ma MsgConnNetAdapter) Read(p []byte) (int, error) {
 func (ma MsgConnNetAdapter) Write(p []byte) (int, error) {
 
 	ra, _ := NewAddrFromAny(ma.RA)
-	err := ma.MsgConn.WriteMsgTo(p, ra)
+	err := ma.MsgConn.WriteMsg(p, ra)
 	return len(p), err
 }
 func (ma MsgConnNetAdapter) LocalAddr() net.Addr {
@@ -75,7 +75,7 @@ func (u UniTargetMsgConn) ReadMsg() ([]byte, Addr, error) {
 	return bs[:n], u.Target, err
 }
 
-func (u UniTargetMsgConn) WriteMsgTo(bs []byte, _ Addr) error {
+func (u UniTargetMsgConn) WriteMsg(bs []byte, _ Addr) error {
 	_, err := u.Conn.Write(bs)
 	return err
 }
@@ -196,7 +196,7 @@ func (u *UDPMsgConn) ReadMsg() ([]byte, Addr, error) {
 
 }
 
-func (u *UDPMsgConn) WriteMsgTo(bs []byte, raddr Addr) error {
+func (u *UDPMsgConn) WriteMsg(bs []byte, raddr Addr) error {
 
 	var theConn *net.UDPConn
 
@@ -298,7 +298,7 @@ func (uc *UDPMsgConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 // 实现 net.PacketConn
 func (uc *UDPMsgConn) WriteTo(p []byte, raddr net.Addr) (n int, err error) {
 	if ua, ok := raddr.(*net.UDPAddr); ok {
-		err = uc.WriteMsgTo(p, NewAddrFromUDPAddr(ua))
+		err = uc.WriteMsg(p, NewAddrFromUDPAddr(ua))
 		if err == nil {
 			n = len(p)
 		}
@@ -328,7 +328,7 @@ func (mc *MsgConnForPacketConn) ReadMsg() ([]byte, Addr, error) {
 	return bs[:n], a, nil
 }
 
-func (mc *MsgConnForPacketConn) WriteMsgTo(p []byte, a Addr) error {
+func (mc *MsgConnForPacketConn) WriteMsg(p []byte, a Addr) error {
 	_, err := mc.WriteTo(p, a.ToAddr())
 	return err
 }
@@ -359,7 +359,7 @@ func (mc *UniSourceMsgConnForPacketConn) ReadMsg() ([]byte, Addr, error) {
 	return bs[:n], mc.Source, nil
 }
 
-func (mc *UniSourceMsgConnForPacketConn) WriteMsgTo(p []byte, a Addr) error {
+func (mc *UniSourceMsgConnForPacketConn) WriteMsg(p []byte, a Addr) error {
 	_, err := mc.WriteTo(p, a.ToAddr())
 	return err
 }

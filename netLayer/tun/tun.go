@@ -243,7 +243,7 @@ func (mc *UdpMsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 	return bs[:n], mc.RealTarget, nil
 }
 
-func (mc *UdpMsgConn) WriteMsgTo(p []byte, a netLayer.Addr) error {
+func (mc *UdpMsgConn) WriteMsg(p []byte, a netLayer.Addr) error {
 	//_, err := mc.WriteTo(p, a.ToAddr())
 	//这里的a是 远程地址，不是我们要写向的地址。在tun中我们要发向之前的tun的地址
 

@@ -65,7 +65,7 @@ func makeWriteBuf(bs []byte, addr netLayer.Addr) *bytes.Buffer {
 	return buf
 }
 
-func (c *clientUDPMsgConn) WriteMsgTo(bs []byte, addr netLayer.Addr) (err error) {
+func (c *clientUDPMsgConn) WriteMsg(bs []byte, addr netLayer.Addr) (err error) {
 
 	buf := makeWriteBuf(bs, addr)
 
@@ -131,7 +131,7 @@ func (mc *serverMsgConn) ReadMsg() ([]byte, netLayer.Addr, error) {
 
 }
 
-func (mc *serverMsgConn) WriteMsgTo(p []byte, addr netLayer.Addr) error {
+func (mc *serverMsgConn) WriteMsg(p []byte, addr netLayer.Addr) error {
 	buf := makeWriteBuf(p, addr)
 	_, err := mc.ourPacketConn.WriteTo(buf.Bytes(), mc.raddr)
 

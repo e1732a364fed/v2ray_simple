@@ -18,7 +18,7 @@ type UDPAddrData struct {
 // UDPConn 主要服务于 UDPListener。如果有udp客户端需求, 最好使用 UDPMsgConn, 以更好地支持 fullcone或symmetric.
 //
 // UDPConn 也有能力接收来自其它目标的数据，以及向其它目标发送数据。然而, 本结构并没有记录链接端口, 所以无法实现 symmetric.
-// 如果用 DialUDP 函数初始化的 UDPConn, 则无法使用 WriteMsgTo方法向其它地址发消息.
+// 如果用 DialUDP 函数初始化的 UDPConn, 则无法使用 WriteMsg方法向其它地址发消息.
 //
 // UDPConn 实现了 net.Conn , net.PacketConn , MsgConn.
 type UDPConn struct {
@@ -180,7 +180,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 	return
 }
 
-func (uc *UDPConn) WriteMsgTo(buf []byte, addr Addr) error {
+func (uc *UDPConn) WriteMsg(buf []byte, addr Addr) error {
 	select {
 	case <-uc.writeDeadline.Wait():
 		return os.ErrDeadlineExceeded
