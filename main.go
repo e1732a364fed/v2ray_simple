@@ -626,13 +626,17 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	if !iics.isTlsLazyServerEnd {
 
+		isudp := targetAddr.IsUDP()
+
 		if iics.fallbackFirstBuffer != nil {
 
 			iics.firstPayload = iics.fallbackFirstBuffer.Bytes()
 			iics.fallbackFirstBuffer = nil
+			if isudp {
+				iics.udpFirstTarget = targetAddr
+			}
 
 		} else {
-			isudp := targetAddr.IsUDP()
 
 			if !isudp && wlc != nil {
 
@@ -699,6 +703,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				}
 
 				if len(bs) > 0 {
+
 					iics.firstPayload = bs
 					iics.udpFirstTarget = targetAd
 
