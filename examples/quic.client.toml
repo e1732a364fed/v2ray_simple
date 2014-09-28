@@ -11,7 +11,7 @@ host = "127.0.0.1"
 port = 4434
 version = 0
 insecure = true
-#utls = true #quic无法使用utls, 没办法
+#utls = false #quic无法使用utls, 没办法
 advancedLayer = "quic"
 
 #alpn = ["asdfsadf"]    # 如果alpn没指定，则会自动使用 "h3"作为alpn。

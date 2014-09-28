@@ -39,6 +39,7 @@ func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, netLayer.Addr, error
 			readChan:   make(chan netLayer.AddrData, 5),
 			closeChan:  make(chan struct{}),
 		}
+		conn.InitEasyDeadline()
 
 		udpMsgConnMap[hash] = conn
 
@@ -51,6 +52,8 @@ func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, netLayer.Addr, error
 
 //implements netLayer.MsgConn
 type MsgConn struct {
+	EasyDeadline
+
 	ourSrcAddr *net.UDPAddr
 
 	readChan chan netLayer.AddrData
@@ -77,11 +80,11 @@ func (mc *MsgConn) Fullcone() bool {
 
 func (mc *MsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
-	timeoutChan := time.After(netLayer.UDP_timeout)
+	must_timeoutChan := time.After(netLayer.UDP_timeout)
 	select {
 	case <-mc.closeChan:
 		return nil, netLayer.Addr{}, io.EOF
-	case <-timeoutChan:
+	case <-must_timeoutChan:
 		return nil, netLayer.Addr{}, os.ErrDeadlineExceeded
 	case newmsg := <-mc.readChan:
 		return newmsg.Data, newmsg.Addr, nil
