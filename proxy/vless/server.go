@@ -71,12 +71,11 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 	}
 
 	if num < 17 {
-		//fallback directly
-
 		return nil, nil, common.NewDataErr("fallback, msg too short", nil, num)
 
 	}
-	//proxy/vless/encoding/encoding.go DecodeRequestHeader
+
+	//这部分过程可以参照 proxy/vless/encoding/encoding.go DecodeRequestHeader 方法
 
 	version := auth[0]
 	if version > 1 {
@@ -225,6 +224,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		Conn:    underlay,
 		uuid:    thisUUIDBytes,
 		version: int(version),
+		isUDP:   addr.IsUDP,
 	}, addr, nil
 
 }
@@ -238,24 +238,6 @@ func (s *Server) Get_CRUMFURS(id string) *CRUMFURS {
 		return nil
 	}
 	return s.userCRUMFURS[bs]
-}
-
-type UserConn struct {
-	net.Conn
-	uuid         [16]byte
-	convertedStr string
-	version      int
-}
-
-func (uc *UserConn) GetProtocolVersion() int {
-	return uc.version
-}
-func (uc *UserConn) GetIdentityStr() string {
-	if uc.convertedStr == "" {
-		uc.convertedStr = proxy.UUIDToStr(uc.uuid)
-	}
-
-	return uc.convertedStr
 }
 
 type CRUMFURS struct {

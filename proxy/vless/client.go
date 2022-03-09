@@ -18,13 +18,11 @@ func init() {
 }
 
 type Client struct {
-	//proxy.UDPResponseWriter //用于 把在 CRUMFURS 信道中 获取到的 未知流量 转发到 client的调用者中, 如果此项未设置，也是可以的，但是就不再支持fullcone
+	proxy.ProxyCommonStruct
 
 	udpResponseChan chan *proxy.UDPAddrData
 
 	version int
-
-	proxy.ProxyCommonStruct
 
 	user *proxy.ID
 
@@ -120,8 +118,14 @@ func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter
 
 	_, err = underlay.Write(buf.Bytes())
 
-	return underlay, err
+	return &UserConn{
+		Conn:    underlay,
+		uuid:    c.user.UUID,
+		version: c.version,
+		isUDP:   target.IsUDP,
+	}, err
 }
+
 func (c *Client) GetNewUDPResponse() (*net.UDPAddr, []byte, error) {
 	x := <-c.udpResponseChan //由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充
 	return x.Addr, x.Data, nil

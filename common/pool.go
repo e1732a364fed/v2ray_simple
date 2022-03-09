@@ -20,7 +20,8 @@ func init() {
 
 func GetBytes(size int) []byte {
 	if size < standardBytesLength {
-		return standardBytesPool.Get().([]byte)
+		bs := standardBytesPool.Get().([]byte)
+		return bs[:size]
 	}
 
 	randomBytes1 := standardBytesPool.Get().([]byte)
