@@ -82,12 +82,9 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 
 本项目 vless 和 socks5 均支持 udp
 
-不过，我的vless支持的这个udp 暂时不符合 rprx的 v0标准，因为rprx硬是要加数据长度头，
-实际上根据我的探讨，这是不必要的，因为有tls，具体可以查看我的探讨 https://github.com/v2fly/v2ray-core/discussions/1655 ， 以及 vless_m1.md
+最新的代码已经完整支持vless v0
 
 后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。
-
-因此如果传输udp数据的话，目前 v2simple 的vless v0 是不兼容 v2ray官方的 vless v0 的。如果只是传输纯tcp的话则完全兼容。（单纯做网页代理是不影响的，因为网页统统使用tcp；游戏和视频可能影响，因此 **此时** 用 verysimple 的话最好服务端客户端都用v2simple）
 
 
 ## 关于验证
