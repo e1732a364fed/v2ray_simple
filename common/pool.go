@@ -8,18 +8,18 @@ var standardBytesPool sync.Pool
 
 var customBytesPool sync.Pool
 
-const standardBytesLength int = 1500
+const StandardBytesLength int = 1500
 
 func init() {
 	standardBytesPool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, standardBytesLength)
+			return make([]byte, StandardBytesLength)
 		},
 	}
 }
 
 func GetBytes(size int) []byte {
-	if size < standardBytesLength {
+	if size < StandardBytesLength {
 		bs := standardBytesPool.Get().([]byte)
 		return bs[:size]
 	}
@@ -37,10 +37,10 @@ func GetBytes(size int) []byte {
 
 func PutBytes(bs []byte) {
 	c := cap(bs)
-	if c < standardBytesLength {
+	if c < StandardBytesLength {
 
 		return
-	} else if c == standardBytesLength {
+	} else if c == StandardBytesLength {
 		standardBytesPool.Put(bs[:c])
 	} else {
 		customBytesPool.Put(bs)
