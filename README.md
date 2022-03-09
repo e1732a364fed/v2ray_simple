@@ -80,11 +80,9 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 
 ## 关于udp
 
-注意，经过我的查看以及验证，旧版的 verysimple 是不监听、不转发udp流量的。
-
 本项目 vless 和 socks5 均支持 udp
 
-不过，我的vless支持的这个udp并不符合 rprx的 v0标准，因为rprx硬是要加数据长度头，
+不过，我的vless支持的这个udp 暂时不符合 rprx的 v0标准，因为rprx硬是要加数据长度头，
 实际上根据我的探讨，这是不必要的，因为有tls，具体可以查看我的探讨 https://github.com/v2fly/v2ray-core/discussions/1655 ， 以及 vless_m1.md
 
 后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。
