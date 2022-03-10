@@ -47,6 +47,7 @@ func (uc *UserConn) GetIdentityStr() string {
 	return uc.convertedStr
 }
 
+//如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
 func (uc *UserConn) Write(p []byte) (int, error) {
 
 	if uc.version == 0 {
@@ -113,7 +114,15 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 	} else {
 		if uc.isUDP {
 			l := int16(len(p))
-			lenBytes := []byte{byte(l >> 8), byte(l << 8 >> 8)}
+			var lenBytes []byte
+
+			if l <= 255 {
+				lenBytes = []byte{0, byte(l)}
+			}
+
+			lenBytes = []byte{byte(l >> 8), byte(l << 8 >> 8)}
+
+			//log.Println("xjjjjjkjkjkjkjkj")
 
 			// 这里暂时认为包裹它的连接是 tcp或者tls，而不是udp，如果udp的话，就不需要考虑粘包问题了，比如socks5的实现
 			// 我们目前认为只有tls是最防墙的，而且 魔改tls是有毒的，所以反推过来，这里udp就必须加长度头。
@@ -134,6 +143,8 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 
 	}
 }
+
+//如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
 func (uc *UserConn) Read(p []byte) (int, error) {
 
 	if uc.version == 0 {
@@ -199,6 +210,8 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 	} else {
 		if uc.isUDP {
 
+			//log.Println("rxxxxxxxa")
+
 			if len(uc.udpUnreadPart) > 0 {
 				copiedN := copy(p, uc.udpUnreadPart)
 				if copiedN < len(uc.udpUnreadPart) {
@@ -235,7 +248,11 @@ func (uc *UserConn) readudp_withLenthHead(p []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	//log.Println("read", bs[:n], string(bs[:n]))
+	/*// 测试代码
+	if uc.version == 1 {
+		log.Println("read", bs[:n], string(bs[:n]))
+
+	}*/
 
 	copiedN := copy(p, bs)
 	if copiedN < n { //p is short

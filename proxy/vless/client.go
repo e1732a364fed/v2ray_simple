@@ -82,6 +82,8 @@ func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter
 	if target.IsUDP {
 		if c.version == 1 && !c.is_CRUMFURS_established {
 
+			//log.Println("尝试拨号 Cmd_CRUMFURS 信道")
+
 			UMFURS_conn, err := target.Dial()
 			if err != nil {
 				log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")

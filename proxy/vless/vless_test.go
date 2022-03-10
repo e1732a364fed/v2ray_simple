@@ -111,10 +111,19 @@ func testVLess(version int, port string, t *testing.T) {
 	}
 }
 
+func TestVLess0_udp(t *testing.T) {
+	testVLessUDP(0, "9638", t)
+}
+
+func TestVLess1_udp(t *testing.T) {
+	//testVLessUDP(1, "9738", t)
+}
+
 // 完整模拟整个 vless v0 的udp请求 过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
 // 其他tcp测试因为比较简单，不需要第二步测试，而这里需要
-func TestVLessUDP(t *testing.T) {
-	url := "vless://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:9528"
+//  不过实测，这个test暂时只能使用v0版本，因为 v1版本具有 独特信道，不能直接使用下面代码。
+func testVLessUDP(version int, port string, t *testing.T) {
+	url := "vless://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?version=" + strconv.Itoa(version)
 	fakeServerEndLocalServer, err := proxy.ServerFromURL(url)
 	if err != nil {
 		t.Log("fakeClientEndLocalServer parse err", err)

@@ -2,7 +2,9 @@
 
 V2ray Simple,  建议读作 very simple (显然只适用于汉语母语者), 
 
-正式名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 very simple 或 verysimple 指代。
+正式项目名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 very simple 或 verysimple 指代。直接在任何场合 用verysimple 这个名称都是可以的，但是项目名字要弄清楚，是 v2ray_simple
+
+verysimple项目大大简化了 转发机制，能提高运行速度。
 
 实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls）。
 
@@ -20,7 +22,7 @@ cp server.example.json server.json
 
 使用方式
 
-```
+```sh
 #客户端
 v2ray_simple -c client.json
 
@@ -69,6 +71,10 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 2. 什么时候搞一个 verysimple_c 项目，用c语言照着写一遍; 也就是说，就算本verysimple没有任何技术创新，单单架构简单也是有技术优势的，可以作为参考 实现更底层的 c语言实现。
 3. verysimple_c 写好后，就可以尝试将 naiveproxy 嵌入 verysimple_c 了
 
+verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
+
+不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。
+
 ## 关于vless v1
 
 这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](vless_v1.md)
@@ -87,12 +93,12 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 
 最新的代码已经完整支持vless v0
 
-后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。
+后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。v1还处于测试阶段
 
 
 ## 关于验证
 
-对于功能的golang test，请使用 `go test ./... -v` 命令。
+对于功能的golang test，请使用 `go test ./...` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
 
 ## 腾讯视频问题
