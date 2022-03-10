@@ -1,2 +1,4 @@
 *.DS_Store
 v2ray_simple
+client.json
+server.json
