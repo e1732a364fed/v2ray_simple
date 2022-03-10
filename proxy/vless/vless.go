@@ -30,9 +30,9 @@ type UserConn struct {
 	isServerEnd  bool //for v0
 
 	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），接着读
-	udpUnreadPart []byte //for v0
+	udpUnreadPart []byte //for udp
 
-	bufr            *bufio.Reader //for v0
+	bufr            *bufio.Reader //for udp
 	isntFirstPacket bool          //for v0
 }
 
@@ -111,6 +111,25 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 		}
 
 	} else {
+		if uc.isUDP {
+			l := int16(len(p))
+			lenBytes := []byte{byte(l >> 8), byte(l << 8 >> 8)}
+
+			// 这里暂时认为包裹它的连接是 tcp或者tls，而不是udp，如果udp的话，就不需要考虑粘包问题了，比如socks5的实现
+			// 我们目前认为只有tls是最防墙的，而且 魔改tls是有毒的，所以反推过来，这里udp就必须加长度头。
+
+			// 目前是这个样子。之后verysimple实现了websocket和grpc后，会添加判断，如果连接是websocket或者grpc连接，则不再加长度头
+
+			// tls和tcp都是基于流的，可以分开写两次，不需要buf存在；如果连接是websocket或者grpc的话，要分开单独处理。
+
+			_, err := uc.Conn.Write(lenBytes)
+			if err != nil {
+				return 0, err
+			}
+
+			return uc.Conn.Write(p)
+
+		}
 		return uc.Conn.Write(p)
 
 	}
@@ -158,6 +177,8 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 				return copiedN, nil
 			}
 
+			//v0 先读取vless响应头，再读取udp长度头
+
 			if !uc.isServerEnd && !uc.isntFirstPacket {
 				uc.isntFirstPacket = true
 
@@ -172,35 +193,54 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 
 			}
 
-			// udp包的 长度部分，2字节
-
-			b1, err := uc.bufr.ReadByte()
-			if err != nil {
-				return 0, err
-			}
-			b2, err := uc.bufr.ReadByte()
-			if err != nil {
-				return 0, err
-			}
-
-			l := int(int16(b1)<<8 + int16(b2))
-			bs := common.GetBytes(l)
-			n, err := io.ReadFull(uc.bufr, bs)
-			if err != nil {
-				return 0, err
-			}
-			//log.Println("read", bs[:n], string(bs[:n]))
-
-			copiedN := copy(p, bs)
-			if copiedN < n { //p is short
-				uc.udpUnreadPart = bs[copiedN:]
-			}
-
-			return copiedN, nil
+			return uc.readudp_withLenthHead(p)
 		}
 
 	} else {
+		if uc.isUDP {
+
+			if len(uc.udpUnreadPart) > 0 {
+				copiedN := copy(p, uc.udpUnreadPart)
+				if copiedN < len(uc.udpUnreadPart) {
+					uc.udpUnreadPart = uc.udpUnreadPart[copiedN:]
+				} else {
+					uc.udpUnreadPart = nil
+				}
+				return copiedN, nil
+			}
+
+			return uc.readudp_withLenthHead(p)
+		}
 		return uc.Conn.Read(p)
 
 	}
+}
+
+func (uc *UserConn) readudp_withLenthHead(p []byte) (int, error) {
+	if uc.bufr == nil {
+		uc.bufr = bufio.NewReader(uc.Conn)
+	}
+	b1, err := uc.bufr.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+	b2, err := uc.bufr.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	l := int(int16(b1)<<8 + int16(b2))
+	bs := common.GetBytes(l)
+	n, err := io.ReadFull(uc.bufr, bs)
+	if err != nil {
+		return 0, err
+	}
+	//log.Println("read", bs[:n], string(bs[:n]))
+
+	copiedN := copy(p, bs)
+	if copiedN < n { //p is short
+		uc.udpUnreadPart = bs[copiedN:]
+	}
+
+	return copiedN, nil
 }

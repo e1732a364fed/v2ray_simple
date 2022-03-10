@@ -14,6 +14,8 @@ V2ray Simple,  建议读作 very simple (显然只适用于汉语母语者),
 ```go
 git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
+cp client.example.json client.json
+cp server.example.json server.json
 ```
 
 使用方式
@@ -30,6 +32,7 @@ v2ray_simple -c server.json
 
 ## 开发标准以及理念
 
+文档尽量多，代码尽量少
 ### 文档
 
 文档、注释尽量详细，且尽量完全使用中文，尽量符合golang的各种推荐标准。
@@ -62,8 +65,8 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 
 也因为是poc，所以我有时会尝试向 verysimple 中添加一些我设计的新功能。目前正在计划的有
 
-1. 实现 vless v1协议
-2. 什么时候搞一个 verysimple_c 项目，用c语言照着写一遍
+1. 完善并实现 vless v1协议
+2. 什么时候搞一个 verysimple_c 项目，用c语言照着写一遍; 也就是说，就算本verysimple没有任何技术创新，单单架构简单也是有技术优势的，可以作为参考 实现更底层的 c语言实现。
 3. verysimple_c 写好后，就可以尝试将 naiveproxy 嵌入 verysimple_c 了
 
 ## 关于vless v1
