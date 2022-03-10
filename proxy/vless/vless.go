@@ -119,11 +119,9 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 
 	if uc.version == 0 {
 
-		if !uc.isServerEnd && !uc.isntFirstPacket {
+		if !uc.isUDP {
 
-			if uc.isUDP { //即该连接为udp连接,要在后面处理
-
-			} else {
+			if !uc.isServerEnd && !uc.isntFirstPacket {
 
 				uc.isntFirstPacket = true
 
@@ -143,9 +141,6 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 
 			}
 
-		}
-
-		if !uc.isUDP {
 			return uc.Conn.Read(p)
 		} else {
 
