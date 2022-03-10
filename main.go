@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	version = "1.2.0"
+	version = "1.0.0"
 	desc    = "v2ray_simple, a simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
 
 	configFileName = flag.String("c", "client.json", "config file name")
