@@ -26,7 +26,7 @@ v2ray_simple -c client.json
 v2ray_simple -c server.json
 ```
 
-关于 vlesss 的配置，查看我新添加的 server.json和 client.json就知道了，很简单的。
+关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
 
 ## 开发标准以及理念
 
