@@ -51,37 +51,58 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 
 	if uc.version == 0 {
 
-		var oldp []byte = p
+		originalSupposedWrittenLenth := len(p)
 
-		if uc.isServerEnd && !uc.isntFirstPacket { //v0 中，服务端的回复的第一个包也是要有数据头的(和客户端的handshake类似，只是第一个包有)，第一字节版本，第二字节addon长度（都是0）
+		var writeBuf *bytes.Buffer
 
-			pp := make([]byte, len(p)+2)
-			copy(pp[2:], p)
-			p = pp
-
+		if uc.isServerEnd && !uc.isntFirstPacket {
 			uc.isntFirstPacket = true
+
+			writeBuf = &bytes.Buffer{}
+
+			//v0 中，服务端的回复的第一个包也是要有数据头的(和客户端的handshake类似，只是第一个包有)，第一字节版本，第二字节addon长度（都是0）
+
+			writeBuf.WriteByte(0)
+			writeBuf.WriteByte(0)
+
 		}
 
 		if !uc.isUDP {
 
-			_, err := uc.Conn.Write(p) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
-			if err != nil {
-				return 0, err
+			if writeBuf != nil {
+				writeBuf.Write(p)
+
+				_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+
+				if err != nil {
+					return 0, err
+				}
+				return originalSupposedWrittenLenth, nil
+
+			} else {
+				_, err := uc.Conn.Write(p) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+
+				if err != nil {
+					return 0, err
+				}
+				return originalSupposedWrittenLenth, nil
 			}
-			return len(oldp), nil
 
 		} else {
 			l := int16(len(p))
-			buf := &bytes.Buffer{}
-			buf.WriteByte(byte(l >> 8))
-			buf.WriteByte(byte(l << 8 >> 8))
-			buf.Write(p)
+			if writeBuf == nil {
+				writeBuf = &bytes.Buffer{}
+			}
 
-			_, err := uc.Conn.Write(buf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+			writeBuf.WriteByte(byte(l >> 8))
+			writeBuf.WriteByte(byte(l << 8 >> 8))
+			writeBuf.Write(p)
+
+			_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
 			if err != nil {
 				return 0, err
 			}
-			return len(p), nil
+			return originalSupposedWrittenLenth, nil
 		}
 
 	} else {

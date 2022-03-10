@@ -299,13 +299,18 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		return
 	}
 
-	// 流量转发
-	go func() {
-		n, e := io.Copy(wrc, wlc)
-		log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
-	}()
-	n, e := io.Copy(wlc, wrc)
+	/*
+		// debug时可以使用这段代码
+		go func() {
+			n, e := io.Copy(wrc, wlc)
+			log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+		}()
+		n, e := io.Copy(wlc, wrc)
 
-	log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+	*/
+
+	go io.Copy(wrc, wlc)
+	io.Copy(wlc, wrc)
 
 }
