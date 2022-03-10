@@ -111,7 +111,7 @@ func testVLess(version int, port string, t *testing.T) {
 	}
 }
 
-// 完整模拟整个过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
+// 完整模拟整个 vless v0 的udp请求 过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
 // 其他tcp测试因为比较简单，不需要第二步测试，而这里需要
 func TestVLessUDP(t *testing.T) {
 	url := "vless://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:9528"
@@ -154,6 +154,7 @@ func TestVLessUDP(t *testing.T) {
 			if err != nil {
 				if strings.Contains(err.Error(), "use of closed network connection") {
 					t.Log("udp server read connection closed")
+					return
 				} else {
 					t.Log("udp server 读取数据失败!", err)
 				}
@@ -220,6 +221,7 @@ func TestVLessUDP(t *testing.T) {
 				remoteAddrStr := targetAddr.String()
 
 				if remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.IsUDP == false {
+					t.Log("remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.IsUDP == false ")
 					t.Fail()
 					return
 				}
@@ -236,6 +238,7 @@ func TestVLessUDP(t *testing.T) {
 				var hello [5]byte
 				io.ReadFull(wlc, hello[:])
 				if !bytes.Equal(hello[:], hellodata) {
+					t.Log("!bytes.Equal(hello[:], hellodata)")
 					t.Fail()
 					return
 				}
@@ -293,6 +296,7 @@ func TestVLessUDP(t *testing.T) {
 	var world [5]byte
 	io.ReadFull(wrc, world[:])
 	if !bytes.Equal(world[:], replydata) {
+		t.Log("!bytes.Equal(world[:], replydata) ", world[:], replydata)
 		t.FailNow()
 	}
 	t.Log("读到正确reply！")

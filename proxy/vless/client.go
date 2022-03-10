@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
@@ -90,6 +91,8 @@ func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter
 
 			UMFURS_conn.Write(buf.Bytes())
 
+			common.PutBuf(buf)
+
 			bs := []byte{0}
 			n, err := UMFURS_conn.Read(bs)
 			if err != nil || n == 0 || bs[0] != CRUMFURS_ESTABLISHED {
@@ -117,6 +120,8 @@ func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter
 	buf.Write(addr)
 
 	_, err = underlay.Write(buf.Bytes())
+
+	common.PutBuf(buf)
 
 	return &UserConn{
 		Conn:    underlay,
@@ -177,7 +182,7 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 
 func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {
 	v := c.version
-	buf := &bytes.Buffer{}
+	buf := common.GetBuf()
 	buf.WriteByte(byte(v)) //version
 	buf.Write(c.user.UUID[:])
 	if v == 0 {
@@ -196,7 +201,7 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 	}
 
 	for {
-		buf_for_umfurs := make([]byte, proxy.MaxUDP_packetLen)
+		buf_for_umfurs := common.GetPacket()
 		n, err := UMFURS_conn.Read(buf_for_umfurs)
 		if err != nil {
 			break

@@ -1,14 +1,20 @@
 package common
 
 import (
+	"bytes"
 	"sync"
 )
 
-var standardBytesPool sync.Pool
+var (
+	standardBytesPool  sync.Pool
+	standardPacketPool sync.Pool
+	customBytesPool    sync.Pool
 
-var customBytesPool sync.Pool
+	bufPool sync.Pool
+)
 
 const StandardBytesLength int = 1500
+const maxBufLen int = 64 * 1024
 
 func init() {
 	standardBytesPool = sync.Pool{
@@ -16,6 +22,49 @@ func init() {
 			return make([]byte, StandardBytesLength)
 		},
 	}
+
+	standardPacketPool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, maxBufLen)
+		},
+	}
+
+	customBytesPool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, maxBufLen)
+		},
+	}
+
+	bufPool = sync.Pool{
+		New: func() interface{} {
+			return &bytes.Buffer{}
+		},
+	}
+}
+
+func GetBuf() *bytes.Buffer {
+	return bufPool.Get().(*bytes.Buffer)
+}
+
+func PutBuf(buf *bytes.Buffer) {
+	buf.Reset()
+	bufPool.Put(buf)
+}
+
+func GetPacket() []byte {
+	return standardPacketPool.Get().([]byte)
+}
+
+func PutPacket(bs []byte) {
+	c := cap(bs)
+	if c < maxBufLen {
+		if c > StandardBytesLength {
+			standardBytesPool.Put(bs[:c])
+		}
+		return
+	}
+
+	standardPacketPool.Put(bs[:c])
 }
 
 func GetBytes(size int) []byte {

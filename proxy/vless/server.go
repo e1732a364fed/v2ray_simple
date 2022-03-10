@@ -1,7 +1,6 @@
 package vless
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -186,7 +185,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		case proxy.AtypIP4:
 
 			ip_or_domain_bytesLength = net.IPv4len
-			addr.IP = make(net.IP, net.IPv4len)
+			addr.IP = common.GetBytes(net.IPv4len)
 		case proxy.AtypDomain:
 			// 解码域名的长度
 
@@ -203,12 +202,12 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		case proxy.AtypIP6:
 
 			ip_or_domain_bytesLength = net.IPv6len
-			addr.IP = make(net.IP, net.IPv6len)
+			addr.IP = common.GetBytes(net.IPv6len)
 		default:
 			return nil, nil, fmt.Errorf("unknown address type %v", addrTypeByte)
 		}
 
-		ip_or_domain := make([]byte, ip_or_domain_bytesLength)
+		ip_or_domain := common.GetBytes(int(ip_or_domain_bytesLength))
 
 		_, err = underlay.Read(ip_or_domain[:])
 
@@ -221,6 +220,8 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		} else {
 			addr.Name = string(ip_or_domain)
 		}
+
+		common.PutBytes(ip_or_domain)
 
 	default:
 		return nil, nil, errors.New("invalid vless command")
@@ -256,7 +257,7 @@ func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
 	if len(a.IP) > 4 {
 		atype = proxy.AtypIP6
 	}
-	buf := &bytes.Buffer{}
+	buf := common.GetBuf()
 
 	buf.WriteByte(atype)
 	buf.Write(a.IP)
@@ -265,5 +266,7 @@ func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
 	buf.Write(b)
 
 	_, err = c.Write(buf.Bytes())
+
+	common.PutBuf(buf)
 	return
 }

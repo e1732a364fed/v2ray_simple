@@ -58,7 +58,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 		if uc.isServerEnd && !uc.isntFirstPacket {
 			uc.isntFirstPacket = true
 
-			writeBuf = &bytes.Buffer{}
+			writeBuf = common.GetBuf()
 
 			//v0 中，服务端的回复的第一个包也是要有数据头的(和客户端的handshake类似，只是第一个包有)，第一字节版本，第二字节addon长度（都是0）
 
@@ -73,6 +73,8 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 				writeBuf.Write(p)
 
 				_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+
+				common.PutBuf(writeBuf)
 
 				if err != nil {
 					return 0, err
@@ -91,7 +93,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 		} else {
 			l := int16(len(p))
 			if writeBuf == nil {
-				writeBuf = &bytes.Buffer{}
+				writeBuf = common.GetBuf()
 			}
 
 			writeBuf.WriteByte(byte(l >> 8))
@@ -99,6 +101,9 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 			writeBuf.Write(p)
 
 			_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+
+			common.PutBuf(writeBuf)
+
 			if err != nil {
 				return 0, err
 			}
@@ -113,28 +118,40 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 func (uc *UserConn) Read(p []byte) (int, error) {
 
 	if uc.version == 0 {
-		if uc.bufr == nil {
-			uc.bufr = bufio.NewReader(uc.Conn)
-		}
+
 		if !uc.isServerEnd && !uc.isntFirstPacket {
-			bs := common.GetBytes(common.StandardBytesLength)
-			n, e := uc.Conn.Read(bs)
 
-			uc.isntFirstPacket = true
-			if e != nil {
-				return 0, e
+			if uc.isUDP { //即该连接为udp连接,要在后面处理
+
+			} else {
+
+				uc.isntFirstPacket = true
+
+				bs := common.GetPacket()
+				n, e := uc.Conn.Read(bs)
+
+				if e != nil {
+					return 0, e
+				}
+
+				if n < 2 {
+					return 0, errors.New("vless response head too short")
+				}
+				n = copy(p, bs[2:n])
+				common.PutPacket(bs)
+				return n, nil
+
 			}
 
-			if n < 2 {
-				return 0, errors.New("vless response head too short")
-			}
-			n = copy(p, bs[2:n])
-			return n, nil
 		}
 
 		if !uc.isUDP {
 			return uc.Conn.Read(p)
 		} else {
+
+			if uc.bufr == nil {
+				uc.bufr = bufio.NewReader(uc.Conn)
+			}
 
 			if len(uc.udpUnreadPart) > 0 {
 				copiedN := copy(p, uc.udpUnreadPart)
@@ -145,6 +162,22 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 				}
 				return copiedN, nil
 			}
+
+			if !uc.isServerEnd && !uc.isntFirstPacket {
+				uc.isntFirstPacket = true
+
+				_, err := uc.bufr.ReadByte() //version byte
+				if err != nil {
+					return 0, err
+				}
+				_, err = uc.bufr.ReadByte() //addon len byte
+				if err != nil {
+					return 0, err
+				}
+
+			}
+
+			// udp包的 长度部分，2字节
 
 			b1, err := uc.bufr.ReadByte()
 			if err != nil {
@@ -161,6 +194,7 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 			if err != nil {
 				return 0, err
 			}
+			//log.Println("read", bs[:n], string(bs[:n]))
 
 			copiedN := copy(p, bs)
 			if copiedN < n { //p is short
