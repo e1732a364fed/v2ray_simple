@@ -51,6 +51,8 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 
 	if uc.version == 0 {
 
+		var oldp []byte = p
+
 		if uc.isServerEnd && !uc.isntFirstPacket { //v0 中，服务端的回复的第一个包也是要有数据头的(和客户端的handshake类似，只是第一个包有)，第一字节版本，第二字节addon长度（都是0）
 
 			pp := make([]byte, len(p)+2)
@@ -61,7 +63,13 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 		}
 
 		if !uc.isUDP {
-			return uc.Conn.Write(p)
+
+			_, err := uc.Conn.Write(p) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+			if err != nil {
+				return 0, err
+			}
+			return len(oldp), nil
+
 		} else {
 			l := int16(len(p))
 			buf := &bytes.Buffer{}
@@ -69,7 +77,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 			buf.WriteByte(byte(l << 8 >> 8))
 			buf.Write(p)
 
-			_, err := uc.Conn.Write(buf.Bytes()) //直接return这个是错的，因为写入长度只能小于等于len(p)
+			_, err := uc.Conn.Write(buf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
 			if err != nil {
 				return 0, err
 			}
