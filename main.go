@@ -267,7 +267,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		return
 	}
 
-	var realTargetAddr *proxy.Addr = targetAddr
+	var realTargetAddr *proxy.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
 
 	if client.AddrStr() != "" {
 		log.Println("will dial", client.AddrStr())
@@ -300,7 +300,12 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	}
 
 	// 流量转发
-	go io.Copy(wrc, wlc)
-	io.Copy(wlc, wrc)
+	go func() {
+		n, e := io.Copy(wrc, wlc)
+		log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+	}()
+	n, e := io.Copy(wlc, wrc)
+
+	log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 
 }

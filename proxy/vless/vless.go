@@ -3,6 +3,7 @@ package vless
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"net"
 
@@ -26,11 +27,13 @@ type UserConn struct {
 	convertedStr string
 	version      int
 	isUDP        bool
+	isServerEnd  bool //for v0
 
 	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），接着读
 	udpUnreadPart []byte //for v0
 
-	bufr *bufio.Reader //for v0
+	bufr            *bufio.Reader //for v0
+	isntFirstPacket bool          //for v0
 }
 
 func (uc *UserConn) GetProtocolVersion() int {
@@ -46,18 +49,33 @@ func (uc *UserConn) GetIdentityStr() string {
 
 func (uc *UserConn) Write(p []byte) (int, error) {
 
-	if uc.version == 0 && uc.isUDP {
-		l := int16(len(p))
-		buf := &bytes.Buffer{}
-		buf.WriteByte(byte(l >> 8))
-		buf.WriteByte(byte(l << 8 >> 8))
-		buf.Write(p)
+	if uc.version == 0 {
 
-		_, err := uc.Conn.Write(buf.Bytes()) //直接return这个是错的，因为写入长度只能小于等于len(p)
-		if err != nil {
-			return 0, err
+		if uc.isServerEnd && !uc.isntFirstPacket { //v0 中，服务端的回复的第一个包也是要有数据头的(和客户端的handshake类似，只是第一个包有)，第一字节版本，第二字节addon长度（都是0）
+
+			pp := make([]byte, len(p)+2)
+			copy(pp[2:], p)
+			p = pp
+
+			uc.isntFirstPacket = true
 		}
-		return len(p), nil
+
+		if !uc.isUDP {
+			return uc.Conn.Write(p)
+		} else {
+			l := int16(len(p))
+			buf := &bytes.Buffer{}
+			buf.WriteByte(byte(l >> 8))
+			buf.WriteByte(byte(l << 8 >> 8))
+			buf.Write(p)
+
+			_, err := uc.Conn.Write(buf.Bytes()) //直接return这个是错的，因为写入长度只能小于等于len(p)
+			if err != nil {
+				return 0, err
+			}
+			return len(p), nil
+		}
+
 	} else {
 		return uc.Conn.Write(p)
 
@@ -65,44 +83,64 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 }
 func (uc *UserConn) Read(p []byte) (int, error) {
 
-	if uc.version == 0 && uc.isUDP {
-
-		if len(uc.udpUnreadPart) > 0 {
-			copiedN := copy(p, uc.udpUnreadPart)
-			if copiedN < len(uc.udpUnreadPart) {
-				uc.udpUnreadPart = uc.udpUnreadPart[copiedN:]
-			} else {
-				uc.udpUnreadPart = nil
-			}
-			return copiedN, nil
-		}
-
+	if uc.version == 0 {
 		if uc.bufr == nil {
 			uc.bufr = bufio.NewReader(uc.Conn)
 		}
+		if !uc.isServerEnd && !uc.isntFirstPacket {
+			bs := common.GetBytes(common.StandardBytesLength)
+			n, e := uc.Conn.Read(bs)
 
-		b1, err := uc.bufr.ReadByte()
-		if err != nil {
-			return 0, err
-		}
-		b2, err := uc.bufr.ReadByte()
-		if err != nil {
-			return 0, err
-		}
+			uc.isntFirstPacket = true
+			if e != nil {
+				return 0, e
+			}
 
-		l := int(int16(b1)<<8 + int16(b2))
-		bs := common.GetBytes(l)
-		n, err := io.ReadFull(uc.bufr, bs)
-		if err != nil {
-			return 0, err
-		}
-
-		copiedN := copy(p, bs)
-		if copiedN < n { //p is short
-			uc.udpUnreadPart = bs[copiedN:]
+			if n < 2 {
+				return 0, errors.New("vless response head too short")
+			}
+			n = copy(p, bs[2:n])
+			return n, nil
 		}
 
-		return copiedN, nil
+		if !uc.isUDP {
+			return uc.Conn.Read(p)
+		} else {
+
+			if len(uc.udpUnreadPart) > 0 {
+				copiedN := copy(p, uc.udpUnreadPart)
+				if copiedN < len(uc.udpUnreadPart) {
+					uc.udpUnreadPart = uc.udpUnreadPart[copiedN:]
+				} else {
+					uc.udpUnreadPart = nil
+				}
+				return copiedN, nil
+			}
+
+			b1, err := uc.bufr.ReadByte()
+			if err != nil {
+				return 0, err
+			}
+			b2, err := uc.bufr.ReadByte()
+			if err != nil {
+				return 0, err
+			}
+
+			l := int(int16(b1)<<8 + int16(b2))
+			bs := common.GetBytes(l)
+			n, err := io.ReadFull(uc.bufr, bs)
+			if err != nil {
+				return 0, err
+			}
+
+			copiedN := copy(p, bs)
+			if copiedN < n { //p is short
+				uc.udpUnreadPart = bs[copiedN:]
+			}
+
+			return copiedN, nil
+		}
+
 	} else {
 		return uc.Conn.Read(p)
 
