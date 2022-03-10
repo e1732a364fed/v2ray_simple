@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	standardBytesPool  sync.Pool
-	standardPacketPool sync.Pool
-	customBytesPool    sync.Pool
+	standardBytesPool  sync.Pool //1500
+	standardPacketPool sync.Pool //64*1024
+	customBytesPool    sync.Pool // >1500
 
 	bufPool sync.Pool
 )
@@ -51,6 +51,7 @@ func PutBuf(buf *bytes.Buffer) {
 	bufPool.Put(buf)
 }
 
+//建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的byte（64*1024字节）
 func GetPacket() []byte {
 	return standardPacketPool.Get().([]byte)
 }
@@ -67,6 +68,7 @@ func PutPacket(bs []byte) {
 	standardPacketPool.Put(bs[:c])
 }
 
+// 从pool中获取 []byte, 在 size <= 1500时有最佳性能
 func GetBytes(size int) []byte {
 	if size < StandardBytesLength {
 		bs := standardBytesPool.Get().([]byte)

@@ -115,9 +115,9 @@ func TestVLess0_udp(t *testing.T) {
 	testVLessUDP(0, "9638", t)
 }
 
-func TestVLess1_udp(t *testing.T) {
-	//testVLessUDP(1, "9738", t)
-}
+//func TestVLess1_udp(t *testing.T) {
+//testVLessUDP(1, "9738", t)	//无法使用 testVLessUDP，见其注释
+//}
 
 // 完整模拟整个 vless v0 的udp请求 过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
 // 其他tcp测试因为比较简单，不需要第二步测试，而这里需要

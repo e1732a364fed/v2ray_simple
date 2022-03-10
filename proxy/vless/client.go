@@ -1,6 +1,7 @@
 package vless
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"io"
@@ -31,6 +32,8 @@ type Client struct {
 
 	mutex                sync.RWMutex
 	knownUDPDestinations map[string]io.ReadWriter
+
+	crumfursBuf *bufio.Reader //在不使用ws或者grpc时，需要一个缓存 来读取 CRUMFURS
 }
 
 func NewVlessClient(url *url.URL) (proxy.Client, error) {
@@ -203,41 +206,100 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 	}
 
 	for {
-		buf_for_umfurs := common.GetPacket()
-		n, err := UMFURS_conn.Read(buf_for_umfurs)
-		if err != nil {
-			break
+		//之前讨论了，udp信息通通要传长度头，CRUMFURS 也不例外，在 实现ws或grpc前，统一都要加udp长度头
+
+		if c.HasAdvancedApplicationLayer() {
+
+			buf_for_umfurs := common.GetPacket()
+			n, err := UMFURS_conn.Read(buf_for_umfurs)
+			if err != nil {
+				break
+			}
+			if n < 7 {
+
+				break
+			}
+			msg := buf_for_umfurs[:n]
+			atyp := msg[0]
+			portIndex := net.IPv4len
+			switch atyp {
+			case proxy.AtypIP6:
+				portIndex = net.IPv6len
+			default:
+				//不合法，必须是ipv4或者ipv6
+				break
+
+			}
+			theIP := make(net.IP, portIndex)
+			copy(theIP, msg[1:portIndex])
+
+			port := int16(msg[portIndex])<<8 + int16(msg[portIndex+1])
+
+			c.udpResponseChan <- &proxy.UDPAddrData{
+				Addr: &net.UDPAddr{
+					IP:   theIP,
+					Port: int(port),
+				},
+				Data: msg[portIndex+2:],
+			}
+		} else {
+			if c.crumfursBuf == nil {
+				c.crumfursBuf = bufio.NewReader(UMFURS_conn)
+			}
+
+			atyp, err := c.crumfursBuf.ReadByte()
+			if err != nil {
+				break
+			}
+
+			ipLen := net.IPv4len
+			switch atyp {
+			case proxy.AtypIP6:
+				ipLen = net.IPv6len
+			default:
+				//不合法，必须是ipv4或者ipv6
+				break
+			}
+
+			theIP := make(net.IP, ipLen)
+			_, err = c.crumfursBuf.Read(theIP)
+			if err != nil {
+				break
+			}
+
+			twoBytes, err := c.crumfursBuf.Peek(2)
+			if err != nil {
+				break
+			}
+
+			port := int(int16(twoBytes[0])<<8 + int16(twoBytes[1]))
+
+			c.crumfursBuf.Discard(2)
+
+			twoBytes, err = c.crumfursBuf.Peek(2)
+			if err != nil {
+				break
+			}
+
+			packetLen := int16(twoBytes[0])<<8 + int16(twoBytes[1])
+			c.crumfursBuf.Discard(2)
+
+			msg := make([]byte, packetLen)
+
+			_, err = io.ReadFull(c.crumfursBuf, msg)
+			if err != nil {
+				break
+			}
+
+			c.udpResponseChan <- &proxy.UDPAddrData{
+				Addr: &net.UDPAddr{
+					IP:   theIP,
+					Port: port,
+				},
+				Data: msg,
+			}
+
 		}
-		if n < 7 {
-			// 信息长度至少要为7才行。
-			break
-		}
-		msg := buf_for_umfurs[:n]
-		atyp := msg[0]
-		portIndex := net.IPv4len
-		switch atyp {
-		case proxy.AtypIP4:
-
-		case proxy.AtypIP6:
-			portIndex = net.IPv6len
-		default:
-			//不合法，必须是ipv4或者ipv6
-			break
-
-		}
-		theIP := make(net.IP, portIndex)
-		copy(theIP, msg[1:portIndex])
-
-		port := int16(msg[portIndex])<<8 + int16(msg[portIndex+1])
-
-		c.udpResponseChan <- &proxy.UDPAddrData{
-			Addr: &net.UDPAddr{
-				IP:   theIP,
-				Port: int(port),
-			},
-			Data: msg[portIndex+2:],
-		}
-
 	}
 
 	c.is_CRUMFURS_established = false

@@ -25,7 +25,7 @@ import (
 
 var (
 	version = "1.0.0"
-	desc    = "v2ray_simple, a simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
+	desc    = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
 
 	configFileName = flag.String("c", "client.json", "config file name")
 
@@ -44,7 +44,7 @@ func printVersion() {
 
 	proxy.PrintAllClientNames()
 
-	fmt.Printf("===============================\n")
+	fmt.Printf("=============== 所有协议均可套tls ================\n")
 }
 
 type Config struct {
@@ -77,14 +77,12 @@ func main() {
 
 	var err error
 
-	// 读取配置文件，默认为客户端模式
 	conf, err = loadConfig(*configFileName)
 	if err != nil {
 		log.Println("can not load config file: ", err)
 		os.Exit(-1)
 	}
 
-	// 根据配置文件初始化组件
 	localServer, err := proxy.ServerFromURL(conf.Server_ThatListenPort_Url)
 	if err != nil {
 		log.Println("can not create local server: ", err)
@@ -105,6 +103,8 @@ func main() {
 	}
 	log.Println(localServer.Name(), "is listening TCP on ", localServer.AddrStr())
 
+	// 后台运行主代码，而main函数只监听中断信号
+	// TODO: 未来main函数可以推出 交互模式，未来推出动态增删用户、查询流量等功能时就有用
 	go func() {
 		for {
 			lc, err := listener.Accept()
@@ -126,7 +126,6 @@ func main() {
 		}
 	}()
 
-	// 后台运行
 	{
 		osSignals := make(chan os.Signal, 1)
 		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
@@ -136,7 +135,7 @@ func main() {
 
 func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Client, thisLocalConnectionInstance net.Conn) {
 
-	log.Println("got new")
+	//log.Println("got new", thisLocalConnectionInstance.RemoteAddr().String())
 
 	var err error
 	if localServer.IsUseTLS() {
@@ -150,8 +149,6 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		thisLocalConnectionInstance = tlsConn
 	}
 
-	// 不同的服务端协议各自实现自己的响应逻辑, 其中返回的地址则用于匹配路由
-	// 常常需要额外编解码或者流量统计的功能，故需要给lc包一层以实现这些逻辑，即wlc
 	wlc, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
 		log.Printf("failed in handshake from %v: %v", localServer.AddrStr(), err)
@@ -292,7 +289,6 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	}
 
-	// 不同的客户端协议各自实现自己的请求逻辑
 	wrc, err := client.Handshake(clientConn, targetAddr)
 	if err != nil {
 		log.Println("failed in handshake to", targetAddr.String(), ", Reason: ", err)

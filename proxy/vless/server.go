@@ -250,6 +250,7 @@ func (s *Server) Get_CRUMFURS(id string) *CRUMFURS {
 
 type CRUMFURS struct {
 	net.Conn
+	hasAdvancedLayer bool //在用ws或grpc时，这个开关保持打开
 }
 
 func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
@@ -263,6 +264,13 @@ func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
 	buf.Write(a.IP)
 	buf.WriteByte(byte(int16(a.Port) >> 8))
 	buf.WriteByte(byte(int16(a.Port) << 8 >> 8))
+
+	if !c.hasAdvancedLayer {
+		lb := int16(len(b))
+
+		buf.WriteByte(byte(lb >> 8))
+		buf.WriteByte(byte(lb << 8 >> 8))
+	}
 	buf.Write(b)
 
 	_, err = c.Write(buf.Bytes())

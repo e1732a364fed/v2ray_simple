@@ -28,6 +28,8 @@ type ProxyCommonFuncs interface {
 	SetUseTLS()
 	IsUseTLS() bool
 
+	HasAdvancedApplicationLayer() bool //如果使用了ws或者grpc，这个要返回true
+
 	SetTLS_Server(*tlsLayer.Server)
 	SetTLS_Client(*tlsLayer.Client)
 
@@ -38,7 +40,7 @@ type ProxyCommonFuncs interface {
 func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommonFuncs) error {
 	insecureStr := u.Query().Get("insecure")
 	insecure := false
-	if insecureStr != "" {
+	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
 		insecure = true
 	}
 
@@ -68,6 +70,10 @@ type ProxyCommonStruct struct {
 
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
+}
+
+func (pcs *ProxyCommonStruct) HasAdvancedApplicationLayer() bool {
+	return false
 }
 
 func (pcs *ProxyCommonStruct) InitFromUrl(u *url.URL) {
@@ -102,7 +108,7 @@ func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
 
-// Client is used to create connection.
+// Client 用于向 服务端 拨号
 type Client interface {
 	ProxyCommonFuncs
 
@@ -162,7 +168,7 @@ func ClientFromURL(s string) (Client, error) {
 	return nil, common.NewDataErr("unknown client scheme '", nil, u.Scheme)
 }
 
-// Server interface
+// Server 用于监听 客户端 的连接
 type Server interface {
 	ProxyCommonFuncs
 

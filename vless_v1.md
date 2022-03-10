@@ -147,3 +147,4 @@ UMFURS 信息内容：1字节atype，几字节的IP（视ip为ipv4和ipv6. 因�
 
 我规定，如果一个vless v1客户端 第一次想要发起 udp请求，必须先 发送 Cmd_CRUMFURS 命令
 
+CRUMFURS 信道与普通UDP信道一样，要传 udp长度头。在应用ws或者grpc后则应不传，这个等我实现ws或grpc了再说
