@@ -1,3 +1,38 @@
+/*
+package proxy 定义了代理转发所需的必备组件
+
+# 层级讨论
+目前认为，一个传输过程由四个部分组成，基础连接（udp/tcp），TLS（可选），中间层（ws、grpc、http等，可选），具体协议（socks5，vless，trojan等）
+
+其中，ws和grpc被认为是 高级应用层，http（伪装）属于低级应用层。
+
+TLS：Transport Layer Security 顾名思义TLS作用于传输层，第四层，但是我们tcp也是第四层，所以在本项目中，认为不需要“会话层”，单独加一个
+
+正常OSI是7层，我们在这里规定一个 第八层和第九层，第八层就是 vless协议所在位置，第九层就是我们实际传输的承载数据；
+
+
+## 新的VSI 模型
+
+那么我们提出一个 verysimple Interconnection Model， 简称vsi模型。1到4层与OSI相同（物理、链路、网络、传输)
+
+把第五层替换成“加密层”，把TLS放进去；把第六层改为低级应用层，http属于这一层
+
+第七层 改为高级应用层，ws/grpc 属于这一层；第八层定为 代理层，vless/trojan 在这层，
+
+第九层为 承载数据层，承载的为 另一大串 第四层的数据。
+
+那么我们verysimple实际上就是 基于 “层” 的架构。
+
+# 内容
+
+接口 ProxyCommonFuncs 和 结构 ProxyCommonStruct 给 这个架构定义了标准
+
+而 Client 和 Server 接口 是 具体利用该架构的 客户端 和 服务端，都位于VSI中的第八层
+
+使用 RegisterClient 和 RegisterServer 来注册新的实现
+
+udp部分直接参考 各个UDP开头的 部分即可
+*/
 package proxy
 
 import (
@@ -21,6 +56,7 @@ type UserConn interface {
 	GetProtocolVersion() int
 }
 
+// 给一个节点 提供 VSI中 第 5-7层 的支持
 type ProxyCommonFuncs interface {
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
 	SetAddrStr(string)
