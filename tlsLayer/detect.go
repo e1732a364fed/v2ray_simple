@@ -247,6 +247,7 @@ func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
 	/*
 		if p0 == 22 || p0 == 23 || p0 == 20 || (p0 == 21 && n == 31) {
 			//客户端Read 时 少数情况首部会有21，首部为  [21 3 3 0 26 0 0 0 0 0], 一般总长度为31
+			//	不过后来发现，这就是xtls里面隔离出的 alert的那种情况，
 			// 其它都是 能被捕捉到的。
 			if p[1] == 3 {
 				dr.IsTls = true

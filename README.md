@@ -12,6 +12,8 @@ verysimple项目大大简化了 转发机制，能提高运行速度。
 
 在本项目里 制定 并实现了 vless v1标准。
 
+### tls lazy encrypt (splice) 
+
 在最新代码里，还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
 
 因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
@@ -22,6 +24,13 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
 
+不过，经过我后来的思考，发现似乎xtls的splice之所以是单向的，就是因为它在Write时需要过滤掉一些 alert的情况，否则容易被探测；
+
+不过根据 [a report by gfwrev](https://twitter.com/gfwrev/status/1327670741597179906), 还是会有很多问题，很难解决
+
+所以既然问题无法解决，不如直接应用双向splice，也不用过滤任何alert问题。破罐子破摔。
+
+总之这种splice东西只适用于玩一玩，xtls以及所有类似的 对拷直连的 技术都是不可靠的。我只是放这里练一下手。大家玩一玩就行。
 
 ## 安装方式：
 
