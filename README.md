@@ -10,7 +10,7 @@ verysimple项目大大简化了 转发机制，能提高运行速度。
 
 在本项目里 制定 并实现了 vless v1标准。
 
-在最新代码里，我还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现。因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。
+在最新代码里，我还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现。因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
 
 目前该特性尚不稳定，会导致一些网页无法访问（不是速度慢，是有些tls连接因为检测tls措施不够好的问题， 给搞丢了，导致加载不出来，需要进一步调试；实测一般刷新一下页面就能加载出来，也不知道什么情况），运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
 
