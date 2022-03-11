@@ -181,7 +181,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	if tls_lazy_encrypt {
 
-		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, remoteClient.IsUseTLS())
+		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc)
 
 		//clientConn = cc
 	}

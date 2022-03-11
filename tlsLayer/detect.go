@@ -48,7 +48,7 @@ func (cc *DetectConn) ReadFrom(r io.Reader) (int64, error) {
 }
 
 //可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 底层Read 和Write的 主体
-func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool) *DetectConn {
+func NewDetectConn(oldConn net.Conn, rw io.ReadWriter) *DetectConn {
 
 	var validOne io.ReadWriter = rw
 	if rw == nil {
@@ -65,9 +65,6 @@ func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool) *DetectCon
 		},
 	}
 
-	cc.R.isClient = isclient
-	cc.W.isClient = isclient
-
 	if netConn := oldConn.(*net.TCPConn); netConn != nil {
 		//log.Println("get netConn!")	// 如果是客户端的socks5，网页浏览的话这里一定能转成 TCPConn
 		cc.RawConn = netConn
@@ -81,7 +78,6 @@ type ComDetectStruct struct {
 	DefinitelyNotTLS bool
 
 	packetCount int
-	isClient    bool //client读取要判断 serverhello，server读取要判断 client hello；Write则反过来。
 
 	handShakePass bool
 
@@ -244,16 +240,9 @@ func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
 	p1 := p[1]
 	p2 := p[2]
 
-	/*
-		if p0 == 22 || p0 == 23 || p0 == 20 || (p0 == 21 && n == 31) {
-			//客户端Read 时 少数情况首部会有21，首部为  [21 3 3 0 26 0 0 0 0 0], 一般总长度为31
-			//	不过后来发现，这就是xtls里面隔离出的 alert的那种情况，
-			// 其它都是 能被捕捉到的。
-			if p[1] == 3 {
-				dr.IsTls = true
-				return
-			}
-		}*/
+	//客户端Read 时 少数情况 第一字节21，首部为  [21 3 3 0 26 0 0 0 0 0], 一般总长度为31
+	//	不过后来发现，这就是xtls里面隔离出的 alert的那种情况，
+	// 其它都是 能被捕捉到的。
 
 	// 23表示 数据层，第二字节3是固定的，然后第3字节 从1到4，表示tls版本，不过tls1.3 和 1.2这里都是 23 3 3
 	if p0 == 23 && p1 == 3 && p2 > 0 && p2 < 4 {
@@ -304,6 +293,7 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 	}
 	if !OnlyTest && dr.packetCount > 8 {
 		//都8个包了还没断定tls？直接推定不是！
+		dr.DefinitelyNotTLS = true
 		return
 	}
 
@@ -348,6 +338,7 @@ func (dr *DetectWriter) Write(p []byte) (n int, err error) {
 	}
 	if !OnlyTest && dr.packetCount > 8 {
 		//都8个包了还没断定tls？直接推定不是！
+		dr.DefinitelyNotTLS = true
 		return
 	}
 
