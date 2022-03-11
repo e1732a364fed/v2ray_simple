@@ -30,6 +30,8 @@ var (
 
 	configFileName = flag.String("c", "client.json", "config file name")
 
+	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
+
 	conf         *Config
 	directClient proxy.Client
 
@@ -40,6 +42,8 @@ func init() {
 	directClient, _ = proxy.ClientFromURL("direct://")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
+
+	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain")
 }
 
 func printVersion() {
@@ -177,7 +181,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	if tls_lazy_encrypt {
 
-		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, tlsLayer.OnlyTest)
+		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, remoteClient.IsUseTLS())
 
 		//clientConn = cc
 	}
@@ -249,8 +253,6 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	client = remoteClient //如果加了白名单等过滤方式，则client可能会等于direct等，再说
 
-	log.Println(client.Name(), " want to dial ", targetAddr.UrlString())
-
 	// 如果目标是udp 则我们单独处理。这里为了简便，不考虑多级串联的关系，直接只考虑 直接转发到direct
 	// 根据 vless_v1的讨论，vless_v1 的udp转发的 通信方式 也是与tcp连接类似的分离信道方式
 	//	上面已经把 CRUMFURS 的情况过滤掉了，所以现在这里就是普通的udp请求
@@ -292,6 +294,13 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	}
 
 	var realTargetAddr *proxy.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
+
+	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
+		log.Println("request not contain same domain", targetAddr, uniqueTestDomain)
+		return
+	}
+
+	log.Println(client.Name(), " want to dial ", targetAddr.UrlString())
 
 	if client.AddrStr() != "" {
 		//log.Println("will dial", client.AddrStr())
@@ -390,9 +399,10 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 		p := common.GetPacket()
 		isgood := false
+		isbad := false
 		for {
 
-			if isgood {
+			if isgood || isbad {
 				break
 			}
 
@@ -404,9 +414,22 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 			if wlccc.R.IsTls && wlccc.RawConn != nil {
 				isgood = true
+			} else if wlccc.R.DefinitelyNotTLS {
+				isbad = true
 			}
 		}
 		common.PutPacket(p)
+
+		if isbad {
+			//直接退化成普通Copy
+
+			if tlsLayer.PDD {
+				log.Println("SpliceRead 方向1 退化……")
+			}
+			io.Copy(wrc, wlc)
+			return
+		}
+
 		if isgood {
 
 			if tlsLayer.PDD {
@@ -421,11 +444,13 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 	}()
 
 	isgood2 := false
+	isbad2 := false
+
 	p := common.GetPacket()
 
 	//从 wrc  读取，向 wlccc 写入
 	for {
-		if isgood2 {
+		if isgood2 || isbad2 {
 			break
 		}
 		n, err := wrc.Read(p)
@@ -435,9 +460,21 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 		wlccc.Write(p[:n])
 		if wlccc.W.IsTls && wlccc.RawConn != nil {
 			isgood2 = true
+		} else if wlccc.W.DefinitelyNotTLS {
+			isbad2 = true
 		}
 	}
 	common.PutPacket(p)
+
+	if isbad2 {
+
+		if tlsLayer.PDD {
+			log.Println("SpliceRead 方向1 退化……")
+		}
+		io.Copy(wlc, wrc)
+		return
+	}
+
 	if isgood2 {
 		if tlsLayer.PDD {
 			log.Println("成功SpliceRead 方向2")

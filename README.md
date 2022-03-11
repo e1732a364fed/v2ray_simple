@@ -6,16 +6,24 @@ V2ray Simple,  建议读作 very simple (显然只适用于汉语母语者),
 
 verysimple项目大大简化了 转发机制，能提高运行速度。
 
-实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls）。
+## 特点
+
+实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），入口使用socks5协议
 
 在本项目里 制定 并实现了 vless v1标准。
 
-在最新代码里，我还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现。因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
+在最新代码里，还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
 
-目前该特性尚不稳定，会导致一些网页无法访问（不是速度慢，是有些tls连接因为检测tls措施不够好的问题， 给搞丢了，导致加载不出来，需要进一步调试；实测一般刷新一下页面就能加载出来，也不知道什么情况），运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
+因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
+
+目前该特性尚不稳定，会导致一些网页无法访问（不是速度慢，是有些tls连接因为检测tls措施不够好的问题， 把连接给搞丢了，导致加载不出来，需要进一步调试；实测一般刷新一下页面就能加载出来，也不知道什么情况）；
+
+tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
+
+关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
 
 
-安装方式：
+## 安装方式：
 
 ```go
 git clone https://github.com/hahahrfool/v2ray_simple
@@ -24,7 +32,7 @@ cp client.example.json client.json
 cp server.example.json server.json
 ```
 
-使用方式
+## 使用方式
 
 ```sh
 #客户端
@@ -62,7 +70,11 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后我不承担�
 
 启发自我fork的v2simple，不过原作者的架构还是有点欠缺，我就直接完全重构了，完全使用我自己的代码。
 
-这样也杜绝了 原作者跑路 导致的 一些不懂法律的人对于开源许可的 质疑。（实际上是毫无问题的，关键是他们太谨慎。无所谓，现在我完全自己写，你们没话说了吧—；我fork也是尊重原作者，既然你们这么谨慎，正好推动了我的重构计划，推动了历史发展）
+这样也杜绝了 原作者跑路 导致的 一些不懂法律的人对于开源许可的 质疑。
+
+实际上是毫无问题的，关键是他们太谨慎。无所谓，现在我完全自己写，没话说了吧—；
+
+我fork也是尊重原作者，既然你们这么谨慎，正好推动了我的重构计划，推动了历史发展
 ## 额外说明
 
 verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如socks协议只能用于客户端入口，没法用于出口。
@@ -105,8 +117,9 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 对于功能的golang test，请使用 `go test ./...` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
 
-
 ## 交叉编译
+
+版本号自己修改下即可
 
 ```sh
 GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.0
