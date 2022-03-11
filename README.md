@@ -16,22 +16,23 @@ verysimple项目大大简化了 转发机制，能提高运行速度。
 
 在最新代码里，还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
 
-因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
-
-目前该特性尚不稳定，会导致一些网页无法访问（不是速度慢，是有些tls连接因为检测tls措施不够好的问题， 把连接给搞丢了，导致加载不出来，需要进一步调试；实测一般刷新一下页面就能加载出来，也不知道什么情况）；
-
 tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
+
+因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
 
 关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
 
-不过，经过我后来的思考，发现似乎xtls的splice之所以是单向的，就是因为它在Write时需要过滤掉一些 alert的情况，否则容易被探测；
+该特性不稳定，会导致一些网页无法访问（不是速度慢，应该是因为 为了实现双向splice，而少了一些 alert 过滤）；
 
-不过根据 [a report by gfwrev](https://twitter.com/gfwrev/status/1327670741597179906), 还是会有很多问题，很难解决
+经过我后来的思考，发现似乎xtls的splice之所以是单向的，就是因为它在Write时需要过滤掉一些 alert的情况，否则容易被探测；
+
+不过根据 [a report by gfwrev](https://twitter.com/gfwrev/status/1327670741597179906), 对拷直连 还是会有很多问题，很难解决
 
 所以既然问题无法解决，不如直接应用双向splice，也不用过滤任何alert问题。破罐子破摔。
 
 总之这种splice东西只适用于玩一玩，xtls以及所有类似的 对拷直连的 技术都是不可靠的。我只是放这里练一下手。大家玩一玩就行。
 
+我只是在内网自己试试玩一玩，从来不会真正用于安全性要求高的用途。
 ## 安装方式：
 
 ```go
