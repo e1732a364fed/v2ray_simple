@@ -57,10 +57,11 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
-	buf := common.GetBytes(512)
-	defer common.PutBytes(buf)
+	buf := common.GetPacket()
+	defer common.PutPacket(buf)
 
 	// Read hello message
+	// 一般握手包发来的是 [5 1 0]
 	n, err := underlay.Read(buf)
 	if err != nil || n == 0 {
 		return nil, nil, fmt.Errorf("failed to read hello: %w", err)
@@ -70,18 +71,21 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		return nil, nil, fmt.Errorf("unsupported socks version %v", version)
 	}
 
-	// Write hello response
+	// Write hello response， [5 0]
 	// TODO: Support Auth
 	_, err = underlay.Write([]byte{Version5, AuthNone})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to write hello response: %w", err)
 	}
 
-	// Read command message
+	// Read command message，
 	n, err = underlay.Read(buf)
 	if err != nil || n < 7 { // Shortest length is 7
-		return nil, nil, fmt.Errorf("failed to read command: %w", err)
+		return nil, nil, fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
 	}
+
+	// 一般可以为 5 1 0 3 n，3表示域名，n是域名长度，然后域名很可能是 119 119 119 46 开头，表示 www.
+	//  比如百度就是  [5 1 0 3 13 119 119 119 46 98]
 
 	cmd := buf[1]
 	switch cmd {

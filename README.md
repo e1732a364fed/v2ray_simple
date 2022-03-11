@@ -111,6 +111,13 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 
 此问题有待考证解决。也不知道是不是只有我自己有这个问题。。
 
+## 交叉编译
+
+```sh
+GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.0
+GOARCH=arm64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_arm64_v1.0.0
+GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_win10_v1.0.0.exe
+```
 
 ## 交流
 

@@ -30,11 +30,18 @@ func NewServer(hostAndPort, host, certFile, keyFile string, isInsecure bool) (*S
 	return s, nil
 }
 
-func (s *Server) Handshake(underlay net.Conn) (tlsConn *tls.Conn, err error) {
-	tlsConn = tls.Server(underlay, s.tlsConfig)
-	err = tlsConn.Handshake()
+func (s *Server) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
+	rawConn := tls.Server(underlay, s.tlsConfig)
+	err = rawConn.Handshake()
 	if err != nil {
-		return tlsConn, common.NewErr("tls握手失败", err)
+		//return tlsConn,
+		err = common.NewErr("tls握手失败", err)
+
+		return
+	}
+
+	tlsConn = &Conn{
+		Conn: rawConn,
 	}
 
 	return

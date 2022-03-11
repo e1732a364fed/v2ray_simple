@@ -21,8 +21,17 @@ func NewTlsClient(host string, insecure bool) *Client {
 	return c
 }
 
-func (c *Client) Handshake(underlay net.Conn) (tlsConn *tls.Conn, err error) {
-	tlsConn = tls.Client(underlay, c.tlsConfig)
-	err = tlsConn.Handshake()
+func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
+	rawConn := tls.Client(underlay, c.tlsConfig)
+	err = rawConn.Handshake()
+
+	if err != nil {
+		return
+	}
+
+	tlsConn = &Conn{
+		Conn: rawConn,
+	}
+
 	return
 }

@@ -6,9 +6,13 @@ import (
 )
 
 var (
-	standardBytesPool  sync.Pool //1500
+	standardBytesPool sync.Pool //1500
+
+	// 实际上tcp默认是 16384, 16k，实际上范围是1k～128k之间，我们64k已经够了
+	//而 udp则最大还不到 64k。(65535－20－8)
 	standardPacketPool sync.Pool //64*1024
-	customBytesPool    sync.Pool // >1500
+
+	customBytesPool sync.Pool // >1500
 
 	bufPool sync.Pool
 )

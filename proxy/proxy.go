@@ -80,7 +80,7 @@ ws和grpc文件夹（第七层）
 
 # proxy 文件夹内容
 
-接口 ProxyCommonFuncs 和 结构 ProxyCommonStruct 给 这个架构定义了标准
+接口 ProxyCommon 和 结构 ProxyCommonStruct 给 这个架构定义了标准
 
 而 Client 和 Server 接口 是 具体利用该架构的 客户端 和 服务端，都位于VSI中的第八层
 
@@ -112,7 +112,7 @@ type UserConn interface {
 }
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持
-type ProxyCommonFuncs interface {
+type ProxyCommon interface {
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
 	SetAddrStr(string)
 
@@ -128,7 +128,7 @@ type ProxyCommonFuncs interface {
 	GetTLS_Client() *tlsLayer.Client
 }
 
-func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommonFuncs) error {
+func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommon) error {
 	insecureStr := u.Query().Get("insecure")
 	insecure := false
 	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
@@ -201,7 +201,7 @@ func (s *ProxyCommonStruct) SetUseTLS() {
 
 // Client 用于向 服务端 拨号
 type Client interface {
-	ProxyCommonFuncs
+	ProxyCommon
 
 	Name() string
 
@@ -261,7 +261,7 @@ func ClientFromURL(s string) (Client, error) {
 
 // Server 用于监听 客户端 的连接
 type Server interface {
-	ProxyCommonFuncs
+	ProxyCommon
 
 	Name() string
 
