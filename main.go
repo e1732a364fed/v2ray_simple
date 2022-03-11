@@ -33,13 +33,13 @@ var (
 	conf         *Config
 	directClient proxy.Client
 
-	tls_lazy_encryptPtr = flag.Bool("lazy", false, "tls lazy encrypt (splice)")
-	tls_lazy_encrypt    bool
+	tls_lazy_encrypt bool
 )
 
 func init() {
 	directClient, _ = proxy.ClientFromURL("direct://")
 
+	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 }
 
 func printVersion() {
@@ -78,7 +78,6 @@ func main() {
 	printVersion()
 
 	flag.Parse()
-	tls_lazy_encrypt = *tls_lazy_encryptPtr
 
 	var err error
 
@@ -109,7 +108,7 @@ func main() {
 	log.Println(localServer.Name(), "is listening TCP on ", localServer.AddrStr())
 
 	// 后台运行主代码，而main函数只监听中断信号
-	// TODO: 未来main函数可以推出 交互模式，未来推出动态增删用户、查询流量等功能时就有用
+	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用
 	go func() {
 		for {
 			lc, err := listener.Accept()
@@ -142,7 +141,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	baseLocalConn := thisLocalConnectionInstance
 
-	log.Println("got new", thisLocalConnectionInstance.RemoteAddr().String())
+	//log.Println("got new", thisLocalConnectionInstance.RemoteAddr().String())
 
 	var err error
 
@@ -166,26 +165,24 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	wlc, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
-		log.Printf("failed in handshake from %v: %v", localServer.AddrStr(), err)
+		log.Println("failed in handshake from", localServer.AddrStr(), err)
 		thisLocalConnectionInstance.Close()
 		return
 	}
 
-	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个和要发送到tls的信息时一模一样的，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5进行判断
+	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个和要发送到tls的信息是一模一样的，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5进行判断
 	//
-	//  而在服务端探测时，因为包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
-	// 所以总之都是要在 localServer判断 wlc，只不过理由不一样
-
-	var thecc *tlsLayer.CopyConn
+	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
+	// 所以总之都是要在 localServer判断 wlc；总之，含义就是，去检索“用户承载数据”的来源
 
 	if tls_lazy_encrypt {
 
-		thecc = tlsLayer.NewDetectConn(baseLocalConn, wlc)
+		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, tlsLayer.OnlyTest)
 
-		wlc = thecc
 		//clientConn = cc
 	}
 
+	//如果目标是udp则要分情况讨论
 	if targetAddr.IsUDP {
 
 		switch localServer.Name() {
@@ -250,9 +247,9 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	var client proxy.Client
 
-	client = remoteClient
+	client = remoteClient //如果加了白名单等过滤方式，则client可能会等于direct等，再说
 
-	log.Printf("%s want to dial %s", client.Name(), targetAddr.UrlString())
+	log.Println(client.Name(), " want to dial ", targetAddr.UrlString())
 
 	// 如果目标是udp 则我们单独处理。这里为了简便，不考虑多级串联的关系，直接只考虑 直接转发到direct
 	// 根据 vless_v1的讨论，vless_v1 的udp转发的 通信方式 也是与tcp连接类似的分离信道方式
@@ -338,7 +335,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	*/
 
 	if tls_lazy_encrypt {
-		tryRaw(wrc, wlc, client.IsUseTLS())
+		tryRawCopy(wrc, wlc, client.IsUseTLS())
 		return
 	}
 
@@ -347,15 +344,17 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 }
 
+// tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn
 //和 xtls的splice 含义相同
-func tryRaw(wrc, wlc io.ReadWriter, isclient bool) {
+func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
 	// 在判断阶段，因为还没确定是否是 tls，所以是要继续用tls加密的，
-	// 而直连阶段，只要能让 Copy使用 ReadFrom, 就能一步一步最终使用splice了
+	// 而直连阶段，只要能让 Copy使用 net.TCPConn的 ReadFrom, 就不用管了， golang最终就会使用splice
+	// 之所以可以对拷直连，是因为无论是 socks5 还是vless，只是在最开始的部分 加了目标头，后面的所有tcp连接都是直接传输的数据，就是说，一开始握手什么的是不能直接对拷的，等到后期就可以了
+	// 而且之所以能对拷，还有个原因就是，远程服务器 与 客户端 总是源源不断地 为 我们的 原始 TCP 连接 提供数据，我们只是一个中间商而已，左手倒右手
 
-	//首先判断我们的wlc（*tlsLayer.CopyConn) 是否得出来 IsTLS
-	wlccc := wlc.(*tlsLayer.CopyConn)
+	wlccc := wlc.(*tlsLayer.DetectConn)
 	wlccc_raw := wlccc.RawConn
 
 	var rawWRC *net.TCPConn
@@ -363,21 +362,23 @@ func tryRaw(wrc, wlc io.ReadWriter, isclient bool) {
 	//wrc 有两种情况，如果客户端那就是tls，服务端那就是direct。我们不讨论服务端 处于中间层的情况
 
 	if isclient {
-		// 不过实际上 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
+		// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
+		// 很明显，目前我们只支持vless所以才这么操作，以后再说。
 
 		wrcVless := wrc.(*vless.UserConn)
-
 		tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
-
 		rawWRC = tlsConn.GetRaw()
 
 	} else {
-		rawWRC = wrc.(*net.TCPConn)
+		rawWRC = wrc.(*net.TCPConn) //因为是direct
 	}
 
 	if rawWRC == nil {
-		log.Println("splice fail reason 3 ")
-		io.Copy(wrc, wlc)
+		log.Println("splice fail reason 1 ")
+
+		//退化回原始状态
+		go io.Copy(wrc, wlc)
+		io.Copy(wlc, wrc)
 		return
 	}
 
@@ -385,6 +386,7 @@ func tryRaw(wrc, wlc io.ReadWriter, isclient bool) {
 		//从 wlccc 读取，向 wrc 写入
 		// 此时如果ReadFrom，那就是 wrc.ReadFrom(wlccc)
 		//wrc 要实现 ReaderFrom才行, 或者把最底层TCPConn暴露，然后 wlccc 也要把最底层 TCPConn暴露出来
+		// 这里就直接采取底层方式
 
 		p := common.GetPacket()
 		isgood := false
@@ -396,20 +398,24 @@ func tryRaw(wrc, wlc io.ReadWriter, isclient bool) {
 
 			n, err := wlccc.Read(p)
 			if err != nil {
-
 				break
 			}
 			wrc.Write(p[:n])
 
 			if wlccc.R.IsTls && wlccc.RawConn != nil {
 				isgood = true
-
 			}
 		}
+		common.PutPacket(p)
 		if isgood {
 
-			log.Println("成功SpliceRead 方向1")
-			rawWRC.ReadFrom(wlccc_raw)
+			if tlsLayer.PDD {
+				log.Println("成功SpliceRead 方向1")
+				num, _ := rawWRC.ReadFrom(wlccc_raw)
+				log.Println("SpliceRead 方向1 读完，", num)
+			} else {
+				rawWRC.ReadFrom(wlccc_raw)
+			}
 
 		}
 	}()
@@ -424,17 +430,22 @@ func tryRaw(wrc, wlc io.ReadWriter, isclient bool) {
 		}
 		n, err := wrc.Read(p)
 		if err != nil {
-
 			break
 		}
 		wlccc.Write(p[:n])
 		if wlccc.W.IsTls && wlccc.RawConn != nil {
 			isgood2 = true
-
 		}
 	}
+	common.PutPacket(p)
 	if isgood2 {
-		log.Println("成功SpliceRead 方向2")
-		wlccc_raw.ReadFrom(rawWRC)
+		if tlsLayer.PDD {
+			log.Println("成功SpliceRead 方向2")
+			num, _ := wlccc_raw.ReadFrom(rawWRC)
+			log.Println("SpliceRead 方向2 读完，", num)
+		} else {
+			wlccc_raw.ReadFrom(rawWRC)
+		}
+
 	}
 }
