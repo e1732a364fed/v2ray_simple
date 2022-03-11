@@ -12,17 +12,37 @@ verysimple项目大大简化了 转发机制，能提高运行速度。
 
 在本项目里 制定 并实现了 vless v1标准。
 
+### 关于vless v1
+
+这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](vless_v1.md)
+
+在客户端的 配置url中，添加 `?version=1` 即可生效。
+
+我 实现了 一种独创的 非mux型“隔离信道”方法的 udp over tcp 的fullcone
+
+测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 v2simple vless v1 + direct 的服务端。
+
+
+
+### 关于udp
+
+本项目 vless 和 socks5 均支持 udp
+
+最新的代码已经完整支持vless v0
+
+后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。v1还处于测试阶段
+
 ### tls lazy encrypt (splice) 
 
 在最新代码里，还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
 
 tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
 
-因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不需要通过魔改tls包实现，也不会有我讲的xtls的各种漏洞
+因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快。而且这种技术不通过魔改tls包实现，而是在tls的外部实现，不会有我讲的xtls的233漏洞
 
 关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
 
-该特性不稳定，会导致一些网页无法访问（不是速度慢，应该是因为 为了实现双向splice，而少了一些 alert 过滤）；
+该特性不稳定，会导致一些网页访问有时出现异常（不是速度慢，应该是因为 为了实现双向splice，而少了一些 alert 过滤）；
 
 经过我后来的思考，发现似乎xtls的splice之所以是单向的，就是因为它在Write时需要过滤掉一些 alert的情况，否则容易被探测；
 
@@ -53,6 +73,11 @@ v2ray_simple -c server.json
 ```
 
 关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
+
+## 验证方式
+
+对于功能的golang test，请使用 `go test ./...` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
+
 
 ## 开发标准以及理念
 
@@ -101,30 +126,6 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 
 不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。
 
-## 关于vless v1
-
-这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](vless_v1.md)
-
-在客户端的 配置url中，添加 `?version=1` 即可生效。
-
-我 实现了 一种独创的 非mux型“隔离信道”方法的 udp over tcp 的fullcone
-
-测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 v2simple vless v1 + direct 的服务端。
-
-
-
-## 关于udp
-
-本项目 vless 和 socks5 均支持 udp
-
-最新的代码已经完整支持vless v0
-
-后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。v1还处于测试阶段
-
-
-## 关于验证
-
-对于功能的golang test，请使用 `go test ./...` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
 
 ## 交叉编译
