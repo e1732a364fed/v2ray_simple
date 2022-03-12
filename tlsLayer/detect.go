@@ -1,6 +1,7 @@
 package tlsLayer
 
 import (
+	"bytes"
 	"flag"
 	"io"
 	"log"
@@ -89,17 +90,7 @@ type ComDetectStruct struct {
 
 	handshakeFailReason int
 
-	supposedLen int //for write
-	wholeMsgLen int //for write
-
-	MiddleTlsRecord []byte
-
-	LeftTlsRecord []byte //for write
-
-	needMoreReadLen int //for write
-
-	CutType byte //3种情况
-
+	FirstValidTLSData []byte
 }
 
 const (
@@ -237,6 +228,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		}
 		if p0 != 22 {
 			cd.handshakeFailReason = 2
+
 			return
 		}
 
@@ -269,6 +261,52 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		return
 	}
 
+	if !OnlyTest {
+		if !isRead {
+			// 如果前面握手符合 tls特征，然后之后的命令却获得到了特殊命令的头部，则我们直接认为这是服务端发给我们的特殊指令
+
+			// 这个过程依然是 在 客户端的 读取出 wrc的数据，然后 调用 wlcdc.Write 时发生
+			// 就是说，同样是Write，服务端是在Write判断完后，发送特殊指令
+			// 而客户端是在 Write的判断过程中，检索特殊指令
+			// 说白了，就是在 服务端-> 客户端 这个方向发生的，
+			if cd.isclient && n >= len(SpecialCommand) {
+
+				if bytes.Equal(SpecialCommand, p[:len(SpecialCommand)]) {
+
+					if PDD {
+						log.Println("W 读到特殊命令！")
+					}
+
+					cd.IsTls = true
+					return
+				}
+			}
+		} else {
+			// Read也是同理，也是发送特殊指令，只不过Read的话，是客户端向 服务端 发送特殊指令
+			// 这里是不会被黑客攻击的，因为事件发生在第二个或者更往后的 数据包中，而vless的uuid检验则是从第一个就要开始检验。
+
+			//这里就是服务端来读取 特殊指令
+			if !cd.isclient && n >= len(SpecialCommand) {
+
+				if PDD {
+					log.Println("R 尝试读取特殊指令")
+				}
+
+				if bytes.Equal(SpecialCommand, p[:len(SpecialCommand)]) {
+					if PDD {
+						log.Println("R 读到特殊命令！")
+					}
+					cd.IsTls = true
+					return
+				}
+			} else {
+
+			}
+		}
+	}
+
+	//下面的判断， 只会在 客户端的 Read，和 服务端的 Write中 发生
+
 	p1 := p[1]
 	p2 := p[2]
 
@@ -287,18 +325,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		}
 
 		if !OnlyTest {
-			if !isRead {
-				//避免客户端只读到了一半 就开始裸奔，要读全，所以注明一下没读到的长度
-				supposedLen := int(p[3])<<8 + int(p[4])
 
-				// 不过实测，supposedLen比 实际读取到的还短啊，读到 supposedLen=1203，但是 实际n=9760
-
-				// 实测，supposedLen可能比读到的数据长，也可能比读到的数据短，这都是不一定的，这是tcp自己的性质，没办法
-
-				log.Println("W, supposedLen", supposedLen, n)
-				cd.supposedLen = supposedLen
-
-			}
 			cd.IsTls = true
 		}
 
@@ -358,6 +385,34 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 	n, err = dr.Reader.Read(p)
 
 	commonFilterStep(err, &dr.ComDetectStruct, p[:n], true)
+
+	if dr.IsTls {
+
+		if dr.isclient {
+			//判断TLS成功后，会向服务端发送特殊指令
+			//copyBs := common.GetPacket()
+			//copy(copyBs, p)
+			//dr.FirstValidTLSData = copyBs[:n]
+			//log.Println("R 已经保存实际TLS内容")
+			//实际上根本不用保存，见main.go
+
+			// 此时特殊指令的发送不受Reader控制，要在main函数中 Write 到 wrc中
+			return
+		} else {
+			// 服务端，能进入这里，就代表服务端接收到了特殊指令
+
+			//那么此时的p的前几字节都是特殊指令，是没用的，要跳过；后面是可能会接东西的，也可能不接，因为tcp是粘包的
+			//后面如果接了任何东西，那么接的东西都是需要 直连发送的
+
+			// 但是，不能把特殊指令去掉然后重新放到p中
+			// 因为Read是调用 底层的tls的，tls会把 特殊指令 以及跟着的直连数据一起解密；
+			//	我们需要从TeeConn的Recorder中读取真实的数据
+
+			return
+
+		}
+
+	}
 	return
 }
 
@@ -372,6 +427,8 @@ func (dw *DetectWriter) SimpleWrite(p []byte) (n int, err error) {
 	n, err = dw.Writer.Write(p)
 	return
 }
+
+var SpecialCommand = []byte{1, 2, 3, 4}
 
 //发现，数据基本就是 23 3 3， 22 3 3，22 3 1 ， 20 3 3
 //  一个首包不为23 3 3 的包往往会出现在 1184长度的包的后面，而且一般 1184长度的包 的开头是 22 3 3 0 122，且总是在Write里面发生
@@ -391,186 +448,95 @@ func (dw *DetectWriter) SimpleWrite(p []byte) (n int, err error) {
 func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 	//write和Read不一样，Write是，p现在就具有所有的已知信息，所以我们先过滤，然后再发送到远端
 
-	if dw.IsTls && dw.needMoreReadLen != 0 {
-		// 上一次读的时候，读了一半的tls包，还需要再读另一半
-		//这里默认认为p 给的足够大，能直接就读满这另一半
-
-		//但是这还不够，因为可能又剩下了一串tls数据需要写入，还是要缓存
-
-		diff := len(p) - dw.needMoreReadLen
-
-		if diff >= 0 {
-
-			hasPartLen := len(dw.LeftTlsRecord)
-
-			dw.LeftTlsRecord = dw.LeftTlsRecord[:hasPartLen+len(p)]
-
-			copy(dw.LeftTlsRecord[hasPartLen:], p)
-
-			dw.needMoreReadLen = 0
-
-			//现在我们要有的都有了, 这个曾经被分割的 LeftTlsRecord 现在完整了(不仅完整，而且又多了一段剩余部分)，我们可以和剩余部分一起写入直连了
-			// 总之我们必须按照tls 的 record边界 进行 直连
-
-			// 之前的问题就是，判断是tls的瞬间后，还是把数据加密传输了一次，而且还没有尊重tls的record边界
-			// 然后下一次传输是 直连的，导致那个 被分割开的 tls的Record 的前一半被加密，后一半被直连，就错误了
-			// 这里把第一次的 完整的tls的record部分加密发送，然后这个单独被分割开的 tls record单独处理，记录下来后，直连发送。
-
-			return len(p), nil //此时应该搞定了，
-		} else {
-			//p 不够长的情况下就再说吧！
-
-			log.Println("DetectWriter,W, IsTLS, 想读另一半tls 但是p不够长")
-			return len(p), nil
-		}
+	if dw.IsTls {
+		n, err = dw.Writer.Write(p)
+		return
 	}
 
 	commonFilterStep(nil, &dw.ComDetectStruct, p, false)
 
-	if dw.IsTls && !dw.isclient { //客户端不用再检查tls 记录完整性，因为服务端给做好了
+	// 经过判断之后，确认是 tls了，则我们缓存这个记录， 然后通过tls发送特殊指令
+	if dw.IsTls {
 
-		supposeWholeLen := dw.supposedLen + 5
+		if dw.isclient {
+			// 客户端 DetectConn的Write被调用的话，那就是从 服务端的 tls连接中 提取出了新数据，准备通过socks5发往浏览器
+			//
+			//客户端判断出IsTLS，那就是收到了特殊指令，p的头部就是特殊指令；p后面可能还跟 数据
+			//  然而，一旦后面跟了数据，就完蛋了，这说明特殊指令 和 直连数据连在一起 整个被tls处理 了
 
-		if supposeWholeLen < len(p) {
+			//所以，关键点是，在客户端的tls的前面 也要进行过滤
+			// 就是因为 我们需要splice，所以原始数据和 tls解密过的数据 我们都要！
 
-			dw.wholeMsgLen = len(p)
+			//客户端发现 浏览器 发送来的数据是 tls数据后， 要使用tls 发送特殊指令，然后，
+			// 服务端 在收到 特殊指令之前，已经收到了 tls前面的握手数据，已经处于 handshakePass的阶段
+			// 因此，服务端只要在 handshakePass 后面，把 原本的 net.TCPConn 做成一个 TeeReader, 然后给tls真正提供的
+			//  实际上是这个TeeReader，这样tls只要Read，则我们的TeeReader也会跟着 输出数据
+			//  然后就算tls读到了 直连数据 也没关系，因为我们的TeeReader也读到了！所以根本不必担心丢失数据的问题
 
-			log.Println("DetectWriter,W, IsTLS", "应该具有长度：", dw.supposedLen, "实际剩余长度", len(p)-5, "多了", len(p)-supposeWholeLen)
+			// 总之就是，客户端的wrc的 tls 和 服务端的 wlc 的tls，我们都不直接提供tcp连接，而是包一层
 
-			//实际上 supposedLen 应该 = 实际长度-5，因为前面五字节是 tls的 record 头部
+			//  如果特殊指令后面跟着 直连数据一起被tls 读到了的话
+			//  那么 原始的数据会包含至少两个  tls record，第一个tls record 解密出来 就是我们的特殊指令，而第二个以后的 record 则是我们要直连的数据
 
-			cursor := supposeWholeLen
-			//var lastcursor int
+			//	我们需要从TeeConn的Recorder中读取真实的数据
 
-			zhanbao_count := 0
+			return
 
-			//dw.UnwrittenBs = p[supposeWholeLen:]
+		} else {
+			// 服务端Write被调用，那就是 获取到了远程服务器的数据，准备发向 客户端，此时我们发送特殊命令
 
-			var leftSupposedLen int
+			copyBs := common.GetPacket()
+			copy(copyBs, p)
+			dw.FirstValidTLSData = copyBs[:len(p)]
 
-			fit := false
-
-			for {
-				zhanbao_count++
-
-				left := p[cursor:]
-				leftLen := len(left)
-
-				if leftLen > 4 {
-					if left[0] != 23 {
-						log.Println("DetectWriter,W, 首部不为23", zhanbao_count, left[0])
-						break
-					}
-
-					leftSupposedLen = int(left[3])<<8 + int(left[4])
-
-					diff := leftLen - 5 - leftSupposedLen
-
-					log.Println("DetectWriter,W, 得到粘包", zhanbao_count, "应该具有长度：", leftSupposedLen, "实际长度", leftLen-5, ",多了", diff)
-
-					nextIndex := cursor + 5 + leftSupposedLen
-
-					if diff > 0 { //意味着还有另一个包粘包！
-
-						//lastcursor = cursor
-						cursor = nextIndex
-						continue
-					} else if diff < 0 {
-
-						log.Println("DetectWriter,W, diff", diff, "<0, 最后一个包长度不够")
-						//cursor = nextIndex
-						break
-					} else {
-						// 也有正好的情况发生
-						fit = true
-						break
-					}
-				} else {
-					break
-				}
-
-			}
-			//循环结束时，情况是：不是完全没有粘包存在，就是最末尾粘了一半的包
-			// 实测，只有 完全没有粘包存在时，传输才会完全成功，否则的话，就属于一半加密一半裸奔，浏览器肯定看不懂
-
-			if fit {
-				//就算是fit，也不行！！还是因为，为了让客户端的tls能够仅仅读取到一个tls头，必须进行分割
-				// 如果直接发送的话，那么客户端永远不会知道到底在第几个 tls record后面开始 后 是 直连数据；
-				// 因为客户端收到的record本身就可以被 tcp连接 分割开，因为分割就要继续读，但是却不知道读到第几个；
-				// 所以只能进行分割，然后交给上级。
-				// 这里直接按 BigCut进行分割，因为这样第二部分就会被通过直连发送，可以少加密一次
-
-				log.Println("DetectWriter,W, fit, 但依然要按照直连分割")
-
-				first := p[:supposeWholeLen]
-				leftRecord := p[supposeWholeLen:]
-				cp := common.GetPacket() //这个packet长度64k，足够大了
-				cp = cp[:len(leftRecord)]
-				copy(cp, leftRecord)
-				dw.LeftTlsRecord = cp
-				dw.CutType = CutType_fit
-
-				n, err = dw.Writer.Write(first)
-				if err == nil {
-					n = len(p)
-				}
-				return
-			}
-
-			log.Println("DetectWriter,W, supposedLen和整个数据包长度大小不一致,", supposeWholeLen, len(p), ",剩余粘了", zhanbao_count, "个包,最末尾还粘了不完整的数据长度", len(p)-cursor, "而实际最后一个包的长度应该是", leftSupposedLen)
-
-			dw.needMoreReadLen = leftSupposedLen - len(p) - cursor - 5
-
-			first := p[:supposeWholeLen]
-			leftRecord := p[supposeWholeLen:]
-
-			n, err = dw.Writer.Write(first) //把完整的一截tls数据 通过tls加密 发送发过去
-
-			//问题出在客户端的读！就算我们按照完整的tls record发送，客户端还是会读到被割裂的包
-			// 关键就是我们的客户端不知道边界在哪里。我们只有一个能与客户端配合的，那就是首包；
-			// 所以我们 只能 通过tls加密发送第一个tls record，然后其它的记录则统统缓存起来，留着下一次直接直连发送
-
-			log.Println("DetectWriter,W, 先写入完整的 tls record，", supposeWholeLen)
-
-			cp := common.GetPacket() //这个packet长度64k，足够大了
-			cp = cp[:len(leftRecord)]
-			copy(cp, leftRecord)
-
-			dw.LeftTlsRecord = cp
-			dw.CutType = CutType_big
+			n, err = dw.Writer.Write(SpecialCommand)
 
 			if err == nil {
-				n = len(p) //假装告诉上级调用者，我们写了整个数据；其实只写了一半， 剩下一半要等待下一次Write提供，然后会一起写入 直连
+				n = len(p)
+
 			}
-
 			return
-		} else if supposeWholeLen > len(p) {
 
-			diff := supposeWholeLen - len(p)
-
-			log.Println("DetectWriter,W, IsTLS", "应该具有长度：", dw.supposedLen, "实际剩余长度", len(p)-5, "少了", diff)
-
-			// 因为tcp问题，导致只收到了一半的 tls数据，尴尬，需要接着读，也就是说，需要被动等待第二个Write 给我们提供更多数据；
-			// 如果不等待的话，那么我们就是只加密了一半的tls数据，然后另一半被直连了，肯定会得到错误结果
-
-			//这个和 上面粘包的情况时一样的，因为粘包到最后还是会分出一个 收到一半包的情况
-
-			dw.needMoreReadLen = diff
-
-			cp := common.GetPacket() //这个packet长度64k，足够大了
-			cp = cp[:len(p)]
-			copy(cp, p)
-			dw.LeftTlsRecord = cp
-			dw.CutType = CutType_small
-
-			n = len(p)
-
-			return
 		}
-	}
 
+	}
 	n, err = dw.Writer.Write(p)
 	//log.Println("DetectWriter,W, 原本", len(p), "实际写入了", n)
 
 	return
+}
+
+func GetTlsRecordNextIndex(p []byte) int {
+	if len(p) < 5 {
+		return -1
+	}
+
+	supposedLen := int(p[3])<<8 + int(p[4])
+
+	return 5 + supposedLen
+
+}
+
+func GetLastTlsRecordTailIndex(p []byte) (last_cursor int, count int) {
+
+	log.Println("总长", len(p))
+	cursor := 0
+	for {
+		if cursor > len(p) {
+			return
+		}
+		index := GetTlsRecordNextIndex(p[cursor:])
+		log.Println("此记录index", index, last_cursor, cursor)
+		count++
+
+		if last_cursor > len(p) {
+			return
+		} else if index < 0 {
+			return
+		}
+		last_cursor = cursor
+		cursor += index
+
+	}
+
 }

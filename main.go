@@ -162,13 +162,29 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	// 如果是服务端的话，那就是 localServer.IsUseTLS == true, 此时，我们正常握手，然后我们需要判断的是它承载的数据
 
+	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 WriteRecorder中
+	var serverEndLocalServerTlsRawReadRecorder *tlsLayer.Recorder
+
 	if localServer.IsUseTLS() {
+
+		if tls_lazy_encrypt {
+			serverEndLocalServerTlsRawReadRecorder = tlsLayer.NewRecorder()
+
+			serverEndLocalServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
+			teeConn := tlsLayer.NewTeeConn(baseLocalConn, serverEndLocalServerTlsRawReadRecorder)
+
+			thisLocalConnectionInstance = teeConn
+		}
 
 		tlsConn, err := localServer.GetTLS_Server().Handshake(thisLocalConnectionInstance)
 		if err != nil {
 			log.Println("failed in handshake localServer tls", localServer.AddrStr(), err)
 			thisLocalConnectionInstance.Close()
 			return
+		}
+
+		if tls_lazy_encrypt {
+			serverEndLocalServerTlsRawReadRecorder.StartRecord()
 		}
 
 		thisLocalConnectionInstance = tlsConn
@@ -189,7 +205,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个和要发送到tls的信息是一模一样的，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5进行判断
 	//
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
-	// 所以总之都是要在 localServer判断 wlc；总之，含义就是，去检索“用户承载数据”的来源
+	// 所以总之都是要在 localServer判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
 
 	if tls_lazy_encrypt {
 
@@ -325,7 +341,16 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		return
 	}
 
+	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
+
 	if client.IsUseTLS() {
+
+		if tls_lazy_encrypt {
+			clientEndRemoteClientTlsRawReadRecorder = tlsLayer.NewRecorder()
+			teeConn := tlsLayer.NewTeeConn(clientConn, clientEndRemoteClientTlsRawReadRecorder)
+
+			clientConn = teeConn
+		}
 
 		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
 		if err != nil {
@@ -355,7 +380,14 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	*/
 
 	if tls_lazy_encrypt {
-		tryRawCopy(wrc, wlc, baseLocalConn, client.IsUseTLS())
+		isclient := client.IsUseTLS()
+		if isclient {
+			tryRawCopy(wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+		} else {
+			tryRawCopy(wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
+
+		}
+
 		return
 	}
 
@@ -367,7 +399,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn
 //和 xtls的splice 含义相同
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
-func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool) {
+func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
 	// 在判断阶段，因为还没确定是否是 tls，所以是要继续用tls加密的，
@@ -395,7 +427,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool) {
 
 		wrcVless := wrc.(*vless.UserConn)
 		tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
-		rawWRC = tlsConn.GetRaw()
+		rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
 
 	} else {
 		rawWRC = wrc.(*net.TCPConn) //因为是direct
@@ -403,6 +435,11 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool) {
 
 	if rawWRC == nil {
 		log.Println("splice fail reason 0 ")
+
+		if tls_lazy_encrypt {
+			theRecorder.StopRecord()
+			theRecorder.ReleaseBuffers()
+		}
 
 		//退化回原始状态
 		go io.Copy(wrc, wlc)
@@ -431,12 +468,57 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool) {
 			if err != nil {
 				break
 			}
-			wrc.Write(p[:n])
+			//wrc.Write(p[:n])
 			if wlcdc.R.IsTls && wlcdc.RawConn != nil {
 				isgood = true
-				//log.Println("成功判断 SpliceRead R方向，但是暂时不 直连对拷")
-			} else if wlcdc.R.DefinitelyNotTLS {
-				isbad = true
+
+				if isclient {
+
+					// 果是client，因为client是在Read时判断的 IsTLS，所以特殊指令实际上是要在这里发送
+
+					log.Println("R 准备发送特殊命令，以及保存的TLS内容", len(wlcdc.R.FirstValidTLSData))
+
+					wrc.Write(tlsLayer.SpecialCommand)
+
+					//然后还要发送第一段FreeData
+
+					//rawWRC.Write(wlcdc.R.FirstValidTLSData)
+					rawWRC.Write(p[:n])
+
+				} else {
+
+					//如果是 server, 则 此时   已经收到了解密后的 特殊指令
+					// 我们要从 theRecorder 中最后一个Buf里找 原始数据
+
+					theRecorder.DigestAll()
+
+					rawBuf := theRecorder.GetLast()
+					bs := rawBuf.Bytes()
+
+					_, record_count := tlsLayer.GetLastTlsRecordTailIndex(bs)
+					if record_count < 2 { //不应该
+						log.Println("有问题， nextI >= len(bs)")
+						os.Exit(-1)
+					}
+					log.Println("R Recorder 中记录了", record_count, "条记录")
+					nextI := tlsLayer.GetTlsRecordNextIndex(bs)
+
+					nextFreeData := bs[nextI:]
+
+					log.Println("R 从Recorder 提取 真实TLS内容", len(nextFreeData))
+
+					rawWRC.Write(nextFreeData)
+
+					theRecorder.StopRecord()
+					theRecorder.ReleaseBuffers()
+
+				}
+			} else {
+
+				wrc.Write(p[:n])
+				if wlcdc.R.DefinitelyNotTLS {
+					isbad = true
+				}
 			}
 		}
 		common.PutPacket(p)
@@ -484,50 +566,37 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool) {
 
 		if wlcdc.W.IsTls && wlcdc.RawConn != nil {
 
-			if wlcdc.W.LeftTlsRecord != nil {
-				//有被分割开的tls包，需要再调用一次write
+			if isclient {
+				//读到了服务端 发来的 特殊指令
 
-				// 如果是fit，则 LeftTlsRecord 已经存在了，不能再次阅读
+				rawBuf := theRecorder.GetLast()
+				bs := rawBuf.Bytes()
 
-				if wlcdc.W.CutType != tlsLayer.CutType_fit {
-					n, err := wrc.Read(p)
-					if err != nil {
-						break
-					}
-
-					// 这个Write会进行内部操作
-					wlcdc.Write(p[:n])
-					//此时如果没问题的话，Write会把读到部分 和上一次分割开的tlsRecord的那一半合并到一起
-					// 而且没再次 使用tls 发送，而是保存到了LeftTlsRecord中 ，供我们 进行直连发送，此时 LeftTlsRecord 的头部是完整的
-
-					// 不过还是不够啊！关键是如何让客户端的 wrc 的tls部分只按record长度读取，不要把我们后面 通过
-					//   直连发送的剩余部分给舍弃
-					//  因为我们对tls的内部操作缺乏控制; 也许我们可以通过 服务端的Write部分Sleep 1秒来解决，sleep就差不多能确保客户端的tls不会 提前把 我们裸奔的数据也读进缓存
+				nextI := tlsLayer.GetTlsRecordNextIndex(bs)
+				if nextI >= len(bs) { //不应该
+					log.Println("有问题， nextI >= len(bs)")
+					os.Exit(-1)
 				}
 
-				if tlsLayer.PDD {
-					log.Println("SpliceRead W方向, 先通过直连写入之前被分割的tls record", len(wlcdc.W.LeftTlsRecord))
-				}
+				nextFreeData := bs[nextI:]
 
-				if wlcdc.W.CutType != tlsLayer.CutType_small { //如果是bigCut/fitCut，则直接通过tcp发送，因为 第一个包之前发过了
-					if tls_lazy_fix {
-						time.Sleep(time.Millisecond * time.Duration(tls_lazy_milisecond))
-					}
+				wlccc_raw.Write(nextFreeData)
 
-					wlccc_raw.Write(wlcdc.W.LeftTlsRecord)
-				} else {
-					wlcdc.W.SimpleWrite(wlcdc.W.LeftTlsRecord) //如果是SmallCut，则需要通过tls发送，因为包之前一个也没发过
-
-					if tls_lazy_fix {
-						time.Sleep(time.Millisecond * time.Duration(tls_lazy_milisecond))
-					}
-				}
-
-				isgood2 = true
+				theRecorder.StopRecord()
+				theRecorder.ReleaseBuffers()
 
 			} else {
-				isgood2 = true
+
+				//此时已经写入了 特殊指令，需要再发送 freedata
+
+				if wlcdc.W.FirstValidTLSData != nil {
+
+					wlccc_raw.Write(wlcdc.W.FirstValidTLSData)
+
+				}
 			}
+
+			isgood2 = true
 
 		} else if wlcdc.W.DefinitelyNotTLS {
 			isbad2 = true

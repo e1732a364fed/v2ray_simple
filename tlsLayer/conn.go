@@ -18,13 +18,29 @@ type faketlsconn struct {
 	isClient bool
 }
 
-func (c *Conn) GetRaw() *net.TCPConn {
+func (c *Conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
 	rc := (*faketlsconn)(unsafe.Pointer(uintptr(unsafe.Pointer(c.Conn))))
 	if rc != nil {
 		if rc.conn != nil {
 			//log.Println("成功获取到 *net.TCPConn！", rc.conn.(*net.TCPConn)) //经测试，是毫无问题的，完全能提取出来并正常使用
-			return rc.conn.(*net.TCPConn)
+			//在 tls_lazy_encrypt 时，我们使用 TeeConn
+
+			if tls_lazy_encrypt {
+				tc := rc.conn.(*TeeConn)
+				return tc.OldConn.(*net.TCPConn)
+			} else {
+				return rc.conn.(*net.TCPConn)
+			}
+
 		}
 	}
 	return nil
+}
+
+// 直接获取TeeConn，仅用于已经确定肯定能获取到的情况
+func (c *Conn) GetTeeConn() *TeeConn {
+	rc := (*faketlsconn)(unsafe.Pointer(uintptr(unsafe.Pointer(c.Conn))))
+
+	return rc.conn.(*TeeConn)
+
 }
