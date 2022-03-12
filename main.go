@@ -35,10 +35,8 @@ var (
 	conf *Config
 	//directClient proxy.Client
 
-	tls_lazy_encrypt    bool
-	tls_half_lazy       bool
-	tls_lazy_fix        bool
-	tls_lazy_milisecond int
+	tls_lazy_encrypt bool
+	tls_half_lazy    bool
 )
 
 func init() {
@@ -46,10 +44,8 @@ func init() {
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_half_lazy, "hl", false, "tls half lazy, filter data when write and use splice when read; only take effect when '-lazy' is set")
-	flag.BoolVar(&tls_lazy_fix, "tlf", false, "tls lazy fix, it tries to sleep 1 second to make sure try to overcome splice problem, but it sacrifice delay. Only used at Server end")
 
 	flag.StringVar(&configFileName, "c", "client.json", "config file name")
-	flag.IntVar(&tls_lazy_milisecond, "tlft", 1000, "tls lazy fix delay time,in milisecond.")
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain")
 }
@@ -434,7 +430,10 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 	}
 
 	if rawWRC == nil {
-		log.Println("splice fail reason 0 ")
+		if tlsLayer.PDD {
+			log.Println("splice fail reason 0 ")
+
+		}
 
 		if tls_lazy_encrypt {
 			theRecorder.StopRecord()
@@ -476,13 +475,14 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 
 					// 果是client，因为client是在Read时判断的 IsTLS，所以特殊指令实际上是要在这里发送
 
-					log.Println("R 准备发送特殊命令，以及保存的TLS内容", len(wlcdc.R.FirstValidTLSData))
+					if tlsLayer.PDD {
+						log.Println("R 准备发送特殊命令，以及保存的TLS内容", len(p[:n]))
+					}
 
 					wrc.Write(tlsLayer.SpecialCommand)
 
 					//然后还要发送第一段FreeData
 
-					//rawWRC.Write(wlcdc.R.FirstValidTLSData)
 					rawWRC.Write(p[:n])
 
 				} else {
@@ -490,22 +490,28 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 					//如果是 server, 则 此时   已经收到了解密后的 特殊指令
 					// 我们要从 theRecorder 中最后一个Buf里找 原始数据
 
-					theRecorder.DigestAll()
+					//theRecorder.DigestAll()
 
 					rawBuf := theRecorder.GetLast()
 					bs := rawBuf.Bytes()
 
-					_, record_count := tlsLayer.GetLastTlsRecordTailIndex(bs)
-					if record_count < 2 { //不应该
-						log.Println("有问题， nextI >= len(bs)")
-						os.Exit(-1)
-					}
-					log.Println("R Recorder 中记录了", record_count, "条记录")
+					/*
+						_, record_count := tlsLayer.GetLastTlsRecordTailIndex(bs)
+						if record_count < 2 { //不应该
+							log.Println("有问题，record_count < 2 ", record_count)
+							os.Exit(-1)
+						}
+						log.Println("R Recorder 中记录了", record_count, "条记录")
+					*/
+
 					nextI := tlsLayer.GetTlsRecordNextIndex(bs)
 
 					nextFreeData := bs[nextI:]
 
-					log.Println("R 从Recorder 提取 真实TLS内容", len(nextFreeData))
+					if tlsLayer.PDD {
+						log.Println("R 从Recorder 提取 真实TLS内容", len(nextFreeData))
+
+					}
 
 					rawWRC.Write(nextFreeData)
 
@@ -573,14 +579,17 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 				bs := rawBuf.Bytes()
 
 				nextI := tlsLayer.GetTlsRecordNextIndex(bs)
-				if nextI >= len(bs) { //不应该
-					log.Println("有问题， nextI >= len(bs)")
+				if nextI > len(bs) { //理论上有可能，但是又不应该，收到的buf不应该那么短，应该至少包含一个有效的整个tls record，因为此时理论上已经收到了服务端的 特殊指令，它是单独包在一个 tls record 里的
+					log.Println("有问题， nextI > len(bs)", nextI, len(bs))
 					os.Exit(-1)
 				}
 
-				nextFreeData := bs[nextI:]
+				if nextI < len(bs) {
+					//有额外的包
+					nextFreeData := bs[nextI:]
 
-				wlccc_raw.Write(nextFreeData)
+					wlccc_raw.Write(nextFreeData)
+				}
 
 				theRecorder.StopRecord()
 				theRecorder.ReleaseBuffers()
@@ -589,11 +598,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 
 				//此时已经写入了 特殊指令，需要再发送 freedata
 
-				if wlcdc.W.FirstValidTLSData != nil {
-
-					wlccc_raw.Write(wlcdc.W.FirstValidTLSData)
-
-				}
+				wlccc_raw.Write(p[:n])
 			}
 
 			isgood2 = true
@@ -628,6 +633,4 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 
 	}
 
-	//下面处理关闭的情况，因为对拷直连的特殊性，我们代理服务器到 目标服务器的连接关闭后，也即是 rawWRC 被关闭后，可能我们
-	// 实际需要
 }

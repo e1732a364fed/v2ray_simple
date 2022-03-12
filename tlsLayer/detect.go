@@ -6,17 +6,14 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"strings"
-
-	"github.com/hahahrfool/v2ray_simple/common"
 )
 
 var PDD bool //print tls detect detail
 var OnlyTest bool
 
 func init() {
-	log.SetOutput(os.Stdout) //主要是日志太多，如果都能直接用管道放到文件中就好了，默认不是Stdout所以优点尴尬，操作麻烦点
+	//log.SetOutput(os.Stdout) //主要是日志太多，如果都能直接用管道放到文件中就好了，默认不是Stdout所以优点尴尬，操作麻烦点
 
 	flag.BoolVar(&PDD, "pdd", false, "print tls detect detail")
 	flag.BoolVar(&OnlyTest, "ot", false, "only detect tls, doesn't actually mark tls")
@@ -89,8 +86,6 @@ type ComDetectStruct struct {
 	handShakePass bool
 
 	handshakeFailReason int
-
-	FirstValidTLSData []byte
 }
 
 const (
@@ -386,33 +381,31 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 
 	commonFilterStep(err, &dr.ComDetectStruct, p[:n], true)
 
-	if dr.IsTls {
+	/*
+		if dr.IsTls {
 
-		if dr.isclient {
-			//判断TLS成功后，会向服务端发送特殊指令
-			//copyBs := common.GetPacket()
-			//copy(copyBs, p)
-			//dr.FirstValidTLSData = copyBs[:n]
-			//log.Println("R 已经保存实际TLS内容")
-			//实际上根本不用保存，见main.go
+			if dr.isclient {
+				//判断TLS成功后，会向服务端发送特殊指令
 
-			// 此时特殊指令的发送不受Reader控制，要在main函数中 Write 到 wrc中
-			return
-		} else {
-			// 服务端，能进入这里，就代表服务端接收到了特殊指令
+				//特殊指令是直接在main.go里发送的, 即调用Read者 负责发送特殊指令
 
-			//那么此时的p的前几字节都是特殊指令，是没用的，要跳过；后面是可能会接东西的，也可能不接，因为tcp是粘包的
-			//后面如果接了任何东西，那么接的东西都是需要 直连发送的
+				// 此时特殊指令的发送不受Reader控制，要在main函数中 Write 到 wrc中
+				return
+			} else {
+				// 服务端，能进入这里，就代表服务端接收到了特殊指令
 
-			// 但是，不能把特殊指令去掉然后重新放到p中
-			// 因为Read是调用 底层的tls的，tls会把 特殊指令 以及跟着的直连数据一起解密；
-			//	我们需要从TeeConn的Recorder中读取真实的数据
+				//那么此时的p的前几字节都是特殊指令，是没用的，要跳过；后面是可能会接东西的，也可能不接，因为tcp是粘包的
+				//后面如果接了任何东西，那么接的东西都是需要 直连发送的
 
-			return
+				// 但是，不能把特殊指令去掉然后重新放到p中
+				// 因为Read是调用 底层的tls的，tls会把 特殊指令 以及跟着的直连数据一起解密；
+				//	我们需要从TeeConn的Recorder中读取真实的数据, 也是在main.go里操作
 
-		}
+				return
 
-	}
+			}
+
+		}*/
 	return
 }
 
@@ -485,9 +478,10 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 		} else {
 			// 服务端Write被调用，那就是 获取到了远程服务器的数据，准备发向 客户端，此时我们发送特殊命令
 
-			copyBs := common.GetPacket()
-			copy(copyBs, p)
-			dw.FirstValidTLSData = copyBs[:len(p)]
+			// 查看golang源码，可以发现握手过程之后，tls的发送是没有缓存的，只要对 tls.Conn 调用一次Write，就会调用一次或多次net.Conn.Write;
+			// 所以我们的 特殊指令 是完全包含在一个完整的 tls record 被发出的。
+
+			// 此处也是不需要保存 要直连发送的数据p 的，在main.go里去直接操作就行
 
 			n, err = dw.Writer.Write(SpecialCommand)
 
@@ -519,14 +513,14 @@ func GetTlsRecordNextIndex(p []byte) int {
 
 func GetLastTlsRecordTailIndex(p []byte) (last_cursor int, count int) {
 
-	log.Println("总长", len(p))
+	//log.Println("总长", len(p))
 	cursor := 0
 	for {
 		if cursor > len(p) {
 			return
 		}
 		index := GetTlsRecordNextIndex(p[cursor:])
-		log.Println("此记录index", index, last_cursor, cursor)
+		//log.Println("此记录index", index, last_cursor, cursor)
 		count++
 
 		if last_cursor > len(p) {
