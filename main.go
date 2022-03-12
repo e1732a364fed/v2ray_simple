@@ -28,20 +28,24 @@ var (
 	version = "1.0.0"
 	desc    = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
 
-	configFileName = flag.String("c", "client.json", "config file name")
+	configFileName string
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
-	conf         *Config
-	directClient proxy.Client
+	conf *Config
+	//directClient proxy.Client
 
 	tls_lazy_encrypt bool
+	tls_half_lazy    bool
 )
 
 func init() {
-	directClient, _ = proxy.ClientFromURL("direct://")
+	//directClient, _ = proxy.ClientFromURL("direct://")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
+	flag.BoolVar(&tls_half_lazy, "hl", false, "tls half lazy, filter data when write and use splice when read; only take effect when '-lazy' is set")
+
+	flag.StringVar(&configFileName, "c", "client.json", "config file name")
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain")
 }
@@ -69,12 +73,12 @@ func loadConfig(fileName string) (*Config, error) {
 			bytes, _ := ioutil.ReadAll(cf)
 			config := &Config{}
 			if err = json.Unmarshal(bytes, config); err != nil {
-				return nil, fmt.Errorf("can not parse config file %v, %v", configFileName, err)
+				return nil, fmt.Errorf("can not parse config file %v, %v", fileName, err)
 			}
 			return config, nil
 		}
 	}
-	return nil, fmt.Errorf("can not load config file %v", configFileName)
+	return nil, fmt.Errorf("can not load config file %v", fileName)
 }
 
 func main() {
@@ -85,7 +89,7 @@ func main() {
 
 	var err error
 
-	conf, err = loadConfig(*configFileName)
+	conf, err = loadConfig(configFileName)
 	if err != nil {
 		log.Println("can not load config file: ", err)
 		os.Exit(-1)
@@ -355,6 +359,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn
 //和 xtls的splice 含义相同
+// 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
@@ -362,6 +367,13 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 	// 而直连阶段，只要能让 Copy使用 net.TCPConn的 ReadFrom, 就不用管了， golang最终就会使用splice
 	// 之所以可以对拷直连，是因为无论是 socks5 还是vless，只是在最开始的部分 加了目标头，后面的所有tcp连接都是直接传输的数据，就是说，一开始握手什么的是不能直接对拷的，等到后期就可以了
 	// 而且之所以能对拷，还有个原因就是，远程服务器 与 客户端 总是源源不断地 为 我们的 原始 TCP 连接 提供数据，我们只是一个中间商而已，左手倒右手
+
+	// 如果开启了  half lazy 开关，则会在 Write的那一端 加强过滤，过滤一些alert，然后 只在Read端 进行splice
+	//
+	// 如果是客户端，则 从 wlc 读取，写入 wrc ，这种情况是 Write, 然后对于 DetectConn 来说是 Read，即 从DetectConn读取，然后 写入到远程连接
+	// 如果是服务端，则 从 wrc 读取，写入 wlc， 这种情况是 Write
+	//
+	// 总之判断 Write 的对象，是考虑 客户端和服务端之间的数据传输，不考虑 远程真实服务器
 
 	wlccc := wlc.(*tlsLayer.DetectConn)
 	wlccc_raw := wlccc.RawConn
@@ -372,7 +384,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 	if isclient {
 		// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
-		// 很明显，目前我们只支持vless所以才这么操作，以后再说。
+		// 很明显，目前我们只支持vless所以才可这么操作，以后再说。
 
 		wrcVless := wrc.(*vless.UserConn)
 		tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
@@ -383,7 +395,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 	}
 
 	if rawWRC == nil {
-		log.Println("splice fail reason 1 ")
+		log.Println("splice fail reason 0 ")
 
 		//退化回原始状态
 		go io.Copy(wrc, wlc)
@@ -400,18 +412,19 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 		p := common.GetPacket()
 		isgood := false
 		isbad := false
-		for {
 
+		if tls_half_lazy && isclient { // half_lazy时，写入时不使用splice
+			isbad = true
+		}
+		for {
 			if isgood || isbad {
 				break
 			}
-
 			n, err := wlccc.Read(p)
 			if err != nil {
 				break
 			}
 			wrc.Write(p[:n])
-
 			if wlccc.R.IsTls && wlccc.RawConn != nil {
 				isgood = true
 			} else if wlccc.R.DefinitelyNotTLS {
@@ -424,7 +437,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 			//直接退化成普通Copy
 
 			if tlsLayer.PDD {
-				log.Println("SpliceRead 方向1 退化……")
+				log.Println("SpliceRead R方向 退化……", wlccc.R.GetFailReason())
 			}
 			io.Copy(wrc, wlc)
 			return
@@ -433,9 +446,9 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 		if isgood {
 
 			if tlsLayer.PDD {
-				log.Println("成功SpliceRead 方向1")
-				num, _ := rawWRC.ReadFrom(wlccc_raw)
-				log.Println("SpliceRead 方向1 读完，", num)
+				log.Println("成功SpliceRead R方向")
+				num, e1 := rawWRC.ReadFrom(wlccc_raw)
+				log.Println("SpliceRead R方向 读完，", e1, ", 长度:", num)
 			} else {
 				rawWRC.ReadFrom(wlccc_raw)
 			}
@@ -445,7 +458,9 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 	isgood2 := false
 	isbad2 := false
-
+	if tls_half_lazy && !isclient { // half_lazy时，写入时不使用splice
+		isbad2 = true
+	}
 	p := common.GetPacket()
 
 	//从 wrc  读取，向 wlccc 写入
@@ -469,7 +484,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 	if isbad2 {
 
 		if tlsLayer.PDD {
-			log.Println("SpliceRead 方向1 退化……")
+			log.Println("SpliceRead W方向 退化……", wlccc.W.GetFailReason())
 		}
 		io.Copy(wlc, wrc)
 		return
@@ -477,9 +492,9 @@ func tryRawCopy(wrc, wlc io.ReadWriter, isclient bool) {
 
 	if isgood2 {
 		if tlsLayer.PDD {
-			log.Println("成功SpliceRead 方向2")
-			num, _ := wlccc_raw.ReadFrom(rawWRC)
-			log.Println("SpliceRead 方向2 读完，", num)
+			log.Println("成功SpliceRead W方向")
+			num, e2 := wlccc_raw.ReadFrom(rawWRC)
+			log.Println("SpliceRead W方向 读完，", e2, ", 长度:", num)
 		} else {
 			wlccc_raw.ReadFrom(rawWRC)
 		}

@@ -20,7 +20,7 @@ func init() {
 
 }
 
-// 用于 探测 承载数据是否使用了tls
+// 用于 探测 承载数据是否使用了tls, 它先与 底层tcp连接 进行 数据传输，然后查看传输到内容
 // 	可以参考 https://www.baeldung.com/linux/tcpdump-capture-ssl-handshake
 type DetectConn struct {
 	net.Conn //这个 Conn本DetectConn 中不会用到，只是为了能让CopyConn支持 net.Conn
@@ -47,7 +47,7 @@ func (cc *DetectConn) ReadFrom(r io.Reader) (int64, error) {
 	return 0, io.EOF
 }
 
-//可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 底层Read 和Write的 主体
+//可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 DetectConn 的 Read 和Write的 具体调用的主体
 func NewDetectConn(oldConn net.Conn, rw io.ReadWriter) *DetectConn {
 
 	var validOne io.ReadWriter = rw
@@ -88,29 +88,27 @@ func (c *ComDetectStruct) incr() {
 	c.packetCount++
 }
 
-// DetectReader 对每个Read的数据进行分析，判断是否是tls流量
-type DetectReader struct {
-	io.Reader
-
-	ComDetectStruct
+func (c *ComDetectStruct) GetFailReason() int {
+	return c.handshakeFailReason
 }
 
 // 总之，如果读写都用同样的判断代码的话，客户端和服务端应该就能同步进行 相同的TLS判断
-func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
-
-	// 首先判断握手包，即第一个包
-	//The Client Hello messages contain 01 in the sixth data byte of the TCP packet.
-	// 应该是这里定义的： https://datatracker.ietf.org/doc/html/rfc5246#section-7.4
-	//
+func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 
 	/*
+		我们把tls的细节放在这个注释里，便于参考
+
+		首先判断握手包，即第一个包
+		The Client Hello messages contain 01 in the sixth data byte of the TCP packet.
+		应该是这里定义的： https://datatracker.ietf.org/doc/html/rfc5246#section-7.4
+
 		//不过，首先要包在 Plaintex结构里
 		//https://datatracker.ietf.org/doc/html/rfc5246
 
 		struct {
 				ContentType type; //第一字节
-				ProtocolVersion version;//第23
-				uint16 length;// 第45字节
+				ProtocolVersion version;//第2、3字节
+				uint16 length;// 第4、5字节
 				opaque fragment[TLSPlaintext.length];
 			} TLSPlaintext;
 
@@ -119,10 +117,6 @@ func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
 
 		tls1.0, tls1.2:  change_cipher_spec(20), alert(21), handshake(22),application_data(23)
 
-
-	*/
-
-	/*
 		 	enum {
 				hello_request(0), client_hello(1), server_hello(2),
 				certificate(11), server_key_exchange (12),
@@ -178,62 +172,47 @@ func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
 
 	n := len(p)
 
-	defer dr.incr()
+	defer cd.incr()
 
 	p0 := p[0]
 
-	if dr.packetCount == 0 {
+	if cd.packetCount == 0 {
 
 		if n < 11 {
-			dr.handshakeFailReason = 1
+			cd.handshakeFailReason = 1
 			return
 		}
 		if p0 != 22 {
-			dr.handshakeFailReason = 2
+			cd.handshakeFailReason = 2
 			return
 		}
 
 		//version: p9, p10 , 3,1 3,2 3,3 3,4
 		if p[9] != 3 {
-			dr.handshakeFailReason = 4
+			cd.handshakeFailReason = 4
 			return
 		}
 		if p[10] == 0 || p[10] > 4 {
-			dr.handshakeFailReason = 5
+			cd.handshakeFailReason = 5
 			return
 		}
 
-		var shouldCheck_clientHello bool
-		var shouldCheck_serverHello bool
+		var helloValue byte = 1
 
-		if isRead {
-			shouldCheck_clientHello = true
-		} else {
-			shouldCheck_serverHello = true
+		//我们 DetectConn中，考察客户端传输来的流量 时 使用 Read， 考察服务端发来的流量 时 使用Write
+		if !isRead {
+			helloValue = 2
 		}
 
-		if shouldCheck_clientHello {
-			//log.Println("shouldCheck_clientHello")
-
-			if p[5] != 1 { //第六字节，即client_hello
-				dr.handshakeFailReason = 3
-				return
-			}
-
-			dr.handShakePass = true
-			return
-		} else if shouldCheck_serverHello {
-
-			if p[5] != 2 { //第六字节，即 server_hello
-				dr.handshakeFailReason = 3
-				return
-			}
-			dr.handShakePass = true
+		if p[5] != helloValue { //第六字节，
+			cd.handshakeFailReason = 3
 			return
 		}
 
-	} else if !dr.handShakePass {
-		dr.DefinitelyNotTLS = true
+		cd.handShakePass = true
+
+	} else if !cd.handShakePass {
+		cd.DefinitelyNotTLS = true
 		return
 	}
 
@@ -251,11 +230,11 @@ func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
 			if isRead {
 				str = "R"
 			}
-			log.Println(str, "got TLS!")
+			log.Println(str, "got TLS!", n)
 		}
 
 		if !OnlyTest {
-			dr.IsTls = true
+			cd.IsTls = true
 		}
 
 		return
@@ -277,12 +256,8 @@ func commonDetect(dr *ComDetectStruct, p []byte, isRead bool) {
 
 }
 
-// 总之，我们在客户端的 Read 操作，就是 我们试图使用 Read 读取客户的请求，然后试图发往 外界
-//  所以在socks5后面 使用的这个 Read，是读取客户端发送的请求，比如 clienthello之类
-//	服务端的 Read 操作，也是读 clienthello，因为我们总是判断客户传来的数据
-func (dr *DetectReader) Read(p []byte) (n int, err error) {
-	n, err = dr.Reader.Read(p)
-	if !OnlyTest && (dr.DefinitelyNotTLS || dr.IsTls) { //确定了是TLS 或者肯定不是 tls了的话，就直接return掉
+func commonFilterStep(err error, cd *ComDetectStruct, p []byte, isRead bool) {
+	if !OnlyTest && (cd.DefinitelyNotTLS || cd.IsTls) { //确定了是TLS 或者肯定不是 tls了的话，就直接return掉
 		return
 	}
 	if err != nil {
@@ -291,16 +266,33 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 			return
 		}
 	}
-	if !OnlyTest && dr.packetCount > 8 {
+	if !OnlyTest && cd.packetCount > 8 {
 		//都8个包了还没断定tls？直接推定不是！
-		dr.DefinitelyNotTLS = true
+		cd.handshakeFailReason = -1
+		cd.DefinitelyNotTLS = true
 		return
 	}
 
-	if n > 3 {
-		commonDetect(&dr.ComDetectStruct, p, true)
+	if len(p) > 3 {
+		commonDetect(cd, p, isRead)
 	}
 
+}
+
+// DetectReader 对每个Read的数据进行分析，判断是否是tls流量
+type DetectReader struct {
+	io.Reader
+
+	ComDetectStruct
+}
+
+// 总之，我们在客户端的 Read 操作，就是 我们试图使用 Read 读取客户的请求，然后试图发往 外界
+//  所以在socks5后面 使用的这个 Read，是读取客户端发送的请求，比如 clienthello之类
+//	服务端的 Read 操作，也是读 clienthello，因为我们总是判断客户传来的数据
+func (dr *DetectReader) Read(p []byte) (n int, err error) {
+	n, err = dr.Reader.Read(p)
+
+	commonFilterStep(err, &dr.ComDetectStruct, p[:n], true)
 	return
 }
 
@@ -325,26 +317,8 @@ type DetectWriter struct {
 //  https://halfrost.com/https_record_layer/
 // 总之我们依然判断 23 3 3 好了，没那么多技巧，先判断是否存在握手包，握手完成后，遇到23 3 3 后，直接就
 //  进入direct模式;
-func (dr *DetectWriter) Write(p []byte) (n int, err error) {
-	n, err = dr.Writer.Write(p)
-	if !OnlyTest && (dr.DefinitelyNotTLS || dr.IsTls) { //确定了是TLS 或者肯定不是 tls了的话，就直接return掉
-		return
-	}
-	if err != nil {
-		eStr := err.Error()
-		if strings.Contains(eStr, "use of closed") || strings.Contains(eStr, "reset by peer") || strings.Contains(eStr, "EOF") {
-			return
-		}
-	}
-	if !OnlyTest && dr.packetCount > 8 {
-		//都8个包了还没断定tls？直接推定不是！
-		dr.DefinitelyNotTLS = true
-		return
-	}
-
-	if n > 3 {
-		commonDetect(&dr.ComDetectStruct, p, false)
-	}
-
+func (dw *DetectWriter) Write(p []byte) (n int, err error) {
+	n, err = dw.Writer.Write(p)
+	commonFilterStep(err, &dw.ComDetectStruct, p[:n], false)
 	return
 }
