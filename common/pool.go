@@ -62,7 +62,7 @@ func GetPacket() []byte {
 
 func PutPacket(bs []byte) {
 	c := cap(bs)
-	if c < maxBufLen {
+	if c < maxBufLen { //如果不够大，考虑放到更小的 pool里
 		if c > StandardBytesLength {
 			standardBytesPool.Put(bs[:c])
 		}
