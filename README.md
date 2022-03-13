@@ -238,7 +238,7 @@ https://github.com/librespeed/speedtest-go
 因为服务端会提前闪退，所以你可能测不到上传速度，或者测到很低的上传速度。
 这种闪退应该是一种数据包乱序的情况，bug正在修复当中。
 
-详细测速还可以参考另外两个文件，speed_macos.txt 和 speed_ubuntu.txt。
+详细测速还可以参考另外两个文件，speed_macos.md 和 speed_ubuntu.md。
 
 总之目前可以看到，在有splice的情况下（即linux中），verysimple是绝对的王者。虽然有时还不够稳定，但是我会进一步优化这个问题的。
 
