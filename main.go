@@ -392,7 +392,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 }
 
-// tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn
+// tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
 //和 xtls的splice 含义相同
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
@@ -403,7 +403,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 	// 之所以可以对拷直连，是因为无论是 socks5 还是vless，只是在最开始的部分 加了目标头，后面的所有tcp连接都是直接传输的数据，就是说，一开始握手什么的是不能直接对拷的，等到后期就可以了
 	// 而且之所以能对拷，还有个原因就是，远程服务器 与 客户端 总是源源不断地 为 我们的 原始 TCP 连接 提供数据，我们只是一个中间商而已，左手倒右手
 
-	// 如果开启了  half lazy 开关，则会在 Write的那一端 加强过滤，过滤一些alert，然后 只在Read端 进行splice
+	// 如果开启了  half lazy 开关，则会在 Write的那一端 加强过滤，过滤一些alert(目前还没做)，然后 只在Read端 进行splice
 	//
 	// 如果是客户端，则 从 wlc 读取，写入 wrc ，这种情况是 Write, 然后对于 DetectConn 来说是 Read，即 从DetectConn读取，然后 写入到远程连接
 	// 如果是服务端，则 从 wrc 读取，写入 wlc， 这种情况是 Write
@@ -424,6 +424,9 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 		wrcVless := wrc.(*vless.UserConn)
 		tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
 		rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
+
+		//不过仔细思考，我们根本不需要这么繁琐地获取啊？！因为我们的 原始连接我们本来就是有的！
+		//rawWRC = localConn.(*net.TCPConn) //然而我实测，竟然传输会得到错误的结果，怎么回事
 
 	} else {
 		rawWRC = wrc.(*net.TCPConn) //因为是direct
@@ -468,6 +471,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 				break
 			}
 			//wrc.Write(p[:n])
+			//在判断 “是TLS” 的瞬间，它会舍弃写入数据，而把写入的主动权交回我们，我们发送特殊命令后，通过直连写入数据
 			if wlcdc.R.IsTls && wlcdc.RawConn != nil {
 				isgood = true
 

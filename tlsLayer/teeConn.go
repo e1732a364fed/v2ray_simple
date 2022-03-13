@@ -35,6 +35,8 @@ func (wr *Recorder) StopRecord() {
 	wr.stop = true
 }
 
+// StartRecord后，Recorder就会开始记录数据。默认Recorder就是开启状态；
+//  所以此方法仅用于之前 Stop过
 func (wr *Recorder) StartRecord() {
 	wr.stop = false
 }
@@ -50,6 +52,7 @@ func (wr *Recorder) ReleaseBuffers() {
 
 }
 
+// 打印内部所有包的前10字节
 func (wr *Recorder) DigestAll() {
 	tmp := wr.Buflist
 
@@ -88,7 +91,7 @@ func (wr *Recorder) Write(p []byte) (n int, err error) {
 }
 
 // 实现net.Conn，专门用于 tls 检测步骤
-//每次 Read TeeConn, 都会从OldConn进行Read，然后把Read到的数据同时写入TargetWriter
+//每次 Read TeeConn, 都会从OldConn进行Read，然后把Read到的数据同时写入 TargetWriter(NewTeeConn 的参数)
 //
 // 这个TeeConn设计时，专门用于 给 tls包一个 假的 net.Conn, 避免它 主动close我们的原Conn
 //
@@ -110,6 +113,7 @@ func NewTeeConn(oldConn net.Conn, targetWriter io.Writer) *TeeConn {
 
 }
 
+// 使用我们的Tee功能进行Read
 func (tc *TeeConn) Read(b []byte) (n int, err error) {
 
 	n, err = tc.TargetReader.Read(b)
@@ -117,19 +121,22 @@ func (tc *TeeConn) Read(b []byte) (n int, err error) {
 	return
 }
 
+// 直接使用原Conn发送
 func (tc *TeeConn) Write(b []byte) (n int, err error) {
 	return tc.OldConn.Write(b)
 }
 
+//返回原Conn的地址
 func (tc *TeeConn) LocalAddr() net.Addr {
 	return tc.OldConn.LocalAddr()
 }
 
+//返回原Conn的地址
 func (tc *TeeConn) RemoteAddr() net.Addr {
 	return tc.OldConn.RemoteAddr()
 }
 
-//
+//Close只会试图通知外界 Close调用过，并不真Close原Conn
 func (tc *TeeConn) Close() error {
 	tc.closeCalled = true
 	log.Println("TeeConn Close Called")

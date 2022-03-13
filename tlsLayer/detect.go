@@ -421,6 +421,7 @@ func (dw *DetectWriter) SimpleWrite(p []byte) (n int, err error) {
 	return
 }
 
+//用于通知 “我们要开始tls数据部分啦” 的 “特殊指令”，该指令会被tls加密发送，因此不用担心暴露
 var SpecialCommand = []byte{1, 2, 3, 4}
 
 //发现，数据基本就是 23 3 3， 22 3 3，22 3 1 ， 20 3 3
