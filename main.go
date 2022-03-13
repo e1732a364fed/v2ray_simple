@@ -562,6 +562,13 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 
 					nextI := tlsLayer.GetTlsRecordNextIndex(bs)
 
+					//有可能只存有一个record，然后 supposedLen非常长，此时 nextI是大于整个bs长度的
+					//正常来说这是不应该发生的，但是实际测速时发生了！会导致服务端闪退
+
+					if len(bs) < nextI {
+
+					}
+
 					nextFreeData := bs[nextI:]
 
 					if tlsLayer.PDD {
