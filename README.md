@@ -197,7 +197,7 @@ https://github.com/librespeed/speedtest-go
 
 然后内网搭建nginx 前置，加自签名证书，配置添加反代：
 `proxy_pass http://127.0.0.1:8989;`
-然后 verysimple后置。
+然后 speedtest-go 后置。
 
 然后verysimple本地同时开启 客户端和 服务端，然后浏览器 firefox配置 使用 socks5代理，连到我们的verysimple客户端
 
@@ -207,6 +207,10 @@ https://github.com/librespeed/speedtest-go
 注意这个自己ip不能为 127.0.0.1，因为本地回环是永远不过代理的，要配置成自己的局域网ip。
 
 ### 结果
+
+左侧下载，右侧上传，单位Mbps。我的虚拟机性能太差，所以就算内网连接速度也很低。
+
+不过这样正好可以测出不同代理协议之间的差距。
 
 ```
 //直连
