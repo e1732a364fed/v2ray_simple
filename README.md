@@ -234,6 +234,10 @@ https://github.com/librespeed/speedtest-go
 159，157
 ```
 
+目前splice代码的上传方向是不稳定的，测速时可能有50%可能导致服务端闪退，且网速越快可能性就愈大；
+因为服务端会提前闪退，所以你可能测不到上传速度，或者测到很低的上传速度。
+应该是缓存溢出的问题，bug正在修复当中。
+
 ## 交流
 
 https://t.me/shadowrocket_unofficial
