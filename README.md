@@ -21,6 +21,8 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 在客户端的 配置url中，添加 `?version=1` 即可生效。
 
+总之，强制tls，简单修订了一下协议格式，然后重点完善了fullcone。
+
 我 实现了 一种独创的 非mux型“隔离信道”方法的 udp over tcp 的fullcone
 
 测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 v2simple vless v1 + direct 的服务端。
@@ -170,7 +172,7 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 版本号自己修改下即可
 
 ```sh
-GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.0
+GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.1
 GOARCH=arm64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_arm64_v1.0.0
 GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_win10_v1.0.0.exe
 ```
@@ -182,6 +184,51 @@ GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2r
 openssl ecparam -genkey -name prime256v1 -out cert.key
 openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 ```
+
+我给出的命令会生成ecc证书，这个证书速度更快, 有利于网速加速。
+
+不要在实际场合使用我提供的证书！自己生成！而且最好是用acme.sh等脚本申请免费证书，特别是建站等情况。
+
+## 测速
+
+测试环境：ubuntu虚拟机, 使用开源测试工具
+https://github.com/librespeed/speedtest-go
+编译后运行，会监听8989
+
+然后内网搭建nginx 前置，加自签名证书，配置添加反代：
+`proxy_pass http://127.0.0.1:8989;`
+然后 verysimple后置。
+
+然后verysimple本地同时开启 客户端和 服务端，然后浏览器 firefox配置 使用 socks5代理，连到我们的verysimple客户端
+
+注意访问测速网页时要访问https的，否则测的 splice的速度实际上还是普通的速度，并没有真正splice。
+
+访问 htts://自己ip/example-singleServer-full.html
+注意这个自己ip不能为 127.0.0.1，因为本地回环是永远不过代理的，要配置成自己的局域网ip。
+
+### 结果
+
+//直连
+156，221
+163，189
+165，226
+162，200
+
+
+//verysimple, vless v0
+145，219
+152，189
+140，222
+149，203
+
+//verysimple, vless v0 + tls lazy encrypt (splice):
+
+161，191，
+176，177
+178，258
+159，157
+
+
 ## 交流
 
 https://t.me/shadowrocket_unofficial

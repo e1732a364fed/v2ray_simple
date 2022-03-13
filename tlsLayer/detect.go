@@ -49,7 +49,8 @@ func (cc *DetectConn) ReadFrom(r io.Reader) (int64, error) {
 }
 
 //可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 DetectConn 的 Read 和Write的 具体调用的主体
-func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool) *DetectConn {
+// is_secure 表示，是否使用更强的过滤手段（越强越浪费时间）
+func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure bool) *DetectConn {
 
 	var validOne io.ReadWriter = rw
 	if rw == nil {
@@ -67,9 +68,11 @@ func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool) *DetectCon
 	}
 	cc.W.isclient = isclient
 	cc.R.isclient = isclient
+	cc.W.is_secure = is_secure
+	cc.R.is_secure = is_secure
 
 	if netConn := oldConn.(*net.TCPConn); netConn != nil {
-		//log.Println("get netConn!")	// 如果是客户端的socks5，网页浏览的话这里一定能转成 TCPConn
+		//log.Println("NewDetectConn: get netConn!")	// 如果是客户端的socks5，网页浏览的话这里一定能转成 TCPConn, 不信取消注释试试
 		cc.RawConn = netConn
 	}
 
@@ -80,7 +83,8 @@ type ComDetectStruct struct {
 	IsTls            bool
 	DefinitelyNotTLS bool
 
-	isclient bool
+	isclient  bool
+	is_secure bool
 
 	packetCount int
 
@@ -168,6 +172,8 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 
 			数一下，ClientHello结构和 ServerHello结构 正好在第十字节的位置 开始
 
+			tls1.2:
+
 			struct {
 				ProtocolVersion client_version;
 				Random random;
@@ -182,6 +188,12 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 				};
 			} ClientHello;
 
+			"The presence of extensions can be detected by
+			determining whether there are bytes following the compression_methods
+			at the end of the ClientHello. "
+
+			就是说，如果读完 compression_methods后，还存在字节，则后面的字节都是 extensions
+
 			但是tls1.3的 clientHello的 ProtocolVersion是 legacy_version，依然是0303
 			https://datatracker.ietf.org/doc/html/rfc8446#section-4.1.2
 			// 而后面在 supported_versions extension 里会包含 0304
@@ -195,6 +207,42 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			TLSv1.1 – 0x0302
 			TLSv1.2 – 0x0303
 			TLSv1.3 – 0x0304
+
+			tls1.3:
+
+			struct {
+				ProtocolVersion legacy_version = 0x0303;
+				Random random;							//byte[32]
+				opaque legacy_session_id<0..32>;		//前1字节表示长度
+				CipherSuite cipher_suites<2..2^16-2>;	//前两字节表示长度，因为 2^16=64k,正好== 256*256, 两字节就可以完整表示
+				opaque legacy_compression_methods<1..2^8-1>;	//前1字节表示长度
+				Extension extensions<8..2^16-1>;			//前两字节表示长度
+			} ClientHello;
+
+			这么算的话，0303后面 至少需要跟 32 + 1 + 4 + 2 + 10 = 49 长度的数据
+
+			extensions:  The actual "Extension"
+			format is defined in https://datatracker.ietf.org/doc/html/rfc8446#section-4.2
+			In TLS 1.3, the use of certain extensions is mandatory, as functionality has moved into
+			extensions to preserve ClientHello compatibility with previous
+			versions of TLS.  Servers MUST ignore unrecognized extensions.
+
+			这里的 extensions就不是用 present与否来判断了，因为tls1.3强制规定，必须存在extension
+
+
+			这个 <0..32> 到底是什么？发现在rfc的上方定义了：
+
+			https://datatracker.ietf.org/doc/html/rfc5246#section-4.3
+
+			Variable-length vectors are defined by specifying a subrange of legal
+			lengths, inclusively, using the notation <floor..ceiling>.  When
+			these are encoded, the actual length precedes the vector's contents
+			in the byte stream.  The length will be in the form of a number
+			consuming as many bytes as required to hold the vector's specified
+			maximum (ceiling) length.  A variable-length vector with an actual
+			length field of zero is referred to as an empty vector.
+
+			就是说，首部第一字节要放一个 字节或多个字节来表示长度。一般小于256的长度显然就是占用一个字节。
 
 		数据部分：
 
@@ -236,20 +284,24 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 	if cd.packetCount == 0 {
 
 		if n < 11 {
+			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 1
 			return
 		}
 		if p0 != 22 {
+			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 2
 			return
 		}
 
 		//version: p9, p10 , 3,1 3,2 3,3 3,4
 		if p[9] != 3 {
+			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 4
 			return
 		}
 		if p[10] == 0 || p[10] > 4 {
+			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 5
 			return
 		}
@@ -262,20 +314,90 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		}
 
 		if p[5] != helloValue { //第六字节，
+			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 3
 			return
 		}
 
-		//VersionTLS10,VersionTLS11,VersionTLS12,VersionTLS13
-		handshakeVer := uint16(p[10]) | uint16(p[9])<<8
+		if cd.is_secure && cd.isclient && isRead {
+			//VersionTLS10,VersionTLS11,VersionTLS12,VersionTLS13
+			handshakeVer := uint16(p[10]) | uint16(p[9])<<8
 
-		cd.handshakeVer = handshakeVer
-		if handshakeVer == tls.VersionTLS12 { //0303
-			//需要判断到底是 tls 1.3 还是 tls1.2
+			if handshakeVer == tls.VersionTLS12 { //0303
+				//需要判断到底是 tls 1.3 还是 tls1.2
+				//可参考 https://halfrost.com/https_tls1-3_handshake/
+				// 具体见最上面的注释，以及rfc
+				//解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
+
+				pAfter := p[11:]
+				if len(pAfter) < 49 {
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 6
+					return
+				}
+				pAfterRand := pAfter[32:]
+				sessionL := pAfterRand[0]
+
+				if 1+int(sessionL)+2 > len(pAfterRand) {
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 7
+					return
+				}
+
+				pAfterSessionID := pAfterRand[1+sessionL:]
+
+				cipher_suitesLen := uint16(pAfterSessionID[1]) | uint16(pAfterSessionID[0])<<8
+
+				if 2+int(cipher_suitesLen)+1 > len(pAfterSessionID) {
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 8
+					return
+				}
+
+				pAfterCipherSuites := pAfterSessionID[2+cipher_suitesLen:]
+
+				legacy_compression_methodsLen := pAfterCipherSuites[0]
+
+				if 1+int(legacy_compression_methodsLen)+1 > len(pAfterCipherSuites) {
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 9
+					return
+				}
+
+				pAfterLegacy_compression_methods := pAfterCipherSuites[1+legacy_compression_methodsLen:]
+
+				extensionsLen := pAfterLegacy_compression_methods[0]
+
+				if extensionsLen == 0 {
+					//没有extensionLen，则表明该连接肯定是tls1.2
+					if PDD {
+						log.Println("R No extension, Definitely tls1.2")
+					}
+					cd.handShakePass = true
+					return
+				}
+
+				if 1+int(extensionsLen)+8 != len(pAfterLegacy_compression_methods) {
+					if PDD {
+						log.Println("R 1+int(extensionsLen)+8 != len(pAfterLegacy_compression_methods)", 1+int(extensionsLen)+8, len(pAfterLegacy_compression_methods))
+					}
+
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 10
+					return
+				}
+
+				//extensionsBs:=
+
+			}
+
+			cd.handshakeVer = handshakeVer
 
 		}
 
 		cd.handShakePass = true
+
+		return
 
 	} else if !cd.handShakePass {
 		cd.DefinitelyNotTLS = true
@@ -304,14 +426,10 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			}
 		} else {
 			// Read也是同理，也是发送特殊指令，只不过Read的话，是客户端向 服务端 发送特殊指令
-			// 这里是不会被黑客攻击的，因为事件发生在第二个或者更往后的 数据包中，而vless的uuid检验则是从第一个就要开始检验。
+			// 这里是不会被黑客攻击的，因为事件发生在第二个或者更往后的 数据包中，而vless的uuid检验则是从第一个就要开始检验。也不会遇到重放攻击，因为tls每次加密的秘文都是不一样的。
 
 			//这里就是服务端来读取 特殊指令
 			if !cd.isclient && n >= len(SpecialCommand) {
-
-				if PDD {
-					log.Println("R 尝试读取特殊指令")
-				}
 
 				if bytes.Equal(SpecialCommand, p[:len(SpecialCommand)]) {
 					if PDD {
@@ -410,6 +528,12 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 	n, err = dr.Reader.Read(p)
 
 	commonFilterStep(err, &dr.ComDetectStruct, p[:n], true)
+
+	if PDD {
+		if dr.DefinitelyNotTLS {
+			log.Println("R DefinitelyNotTLS, reasonNum: ", dr.handshakeFailReason)
+		}
+	}
 
 	/*
 		if dr.IsTls {

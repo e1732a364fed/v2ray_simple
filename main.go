@@ -206,7 +206,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	if tls_lazy_encrypt {
 
-		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, client.IsUseTLS())
+		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, client.IsUseTLS(), tls_lazy_secure)
 
 		//clientConn = cc
 	}
@@ -347,7 +347,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 			if tls_lazy_secure {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
 				// 这种情况只需要客户端操作, 此时我们wrc直接传入原始的 刚拨号好的 tcp连接，即 clientConn
-				tryRawCopy(true, client, clientConn, wlc, nil, true, nil)
+				tryRawCopy(true, client, realTargetAddr, clientConn, wlc, nil, true, nil)
 				return
 
 			} else {
@@ -377,9 +377,9 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	if tls_lazy_encrypt {
 		isclient := client.IsUseTLS()
 		if isclient {
-			tryRawCopy(false, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+			tryRawCopy(false, nil, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
 		} else {
-			tryRawCopy(false, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
+			tryRawCopy(false, nil, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
 
 		}
 
@@ -406,7 +406,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 //和 xtls的splice 含义相同
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 // 前两个参数仅用于 tls_lazy_secure
-func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *proxy.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
 	// 在判断阶段，因为还没确定是否是 tls，所以是要继续用tls加密的，
@@ -465,7 +465,9 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 		rawWRC = wrc.(*net.TCPConn)
 	}
 
-	go func() {
+	waitWRC_CreateChan := make(chan int)
+
+	go func(wrcPtr *io.ReadWriter) {
 		//从 wlccc 读取，向 wrc 写入
 		// 此时如果ReadFrom，那就是 wrc.ReadFrom(wlccc)
 		//wrc 要实现 ReaderFrom才行, 或者把最底层TCPConn暴露，然后 wlccc 也要把最底层 TCPConn暴露出来
@@ -475,6 +477,8 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 		isgood := false
 		isbad := false
 
+		checkCount := 0
+
 		for {
 			if isgood || isbad {
 				break
@@ -483,6 +487,41 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 			if err != nil {
 				break
 			}
+
+			checkCount++
+
+			if useSecureMethod && checkCount == 1 {
+				//此时还未dial，需要进行dial
+
+				if tlsLayer.PDD {
+					log.Println(" 才开始Dial 服务端")
+				}
+
+				theRecorder = tlsLayer.NewRecorder()
+				teeConn := tlsLayer.NewTeeConn(rawWRC, theRecorder)
+
+				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
+				if err != nil {
+					log.Println("failed in handshake remoteClient tls", ", Reason: ", err)
+					return
+				}
+
+				wrc, err = proxy_client.Handshake(tlsConn, clientAddr)
+				if err != nil {
+					log.Println("failed in handshake to", clientAddr.String(), ", Reason: ", err)
+					return
+				}
+
+				*wrcPtr = wrc
+
+				waitWRC_CreateChan <- 1
+
+			} else {
+				if tlsLayer.PDD {
+					log.Println(" 第", checkCount, "次测试")
+				}
+			}
+
 			//wrc.Write(p[:n])
 			//在判断 “是TLS” 的瞬间，它会舍弃写入数据，而把写入的主动权交回我们，我们发送特殊命令后，通过直连写入数据
 			if wlcdc.R.IsTls && wlcdc.RawConn != nil {
@@ -493,7 +532,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 					// 果是client，因为client是在Read时判断的 IsTLS，所以特殊指令实际上是要在这里发送
 
 					if tlsLayer.PDD {
-						log.Println("R 准备发送特殊命令，以及保存的TLS内容", len(p[:n]))
+						log.Println("R 准备发送特殊命令, 以及保存的TLS内容", len(p[:n]))
 					}
 
 					wrc.Write(tlsLayer.SpecialCommand)
@@ -538,6 +577,10 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 				}
 			} else {
 
+				if tlsLayer.PDD {
+					log.Println("pass write")
+
+				}
 				wrc.Write(p[:n])
 				if wlcdc.R.DefinitelyNotTLS {
 					isbad = true
@@ -567,7 +610,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 			}
 
 		}
-	}()
+	}(&wrc)
 
 	isgood2 := false
 	isbad2 := false
@@ -578,6 +621,10 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.Rea
 	for {
 		if isgood2 || isbad2 {
 			break
+		}
+
+		if useSecureMethod {
+			<-waitWRC_CreateChan
 		}
 		n, err := wrc.Read(p)
 		if err != nil {

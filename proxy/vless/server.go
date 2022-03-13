@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 	"unsafe"
@@ -78,7 +79,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 
 	version := auth[0]
 	if version > 1 {
-		return nil, nil, errors.New("invalid request version")
+		return nil, nil, errors.New("Vless invalid request version " + strconv.Itoa(int(version)))
 	}
 
 	idBytes := auth[1:17]
