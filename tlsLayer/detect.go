@@ -2,6 +2,7 @@ package tlsLayer
 
 import (
 	"bytes"
+	"crypto/tls"
 	"flag"
 	"io"
 	"log"
@@ -84,6 +85,7 @@ type ComDetectStruct struct {
 	packetCount int
 
 	handShakePass bool
+	handshakeVer  uint16
 
 	handshakeFailReason int
 }
@@ -108,6 +110,14 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 	/*
 		我们把tls的细节放在这个注释里，便于参考
 
+		首先是rfc文件
+
+		tls1.3标准 https://datatracker.ietf.org/doc/html/rfc8446
+		tls1.2标准 https://datatracker.ietf.org/doc/html/rfc5246
+		tls1.1标准 https://datatracker.ietf.org/doc/html/rfc4346
+		tls1.0标准： https://datatracker.ietf.org/doc/html/rfc2246
+
+
 		首先判断握手包，即第一个包
 		The Client Hello messages contain 01 in the sixth data byte of the TCP packet.
 		应该是这里定义的： https://datatracker.ietf.org/doc/html/rfc5246#section-7.4
@@ -116,16 +126,16 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		//https://datatracker.ietf.org/doc/html/rfc5246
 
 		struct {
-				ContentType type; //第一字节
-				ProtocolVersion version;//第2、3字节
-				uint16 length;// 第4、5字节
-				opaque fragment[TLSPlaintext.length];
-			} TLSPlaintext;
+			ContentType type; //第一字节
+			ProtocolVersion version;//第2、3字节
+			uint16 length;// 第4、5字节
+			opaque fragment[TLSPlaintext.length];
+		} TLSPlaintext;
 
 		//ContentType 中，handshake始终是22，也就是说，tls连接的hello字节第一个肯定是22
 		// 从tls1.0 到 1.3， 这个情况都是一样的
 
-		tls1.0, tls1.2:  change_cipher_spec(20), alert(21), handshake(22),application_data(23)
+		tls1.0 ~ tls1.3:  change_cipher_spec(20), alert(21), handshake(22),application_data(23)
 
 		 	enum {
 				hello_request(0), client_hello(1), server_hello(2),
@@ -171,6 +181,14 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 					Extension extensions<0..2^16-1>;
 				};
 			} ClientHello;
+
+			但是tls1.3的 clientHello的 ProtocolVersion是 legacy_version，依然是0303
+			https://datatracker.ietf.org/doc/html/rfc8446#section-4.1.2
+			// 而后面在 supported_versions extension 里会包含 0304
+
+			“TLS 1.3 ClientHellos are identified as having
+			a legacy_version of 0x0303 and a supported_versions extension
+			present with 0x0304 as the highest version indicated therein.”
 
 			ProtocolVersion:
 			TLSv1.0 – 0x0301
@@ -223,7 +241,6 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		}
 		if p0 != 22 {
 			cd.handshakeFailReason = 2
-
 			return
 		}
 
@@ -247,6 +264,15 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		if p[5] != helloValue { //第六字节，
 			cd.handshakeFailReason = 3
 			return
+		}
+
+		//VersionTLS10,VersionTLS11,VersionTLS12,VersionTLS13
+		handshakeVer := uint16(p[10]) | uint16(p[9])<<8
+
+		cd.handshakeVer = handshakeVer
+		if handshakeVer == tls.VersionTLS12 { //0303
+			//需要判断到底是 tls 1.3 还是 tls1.2
+
 		}
 
 		cd.handShakePass = true
@@ -294,8 +320,6 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 					cd.IsTls = true
 					return
 				}
-			} else {
-
 			}
 		}
 	}
@@ -310,6 +334,13 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 	// 其它都是 能被捕捉到的。
 
 	// 23表示 数据层，第二字节3是固定的，然后第3字节 从1到4，表示tls版本，不过tls1.3 和 1.2这里都是 23 3 3
+
+	//见 https://datatracker.ietf.org/doc/html/rfc8446#section-5.1
+	// tls1.3 的 ContentType(23) 后面紧接着的是  legacy_record_version，而这个必须设成 0x0303
+	// 也就是说和tls1.2一样；而1.1的话是 0302, 1.0 是 0301，总之第三字节只会是1，2，3
+	//
+	// 不过因为我们先过滤的clientHello握手包，所以是能够区分 tls1.3/1.2 的；只是在这里验证一下
+	//
 	if p0 == 23 && p1 == 3 && p2 > 0 && p2 < 4 {
 		if PDD {
 			str := "W"
@@ -320,7 +351,6 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		}
 
 		if !OnlyTest {
-
 			cd.IsTls = true
 		}
 

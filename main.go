@@ -36,18 +36,18 @@ var (
 	//directClient proxy.Client
 
 	tls_lazy_encrypt bool
-	tls_half_lazy    bool
+	tls_lazy_secure  bool
 )
 
 func init() {
 	//directClient, _ = proxy.ClientFromURL("direct://")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
-	flag.BoolVar(&tls_half_lazy, "hl", false, "tls half lazy, filter data when write and use splice when read; only take effect when '-lazy' is set")
+	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
 	flag.StringVar(&configFileName, "c", "client.json", "config file name")
 
-	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain")
+	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
 }
 
 func printVersion() {
@@ -128,6 +128,7 @@ func main() {
 				}
 				log.Println("failed to accepted connection: ", err)
 				if strings.Contains(errStr, "too many") {
+					log.Println("To many incoming conn! Sleep ", errStr)
 					time.Sleep(time.Millisecond * 500)
 				}
 				continue
@@ -319,7 +320,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	var realTargetAddr *proxy.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
 
 	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
-		log.Println("request not contain same domain", targetAddr, uniqueTestDomain)
+		log.Println("request isn't the appointed domain", targetAddr, uniqueTestDomain)
 		return
 	}
 
@@ -339,13 +340,22 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
 
-	if client.IsUseTLS() {
+	if client.IsUseTLS() { //即客户端
 
 		if tls_lazy_encrypt {
-			clientEndRemoteClientTlsRawReadRecorder = tlsLayer.NewRecorder()
-			teeConn := tlsLayer.NewTeeConn(clientConn, clientEndRemoteClientTlsRawReadRecorder)
 
-			clientConn = teeConn
+			if tls_lazy_secure {
+				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
+				// 这种情况只需要客户端操作, 此时我们wrc直接传入原始的 刚拨号好的 tcp连接，即 clientConn
+				tryRawCopy(true, client, clientConn, wlc, nil, true, nil)
+				return
+
+			} else {
+				clientEndRemoteClientTlsRawReadRecorder = tlsLayer.NewRecorder()
+				teeConn := tlsLayer.NewTeeConn(clientConn, clientEndRemoteClientTlsRawReadRecorder)
+
+				clientConn = teeConn
+			}
 		}
 
 		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
@@ -364,6 +374,18 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		return
 	}
 
+	if tls_lazy_encrypt {
+		isclient := client.IsUseTLS()
+		if isclient {
+			tryRawCopy(false, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+		} else {
+			tryRawCopy(false, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
+
+		}
+
+		return
+	}
+
 	/*
 		// debug时可以使用这段代码
 		go func() {
@@ -375,18 +397,6 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 	*/
 
-	if tls_lazy_encrypt {
-		isclient := client.IsUseTLS()
-		if isclient {
-			tryRawCopy(wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
-		} else {
-			tryRawCopy(wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
-
-		}
-
-		return
-	}
-
 	go io.Copy(wrc, wlc)
 	io.Copy(wlc, wrc)
 
@@ -395,7 +405,8 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
 //和 xtls的splice 含义相同
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
-func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+// 前两个参数仅用于 tls_lazy_secure
+func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
 	// 在判断阶段，因为还没确定是否是 tls，所以是要继续用tls加密的，
@@ -415,38 +426,43 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 
 	var rawWRC *net.TCPConn
 
-	//wrc 有两种情况，如果客户端那就是tls，服务端那就是direct。我们不讨论服务端 处于中间层的情况
+	if !useSecureMethod {
 
-	if isclient {
-		// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
-		// 很明显，目前我们只支持vless所以才可这么操作，以后再说。
+		//wrc 有两种情况，如果客户端那就是tls，服务端那就是direct。我们不讨论服务端 处于中间层的情况
 
-		wrcVless := wrc.(*vless.UserConn)
-		tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
-		rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
+		if isclient {
+			// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
+			// 很明显，目前我们只支持vless所以才可这么操作，以后再说。
 
-		//不过仔细思考，我们根本不需要这么繁琐地获取啊？！因为我们的 原始连接我们本来就是有的！
-		//rawWRC = localConn.(*net.TCPConn) //然而我实测，竟然传输会得到错误的结果，怎么回事
+			wrcVless := wrc.(*vless.UserConn)
+			tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
+			rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
 
+			//不过仔细思考，我们根本不需要这么繁琐地获取啊？！因为我们的 原始连接我们本来就是有的！
+			//rawWRC = localConn.(*net.TCPConn) //然而我实测，竟然传输会得到错误的结果，怎么回事
+
+		} else {
+			rawWRC = wrc.(*net.TCPConn) //因为是direct
+		}
+
+		if rawWRC == nil {
+			if tlsLayer.PDD {
+				log.Println("splice fail reason 0 ")
+
+			}
+
+			if tls_lazy_encrypt {
+				theRecorder.StopRecord()
+				theRecorder.ReleaseBuffers()
+			}
+
+			//退化回原始状态
+			go io.Copy(wrc, wlc)
+			io.Copy(wlc, wrc)
+			return
+		}
 	} else {
-		rawWRC = wrc.(*net.TCPConn) //因为是direct
-	}
-
-	if rawWRC == nil {
-		if tlsLayer.PDD {
-			log.Println("splice fail reason 0 ")
-
-		}
-
-		if tls_lazy_encrypt {
-			theRecorder.StopRecord()
-			theRecorder.ReleaseBuffers()
-		}
-
-		//退化回原始状态
-		go io.Copy(wrc, wlc)
-		io.Copy(wlc, wrc)
-		return
+		rawWRC = wrc.(*net.TCPConn)
 	}
 
 	go func() {
@@ -459,9 +475,6 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 		isgood := false
 		isbad := false
 
-		if tls_half_lazy && isclient { // half_lazy时，写入时不使用splice
-			isbad = true
-		}
 		for {
 			if isgood || isbad {
 				break
@@ -558,9 +571,7 @@ func tryRawCopy(wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRe
 
 	isgood2 := false
 	isbad2 := false
-	if tls_half_lazy && !isclient { // half_lazy时，写入时不使用splice
-		isbad2 = true
-	}
+
 	p := common.GetPacket()
 
 	//从 wrc  读取，向 wlccc 写入

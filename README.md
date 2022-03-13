@@ -2,15 +2,18 @@
 
 V2ray Simple,  建议读作 very simple (显然只适用于汉语母语者), 
 
-正式项目名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 very simple 或 verysimple 指代。直接在任何场合 用verysimple 这个名称都是可以的，但是项目名字要弄清楚，是 v2ray_simple
+verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂
 
-verysimple项目大大简化了 转发机制，能提高运行速度。
+正式项目名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 verysimple 指代。直接在任何场合 用verysimple 这个名称都是可以的，但是项目名字要弄清楚，是 v2ray_simple
+
 
 ## 特点
 
 实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），入口使用socks5协议
 
-在本项目里 制定 并实现了 vless v1标准。
+在本项目里 制定 并实现了 vless v1标准，添加了非mux的fullcone；
+
+本项目 发明了独特的非魔改tls包的 双向splice
 
 ### 关于vless v1
 
@@ -44,9 +47,9 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
 
-该特性不稳定，会导致一些网页访问有时出现异常
+该特性不完全稳定，可能会导致一些网页访问有时出现异常
 
-不是速度慢，应该是因为 目前的tls过滤方式有点问题, 对close_alert等情况没处理好。而且使用不同的浏览器，现象也会不同，似乎对safari支持好一些， chrome就差很多
+不是速度慢，是因为 目前的tls过滤方式有点问题, 对close_alert等情况没处理好。而且使用不同的浏览器，现象也会不同，似乎对safari支持好一些， chrome就差很多
 
 在我的最新代码里，采用了独特的技术，已经规避了大部分不稳定性。有时网页显示可能会出点问题，但是刷新网页一般可以解决；总之比较适合看视频，毕竟双向splice，不是白给的！
 
@@ -60,13 +63,13 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 我只是在内网自己试试玩一玩，从来不会真正用于安全性要求高的用途。
 
-关于splice的一个现有“降速”问题也要看看，我们这里也是会存在的 https://github.com/XTLS/Xray-core/discussions/59
+关于splice的一个现有“降速”问题也要看看，（linux 的 forward配置问题），我们这里也是会存在的 https://github.com/XTLS/Xray-core/discussions/59
 
 **注意，因为技术实现不同，该功能不兼容xtls。**, 因为为了能够在tls包外进行过滤，我们需要做很多工作，所以技术实现与xtls是不一样的。
 
 #### 总结 tls lazy encrypt 技术优点
 
-解决了xtls一下痛点
+解决了xtls以下痛点
 
 1. 233 漏洞
 2. 只有单向splice
@@ -172,6 +175,14 @@ GOARCH=arm64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray
 GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_win10_v1.0.0.exe
 ```
 
+## 生成自签名证书
+
+注意运行第二行命令时会要求你输入一些信息。确保至少有一行不是空白即可，比如打个1
+```sh
+openssl ecparam -genkey -name prime256v1 -out cert.key
+openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
+```
 ## 交流
 
 https://t.me/shadowrocket_unofficial
+

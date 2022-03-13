@@ -2,5 +2,6 @@
 v2ray_simple
 v2ray_simple_linux*
 v2ray_simple_win*
+*.exe
 client.json
 server.json
