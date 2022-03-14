@@ -563,7 +563,9 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 					nextI := tlsLayer.GetTlsRecordNextIndex(bs)
 
 					//有可能只存有一个record，然后 supposedLen非常长，此时 nextI是大于整个bs长度的
-					//正常来说这是不应该发生的，但是实际测速时发生了！会导致服务端闪退
+					//正常来说这是不应该发生的，但是实际测速时发生了！会导致服务端闪退，
+					// 就是说在客户端上传大流量时，可能导致服务端出问题
+					//
 					//仔细思考，如果在客户端发送特殊指令的同时，tls的Conn仍然在继续写入的话，那么就有可能出现这种情况，
 					// 也就是说，是多线程问题；但是还是不对，如果tls正在写入，那么我们则还没达到写特殊指令的代码
 					//只能说，写入的顺序完全是正确的，但是收到的数据似乎有错误发生
@@ -575,14 +577,21 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 					//总之，实际测试这个 nextI 似乎特别大，然后bs也很大。bs大倒是正常，因为是测速
 					//
 					// 一种情况是，特殊指令粘在上一次tls包后面被一起发送。那么此时lastbuffer应该完全是新自由数据
+					// 上一次的tls包应该是最后一个握手包。但是问题是，client必须要收到服务端的握手回应才能继续发包
+					// 所以还是不应该发生。
+					//  除非，使用了某种方式在握手的同时也传递数据，等等，tls1.3的0-rtt就是如此啊！
+					//
+					// 而且，上传正好属于握手的同时上传数据的情况。因为下载测速的话，客户端是不知道需要上传什么数据的。
+					//，或者说，speedtest-go的服务端是“不会”进行tls1.3的0-rtt的，这里的“不会”的意思是，
+					// speedtest-go比较傻，没有掌握0-rtt的发送技术，或者太谨慎了不敢。但是接收它是会的。
+					//  而我们的浏览器是懂0-rtt的，所以会进行0-rtt发包。
+					//
 					//就先如此推断吧
+					//如果是0-rtt，我们的Recorder应该根本没有记录到我们的特殊指令包，因为它是从第二个包开始记录的啊！
+					// 所以我们从Recorder获取到的包是不含“特殊指令”包的，所以获取到的整个数据全是我们想要的
 
 					if len(bs) < nextI {
-						//if tlsLayer.PDD {
-						log.Println("R 有问题，len(bs) < nextI  ", len(bs), nextI)
-						//os.Exit(-1)
-
-						//}
+						// 应该是 tls1.3 0-rtt的情况
 
 						rawWRC.Write(bs)
 
@@ -668,6 +677,8 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 
 				nextI := tlsLayer.GetTlsRecordNextIndex(bs)
 				if nextI > len(bs) { //理论上有可能，但是又不应该，收到的buf不应该那么短，应该至少包含一个有效的整个tls record，因为此时理论上已经收到了服务端的 特殊指令，它是单独包在一个 tls record 里的
+
+					//不像上面类似的一段，这个例外重来没有被触发过，也就是说，下载方向是毫无问题的
 					log.Println("有问题， nextI > len(bs)", nextI, len(bs))
 					os.Exit(-1)
 				}
