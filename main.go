@@ -564,19 +564,38 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 
 					//有可能只存有一个record，然后 supposedLen非常长，此时 nextI是大于整个bs长度的
 					//正常来说这是不应该发生的，但是实际测速时发生了！会导致服务端闪退
+					//仔细思考，如果在客户端发送特殊指令的同时，tls的Conn仍然在继续写入的话，那么就有可能出现这种情况，
+					// 也就是说，是多线程问题；但是还是不对，如果tls正在写入，那么我们则还没达到写特殊指令的代码
+					//只能说，写入的顺序完全是正确的，但是收到的数据似乎有错误发生
+					//
+					// 还是说，特殊指令实际上被分成了两个record发送？这么短的指令也能吗？
+					//还有一种可能？就是在写入“特殊指令”的瞬间，需要发送一些alert？然后在特殊指令的前后一起发送了？
+					//仅在 ubuntu中测试发生过，macos中 测试从未发生过
+
+					//总之，实际测试这个 nextI 似乎特别大，然后bs也很大。bs大倒是正常，因为是测速
+					//
+					// 一种情况是，特殊指令粘在上一次tls包后面被一起发送。那么此时lastbuffer应该完全是新自由数据
+					//就先如此推断吧
 
 					if len(bs) < nextI {
+						//if tlsLayer.PDD {
+						log.Println("R 有问题，len(bs) < nextI  ", len(bs), nextI)
+						//os.Exit(-1)
+
+						//}
+
+						rawWRC.Write(bs)
+
+					} else {
+						nextFreeData := bs[nextI:]
+
+						if tlsLayer.PDD {
+							log.Println("R 从Recorder 提取 真实TLS内容", len(nextFreeData))
+
+						}
+						rawWRC.Write(nextFreeData)
 
 					}
-
-					nextFreeData := bs[nextI:]
-
-					if tlsLayer.PDD {
-						log.Println("R 从Recorder 提取 真实TLS内容", len(nextFreeData))
-
-					}
-
-					rawWRC.Write(nextFreeData)
 
 					theRecorder.StopRecord()
 					theRecorder.ReleaseBuffers()

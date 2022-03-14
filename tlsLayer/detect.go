@@ -433,7 +433,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 
 				if bytes.Equal(SpecialCommand, p[:len(SpecialCommand)]) {
 					if PDD {
-						log.Println("R 读到特殊命令！")
+						log.Println("R 读到特殊命令！ 剩余长度", n-len(SpecialCommand))
 					}
 					cd.IsTls = true
 					return
@@ -637,6 +637,7 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 			// 所以我们的 特殊指令 是完全包含在一个完整的 tls record 被发出的。
 
 			// 此处也是不需要保存 要直连发送的数据p 的，在main.go里去直接操作就行
+			// 我们在这里发送特殊指令即可。
 
 			n, err = dw.Writer.Write(SpecialCommand)
 
