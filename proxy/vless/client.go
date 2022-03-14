@@ -19,6 +19,7 @@ func init() {
 	proxy.RegisterClient(Name, NewVlessClient)
 }
 
+//实现 proxy.UserClient
 type Client struct {
 	proxy.ProxyCommonStruct
 
@@ -26,7 +27,7 @@ type Client struct {
 
 	version int
 
-	user *proxy.ID
+	user *proxy.V2rayUser
 
 	is_CRUMFURS_established bool
 
@@ -39,7 +40,7 @@ type Client struct {
 func NewVlessClient(url *url.URL) (proxy.Client, error) {
 	addr := url.Host
 	uuidStr := url.User.Username()
-	id, err := proxy.NewID(uuidStr)
+	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +68,9 @@ func NewVlessClient(url *url.URL) (proxy.Client, error) {
 
 func (c *Client) Name() string { return Name }
 func (c *Client) Version() int { return c.version }
+func (c *Client) GetUser() proxy.User {
+	return c.user
+}
 
 func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter, error) {
 	var err error
@@ -130,7 +134,7 @@ func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter
 
 	return &UserConn{
 		Conn:    underlay,
-		uuid:    c.user.UUID,
+		uuid:    *c.user,
 		version: c.version,
 		isUDP:   target.IsUDP,
 	}, err
@@ -189,7 +193,7 @@ func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {
 	v := c.version
 	buf := common.GetBuf()
 	buf.WriteByte(byte(v)) //version
-	buf.Write(c.user.UUID[:])
+	buf.Write(c.user[:])
 	if v == 0 {
 		buf.WriteByte(0) //addon length
 	}

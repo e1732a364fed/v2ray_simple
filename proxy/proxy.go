@@ -101,16 +101,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 )
 
-type User interface {
-	GetIdentityStr() string //每个user唯一，通过比较这个string 即可 判断两个User 是否相等
-}
-
-type UserConn interface {
-	io.ReadWriter
-	User
-	GetProtocolVersion() int
-}
-
 // 给一个节点 提供 VSI中 第 5-7层 的支持
 type ProxyCommon interface {
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址

@@ -10,7 +10,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -25,8 +24,7 @@ import (
 )
 
 var (
-	version = "1.0.0"
-	desc    = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
+	desc = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
 
 	configFileName string
 
@@ -50,8 +48,8 @@ func init() {
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
 }
 
-func printVersion() {
-	fmt.Printf("===============================\nv2ray_simple %v (%v), %v %v %v\n", version, desc, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+func printDesc() {
+	printVersion()
 	proxy.PrintAllServerNames()
 
 	proxy.PrintAllClientNames()
@@ -83,7 +81,7 @@ func loadConfig(fileName string) (*Config, error) {
 
 func main() {
 
-	printVersion()
+	printDesc()
 
 	flag.Parse()
 
@@ -347,7 +345,14 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 			if tls_lazy_secure {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
 				// 这种情况只需要客户端操作, 此时我们wrc直接传入原始的 刚拨号好的 tcp连接，即 clientConn
-				tryRawCopy(true, client, realTargetAddr, clientConn, wlc, nil, true, nil)
+
+				// 而且为了避免黑客攻击或探测，我们要使用uuid作为特殊指令，此时需要 UserServer和 UserClient
+
+				if uc := client.(proxy.UserClient); uc != nil {
+					tryRawCopy(true, uc, nil, realTargetAddr, clientConn, wlc, nil, true, nil)
+
+				}
+
 				return
 
 			} else {
@@ -377,13 +382,25 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	if tls_lazy_encrypt {
 		isclient := client.IsUseTLS()
 		if isclient {
-			tryRawCopy(false, nil, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+
+			//必须是 UserClient
+			if userClient := client.(proxy.UserClient); userClient != nil {
+				tryRawCopy(false, userClient, nil, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+				return
+			}
+
 		} else {
-			tryRawCopy(false, nil, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
+
+			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
+			// 否则将无法开启splice功能。这是为了防止0-rtt 探测
+
+			if userServer := localServer.(proxy.UserServer); userServer != nil {
+				tryRawCopy(false, nil, userServer, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
+				return
+			}
 
 		}
 
-		return
 	}
 
 	/*
@@ -406,7 +423,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 //和 xtls的splice 含义相同
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 // 前两个参数仅用于 tls_lazy_secure
-func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *proxy.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, clientAddr *proxy.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
 	// 在判断阶段，因为还没确定是否是 tls，所以是要继续用tls加密的，
@@ -423,6 +440,14 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 
 	wlcdc := wlc.(*tlsLayer.DetectConn)
 	wlccc_raw := wlcdc.RawConn
+
+	if isclient {
+		sc := []byte(proxy_client.GetUser().GetIdentityBytes())
+		wlcdc.R.SpecialCommandBytes = sc
+		wlcdc.W.SpecialCommandBytes = sc
+	} else {
+		wlcdc.R.UH = proxy_server
+	}
 
 	var rawWRC *net.TCPConn
 
@@ -462,7 +487,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 			return
 		}
 	} else {
-		rawWRC = wrc.(*net.TCPConn)
+		rawWRC = wrc.(*net.TCPConn) //useSecureMethod的一定是客户端，此时就是直接给出原始连接
 	}
 
 	waitWRC_CreateChan := make(chan int)
@@ -491,7 +516,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 			checkCount++
 
 			if useSecureMethod && checkCount == 1 {
-				//此时还未dial，需要进行dial
+				//此时还未dial，需要进行dial; 仅限客户端
 
 				if tlsLayer.PDD {
 					log.Println(" 才开始Dial 服务端")
@@ -529,13 +554,13 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 
 				if isclient {
 
-					// 果是client，因为client是在Read时判断的 IsTLS，所以特殊指令实际上是要在这里发送
+					// 若是client，因为client是在Read时判断的 IsTLS，所以特殊指令实际上是要在这里发送
 
 					if tlsLayer.PDD {
 						log.Println("R 准备发送特殊命令, 以及保存的TLS内容", len(p[:n]))
 					}
 
-					wrc.Write(tlsLayer.SpecialCommand)
+					wrc.Write(wlcdc.R.SpecialCommandBytes)
 
 					//然后还要发送第一段FreeData
 
@@ -547,6 +572,11 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 					// 我们要从 theRecorder 中最后一个Buf里找 原始数据
 
 					//theRecorder.DigestAll()
+
+					//这个瞬间，R是存放了 SpecialCommand了（即uuid），然而W还是没有的 ，
+					// 所以我们要先给W的SpecialCommand 赋值
+
+					wlcdc.W.SpecialCommandBytes = wlcdc.R.SpecialCommandBytes
 
 					rawBuf := theRecorder.GetLast()
 					bs := rawBuf.Bytes()

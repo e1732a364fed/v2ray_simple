@@ -4,7 +4,9 @@ V2ray Simple,  建议读作 very simple (显然只适用于汉语母语者),
 
 verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂
 
-正式项目名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 verysimple 指代。直接在任何场合 用verysimple 这个名称都是可以的，但是项目名字要弄清楚，是 v2ray_simple
+正式项目名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 verysimple 指代。直接在任何场合 用verysimple 这个名称都是可以的，但是项目名字要弄清楚，是 v2ray_simple。交流时可简称 "vs"。
+
+规定，编译出的文件名必须是 verysimple开头.
 
 
 ## 特点
@@ -172,9 +174,9 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 版本号自己修改下即可
 
 ```sh
-GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.1
-GOARCH=arm64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_arm64_v1.0.1
-GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_win10_v1.0.1.exe
+GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.2
+GOARCH=arm64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_arm64_v1.0.2
+GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_win10_v1.0.2.exe
 ```
 
 ## 生成自签名证书
@@ -245,4 +247,13 @@ https://github.com/librespeed/speedtest-go
 ## 交流
 
 https://t.me/shadowrocket_unofficial
+
+
+# 免责声明
+
+MIT协议！我不负任何责任。本项目只是个代理项目，适合内网测试使用，以及适合阅读代码了解原理。
+
+你如果用于任何其它目的，我不会帮助你。
+
+我只会帮助研究理论的朋友。而且我不帮你你也没话说，MIT协议。
 

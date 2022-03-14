@@ -8,6 +8,8 @@ import (
 	"log"
 	"net"
 	"strings"
+
+	"github.com/hahahrfool/v2ray_simple/common"
 )
 
 var PDD bool //print tls detect detail
@@ -79,6 +81,12 @@ func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure 
 	return cc
 }
 
+//是 proxy.UserContainer 的子集
+type UserHaser interface {
+	HasUserByBytes(bs []byte) bool
+	UserBytesLen() int
+}
+
 type ComDetectStruct struct {
 	IsTls            bool
 	DefinitelyNotTLS bool
@@ -92,6 +100,10 @@ type ComDetectStruct struct {
 	handshakeVer  uint16
 
 	handshakeFailReason int
+
+	SpecialCommandBytes []byte
+
+	UH UserHaser
 }
 
 const (
@@ -412,9 +424,9 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			// 就是说，同样是Write，服务端是在Write判断完后，发送特殊指令
 			// 而客户端是在 Write的判断过程中，检索特殊指令
 			// 说白了，就是在 服务端-> 客户端 这个方向发生的，
-			if cd.isclient && n >= len(SpecialCommand) {
+			if cd.isclient && n >= len(cd.SpecialCommandBytes) {
 
-				if bytes.Equal(SpecialCommand, p[:len(SpecialCommand)]) {
+				if bytes.Equal(cd.SpecialCommandBytes, p[:len(cd.SpecialCommandBytes)]) {
 
 					if PDD {
 						log.Println("W 读到特殊命令！")
@@ -429,15 +441,25 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			// 这里是不会被黑客攻击的，因为事件发生在第二个或者更往后的 数据包中，而vless的uuid检验则是从第一个就要开始检验。也不会遇到重放攻击，因为tls每次加密的秘文都是不一样的。
 
 			//这里就是服务端来读取 特殊指令
-			if !cd.isclient && n >= len(SpecialCommand) {
+			if !cd.isclient {
 
-				if bytes.Equal(SpecialCommand, p[:len(SpecialCommand)]) {
-					if PDD {
-						log.Println("R 读到特殊命令！ 剩余长度", n-len(SpecialCommand))
+				ubl := cd.UH.UserBytesLen()
+
+				if n >= ubl {
+
+					if cd.UH.HasUserByBytes(p[:ubl]) {
+						bs := common.GetBytes(ubl)
+						copy(bs, p[:ubl])
+						cd.SpecialCommandBytes = bs
+
+						if PDD {
+							log.Println("R 读到特殊命令！ 剩余长度", n-ubl)
+						}
+						cd.IsTls = true
+						return
 					}
-					cd.IsTls = true
-					return
 				}
+
 			}
 		}
 	}
@@ -576,7 +598,7 @@ func (dw *DetectWriter) SimpleWrite(p []byte) (n int, err error) {
 }
 
 //用于通知 “我们要开始tls数据部分啦” 的 “特殊指令”，该指令会被tls加密发送，因此不用担心暴露
-var SpecialCommand = []byte{1, 2, 3, 4}
+//var SpecialCommand = []byte{1, 2, 3, 4}	//后来决定直接使用uuid作为特殊指令。也是加密传输的，所以安全性一样。和普通vless+tls一样，最怕的是中间人攻击。只要自己证书申请好就行。
 
 //发现，数据基本就是 23 3 3， 22 3 3，22 3 1 ， 20 3 3
 //  一个首包不为23 3 3 的包往往会出现在 1184长度的包的后面，而且一般 1184长度的包 的开头是 22 3 3 0 122，且总是在Write里面发生
@@ -639,7 +661,7 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 			// 此处也是不需要保存 要直连发送的数据p 的，在main.go里去直接操作就行
 			// 我们在这里发送特殊指令即可。
 
-			n, err = dw.Writer.Write(SpecialCommand)
+			n, err = dw.Writer.Write(dw.SpecialCommandBytes)
 
 			if err == nil {
 				n = len(p)

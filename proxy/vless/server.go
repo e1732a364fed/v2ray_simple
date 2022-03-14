@@ -21,11 +21,12 @@ func init() {
 	proxy.RegisterServer(Name, NewVlessServer)
 }
 
+//实现 proxy.UserServer 以及 tlsLayer.UserHaser
 type Server struct {
 	proxy.ProxyCommonStruct
-	users []*proxy.ID
+	users []*proxy.V2rayUser
 
-	userHashes   map[[16]byte]*proxy.ID
+	userHashes   map[[16]byte]*proxy.V2rayUser
 	userCRUMFURS map[[16]byte]*CRUMFURS
 	mux4Hashes   sync.RWMutex
 }
@@ -34,24 +35,57 @@ func NewVlessServer(url *url.URL) (proxy.Server, error) {
 
 	addr := url.Host
 	uuidStr := url.User.Username()
-	id, err := proxy.NewID(uuidStr)
+	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
 	s := &Server{
 		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: addr},
-		userHashes:        make(map[[16]byte]*proxy.ID),
+		userHashes:        make(map[[16]byte]*proxy.V2rayUser),
 		userCRUMFURS:      make(map[[16]byte]*CRUMFURS),
 	}
 	s.users = append(s.users, id)
 	s.ProxyCommonStruct.InitFromUrl(url)
 
 	for _, user := range s.users {
-		s.userHashes[user.UUID] = user
+		s.userHashes[*user] = user
 
 	}
 
 	return s, nil
+}
+
+func (s *Server) GetUserByBytes(bs []byte) proxy.User {
+	if len(bs) < 16 {
+		return nil
+	}
+	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&bs[0]))
+	if s.userHashes[thisUUIDBytes] != nil {
+		return proxy.V2rayUser(thisUUIDBytes)
+	}
+	return nil
+}
+
+func (s *Server) HasUserByBytes(bs []byte) bool {
+	if len(bs) < 16 {
+		return false
+	}
+	if s.userHashes[*(*[16]byte)(unsafe.Pointer(&bs[0]))] != nil {
+		return true
+	}
+	return false
+}
+
+func (s *Server) UserBytesLen() int {
+	return 16
+}
+
+func (s *Server) GetUserByStr(str string) proxy.User {
+	u, e := proxy.StrToUUID(str)
+	if e != nil {
+		return nil
+	}
+	return s.GetUserByBytes(u[:])
 }
 
 func (s *Server) Name() string { return Name }
@@ -75,7 +109,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 
 	}
 
-	//这部分过程可以参照 proxy/vless/encoding/encoding.go DecodeRequestHeader 方法
+	//这部分过程可以参照 v2ray的 proxy/vless/encoding/encoding.go DecodeRequestHeader 方法
 
 	version := auth[0]
 	if version > 1 {

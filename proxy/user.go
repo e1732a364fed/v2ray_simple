@@ -4,24 +4,60 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"io"
 	"strings"
 )
 
-type ID struct {
-	UUID   [16]byte
-	CmdKey [16]byte
+type User interface {
+	GetIdentityStr() string //每个user唯一，通过比较这个string 即可 判断两个User 是否相等
+
+	GetIdentityBytes() []byte
 }
 
-func NewID(s string) (*ID, error) {
+type UserClient interface {
+	Client
+	GetUser() User
+}
+
+type UserContainer interface {
+	GetUserByStr(idStr string) User
+	GetUserByBytes(bs []byte) User
+
+	//tlsLayer.UserHaser
+	HasUserByBytes(bs []byte) bool
+	UserBytesLen() int
+}
+
+type UserServer interface {
+	Server
+	UserContainer
+}
+
+type UserConn interface {
+	io.ReadWriter
+	User
+	GetProtocolVersion() int
+}
+
+//一种专门用于v2ray协议族的 User
+func (u V2rayUser) GetIdentityStr() string {
+	return UUIDToStr(u)
+}
+
+func (u V2rayUser) GetIdentityBytes() []byte {
+	return u[:]
+}
+
+//一种专门用于v2ray协议族的 结构 (vmess/vless), 实现 User 接口
+type V2rayUser [16]byte
+
+func NewV2rayUser(s string) (*V2rayUser, error) {
 	uuid, err := StrToUUID(s)
 	if err != nil {
 		return nil, err
 	}
-	id := &ID{
-		UUID: uuid,
-	}
-	copy(id.CmdKey[:], Get_cmdKey(uuid))
-	return id, nil
+
+	return (*V2rayUser)(&uuid), nil
 }
 
 func StrToUUID(s string) (uuid [16]byte, err error) {
