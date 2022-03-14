@@ -552,12 +552,15 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 					bs := rawBuf.Bytes()
 
 					/*
-						_, record_count := tlsLayer.GetLastTlsRecordTailIndex(bs)
-						if record_count < 2 { //不应该
-							log.Println("有问题，record_count < 2 ", record_count)
-							os.Exit(-1)
+						if tlsLayer.PDD {
+							_, record_count := tlsLayer.GetLastTlsRecordTailIndex(bs)
+							if record_count < 2 { // 应该是0-rtt的情况
+
+								log.Println("检测到0-rtt"")
+
+							}
+							log.Println("R Recorder 中记录了", record_count, "条记录")
 						}
-						log.Println("R Recorder 中记录了", record_count, "条记录")
 					*/
 
 					nextI := tlsLayer.GetTlsRecordNextIndex(bs)
@@ -581,12 +584,10 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 					// 所以还是不应该发生。
 					//  除非，使用了某种方式在握手的同时也传递数据，等等，tls1.3的0-rtt就是如此啊！
 					//
-					// 而且，上传正好属于握手的同时上传数据的情况。因为下载测速的话，客户端是不知道需要上传什么数据的。
-					//，或者说，speedtest-go的服务端是“不会”进行tls1.3的0-rtt的，这里的“不会”的意思是，
-					// speedtest-go比较傻，没有掌握0-rtt的发送技术，或者太谨慎了不敢。但是接收它是会的。
-					//  而我们的浏览器是懂0-rtt的，所以会进行0-rtt发包。
+					// 而且，上传正好属于握手的同时上传数据的情况。
+					// 而服务端是无法进行tls1.3的0-rtt的，因为理论上 tls1.3的 0-rtt只能由客户端发起。
+					// 所以才会出现下载时毫无问题，上传时出bug的情况
 					//
-					//就先如此推断吧
 					//如果是0-rtt，我们的Recorder应该根本没有记录到我们的特殊指令包，因为它是从第二个包开始记录的啊！
 					// 所以我们从Recorder获取到的包是不含“特殊指令”包的，所以获取到的整个数据全是我们想要的
 
@@ -678,9 +679,14 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.Client, clientAddr *pro
 				nextI := tlsLayer.GetTlsRecordNextIndex(bs)
 				if nextI > len(bs) { //理论上有可能，但是又不应该，收到的buf不应该那么短，应该至少包含一个有效的整个tls record，因为此时理论上已经收到了服务端的 特殊指令，它是单独包在一个 tls record 里的
 
-					//不像上面类似的一段，这个例外重来没有被触发过，也就是说，下载方向是毫无问题的
+					//不像上面类似的一段，这个例外从来没有被触发过，也就是说，下载方向是毫无问题的
+					//
+					//这是因为, 触发上一段类似代码的原因是tls 0-rtt，而 tls 0-rtt 总是由 客户端发起的
 					log.Println("有问题， nextI > len(bs)", nextI, len(bs))
-					os.Exit(-1)
+					//os.Exit(-1) //这里就暂时不要退出程序了，毕竟理论上有可能由一些黑客来触发这里。
+					localConn.Close()
+					rawWRC.Close()
+					return
 				}
 
 				if nextI < len(bs) {
