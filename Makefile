@@ -1,4 +1,4 @@
-BUILD_VERSION   := v1.0.2
+BUILD_VERSION   := v1.0.3
 
 prefix:=verysimple
 
