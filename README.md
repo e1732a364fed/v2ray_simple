@@ -179,7 +179,10 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 
 verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
-不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。**只是兼容配置格式，不是兼容所有协议！目前只有vless v0是兼容的**
+不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。**只是兼容配置格式，不是兼容所有协议！目前只有vless v0 协议是兼容的，可以直接使用现有其它客户端**
+
+其它开发计划请参考
+https://github.com/hahahrfool/v2ray_simple/discussions/3
 
 ## 生成自签名证书
 

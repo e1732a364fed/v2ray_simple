@@ -142,6 +142,9 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 		tls1.1标准 https://datatracker.ietf.org/doc/html/rfc4346
 		tls1.0标准： https://datatracker.ietf.org/doc/html/rfc2246
 
+		关于历代的演进，还可参考
+		https://program-think.medium.com/扫盲-https-和-ssl-tls-协议-4-历史版本的演变及-record-协议的细节-7400cefe7671
+
 
 		首先判断握手包，即第一个包
 		The Client Hello messages contain 01 in the sixth data byte of the TCP packet.
