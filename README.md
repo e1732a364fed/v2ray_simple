@@ -1,13 +1,12 @@
-# V2ray Simple （verysimple)
+# verysimple
 
-V2ray Simple,  建议读作 very simple (显然只适用于汉语母语者), 
+verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 
 
 verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂
 
-正式项目名称是v2ray simple（大小写、带不带连词符或下划线均可），平时可以直接用 verysimple 指代。直接在任何场合 用verysimple 这个名称都是可以的，但是项目名字要弄清楚，是 v2ray_simple。交流时可简称 "vs"。
+只有项目名称是v2ray_simple，其它所有场合全 使用 verysimple 这个名称，可简称 "vs"。
 
-规定，编译出的文件名必须是 verysimple开头.
-
+规定，编译出的文件名必须以 verysimple 开头.
 
 ## 特点
 
@@ -16,6 +15,10 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 在本项目里 制定 并实现了 vless v1标准，添加了非mux的fullcone；
 
 本项目 发明了独特的非魔改tls包的 双向splice
+
+v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
+
+经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。反过来也是成立的。
 
 ### 关于vless v1
 
@@ -83,13 +86,14 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 原因：
 
 1. 我不使用循环进行tls过滤，而且不魔改tls包
-2. 我直接开启了双向splice；xtls只能优化客户端性能，我们两端都会优化
+2. 我直接开启了双向splice；xtls只能优化客户端性能，我们两端都会优化;一般而言大部分服务器都是linux的，所以这样就大大提升了所有连接的性能.
 3. 因为我的vless v1的fullcone是非mux的，分离信道，所以说是可以应用splice的（以后会添加支持，可能需要加一些代码，有待考察）
 4. 因为我不魔改tls包，所以说可以套任何tls包的，比如utls
 
 而且alert根本不需要过滤，因为反正xtls本身过滤了还是有两个issue存在，是吧。
 
 而且后面可以考虑，如果底层是使用的tls1.2，那么我们上层也可以用 tls1.2来握手。这个是可以做到的，因为底层的判断在客户端握手刚发生时就可以做到，而此时我们先判断，然后再发起对 服务端的连接，即可。
+也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/hahahrfool/v2ray_simple/discussions/2
 
 ### ws/grpc
 
@@ -103,6 +107,8 @@ cp client.example.json client.json
 cp server.example.json server.json
 ```
 
+如果你是直接下载的可执行文件，则不需要 go build了，直接复制example.json文件即可
+
 ## 使用方式
 
 ```sh
@@ -113,7 +119,11 @@ v2ray_simple -c client.json
 v2ray_simple -c server.json
 ```
 
+如果你不是放在path里的，则要 `./v2ray_simple`, 前面要加一个点和一个斜杠。windows没这个要求。
+
 关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
+
+目前配置文件一共就4行，其中两行还是花括号，这要是还要我解释我就打你屁股
 
 ## 验证方式
 
@@ -151,7 +161,7 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后我不承担�
 实际上是毫无问题的，关键是他们太谨慎。无所谓，现在我完全自己写，没话说了吧—；
 
 我fork也是尊重原作者，既然你们这么谨慎，正好推动了我的重构计划，推动了历史发展
-## 额外说明
+## 额外说明 以及 开发计划
 
 verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如socks协议只能用于客户端入口，没法用于出口。
 
@@ -162,22 +172,14 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 1. 完善并实现 vless v1协议
 2. 什么时候搞一个 verysimple_c 项目，用c语言照着写一遍; 也就是说，就算本verysimple没有任何技术创新，单单架构简单也是有技术优势的，可以作为参考 实现更底层的 c语言实现。
 3. verysimple_c 写好后，就可以尝试将 naiveproxy 嵌入 verysimple_c 了
+4. 完善 tls lazy encrypt技术
+5. 链接池技术，可以重用与服务端的连接 来发起新请求
+6. 握手延迟窗口技术，可用于分流一部分流量使用mux发送，达到精准降低延迟的目的；然后零星的链接依然使用单独信道。
+
 
 verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
-不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。
-
-
-
-## 交叉编译
-
-版本号自己修改下即可
-
-```sh
-GOARCH=amd64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_amd64_v1.0.2
-GOARCH=arm64 GOOS=linux go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_linux_arm64_v1.0.2
-GOARCH=amd64 GOOS=windows go build  -trimpath -ldflags "-s -w -buildid="  -o v2ray_simple_win10_v1.0.2.exe
-```
+不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。**只是兼容配置格式，不是兼容所有协议！目前只有vless v0是兼容的**
 
 ## 生成自签名证书
 
@@ -187,14 +189,18 @@ openssl ecparam -genkey -name prime256v1 -out cert.key
 openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 ```
 
-我给出的命令会生成ecc证书，这个证书速度更快, 有利于网速加速。
+我给出的命令会生成ecc证书，这个证书速度更快, 有利于网速加速（加速tls握手）。
 
-不要在实际场合使用我提供的证书！自己生成！而且最好是用acme.sh等脚本申请免费证书，特别是建站等情况。
+不要在实际场合使用我提供的证书！自己生成！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
 
+使用自签名证书是会被中间人攻击的，再次特地提醒。如果被中间人攻击，就能直接获取你的uuid，然后你的服务器 攻击者就也能用了。
+
+仅有ip是不够的，要结合域名。本项目提供的自签名证书仅供快速测试使用，切勿用于实际场合。
 ## 测速
 
 测试环境：ubuntu虚拟机, 使用开源测试工具
 https://github.com/librespeed/speedtest-go
+
 编译后运行，会监听8989
 
 然后内网搭建nginx 前置，加自签名证书，配置添加反代：
@@ -203,7 +209,7 @@ https://github.com/librespeed/speedtest-go
 
 然后verysimple本地同时开启 客户端和 服务端，然后浏览器 firefox配置 使用 socks5代理，连到我们的verysimple客户端
 
-注意访问测速网页时要访问https的，否则测的 splice的速度实际上还是普通的速度，并没有真正splice。
+注意访问测速网页时要访问https的，否则测的 splice的速度实际上还是普通的tls速度，并没有真正splice。
 
 访问 htts://自己ip/example-singleServer-full.html
 注意这个自己ip不能为 127.0.0.1，因为本地回环是永远不过代理的，要配置成自己的局域网ip。
@@ -252,4 +258,26 @@ MIT协议！我不负任何责任。本项目只是个代理项目，适合内�
 你如果用于任何其它目的，我不会帮助你。
 
 我只会帮助研究理论的朋友。而且我不帮你你也没话说，MIT协议。
+
+从v1.0.3开始，我还强制附带如下2个开源许可的条件，
+
+1. 不准提及 “能否给 xray/v2ray 这两个项目 提PR“。要提你自己提，与本项目无关。
+2. 不得在任何issue或社区或任何本项目的官方讨论场合中 重复讨论制定第一条的原因，
+
+
+原因下面已经讨论的很清楚，我们在此只解释一遍。
+
+那两个项目并不是本项目的上游；我，以及其他未来verysimple可能的贡献者，都没有任何义务去给任何其它项目做任何事情。
+
+本项目独立发展，希望大家不要关注给其它项目贡献的问题，多关注给咱们verysimple项目贡献，不要本末倒置。
+
+v2fly社区 的代码风气不好，竟然对 ’要写注释‘ 这个问题大加反驳，而且讨论时经常没有证据就指责他人，还讽刺人；
+
+而xray更是漏洞百出、后继无人；
+
+他们都已经是历史产物，我们要学会扬弃。只要我们做的足够好，就会有人来贡献的，不怕社区小，不怕没支持。我们向前看。
+
+开源社区，就是自己动手，丰衣足食，风气不好、漏洞百出的东西我们 要扬弃，才能不断进化。否则的话，就会被时代所抛弃。
+
+历史的车轮滚滚向前。
 

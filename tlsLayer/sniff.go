@@ -25,7 +25,7 @@ func init() {
 
 // 用于 探测 承载数据是否使用了tls, 它先与 底层tcp连接 进行 数据传输，然后查看传输到内容
 // 	可以参考 https://www.baeldung.com/linux/tcpdump-capture-ssl-handshake
-type DetectConn struct {
+type SniffConn struct {
 	net.Conn //这个 Conn本DetectConn 中不会用到，只是为了能让CopyConn支持 net.Conn
 	W        *DetectWriter
 	R        *DetectReader
@@ -34,16 +34,16 @@ type DetectConn struct {
 
 }
 
-func (cc *DetectConn) Read(p []byte) (int, error) {
+func (cc *SniffConn) Read(p []byte) (int, error) {
 	return cc.R.Read(p)
 }
 
-func (cc *DetectConn) Write(p []byte) (int, error) {
+func (cc *SniffConn) Write(p []byte) (int, error) {
 	return cc.W.Write(p)
 }
 
 //这个暂时没用到，先留着
-func (cc *DetectConn) ReadFrom(r io.Reader) (int64, error) {
+func (cc *SniffConn) ReadFrom(r io.Reader) (int64, error) {
 	if cc.RawConn != nil {
 		return cc.RawConn.ReadFrom(r)
 	}
@@ -52,14 +52,14 @@ func (cc *DetectConn) ReadFrom(r io.Reader) (int64, error) {
 
 //可选两个参数传入，优先使用rw ，为nil的话 再使用oldConn，作为 DetectConn 的 Read 和Write的 具体调用的主体
 // is_secure 表示，是否使用更强的过滤手段（越强越浪费时间）
-func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure bool) *DetectConn {
+func NewSniffConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure bool) *SniffConn {
 
 	var validOne io.ReadWriter = rw
 	if rw == nil {
 		validOne = oldConn
 	}
 
-	cc := &DetectConn{
+	cc := &SniffConn{
 		Conn: oldConn,
 		W: &DetectWriter{
 			Writer: validOne,
@@ -72,6 +72,9 @@ func NewDetectConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure 
 	cc.R.isclient = isclient
 	cc.W.is_secure = is_secure
 	cc.R.is_secure = is_secure
+
+	cc.W.peer = &cc.R.ComSniff
+	cc.R.peer = &cc.W.ComSniff
 
 	if netConn := oldConn.(*net.TCPConn); netConn != nil {
 		//log.Println("NewDetectConn: get netConn!")	// 如果是客户端的socks5，网页浏览的话这里一定能转成 TCPConn, 不信取消注释试试
@@ -87,23 +90,29 @@ type UserHaser interface {
 	UserBytesLen() int
 }
 
-type ComDetectStruct struct {
+type ComSniff struct {
 	IsTls            bool
 	DefinitelyNotTLS bool
+
+	SpecialCommandBytes []byte //目前规定，使用uuid作为special command
+
+	UH UserHaser //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
+
+	SniffedHostName string
 
 	isclient  bool
 	is_secure bool
 
 	packetCount int
 
-	handShakePass bool
+	handShakePass bool //握手测试通过
 	handshakeVer  uint16
 
 	handshakeFailReason int
 
-	SpecialCommandBytes []byte
+	cantBeTLS13 bool //clienthello如果没有 supported_versions项，或者该项没有0304，则不可能协商出tls1.3。如果协商出了则是错误的;
 
-	UH UserHaser
+	peer *ComSniff //握手是需要判断clienthello+serverhello的，而它们一个是读一个是写，所以要能够让它们相互访问到之前判断好的数据
 }
 
 const (
@@ -112,16 +121,16 @@ const (
 	CutType_fit
 )
 
-func (c *ComDetectStruct) incr() {
+func (c *ComSniff) incr() {
 	c.packetCount++
 }
 
-func (c *ComDetectStruct) GetFailReason() int {
+func (c *ComSniff) GetFailReason() int {
 	return c.handshakeFailReason
 }
 
 // 总之，如果读写都用同样的判断代码的话，客户端和服务端应该就能同步进行 相同的TLS判断
-func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
+func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 
 	/*
 		我们把tls的细节放在这个注释里，便于参考
@@ -138,7 +147,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		The Client Hello messages contain 01 in the sixth data byte of the TCP packet.
 		应该是这里定义的： https://datatracker.ietf.org/doc/html/rfc5246#section-7.4
 
-		//不过，首先要包在 Plaintex结构里
+		//不过，首先要包在 Plaintext结构里
 		//https://datatracker.ietf.org/doc/html/rfc5246
 
 		struct {
@@ -204,7 +213,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			determining whether there are bytes following the compression_methods
 			at the end of the ClientHello. "
 
-			就是说，如果读完 compression_methods后，还存在字节，则后面的字节都是 extensions
+			就是说，tls1.2中，如果读完 compression_methods后，还存在字节，则后面的字节都是 extensions
 
 			但是tls1.3的 clientHello的 ProtocolVersion是 legacy_version，依然是0303
 			https://datatracker.ietf.org/doc/html/rfc8446#section-4.1.2
@@ -235,9 +244,14 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 
 			extensions:  The actual "Extension"
 			format is defined in https://datatracker.ietf.org/doc/html/rfc8446#section-4.2
-			In TLS 1.3, the use of certain extensions is mandatory, as functionality has moved into
+
+			"In TLS 1.3, the use of certain extensions is mandatory, as functionality has moved into
 			extensions to preserve ClientHello compatibility with previous
-			versions of TLS.  Servers MUST ignore unrecognized extensions.
+			versions of TLS.  Servers MUST ignore unrecognized extensions."
+
+			"TLS 1.3 ClientHello messages always
+			contain extensions (minimally "supported_versions", otherwise, they
+			will be interpreted as TLS 1.2 ClientHello messages)"
 
 			这里的 extensions就不是用 present与否来判断了，因为tls1.3强制规定，必须存在extension
 
@@ -303,6 +317,8 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 		if p0 != 22 {
 			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 2
+
+			//只是不是握手信息， 有可能还是tls其它信息？可能是close alert等情况？这里应该再加一些处理，否则有时网页会打不开，刷新一下才能打开。
 			return
 		}
 
@@ -318,9 +334,13 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			return
 		}
 
+		//第六字节是 Handshake.msg_type, 1是clienthello，2是serverhello
+
 		var helloValue byte = 1
 
-		//我们 DetectConn中，考察客户端传输来的流量 时 使用 Read， 考察服务端发来的流量 时 使用Write
+		//我们 DetectConn中，考察客户端浏览器传输来的流量 时 使用 Read， 考察远程真实服务端发来的流量 时 使用Write;
+		// 无论 代理程序的客户端还是 代理程序的服务端都是如此
+
 		if !isRead {
 			helloValue = 2
 		}
@@ -331,80 +351,50 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 			return
 		}
 
-		if cd.is_secure && cd.isclient && isRead {
+		if cd.is_secure && cd.isclient {
+
 			//VersionTLS10,VersionTLS11,VersionTLS12,VersionTLS13
 			handshakeVer := uint16(p[10]) | uint16(p[9])<<8
 
-			if handshakeVer == tls.VersionTLS12 { //0303
-				//需要判断到底是 tls 1.3 还是 tls1.2
-				//可参考 https://halfrost.com/https_tls1-3_handshake/
-				// 具体见最上面的注释，以及rfc
-				//解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
+			//client hello
+			if isRead {
 
-				pAfter := p[11:]
-				if len(pAfter) < 49 {
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 6
-					return
-				}
-				pAfterRand := pAfter[32:]
-				sessionL := pAfterRand[0]
-
-				if 1+int(sessionL)+2 > len(pAfterRand) {
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 7
-					return
-				}
-
-				pAfterSessionID := pAfterRand[1+sessionL:]
-
-				cipher_suitesLen := uint16(pAfterSessionID[1]) | uint16(pAfterSessionID[0])<<8
-
-				if 2+int(cipher_suitesLen)+1 > len(pAfterSessionID) {
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 8
-					return
-				}
-
-				pAfterCipherSuites := pAfterSessionID[2+cipher_suitesLen:]
-
-				legacy_compression_methodsLen := pAfterCipherSuites[0]
-
-				if 1+int(legacy_compression_methodsLen)+1 > len(pAfterCipherSuites) {
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 9
-					return
-				}
-
-				pAfterLegacy_compression_methods := pAfterCipherSuites[1+legacy_compression_methodsLen:]
-
-				extensionsLen := pAfterLegacy_compression_methods[0]
-
-				if extensionsLen == 0 {
-					//没有extensionLen，则表明该连接肯定是tls1.2
-					if PDD {
-						log.Println("R No extension, Definitely tls1.2")
-					}
-					cd.handShakePass = true
-					return
-				}
-
-				if 1+int(extensionsLen)+8 != len(pAfterLegacy_compression_methods) {
-					if PDD {
-						log.Println("R 1+int(extensionsLen)+8 != len(pAfterLegacy_compression_methods)", 1+int(extensionsLen)+8, len(pAfterLegacy_compression_methods))
+				if handshakeVer == tls.VersionTLS12 { //0303
+					pAfter := p[11:]
+					if len(pAfter) < 49 {
+						cd.DefinitelyNotTLS = true
+						cd.handshakeFailReason = 6
+						return
 					}
 
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 10
-					return
+					cd.sniff_hello(pAfter, true) //代码很长！
+					if cd.DefinitelyNotTLS {
+						return
+					}
 				}
 
-				//extensionsBs:=
+				cd.handshakeVer = handshakeVer
 
+			} else { //server hello
+				if cd.peer.handshakeVer == tls.VersionTLS12 { //0303
+					if handshakeVer == tls.VersionTLS12 {
+						pAfter := p[11:]
+						if len(pAfter) < 32 {
+							cd.DefinitelyNotTLS = true
+							cd.handshakeFailReason = 6
+							return
+						}
+
+						cd.sniff_hello(pAfter, false) //代码很长！
+						if cd.DefinitelyNotTLS {
+							return
+						}
+					} else {
+						//可能吗？
+
+					}
+				}
 			}
-
-			cd.handshakeVer = handshakeVer
-
 		}
 
 		cd.handShakePass = true
@@ -479,7 +469,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 	// tls1.3 的 ContentType(23) 后面紧接着的是  legacy_record_version，而这个必须设成 0x0303
 	// 也就是说和tls1.2一样；而1.1的话是 0302, 1.0 是 0301，总之第三字节只会是1，2，3
 	//
-	// 不过因为我们先过滤的clientHello握手包，所以是能够区分 tls1.3/1.2 的；只是在这里验证一下
+	// 不过因为我们先过滤的握手包，所以是能够区分 tls1.3/纯1.2 的；只是在这里验证一下
 	//
 	if p0 == 23 && p1 == 3 && p2 > 0 && p2 < 4 {
 		if PDD {
@@ -513,7 +503,7 @@ func commonDetect(cd *ComDetectStruct, p []byte, isRead bool) {
 
 }
 
-func commonFilterStep(err error, cd *ComDetectStruct, p []byte, isRead bool) {
+func commonFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
 	if !OnlyTest && (cd.DefinitelyNotTLS || cd.IsTls) { //确定了是TLS 或者肯定不是 tls了的话，就直接return掉
 		return
 	}
@@ -531,7 +521,7 @@ func commonFilterStep(err error, cd *ComDetectStruct, p []byte, isRead bool) {
 	}
 
 	if len(p) > 3 {
-		commonDetect(cd, p, isRead)
+		cd.commonDetect(p, isRead)
 	}
 
 }
@@ -540,7 +530,7 @@ func commonFilterStep(err error, cd *ComDetectStruct, p []byte, isRead bool) {
 type DetectReader struct {
 	io.Reader
 
-	ComDetectStruct
+	ComSniff
 }
 
 // 总之，我们在客户端的 Read 操作，就是 我们试图使用 Read 读取客户的请求，然后试图发往 外界
@@ -549,7 +539,7 @@ type DetectReader struct {
 func (dr *DetectReader) Read(p []byte) (n int, err error) {
 	n, err = dr.Reader.Read(p)
 
-	commonFilterStep(err, &dr.ComDetectStruct, p[:n], true)
+	commonFilterStep(err, &dr.ComSniff, p[:n], true)
 
 	if PDD {
 		if dr.DefinitelyNotTLS {
@@ -588,7 +578,7 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 // DetectReader 对每个Read的数据进行分析，判断是否是tls流量
 type DetectWriter struct {
 	io.Writer
-	ComDetectStruct
+	ComSniff
 }
 
 // 直接写入，而不进行探测
@@ -623,7 +613,7 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
-	commonFilterStep(nil, &dw.ComDetectStruct, p, false)
+	commonFilterStep(nil, &dw.ComSniff, p, false)
 
 	// 经过判断之后，确认是 tls了，则我们缓存这个记录， 然后通过tls发送特殊指令
 	if dw.IsTls {
@@ -673,7 +663,10 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 
 	}
 	n, err = dw.Writer.Write(p)
-	//log.Println("DetectWriter,W, 原本", len(p), "实际写入了", n)
+
+	if PDD {
+		//log.Println("DetectWriter,W, 原本", len(p), "实际写入了", n, dw.Writer)
+	}
 
 	return
 }

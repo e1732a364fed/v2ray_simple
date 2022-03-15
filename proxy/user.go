@@ -28,6 +28,12 @@ type UserContainer interface {
 	UserBytesLen() int
 }
 
+// 可以控制 User 登入和登出 的接口, 就像一辆公交车一样，或者一座航站楼
+type UserBus interface {
+	AddUser(User) error
+	DelUser(User)
+}
+
 type UserServer interface {
 	Server
 	UserContainer
@@ -39,7 +45,9 @@ type UserConn interface {
 	GetProtocolVersion() int
 }
 
-//一种专门用于v2ray协议族的 User
+//一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口
+type V2rayUser [16]byte
+
 func (u V2rayUser) GetIdentityStr() string {
 	return UUIDToStr(u)
 }
@@ -47,9 +55,6 @@ func (u V2rayUser) GetIdentityStr() string {
 func (u V2rayUser) GetIdentityBytes() []byte {
 	return u[:]
 }
-
-//一种专门用于v2ray协议族的 结构 (vmess/vless), 实现 User 接口
-type V2rayUser [16]byte
 
 func NewV2rayUser(s string) (*V2rayUser, error) {
 	uuid, err := StrToUUID(s)

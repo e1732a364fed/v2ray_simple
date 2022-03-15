@@ -24,8 +24,6 @@ func init() {
 //实现 proxy.UserServer 以及 tlsLayer.UserHaser
 type Server struct {
 	proxy.ProxyCommonStruct
-	users []*proxy.V2rayUser
-
 	userHashes   map[[16]byte]*proxy.V2rayUser
 	userCRUMFURS map[[16]byte]*CRUMFURS
 	mux4Hashes   sync.RWMutex
@@ -44,15 +42,41 @@ func NewVlessServer(url *url.URL) (proxy.Server, error) {
 		userHashes:        make(map[[16]byte]*proxy.V2rayUser),
 		userCRUMFURS:      make(map[[16]byte]*CRUMFURS),
 	}
-	s.users = append(s.users, id)
+
 	s.ProxyCommonStruct.InitFromUrl(url)
 
-	for _, user := range s.users {
-		s.userHashes[*user] = user
-
-	}
+	s.addV2User(id)
 
 	return s, nil
+}
+
+func (s *Server) addV2User(u *proxy.V2rayUser) {
+
+	s.userHashes[*u] = u
+
+}
+
+func (s *Server) AddV2User(u *proxy.V2rayUser) {
+
+	s.mux4Hashes.Lock()
+	s.userHashes[*u] = u
+	s.mux4Hashes.Unlock()
+}
+
+func (s *Server) DelV2User(u *proxy.V2rayUser) {
+
+	s.mux4Hashes.RLock()
+
+	hasu := s.userHashes[*u]
+	if hasu == nil {
+		s.mux4Hashes.RUnlock()
+		return
+	}
+
+	s.mux4Hashes.Lock()
+	delete(s.userHashes, *u)
+	s.mux4Hashes.Unlock()
+
 }
 
 func (s *Server) GetUserByBytes(bs []byte) proxy.User {

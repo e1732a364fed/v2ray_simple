@@ -204,7 +204,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	if tls_lazy_encrypt {
 
-		wlc = tlsLayer.NewDetectConn(baseLocalConn, wlc, client.IsUseTLS(), tls_lazy_secure)
+		wlc = tlsLayer.NewSniffConn(baseLocalConn, wlc, client.IsUseTLS(), tls_lazy_secure)
 
 		//clientConn = cc
 	}
@@ -349,7 +349,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 				// 而且为了避免黑客攻击或探测，我们要使用uuid作为特殊指令，此时需要 UserServer和 UserClient
 
 				if uc := client.(proxy.UserClient); uc != nil {
-					tryRawCopy(true, uc, nil, realTargetAddr, clientConn, wlc, nil, true, nil)
+					tryRawCopy(true, uc, nil, targetAddr, clientConn, wlc, nil, true, nil)
 
 				}
 
@@ -438,7 +438,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 	//
 	// 总之判断 Write 的对象，是考虑 客户端和服务端之间的数据传输，不考虑 远程真实服务器
 
-	wlcdc := wlc.(*tlsLayer.DetectConn)
+	wlcdc := wlc.(*tlsLayer.SniffConn)
 	wlccc_raw := wlcdc.RawConn
 
 	if isclient {
@@ -520,6 +520,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 
 				if tlsLayer.PDD {
 					log.Println(" 才开始Dial 服务端")
+
 				}
 
 				theRecorder = tlsLayer.NewRecorder()
@@ -683,20 +684,36 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 
 	p := common.GetPacket()
 
+	count := 0
+
 	//从 wrc  读取，向 wlccc 写入
 	for {
 		if isgood2 || isbad2 {
 			break
 		}
 
-		if useSecureMethod {
+		count++
+
+		if useSecureMethod && count == 1 {
 			<-waitWRC_CreateChan
+		}
+		if tlsLayer.PDD {
+			log.Println("准备从wrc读")
 		}
 		n, err := wrc.Read(p)
 		if err != nil {
 			break
 		}
-		wlcdc.Write(p[:n])
+
+		if tlsLayer.PDD {
+			log.Println("从wrc读到数据，", n, "准备写入wlcdc")
+		}
+
+		wn, _ := wlcdc.Write(p[:n])
+
+		if tlsLayer.PDD {
+			log.Println("写入wlcdc完成", wn)
+		}
 
 		if wlcdc.W.IsTls && wlcdc.RawConn != nil {
 
