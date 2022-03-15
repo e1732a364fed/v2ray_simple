@@ -23,11 +23,12 @@ const (
 
 type UserConn struct {
 	net.Conn
-	uuid         [16]byte
-	convertedStr string
-	version      int
-	isUDP        bool
-	isServerEnd  bool //for v0
+	optionalReader io.Reader //在使用了缓存读取包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
+	uuid           [16]byte
+	convertedStr   string
+	version        int
+	isUDP          bool
+	isServerEnd    bool //for v0
 
 	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），接着读
 	udpUnreadPart []byte //for udp
@@ -150,6 +151,11 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 // 这里规定，如果是UDP，则 每次 Read 得到的都是一个 完整的UDP 数据包，除非p给的太小……
 func (uc *UserConn) Read(p []byte) (int, error) {
 
+	var from io.Reader = uc.Conn
+	if uc.optionalReader != nil {
+		from = uc.optionalReader
+	}
+
 	if uc.version == 0 {
 
 		if !uc.isUDP {
@@ -159,7 +165,7 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 				uc.isntFirstPacket = true
 
 				bs := common.GetPacket()
-				n, e := uc.Conn.Read(bs)
+				n, e := from.Read(bs)
 
 				if e != nil {
 					return 0, e
@@ -174,11 +180,11 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 
 			}
 
-			return uc.Conn.Read(p)
+			return from.Read(p)
 		} else {
 
 			if uc.bufr == nil {
-				uc.bufr = bufio.NewReader(uc.Conn)
+				uc.bufr = bufio.NewReader(from)
 			}
 
 			if len(uc.udpUnreadPart) > 0 {
@@ -225,7 +231,7 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 
 			return uc.readudp_withLenthHead(p)
 		}
-		return uc.Conn.Read(p)
+		return from.Read(p)
 
 	}
 }

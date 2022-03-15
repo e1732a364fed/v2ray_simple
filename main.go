@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
@@ -157,7 +158,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	// 如果是服务端的话，那就是 localServer.IsUseTLS == true, 此时，我们正常握手，然后我们需要判断的是它承载的数据
 
-	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 WriteRecorder中
+	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 Recorder中
 	var serverEndLocalServerTlsRawReadRecorder *tlsLayer.Recorder
 
 	if localServer.IsUseTLS() {
@@ -179,19 +180,39 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 		}
 
 		if tls_lazy_encrypt {
+			//此时已经握手完毕，可以记录了
 			serverEndLocalServerTlsRawReadRecorder.StartRecord()
 		}
 
 		thisLocalConnectionInstance = tlsConn
 
 	}
+	//isfallback := false
 
-	wlc, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
+	wlc, localServerFirstReadBuf, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
 		log.Println("failed in handshake from", localServer.AddrStr(), err)
+
+		if localServer.CanFallback() {
+			fe, ok := err.(httpLayer.FallbackErr)
+			if ok {
+				f := fe.Fallback()
+				if httpLayer.HasFallbackType(f.SupportType(), httpLayer.FallBack_default) {
+					targetAddr = f.GetFallback(httpLayer.FallBack_default, "")
+
+					wlc = thisLocalConnectionInstance
+					//isfallback = true
+					goto afterLocalServerHandshake
+				}
+
+			}
+		}
+
 		thisLocalConnectionInstance.Close()
 		return
 	}
+
+afterLocalServerHandshake:
 
 	var client proxy.Client
 
@@ -401,6 +422,12 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 		}
 
+	}
+
+	if localServerFirstReadBuf != nil {
+		//这里注意，因为是吧tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
+		wrc.Write(localServerFirstReadBuf.Bytes())
+		common.PutBytes(localServerFirstReadBuf.Bytes()) //这个Buf不是从common.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
 	}
 
 	/*

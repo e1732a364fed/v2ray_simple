@@ -45,15 +45,19 @@ func NewSocks5Server(url *url.URL) (proxy.Server, error) {
 
 func (s *Server) Name() string { return Name }
 
+func (s *Server) CanFallback() bool {
+	return false
+}
+
 //English: https://www.ietf.org/rfc/rfc1928.txt
 
 //中文： https://aber.sh/articles/Socks5/
 // 参考 https://studygolang.com/articles/31404
 
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *bytes.Buffer, *proxy.Addr, error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
@@ -64,24 +68,24 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 	// 一般握手包发来的是 [5 1 0]
 	n, err := underlay.Read(buf)
 	if err != nil || n == 0 {
-		return nil, nil, fmt.Errorf("failed to read hello: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to read hello: %w", err)
 	}
 	version := buf[0]
 	if version != Version5 {
-		return nil, nil, fmt.Errorf("unsupported socks version %v", version)
+		return nil, nil, nil, fmt.Errorf("unsupported socks version %v", version)
 	}
 
 	// Write hello response， [5 0]
 	// TODO: Support Auth
 	_, err = underlay.Write([]byte{Version5, AuthNone})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to write hello response: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to write hello response: %w", err)
 	}
 
 	// Read command message，
 	n, err = underlay.Read(buf)
 	if err != nil || n < 7 { // Shortest length is 7
-		return nil, nil, fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
+		return nil, nil, nil, fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
 	}
 
 	// 一般可以为 5 1 0 3 n，3表示域名，n是域名长度，然后域名很可能是 119 119 119 46 开头，表示 www.
@@ -90,7 +94,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 	cmd := buf[1]
 	switch cmd {
 	case CmdBind:
-		return nil, nil, fmt.Errorf("unsuppoted command %v", cmd)
+		return nil, nil, nil, fmt.Errorf("unsuppoted command %v", cmd)
 	case CmdUDPAssociate:
 
 	}
@@ -110,11 +114,11 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		l += int(buf[4])
 		off = 5
 	default:
-		return nil, nil, fmt.Errorf("unknown address type %v", buf[3])
+		return nil, nil, nil, fmt.Errorf("unknown address type %v", buf[3])
 	}
 
 	if len(buf[off:]) < l {
-		return nil, nil, errors.New("short command request")
+		return nil, nil, nil, errors.New("short command request")
 	}
 
 	var theName string
@@ -142,7 +146,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		serverAtyp, serverAddr, _, err := proxy.ParseStrToAddr(s.Addr)
 		if serverAtyp != proxy.AtypIP4 { //暂时先只支持ipv4，为了简单起见
 			if err != nil {
-				return nil, nil, errors.New("UDPAssociate: can't listen an domain, must be ip")
+				return nil, nil, nil, errors.New("UDPAssociate: can't listen an domain, must be ip")
 			}
 		}
 
@@ -157,7 +161,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 
 		udpRC, err := net.ListenUDP("udp", udpPreparedAddr)
 		if err != nil {
-			return nil, nil, errors.New("UDPAssociate: unable to listen udp")
+			return nil, nil, nil, errors.New("UDPAssociate: unable to listen udp")
 		}
 
 		//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR(4字节的ipv4) , BND.PORT(2字节)
@@ -166,14 +170,14 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		// Write command response
 		_, err = underlay.Write(reply)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to write command response: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to write command response: %w", err)
 		}
 
 		uc := &UDPConn{
 			clientSupposedAddr: clientFutureAddr,
 			UDPConn:            udpRC,
 		}
-		return uc, clientFutureAddr, nil
+		return uc, nil, clientFutureAddr, nil
 
 	} else {
 		addr := &proxy.Addr{
@@ -190,10 +194,10 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 
 		_, err = underlay.Write(reply)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to write command response: %w", err)
+			return nil, nil, nil, fmt.Errorf("failed to write command response: %w", err)
 		}
 
-		return underlay, addr, nil
+		return underlay, nil, addr, nil
 	}
 
 }

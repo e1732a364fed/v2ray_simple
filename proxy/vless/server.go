@@ -1,6 +1,7 @@
 package vless
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -8,12 +9,12 @@ import (
 	"log"
 	"net"
 	"net/url"
-	"strconv"
 	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
@@ -27,6 +28,8 @@ type Server struct {
 	userHashes   map[[16]byte]*proxy.V2rayUser
 	userCRUMFURS map[[16]byte]*CRUMFURS
 	mux4Hashes   sync.RWMutex
+
+	defaultfallbackAddr *proxy.Addr
 }
 
 func NewVlessServer(url *url.URL) (proxy.Server, error) {
@@ -45,15 +48,28 @@ func NewVlessServer(url *url.URL) (proxy.Server, error) {
 
 	s.ProxyCommonStruct.InitFromUrl(url)
 
+	query := url.Query()
+	fallbackStr := query.Get("fallback")
+
+	if fallbackStr != "" {
+		fa, err := proxy.NewAddr(fallbackStr)
+
+		if err != nil {
+			return nil, fmt.Errorf("invalid fallback %v", fallbackStr)
+		}
+
+		s.defaultfallbackAddr = fa
+	}
+
 	s.addV2User(id)
 
 	return s, nil
 }
-
+func (s *Server) CanFallback() bool {
+	return true
+}
 func (s *Server) addV2User(u *proxy.V2rayUser) {
-
 	s.userHashes[*u] = u
-
 }
 
 func (s *Server) AddV2User(u *proxy.V2rayUser) {
@@ -114,89 +130,128 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 
 func (s *Server) Name() string { return Name }
 
+//原本我们直接
 //see https://github.com/v2fly/v2ray-core/blob/master/proxy/vless/inbound/inbound.go
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *bytes.Buffer, *proxy.Addr, error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
-	var auth [17]byte
-	num, err := underlay.Read(auth[:])
+	//这里我们本 不用再创建一个buffer来缓存数据，因为tls包本身就是有缓存的，所以一点一点读就行，tcp本身系统也是有缓存的
+	// 因此v1.0.3以及更老版本都是直接一段一段read的。
+	//但是，因为需要支持fallback技术，所以还是要 进行缓存, 然后返回的UserConn要使用MultiReader，重用之前读过的部分，没办法。
+
+	readbs := common.GetBytes(common.StandardBytesLength)
+
+	//var auth [17]byte
+	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		return nil, nil, common.NewDataErr("read err", err, auth)
+		return nil, nil, nil, common.NewDataErr("read err", err, wholeReadLen)
 	}
 
-	if num < 17 {
-		return nil, nil, common.NewDataErr("fallback, msg too short", nil, num)
+	if wholeReadLen < 17 {
+		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
+		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
+
+		return nil, nil, nil, common.NewDataErr("fallback, msg too short", nil, wholeReadLen)
 
 	}
 
+	readbuf := bytes.NewBuffer(readbs[:wholeReadLen])
+
+	var returnErr error
+
+	goto realPart
+
+errorPart:
+
+	//fallback 所返回的buffer必须包含所有数据，而Buffer不支持会退，所以只能重新New
+	return nil, bytes.NewBuffer(readbs[:wholeReadLen]), nil, &httpLayer.ErrSingleFallback{
+		FallbackAddr: s.defaultfallbackAddr,
+		Err:          returnErr,
+	}
+
+realPart:
 	//这部分过程可以参照 v2ray的 proxy/vless/encoding/encoding.go DecodeRequestHeader 方法
+
+	auth := readbuf.Next(17)
 
 	version := auth[0]
 	if version > 1 {
-		return nil, nil, errors.New("Vless invalid request version " + strconv.Itoa(int(version)))
+
+		returnErr = common.NewDataErr("Vless invalid version ", nil, version)
+		goto errorPart
+
 	}
 
 	idBytes := auth[1:17]
 
 	s.mux4Hashes.RLock()
 
-	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&idBytes[0]))
+	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&idBytes[0])) //下面crumfurs也有用到
 
 	if user := s.userHashes[thisUUIDBytes]; user != nil {
 		s.mux4Hashes.RUnlock()
 	} else {
 		s.mux4Hashes.RUnlock()
-		return nil, nil, errors.New("invalid user")
+		returnErr = errors.New("invalid user")
+		goto errorPart
 	}
 
 	if version == 0 {
-		var addonLenBytes [1]byte
-		_, err := underlay.Read(addonLenBytes[:])
+
+		addonLenByte, err := readbuf.ReadByte()
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err //凡是和的层Read相关的错误，一律不再返回Fallback信息，因为连接已然不可用
 		}
-		addonLenByte := addonLenBytes[0]
 		if addonLenByte != 0 {
 			//v2ray的vless中没有对应的任何处理。
 			//v2ray 的 vless 虽然有一个没用的Flow，但是 EncodeBodyAddons里根本没向里写任何数据。所以理论上正常这部分始终应该为0
 			log.Println("potential illegal client", addonLenByte)
 
 			//读一下然后直接舍弃
-			tmpBuf := common.GetBytes(int(addonLenByte))
-			underlay.Read(tmpBuf)
-			common.PutBytes(tmpBuf)
+			/*
+				tmpBuf := common.GetBytes(int(addonLenByte))
+				underlay.Read(tmpBuf)
+				common.PutBytes(tmpBuf)
+			*/
+			if tmpbs := readbuf.Next(int(addonLenByte)); len(tmpbs) != int(addonLenByte) {
+				return nil, readbuf, nil, errors.New("vless short read in addon")
+			}
 		}
 	}
 
-	var commandBytes [1]byte
-	num, err = underlay.Read(commandBytes[:])
+	commandByte, err := readbuf.ReadByte()
 
 	if err != nil {
-		return nil, nil, errors.New("fallback, reason 2")
-	}
 
-	commandByte := commandBytes[0]
+		returnErr = errors.New("fallback, reason 2")
+		goto errorPart
+	}
 
 	addr := &proxy.Addr{}
 
 	switch commandByte {
-	case proxy.CmdMux: //实际目前暂时v2simple还未实现mux，先这么写
+	case proxy.CmdMux: //实际目前暂时verysimple还未实现mux，先这么写
 
 		addr.Port = 0
 		addr.Name = "v1.mux.cool"
 
 	case Cmd_CRUMFURS:
 		if version != 1 {
-			return nil, nil, errors.New("在vless的vesion不为1时使用了 CRUMFURS 命令")
+
+			returnErr = errors.New("在vless的vesion不为1时使用了 CRUMFURS 命令")
+			goto errorPart
+
 		}
 
 		_, err = underlay.Write([]byte{CRUMFURS_ESTABLISHED})
 		if err != nil {
-			return nil, nil, err
+
+			returnErr = common.NewErr("write to crumfurs err", err)
+			goto errorPart
 		}
 
 		addr.Name = CRUMFURS_Established_Str // 使用这个特殊的办法来告诉调用者，预留了 CRUMFURS 信道，防止其关闭上层连接导致 CRUMFURS 信道 被关闭。
@@ -211,19 +266,19 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 
 		s.mux4Hashes.Unlock()
 
-		return nil, addr, nil
+		return nil, readbuf, addr, nil
 
 	case proxy.CmdTCP, proxy.CmdUDP:
 
-		var portbs [2]byte
+		portbs := readbuf.Next(2)
 
-		num, err = underlay.Read(portbs[:])
+		if err != nil || len(portbs) != 2 {
 
-		if err != nil || num != 2 {
-			return nil, nil, errors.New("fallback, reason 3")
+			returnErr = errors.New("fallback, reason 3")
+			goto errorPart
 		}
 
-		addr.Port = int(binary.BigEndian.Uint16(portbs[:]))
+		addr.Port = int(binary.BigEndian.Uint16(portbs))
 
 		if commandByte == proxy.CmdUDP {
 			addr.IsUDP = true
@@ -231,31 +286,30 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 
 		var ip_or_domain_bytesLength byte = 0
 
-		var addrTypeBytes [1]byte
-		_, err = underlay.Read(addrTypeBytes[:])
+		addrTypeByte, err := readbuf.ReadByte()
 
 		if err != nil {
-			return nil, nil, errors.New("fallback, reason 4")
-		}
 
-		addrTypeByte := addrTypeBytes[0]
+			returnErr = errors.New("fallback, reason 4")
+			goto errorPart
+		}
 
 		switch addrTypeByte {
 		case proxy.AtypIP4:
 
 			ip_or_domain_bytesLength = net.IPv4len
 			addr.IP = common.GetBytes(net.IPv4len)
+
 		case proxy.AtypDomain:
 			// 解码域名的长度
 
-			var domainNameLenBytes [1]byte
-			_, err = underlay.Read(domainNameLenBytes[:])
+			domainNameLenByte, err := readbuf.ReadByte()
 
 			if err != nil {
-				return nil, nil, errors.New("fallback, reason 5")
-			}
 
-			domainNameLenByte := domainNameLenBytes[0]
+				returnErr = errors.New("fallback, reason 5")
+				goto errorPart
+			}
 
 			ip_or_domain_bytesLength = domainNameLenByte
 		case proxy.AtypIP6:
@@ -263,15 +317,17 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 			ip_or_domain_bytesLength = net.IPv6len
 			addr.IP = common.GetBytes(net.IPv6len)
 		default:
-			return nil, nil, fmt.Errorf("unknown address type %v", addrTypeByte)
+
+			returnErr = fmt.Errorf("unknown address type %v", addrTypeByte)
+			goto errorPart
 		}
 
 		ip_or_domain := common.GetBytes(int(ip_or_domain_bytesLength))
 
-		_, err = underlay.Read(ip_or_domain[:])
+		_, err = readbuf.Read(ip_or_domain)
 
 		if err != nil {
-			return nil, nil, errors.New("fallback, reason 6")
+			return nil, nil, nil, errors.New("fallback, reason 6")
 		}
 
 		if addr.IP != nil {
@@ -283,16 +339,19 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		common.PutBytes(ip_or_domain)
 
 	default:
-		return nil, nil, errors.New("invalid vless command")
+
+		returnErr = errors.New("invalid vless command")
+		goto errorPart
 	}
 
 	return &UserConn{
-		Conn:        underlay,
-		uuid:        thisUUIDBytes,
-		version:     int(version),
-		isUDP:       addr.IsUDP,
-		isServerEnd: true,
-	}, addr, nil
+		Conn:           underlay,
+		optionalReader: io.MultiReader(readbuf, underlay),
+		uuid:           thisUUIDBytes,
+		version:        int(version),
+		isUDP:          addr.IsUDP,
+		isServerEnd:    true,
+	}, readbuf, addr, nil
 
 }
 func (s *Server) Stop() {

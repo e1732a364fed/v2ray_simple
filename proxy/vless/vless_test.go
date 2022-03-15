@@ -51,9 +51,10 @@ func testVLess(version int, port string, t *testing.T) {
 				t.Logf("failed in accept: %v", err)
 				t.Fail()
 			}
+			t.Log("vless sever got new conn")
 			go func() {
 				defer lc.Close()
-				wlc, targetAddr, err := server.Handshake(lc)
+				wlc, _, targetAddr, err := server.Handshake(lc)
 				if err != nil {
 					t.Logf("failed in handshake form %v: %v", server.AddrStr(), err)
 					t.Fail()
@@ -68,6 +69,7 @@ func testVLess(version int, port string, t *testing.T) {
 
 				var hello [5]byte
 				io.ReadFull(wlc, hello[:])
+				//io.ReadFull(wlc, hello[:])
 				if !bytes.Equal(hello[:], []byte("hello")) {
 					t.Log("fail x2")
 					t.Fail()
@@ -220,7 +222,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 			}
 			go func() {
 				defer lc.Close()
-				wlc, targetAddr, err := fakeServerEndLocalServer.Handshake(lc)
+				wlc, _, targetAddr, err := fakeServerEndLocalServer.Handshake(lc)
 				if err != nil {
 					t.Logf("failed in handshake form %v: %v", fakeServerEndLocalServer.AddrStr(), err)
 					t.Fail()
@@ -245,7 +247,11 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				//这里的测试是，第一个发来的包必须是 hello，然后传递到目标udp服务器中
 
 				var hello [5]byte
+				//发现既可能读取 firstbuf，也可能读取 wlc，随机发生？
+
+				t.Log("read from wlc")
 				io.ReadFull(wlc, hello[:])
+
 				if !bytes.Equal(hello[:], hellodata) {
 					t.Log("!bytes.Equal(hello[:], hellodata)")
 					t.Fail()
