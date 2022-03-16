@@ -91,7 +91,6 @@ ws和grpc文件夹（第七层）
 package proxy
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -256,7 +255,7 @@ type Server interface {
 
 	Name() string
 
-	Handshake(underlay net.Conn) (io.ReadWriter, *bytes.Buffer, *Addr, error)
+	Handshake(underlay net.Conn) (io.ReadWriter, *Addr, error)
 	Stop()
 
 	CanFallback() bool //如果能fallback，则handshake失败后，会专门返回 ErrFallback

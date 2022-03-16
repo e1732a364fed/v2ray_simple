@@ -188,8 +188,9 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	}
 	//isfallback := false
+	var theFallback httpLayer.Fallback
 
-	wlc, localServerFirstReadBuf, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
+	wlc, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
 		log.Println("failed in handshake from", localServer.AddrStr(), err)
 
@@ -197,6 +198,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 			fe, ok := err.(httpLayer.FallbackErr)
 			if ok {
 				f := fe.Fallback()
+				theFallback = f
 				if httpLayer.HasFallbackType(f.SupportType(), httpLayer.FallBack_default) {
 					targetAddr = f.GetFallback(httpLayer.FallBack_default, "")
 
@@ -424,10 +426,10 @@ afterLocalServerHandshake:
 
 	}
 
-	if localServerFirstReadBuf != nil {
+	if theFallback != nil {
 		//这里注意，因为是吧tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-		wrc.Write(localServerFirstReadBuf.Bytes())
-		common.PutBytes(localServerFirstReadBuf.Bytes()) //这个Buf不是从common.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
+		wrc.Write(theFallback.FirstBuffer().Bytes())
+		common.PutBytes(theFallback.FirstBuffer().Bytes()) //这个Buf不是从common.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
 	}
 
 	/*

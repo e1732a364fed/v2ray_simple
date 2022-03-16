@@ -130,12 +130,11 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 
 func (s *Server) Name() string { return Name }
 
-//原本我们直接
-//see https://github.com/v2fly/v2ray-core/blob/master/proxy/vless/inbound/inbound.go
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *bytes.Buffer, *proxy.Addr, error) {
+// 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
@@ -148,14 +147,14 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *bytes.Buffer, *pr
 	//var auth [17]byte
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		return nil, nil, nil, common.NewDataErr("read err", err, wholeReadLen)
+		return nil, nil, common.NewDataErr("read err", err, wholeReadLen)
 	}
 
 	if wholeReadLen < 17 {
 		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
 		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
 
-		return nil, nil, nil, common.NewDataErr("fallback, msg too short", nil, wholeReadLen)
+		return nil, nil, common.NewDataErr("fallback, msg too short", nil, wholeReadLen)
 
 	}
 
@@ -168,13 +167,15 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *bytes.Buffer, *pr
 errorPart:
 
 	//fallback 所返回的buffer必须包含所有数据，而Buffer不支持会退，所以只能重新New
-	return nil, bytes.NewBuffer(readbs[:wholeReadLen]), nil, &httpLayer.ErrSingleFallback{
+	return nil, nil, &httpLayer.ErrSingleFallback{
 		FallbackAddr: s.defaultfallbackAddr,
 		Err:          returnErr,
+		First:        bytes.NewBuffer(readbs[:wholeReadLen]),
 	}
 
 realPart:
 	//这部分过程可以参照 v2ray的 proxy/vless/encoding/encoding.go DecodeRequestHeader 方法
+	//see https://github.com/v2fly/v2ray-core/blob/master/proxy/vless/inbound/inbound.go
 
 	auth := readbuf.Next(17)
 
@@ -204,7 +205,7 @@ realPart:
 
 		addonLenByte, err := readbuf.ReadByte()
 		if err != nil {
-			return nil, nil, nil, err //凡是和的层Read相关的错误，一律不再返回Fallback信息，因为连接已然不可用
+			return nil, nil, err //凡是和的层Read相关的错误，一律不再返回Fallback信息，因为连接已然不可用
 		}
 		if addonLenByte != 0 {
 			//v2ray的vless中没有对应的任何处理。
@@ -218,7 +219,7 @@ realPart:
 				common.PutBytes(tmpBuf)
 			*/
 			if tmpbs := readbuf.Next(int(addonLenByte)); len(tmpbs) != int(addonLenByte) {
-				return nil, readbuf, nil, errors.New("vless short read in addon")
+				return nil, nil, errors.New("vless short read in addon")
 			}
 		}
 	}
@@ -266,7 +267,7 @@ realPart:
 
 		s.mux4Hashes.Unlock()
 
-		return nil, readbuf, addr, nil
+		return nil, addr, nil
 
 	case proxy.CmdTCP, proxy.CmdUDP:
 
@@ -327,7 +328,7 @@ realPart:
 		_, err = readbuf.Read(ip_or_domain)
 
 		if err != nil {
-			return nil, nil, nil, errors.New("fallback, reason 6")
+			return nil, nil, errors.New("fallback, reason 6")
 		}
 
 		if addr.IP != nil {
@@ -351,7 +352,7 @@ realPart:
 		version:        int(version),
 		isUDP:          addr.IsUDP,
 		isServerEnd:    true,
-	}, readbuf, addr, nil
+	}, addr, nil
 
 }
 func (s *Server) Stop() {

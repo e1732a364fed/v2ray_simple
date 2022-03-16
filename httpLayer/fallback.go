@@ -1,6 +1,10 @@
 package httpLayer
 
-import "github.com/hahahrfool/v2ray_simple/proxy"
+import (
+	"bytes"
+
+	"github.com/hahahrfool/v2ray_simple/proxy"
+)
 
 const (
 	Fallback_none = 0
@@ -21,10 +25,12 @@ func HasFallbackType(ftype, b byte) bool {
 type Fallback interface {
 	GetFallback(ftype byte, param string) *proxy.Addr
 	SupportType() byte //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
+	FirstBuffer() *bytes.Buffer
 }
 
 type SingleFallback struct {
-	Addr *proxy.Addr
+	Addr  *proxy.Addr
+	First *bytes.Buffer
 }
 
 func (ef *SingleFallback) GetFallback(ftype byte, param string) *proxy.Addr {
@@ -33,6 +39,10 @@ func (ef *SingleFallback) GetFallback(ftype byte, param string) *proxy.Addr {
 
 func (ef *SingleFallback) SupportType() byte {
 	return FallBack_default
+}
+
+func (ef *SingleFallback) FirstBuffer() *bytes.Buffer {
+	return ef.First
 }
 
 //实现 Fallback
@@ -97,6 +107,7 @@ type ErrSingleFallback struct {
 	FallbackAddr *proxy.Addr
 	Err          error
 	eStr         string
+	First        *bytes.Buffer
 }
 
 func (ef *ErrSingleFallback) Error() string {
@@ -109,6 +120,7 @@ func (ef *ErrSingleFallback) Error() string {
 //返回 SingleFallback
 func (ef *ErrSingleFallback) Fallback() Fallback {
 	return &SingleFallback{
-		Addr: ef.FallbackAddr,
+		Addr:  ef.FallbackAddr,
+		First: ef.First,
 	}
 }

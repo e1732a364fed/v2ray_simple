@@ -54,7 +54,7 @@ func testVLess(version int, port string, t *testing.T) {
 			t.Log("vless sever got new conn")
 			go func() {
 				defer lc.Close()
-				wlc, _, targetAddr, err := server.Handshake(lc)
+				wlc, targetAddr, err := server.Handshake(lc)
 				if err != nil {
 					t.Logf("failed in handshake form %v: %v", server.AddrStr(), err)
 					t.Fail()
@@ -222,7 +222,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 			}
 			go func() {
 				defer lc.Close()
-				wlc, _, targetAddr, err := fakeServerEndLocalServer.Handshake(lc)
+				wlc, targetAddr, err := fakeServerEndLocalServer.Handshake(lc)
 				if err != nil {
 					t.Logf("failed in handshake form %v: %v", fakeServerEndLocalServer.AddrStr(), err)
 					t.Fail()
