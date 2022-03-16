@@ -1,5 +1,0 @@
-{
-  "local": "socks5://0.0.0.0:10800",
-  "remote": "vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&version=0",
-  "xroute":{ "mycountry":"CN" }
-}
