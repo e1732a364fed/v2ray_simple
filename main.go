@@ -16,6 +16,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
@@ -338,7 +339,7 @@ afterLocalServerHandshake:
 		return
 	}
 
-	var realTargetAddr *proxy.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
+	var realTargetAddr *netLayer.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
 
 	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
 		log.Println("request isn't the appointed domain", targetAddr, uniqueTestDomain)
@@ -350,7 +351,7 @@ afterLocalServerHandshake:
 	if client.AddrStr() != "" {
 		//log.Println("will dial", client.AddrStr())
 
-		realTargetAddr, _ = proxy.NewAddr(client.AddrStr())
+		realTargetAddr, _ = netLayer.NewAddr(client.AddrStr())
 	}
 
 	clientConn, err := realTargetAddr.Dial()
@@ -449,10 +450,10 @@ afterLocalServerHandshake:
 }
 
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
-//和 xtls的splice 含义相同
+//  和 xtls的splice 含义相同.
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
-// 前两个参数仅用于 tls_lazy_secure
-func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, clientAddr *proxy.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+// 第一个参数仅用于 tls_lazy_secure
+func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, clientAddr *netLayer.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
 	// 在判断阶段，因为还没确定是否是 tls，所以是要继续用tls加密的，

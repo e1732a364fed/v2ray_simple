@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
@@ -72,7 +73,7 @@ func (c *Client) GetUser() proxy.User {
 	return c.user
 }
 
-func (c *Client) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter, error) {
+func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriter, error) {
 	var err error
 
 	if underlay == nil {
@@ -155,7 +156,7 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 
 	if knownConn == nil {
 
-		knownConn, err = c.Handshake(nil, proxy.NewAddrFromUDPAddr(a))
+		knownConn, err = c.Handshake(nil, netLayer.NewAddrFromUDPAddr(a))
 		if err != nil {
 			return err
 		}
@@ -227,7 +228,7 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 			atyp := msg[0]
 			portIndex := net.IPv4len
 			switch atyp {
-			case proxy.AtypIP6:
+			case netLayer.AtypIP6:
 				portIndex = net.IPv6len
 			default:
 				//不合法，必须是ipv4或者ipv6
@@ -258,7 +259,7 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 
 			ipLen := net.IPv4len
 			switch atyp {
-			case proxy.AtypIP6:
+			case netLayer.AtypIP6:
 				ipLen = net.IPv6len
 			default:
 				//不合法，必须是ipv4或者ipv6

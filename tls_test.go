@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
@@ -42,7 +43,7 @@ func testTls(protocol string, port string, t *testing.T) {
 	}
 
 	targetStr := "dummy.com:80"
-	targetStruct := &proxy.Addr{
+	targetStruct := &netLayer.Addr{
 		Name: "dummy.com",
 		Port: 80,
 	}

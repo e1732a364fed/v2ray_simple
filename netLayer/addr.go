@@ -1,8 +1,15 @@
-package proxy
+package netLayer
 
 import (
 	"net"
 	"strconv"
+)
+
+// Atyp, for vless and vmess; 注意与 trojan和socks5的区别，trojan和socks5的相同含义的值是1，3，4
+const (
+	AtypIP4    byte = 1
+	AtypDomain byte = 2
+	AtypIP6    byte = 3
 )
 
 // Addr represents a address that you want to access by proxy. Either Name or IP is used exclusively.

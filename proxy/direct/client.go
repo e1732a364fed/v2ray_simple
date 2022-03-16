@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
@@ -19,7 +20,7 @@ type Direct struct {
 	proxy.ProxyCommonStruct
 	*proxy.UDP_Pipe
 
-	targetAddr *proxy.Addr
+	targetAddr *netLayer.Addr
 	addrStr    string
 }
 
@@ -33,7 +34,7 @@ func NewDirectClient(url *url.URL) (proxy.Client, error) {
 
 func (d *Direct) Name() string { return name }
 
-func (d *Direct) Handshake(underlay net.Conn, target *proxy.Addr) (io.ReadWriter, error) {
+func (d *Direct) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriter, error) {
 
 	if underlay == nil {
 		d.targetAddr = target

@@ -98,6 +98,7 @@ import (
 	"strings"
 
 	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 )
 
@@ -196,7 +197,7 @@ type Client interface {
 	Name() string
 
 	// Handshake的 underlay有可能传入nil，所以要求 所有的 Client 都要能够自己dial
-	Handshake(underlay net.Conn, target *Addr) (io.ReadWriter, error)
+	Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriter, error)
 }
 
 // ClientCreator is a function to create client.
@@ -255,7 +256,7 @@ type Server interface {
 
 	Name() string
 
-	Handshake(underlay net.Conn) (io.ReadWriter, *Addr, error)
+	Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error)
 	Stop()
 
 	CanFallback() bool //如果能fallback，则handshake失败后，会专门返回 ErrFallback

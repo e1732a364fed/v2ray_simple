@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
@@ -54,7 +55,7 @@ func (s *Server) CanFallback() bool {
 //中文： https://aber.sh/articles/Socks5/
 // 参考 https://studygolang.com/articles/31404
 
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		return nil, nil, err
@@ -136,15 +137,15 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 	//总之，UDP Associate方法并不是 UDP over TCP，完全不同，而且过程中握手用tcp，传输用udp，使用到了两个连接。
 
 	if cmd == CmdUDPAssociate {
-		clientFutureAddr := &proxy.Addr{
+		clientFutureAddr := &netLayer.Addr{
 			IP:    theIP,
 			Name:  theName,
 			Port:  thePort,
 			IsUDP: true,
 		}
 
-		serverAtyp, serverAddr, _, err := proxy.ParseStrToAddr(s.Addr)
-		if serverAtyp != proxy.AtypIP4 { //暂时先只支持ipv4，为了简单起见
+		serverAtyp, serverAddr, _, err := netLayer.ParseStrToAddr(s.Addr)
+		if serverAtyp != netLayer.AtypIP4 { //暂时先只支持ipv4，为了简单起见
 			if err != nil {
 				return nil, nil, errors.New("UDPAssociate: can't listen an domain, must be ip")
 			}
@@ -180,7 +181,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error
 		return uc, clientFutureAddr, nil
 
 	} else {
-		addr := &proxy.Addr{
+		addr := &netLayer.Addr{
 			IP:   theIP,
 			Name: theName,
 			Port: thePort,
@@ -208,7 +209,7 @@ func (s *Server) Stop() {
 
 type UDPConn struct {
 	*net.UDPConn
-	clientSupposedAddr *proxy.Addr //客户端指定的客户端自己未来将使用的公网UDP的Addr
+	clientSupposedAddr *netLayer.Addr //客户端指定的客户端自己未来将使用的公网UDP的Addr
 
 	clientSupposedAddrIsNothing bool
 }
@@ -313,7 +314,7 @@ func (u *UDPConn) StartReadRequest(udpPutter proxy.UDP_Putter) {
 
 		newStart := off + l
 
-		thisaddr := &proxy.Addr{
+		thisaddr := &netLayer.Addr{
 			IP:    theIP,
 			Name:  theName,
 			Port:  thePort,

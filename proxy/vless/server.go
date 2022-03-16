@@ -15,6 +15,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
@@ -29,7 +30,7 @@ type Server struct {
 	userCRUMFURS map[[16]byte]*CRUMFURS
 	mux4Hashes   sync.RWMutex
 
-	defaultfallbackAddr *proxy.Addr
+	defaultfallbackAddr *netLayer.Addr
 }
 
 func NewVlessServer(url *url.URL) (proxy.Server, error) {
@@ -52,7 +53,7 @@ func NewVlessServer(url *url.URL) (proxy.Server, error) {
 	fallbackStr := query.Get("fallback")
 
 	if fallbackStr != "" {
-		fa, err := proxy.NewAddr(fallbackStr)
+		fa, err := netLayer.NewAddr(fallbackStr)
 
 		if err != nil {
 			return nil, fmt.Errorf("invalid fallback %v", fallbackStr)
@@ -131,7 +132,7 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 func (s *Server) Name() string { return Name }
 
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *proxy.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		return nil, nil, err
@@ -232,7 +233,7 @@ realPart:
 		goto errorPart
 	}
 
-	addr := &proxy.Addr{}
+	addr := &netLayer.Addr{}
 
 	switch commandByte {
 	case proxy.CmdMux: //实际目前暂时verysimple还未实现mux，先这么写
@@ -296,12 +297,12 @@ realPart:
 		}
 
 		switch addrTypeByte {
-		case proxy.AtypIP4:
+		case netLayer.AtypIP4:
 
 			ip_or_domain_bytesLength = net.IPv4len
 			addr.IP = common.GetBytes(net.IPv4len)
 
-		case proxy.AtypDomain:
+		case netLayer.AtypDomain:
 			// 解码域名的长度
 
 			domainNameLenByte, err := readbuf.ReadByte()
@@ -313,7 +314,7 @@ realPart:
 			}
 
 			ip_or_domain_bytesLength = domainNameLenByte
-		case proxy.AtypIP6:
+		case netLayer.AtypIP6:
 
 			ip_or_domain_bytesLength = net.IPv6len
 			addr.IP = common.GetBytes(net.IPv6len)
@@ -373,9 +374,9 @@ type CRUMFURS struct {
 }
 
 func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
-	atype := proxy.AtypIP4
+	atype := netLayer.AtypIP4
 	if len(a.IP) > 4 {
-		atype = proxy.AtypIP6
+		atype = netLayer.AtypIP6
 	}
 	buf := common.GetBuf()
 

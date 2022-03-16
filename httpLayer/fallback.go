@@ -3,7 +3,7 @@ package httpLayer
 import (
 	"bytes"
 
-	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
 
 const (
@@ -23,17 +23,17 @@ func HasFallbackType(ftype, b byte) bool {
 
 //实现 Fallback. 这里的fallback只与http协议有关，所以只能按path,alpn 和 sni 进行分类
 type Fallback interface {
-	GetFallback(ftype byte, param string) *proxy.Addr
+	GetFallback(ftype byte, param string) *netLayer.Addr
 	SupportType() byte //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
 	FirstBuffer() *bytes.Buffer
 }
 
 type SingleFallback struct {
-	Addr  *proxy.Addr
+	Addr  *netLayer.Addr
 	First *bytes.Buffer
 }
 
-func (ef *SingleFallback) GetFallback(ftype byte, param string) *proxy.Addr {
+func (ef *SingleFallback) GetFallback(ftype byte, param string) *netLayer.Addr {
 	return ef.Addr
 }
 
@@ -47,20 +47,24 @@ func (ef *SingleFallback) FirstBuffer() *bytes.Buffer {
 
 //实现 Fallback
 type ClassicFallback struct {
-	Default   *proxy.Addr
-	MapByPath map[string]*proxy.Addr //因为只一次性设置，之后仅用于读，所以不会有多线程问题
-	MapByAlpn map[string]*proxy.Addr
-	MapBySni  map[string]*proxy.Addr
+	First     *bytes.Buffer
+	Default   *netLayer.Addr
+	MapByPath map[string]*netLayer.Addr //因为只一次性设置，之后仅用于读，所以不会有多线程问题
+	MapByAlpn map[string]*netLayer.Addr
+	MapBySni  map[string]*netLayer.Addr
 }
 
 func NewClassicFallback() *ClassicFallback {
 	return &ClassicFallback{
-		MapByPath: make(map[string]*proxy.Addr),
-		MapByAlpn: make(map[string]*proxy.Addr),
-		MapBySni:  make(map[string]*proxy.Addr),
+		MapByPath: make(map[string]*netLayer.Addr),
+		MapByAlpn: make(map[string]*netLayer.Addr),
+		MapBySni:  make(map[string]*netLayer.Addr),
 	}
 }
 
+func (ef *ClassicFallback) FirstBuffer() *bytes.Buffer {
+	return ef.First
+}
 func (ef *ClassicFallback) SupportType() byte {
 	var r byte = 0
 
@@ -83,7 +87,7 @@ func (ef *ClassicFallback) SupportType() byte {
 	return FallBack_default
 }
 
-func (ef *ClassicFallback) GetFallback(ftype byte, s string) *proxy.Addr {
+func (ef *ClassicFallback) GetFallback(ftype byte, s string) *netLayer.Addr {
 	switch ftype {
 	default:
 		return ef.Default
@@ -104,7 +108,7 @@ type FallbackErr interface {
 
 //实现 FallbackErr
 type ErrSingleFallback struct {
-	FallbackAddr *proxy.Addr
+	FallbackAddr *netLayer.Addr
 	Err          error
 	eStr         string
 	First        *bytes.Buffer
