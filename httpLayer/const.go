@@ -1,3 +1,6 @@
+/*
+Package httpLayer 提供http层的一些方法和定义
+*/
 package httpLayer
 
 const (

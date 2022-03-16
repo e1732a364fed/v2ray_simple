@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -25,22 +23,36 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
+const (
+	log_debug = iota
+	log_info
+	log_warning
+	log_error
+)
+
 var (
 	desc = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
 
 	configFileName string
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
+	logLevel         int    //值越小越唠叨, 废话越多，值越大打印的越少，见log_开头的常量
 
-	conf *Config
-	//directClient proxy.Client
+	//另外，本作暂时不考虑引入外界log包。依赖越少越好。
+
+	conf         *Config
+	directClient proxy.Client
 
 	tls_lazy_encrypt bool
 	tls_lazy_secure  bool
+
+	routePolicy *netLayer.RoutePolicy
 )
 
 func init() {
-	//directClient, _ = proxy.ClientFromURL("direct://")
+	directClient, _ = proxy.ClientFromURL("direct://")
+
+	flag.IntVar(&logLevel, "ll", log_warning, "log level,0=debug, 1=info, 2=warning, 3=error")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -57,28 +69,6 @@ func printDesc() {
 	proxy.PrintAllClientNames()
 
 	fmt.Printf("=============== 所有协议均可套tls ================\n")
-}
-
-type Config struct {
-	Server_ThatListenPort_Url string `json:"local"`
-	//RouteMethod               string `json:"route"`
-	Client_ThatDialRemote_Url string `json:"remote"`
-}
-
-func loadConfig(fileName string) (*Config, error) {
-	path := common.GetFilePath(fileName)
-	if len(path) > 0 {
-		if cf, err := os.Open(path); err == nil {
-			defer cf.Close()
-			bytes, _ := ioutil.ReadAll(cf)
-			config := &Config{}
-			if err = json.Unmarshal(bytes, config); err != nil {
-				return nil, fmt.Errorf("can not parse config file %v, %v", fileName, err)
-			}
-			return config, nil
-		}
-	}
-	return nil, fmt.Errorf("can not load config file %v", fileName)
 }
 
 func main() {
@@ -101,6 +91,18 @@ func main() {
 		os.Exit(-1)
 	}
 	defer localServer.Stop()
+
+	if !localServer.CantRoute() && conf.Route != nil {
+
+		netLayer.LoadMaxmindGeoipFile("")
+
+		//目前只支持通过 mycountry进行 geoip分流 这一种情况
+		routePolicy = netLayer.NewRoutePolicy()
+		if conf.Route.MyCountryISO_3166 != "" {
+			routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(conf.Route.MyCountryISO_3166))
+
+		}
+	}
 
 	remoteClient, err := proxy.ClientFromURL(conf.Client_ThatDialRemote_Url)
 	if err != nil {
@@ -217,9 +219,27 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 afterLocalServerHandshake:
 
-	var client proxy.Client
+	var client proxy.Client = remoteClient
 
-	client = remoteClient //如果加了白名单等过滤方式，则client可能会等于direct等，再说
+	//如果可以route
+	if !localServer.CantRoute() && routePolicy != nil {
+
+		if logLevel <= log_info {
+			log.Println("enabling routing feature")
+		}
+
+		//目前只支持一个 localServer/remoteClient, 所以目前根据tag分流是没有意义的，以后再说
+		// 现在就用addr分流就行
+		outtag := routePolicy.GetOutTag(&netLayer.TargetDescription{
+			Addr: targetAddr,
+		})
+		if outtag == "direct" {
+			client = directClient
+			if logLevel <= log_info {
+				log.Println("routed to direct", targetAddr.UrlString())
+			}
+		}
+	}
 
 	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个和要发送到tls的信息是一模一样的，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5进行判断
 	//

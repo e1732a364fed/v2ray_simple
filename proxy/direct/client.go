@@ -1,3 +1,4 @@
+// Package direct provies direct proxy support for proxy.Client
 package direct
 
 import (

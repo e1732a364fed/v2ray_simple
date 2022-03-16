@@ -14,9 +14,7 @@ type faketlsconn struct {
 }
 
 // 本包会用到这个Conn，比如server和client的 Handshake，
-
-//唯一特性就是它可以返回tls连接的底层tcp连接，见 GetRaw
-// 开启了回落功能的话，这里还会用到 http.sniff
+// 唯一特性就是它可以返回tls连接的底层tcp连接，见 GetRaw
 type Conn struct {
 	*tls.Conn
 }
@@ -45,5 +43,12 @@ func (c *Conn) GetTeeConn() *TeeConn {
 	rc := (*faketlsconn)(unsafe.Pointer(uintptr(unsafe.Pointer(c.Conn))))
 
 	return rc.conn.(*TeeConn)
+
+}
+
+//return c.Conn.ConnectionState().NegotiatedProtocol
+func (c *Conn) GetAlpn() string {
+
+	return c.Conn.ConnectionState().NegotiatedProtocol
 
 }

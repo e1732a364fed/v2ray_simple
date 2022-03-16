@@ -1,4 +1,4 @@
-package main
+package tlsLayer_test
 
 import (
 	"bytes"
@@ -10,26 +10,23 @@ import (
 	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/vless"
 )
-
-func init() {
-
-}
 
 func TestVlesss(t *testing.T) {
 	testTls("vlesss", "9507", t)
 }
 
 func testTls(protocol string, port string, t *testing.T) {
-	if !common.FileExist("cert.pem") {
-		ioutil.WriteFile("cert.pem", []byte(sampleCertStr), 0777)
+	if !common.FileExist("../cert.pem") {
+		ioutil.WriteFile("../cert.pem", []byte(sampleCertStr), 0777)
 	}
 
-	if !common.FileExist("cert.key") {
-		ioutil.WriteFile("cert.key", []byte(sampleKeyStr), 0777)
+	if !common.FileExist("../cert.key") {
+		ioutil.WriteFile("../cert.key", []byte(sampleKeyStr), 0777)
 	}
 
-	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@localhost:" + port + "?alterID=4&cert=cert.pem&key=cert.key&insecure=1"
+	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@localhost:" + port + "?alterID=4&cert=../cert.pem&key=../cert.key&insecure=1"
 	server, err := proxy.ServerFromURL(url)
 	if err != nil {
 		t.Log("fail1", err)

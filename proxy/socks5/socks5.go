@@ -1,3 +1,4 @@
+// Package socks5 provies socks5 proxy support for proxy.Client and proxy.Server
 package socks5
 
 //总体而言，vless和vmess协议借鉴了socks5，所以有类似的地方。trojan协议也是一样。

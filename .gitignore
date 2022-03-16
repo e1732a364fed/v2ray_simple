@@ -1,8 +1,10 @@
-*.DS_Store
-v2ray_simple
-v2ray_simple_linux*
-v2ray_simple_win*
-verysimple_*
-*.exe
 client.json
 server.json
+v2ray_simple
+v2ray_simple_*
+verysimple
+verysimple_*
+*.exe
+*.DS_Store
+*.mmdb
+*.tgz

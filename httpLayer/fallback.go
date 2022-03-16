@@ -24,8 +24,8 @@ func HasFallbackType(ftype, b byte) bool {
 //实现 Fallback. 这里的fallback只与http协议有关，所以只能按path,alpn 和 sni 进行分类
 type Fallback interface {
 	GetFallback(ftype byte, param string) *netLayer.Addr
-	SupportType() byte //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
-	FirstBuffer() *bytes.Buffer
+	SupportType() byte          //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
+	FirstBuffer() *bytes.Buffer //因为能确认fallback一定是读取过数据的，所以需要给出之前所读的数据，fallback时要用到，要重新传输给目标服务器
 }
 
 type SingleFallback struct {
@@ -45,7 +45,7 @@ func (ef *SingleFallback) FirstBuffer() *bytes.Buffer {
 	return ef.First
 }
 
-//实现 Fallback
+//实现 Fallback,支持 path,alpn, sni 分流
 type ClassicFallback struct {
 	First     *bytes.Buffer
 	Default   *netLayer.Addr

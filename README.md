@@ -54,9 +54,9 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
 
-该特性不完全稳定，可能会导致一些网页访问有时出现异常
+该特性不完全稳定，可能会导致一些网页访问有时出现异常,有时出现bad mac alert;刷新页面可以解决
 
-不是速度慢，是因为 目前的tls过滤方式有点问题, 对close_alert等情况没处理好。而且使用不同的浏览器，现象也会不同，似乎对safari支持好一些， chrome就差很多
+不是速度慢，是因为 目前的tls过滤方式有点问题, 对close_alert等情况没处理好。而且使用不同的浏览器，现象也会不同，似乎对safari支持好一些， chrome就差一些
 
 在我的最新代码里，采用了独特的技术，已经规避了大部分不稳定性。总之比较适合看视频，毕竟双向splice，不是白给的！
 
@@ -107,7 +107,24 @@ cp client.example.json client.json
 cp server.example.json server.json
 ```
 
+详细优化的编译参数请参考Makefile文件
+
 如果你是直接下载的可执行文件，则不需要 go build了，直接复制example.json文件即可
+
+### 关于内嵌geoip 文件
+
+默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
+
+可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
+
+加载的外部文件 必须使用原始 mmdb格式。
+
+若要内嵌编译，要用 `tar -czf GeoLite2-Country.mmdb.tgz GeoLite2-Country.mmdb` 来打包一下，将生成的tgz文件放到 netLayer文件夹中，然后再编译 ，用 `go build -tags embed_geoip` 编译
+
+内嵌编译 所使用的 文件名 必须是 GeoLite2-Country.mmdb.tgz
+
+
+因为为了减小文件体积，所以才内嵌的gzip格式，而不是直接内嵌原始数据
 
 ## 使用方式
 
@@ -137,7 +154,9 @@ v2ray_simple -c server.json
 
 文档、注释尽量详细，且尽量完全使用中文，尽量符合golang的各种推荐标准。
 
-根据golang的标准，注释就是文档本身（godoc的原理），所以一定要多写注释。
+根据golang的标准，注释就是文档本身（godoc的原理），所以一定要多写注释。不要以为解释重复了就不要写，因为要生成godoc文档，在 pkg.go.dev 上 给用户看的时候它们首先看到的是注释内容，而不是代码内容
+
+本项目所生成的文档在 https://pkg.go.dev/github.com/hahahrfool/v2ray_simple
 
 再次重复，文档越多越好，尽量降低开发者入门的门槛。
 
@@ -206,7 +225,7 @@ openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 测试环境：ubuntu虚拟机, 使用开源测试工具
 https://github.com/librespeed/speedtest-go
 
-编译后运行，会监听8989
+编译后运行，会监听8989。注意要先按speedtest-go的要求，把web/asset文件夹 和一个toml配置文件 放到 可执行文件的文件夹中,我们直接在项目文件夹里编译的，所以直接移动到项目文件夹根部即可
 
 然后内网搭建nginx 前置，加自签名证书，配置添加反代：
 `proxy_pass http://127.0.0.1:8989;`
@@ -256,7 +275,9 @@ https://github.com/librespeed/speedtest-go
 https://t.me/shadowrocket_unofficial
 
 
-# 免责声明
+# 免责声明与鸣谢
+
+## 免责
 
 MIT协议！我不负任何责任。本项目只是个代理项目，适合内网测试使用，以及适合阅读代码了解原理。
 

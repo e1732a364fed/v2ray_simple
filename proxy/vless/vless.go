@@ -1,3 +1,4 @@
+// Package vless provies vless proxy support for proxy.Client and proxy.Server
 package vless
 
 import (
