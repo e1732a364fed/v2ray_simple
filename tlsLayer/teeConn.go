@@ -139,7 +139,10 @@ func (tc *TeeConn) RemoteAddr() net.Addr {
 //Close只会试图通知外界 Close调用过，并不真Close原Conn
 func (tc *TeeConn) Close() error {
 	tc.closeCalled = true
-	log.Println("TeeConn Close Called")
+	if utils.CanLogInfo() {
+
+		log.Println("TeeConn Close Called")
+	}
 	return nil
 }
 

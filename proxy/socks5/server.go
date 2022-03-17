@@ -259,11 +259,17 @@ func (u *UDPConn) StartReadRequest(udpPutter proxy.UDP_Putter) {
 	for {
 		n, addr, err := u.UDPConn.ReadFromUDP(bs)
 		if err != nil {
-			log.Println("UDPConn read err", err)
+			if utils.CanLogWarn() {
+				log.Println("UDPConn read err", err)
+
+			}
 			continue
 		}
 		if n < 6 {
-			log.Println("UDPConn short read err", n)
+			if utils.CanLogWarn() {
+
+				log.Println("UDPConn short read err", n)
+			}
 			continue
 		}
 
@@ -291,13 +297,19 @@ func (u *UDPConn) StartReadRequest(udpPutter proxy.UDP_Putter) {
 			l += int(bs[4])
 			off = 5
 		default:
-			log.Println("UDPConn unknown address type ", atyp)
+			if utils.CanLogWarn() {
+
+				log.Println("UDPConn unknown address type ", atyp)
+			}
 			continue
 
 		}
 
 		if len(bs[off:]) < l {
-			log.Println("UDPConn short command request ", atyp)
+			if utils.CanLogWarn() {
+
+				log.Println("UDPConn short command request ", atyp)
+			}
 			continue
 
 		}

@@ -211,7 +211,10 @@ realPart:
 		if addonLenByte != 0 {
 			//v2ray的vless中没有对应的任何处理。
 			//v2ray 的 vless 虽然有一个没用的Flow，但是 EncodeBodyAddons里根本没向里写任何数据。所以理论上正常这部分始终应该为0
-			log.Println("potential illegal client", addonLenByte)
+			if utils.CanLogWarn() {
+
+				log.Println("potential illegal client", addonLenByte)
+			}
 
 			//读一下然后直接舍弃
 			/*

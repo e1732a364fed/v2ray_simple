@@ -151,7 +151,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	baseLocalConn := thisLocalConnectionInstance
 
 	if utils.CanLogInfo() {
-		log.Println("got new", thisLocalConnectionInstance.RemoteAddr().String())
+		log.Println("Got new", thisLocalConnectionInstance.RemoteAddr().String())
 
 	}
 
@@ -178,7 +178,11 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 		tlsConn, err := localServer.GetTLS_Server().Handshake(thisLocalConnectionInstance)
 		if err != nil {
-			log.Println("failed in handshake localServer tls", localServer.AddrStr(), err)
+
+			if utils.CanLogErr() {
+				log.Println("failed in handshake localServer tls", localServer.AddrStr(), err)
+
+			}
 			thisLocalConnectionInstance.Close()
 			return
 		}
@@ -196,7 +200,10 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	wlc, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
-		log.Println("failed in handshake from", localServer.AddrStr(), err)
+
+		if utils.CanLogWarn() {
+			log.Println("failed in handshake from", localServer.AddrStr(), err)
+		}
 
 		if localServer.CanFallback() {
 			fe, ok := err.(httpLayer.FallbackErr)
@@ -226,7 +233,7 @@ afterLocalServerHandshake:
 	if !localServer.CantRoute() && routePolicy != nil {
 
 		if utils.CanLogInfo() {
-			log.Println("enabling routing feature")
+			log.Println("trying routing feature")
 		}
 
 		//目前只支持一个 localServer/remoteClient, 所以目前根据tag分流是没有意义的，以后再说
@@ -236,6 +243,7 @@ afterLocalServerHandshake:
 		})
 		if outtag == "direct" {
 			client = directClient
+
 			if utils.CanLogInfo() {
 				log.Println("routed to direct", targetAddr.UrlString())
 			}
@@ -363,11 +371,17 @@ afterLocalServerHandshake:
 	var realTargetAddr *netLayer.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
 
 	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
-		log.Println("request isn't the appointed domain", targetAddr, uniqueTestDomain)
+		if utils.CanLogDebug() {
+			log.Println("request isn't the appointed domain", targetAddr, uniqueTestDomain)
+
+		}
 		return
 	}
 
-	log.Println(client.Name(), " want to dial ", targetAddr.UrlString())
+	if utils.CanLogInfo() {
+		log.Println(client.Name(), " want to dial ", targetAddr.UrlString())
+
+	}
 
 	if client.AddrStr() != "" {
 		//log.Println("will dial", client.AddrStr())
@@ -377,7 +391,10 @@ afterLocalServerHandshake:
 
 	clientConn, err := realTargetAddr.Dial()
 	if err != nil {
-		log.Println("failed in dial", targetAddr.String(), ", Reason: ", err)
+		if utils.CanLogErr() {
+			log.Println("failed in dial", targetAddr.String(), ", Reason: ", err)
+
+		}
 		return
 	}
 
@@ -420,7 +437,10 @@ afterLocalServerHandshake:
 
 	wrc, err := client.Handshake(clientConn, targetAddr)
 	if err != nil {
-		log.Println("failed in handshake to", targetAddr.String(), ", Reason: ", err)
+		if utils.CanLogErr() {
+			log.Println("failed in handshake to", targetAddr.String(), ", Reason: ", err)
+
+		}
 		return
 	}
 
@@ -579,13 +599,18 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 
 				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
 				if err != nil {
-					log.Println("failed in handshake remoteClient tls", ", Reason: ", err)
+					if utils.CanLogErr() {
+						log.Println("failed in handshake remoteClient tls", ", Reason: ", err)
+
+					}
 					return
 				}
 
 				wrc, err = proxy_client.Handshake(tlsConn, clientAddr)
 				if err != nil {
-					log.Println("failed in handshake to", clientAddr.String(), ", Reason: ", err)
+					if utils.CanLogErr() {
+						log.Println("failed in handshake to", clientAddr.String(), ", Reason: ", err)
+					}
 					return
 				}
 

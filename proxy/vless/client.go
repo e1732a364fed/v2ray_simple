@@ -94,7 +94,10 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 
 			UMFURS_conn, err := target.Dial()
 			if err != nil {
-				log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
+				if utils.CanLogErr() {
+
+					log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
+				}
 				return nil, err
 			}
 			buf := c.getBufWithCmd(Cmd_CRUMFURS)
@@ -106,7 +109,10 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 			bs := []byte{0}
 			n, err := UMFURS_conn.Read(bs)
 			if err != nil || n == 0 || bs[0] != CRUMFURS_ESTABLISHED {
-				log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
+				if utils.CanLogErr() {
+
+					log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
+				}
 				return nil, err
 			}
 

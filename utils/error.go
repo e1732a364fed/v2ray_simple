@@ -2,6 +2,7 @@ package utils
 
 import "fmt"
 
+// ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况
 type ErrInErr struct {
 	ErrDesc   string
 	ErrDetail error
@@ -19,7 +20,11 @@ func (e *ErrInErr) String() string {
 		return fmt.Sprintf("%s , Data: %v", e.ErrDesc, e.Data)
 
 	}
-	return fmt.Sprintf("%s : %s", e.ErrDesc, e.ErrDetail.Error())
+	if e.ErrDetail != nil {
+		return fmt.Sprintf("%s : %s", e.ErrDesc, e.ErrDetail.Error())
+
+	}
+	return e.ErrDesc
 
 }
 
