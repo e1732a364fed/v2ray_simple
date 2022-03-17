@@ -208,7 +208,7 @@ func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {
 	return buf
 }
 
-// 把在 CRUMFURS 信道中 获取到的 未知流量 转发到 UDPResponseWriter （本v2simple中就是 转发到localServer中, 而且 只有 socks5 这一种localServer实现了该方法， 见 main.go)
+// 把在 CRUMFURS 信道中 获取到的 未知流量 转发到 UDPResponseWriter （本作中就是 转发到 inServer 中, 而且 只有 socks5 这一种 inServer 实现了该方法， 见 main.go)
 func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 
 	if c.udpResponseChan == nil {

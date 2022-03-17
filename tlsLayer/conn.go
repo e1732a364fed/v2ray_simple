@@ -4,23 +4,34 @@ import (
 	"crypto/tls"
 	"net"
 	"unsafe"
+
+	utls "github.com/refraction-networking/utls"
+)
+
+const (
+	official = iota
+	utlsPackage
 )
 
 //参考 crypt/tls 的 conn.go， 注意，如果上游代码的底层结构发生了改变，则这里也要跟着修改，保持头部结构一致
 type faketlsconn struct {
-	// constant
 	conn     net.Conn
 	isClient bool
 }
 
 // 本包会用到这个Conn，比如server和client的 Handshake，
 // 唯一特性就是它可以返回tls连接的底层tcp连接，见 GetRaw
+
 type Conn struct {
-	*tls.Conn
+	//*tls.Conn
+	net.Conn
+	ptr            unsafe.Pointer
+	tlsPackageType byte // 0 means crypto/tls, 1 means utls
 }
 
 func (c *Conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
-	rc := (*faketlsconn)(unsafe.Pointer(uintptr(unsafe.Pointer(c.Conn))))
+
+	rc := (*faketlsconn)(c.ptr)
 	if rc != nil {
 		if rc.conn != nil {
 			//log.Println("成功获取到 *net.TCPConn！", rc.conn.(*net.TCPConn)) //经测试，是毫无问题的，完全能提取出来并正常使用
@@ -40,7 +51,7 @@ func (c *Conn) GetRaw(tls_lazy_encrypt bool) *net.TCPConn {
 
 // 直接获取TeeConn，仅用于已经确定肯定能获取到的情况
 func (c *Conn) GetTeeConn() *TeeConn {
-	rc := (*faketlsconn)(unsafe.Pointer(uintptr(unsafe.Pointer(c.Conn))))
+	rc := (*faketlsconn)(c.ptr)
 
 	return rc.conn.(*TeeConn)
 
@@ -49,6 +60,13 @@ func (c *Conn) GetTeeConn() *TeeConn {
 //return c.Conn.ConnectionState().NegotiatedProtocol
 func (c *Conn) GetAlpn() string {
 
-	return c.Conn.ConnectionState().NegotiatedProtocol
+	if c.tlsPackageType == utlsPackage {
+		cc := (*utls.Conn)(c.ptr)
+		return cc.ConnectionState().NegotiatedProtocol
+
+	} else {
+		cc := (*tls.Conn)(c.ptr)
+		return cc.ConnectionState().NegotiatedProtocol
+	}
 
 }

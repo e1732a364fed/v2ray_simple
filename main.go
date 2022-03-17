@@ -161,7 +161,7 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 	//此时，baseLocalConn里面 正常情况下, 服务端看到的是 客户端的golang的tls 拨号发出的 tls数据
 	// 客户端看到的是 socks5的数据， 我们首先就是要看看socks5里的数据是不是tls，而socks5自然 IsUseTLS 是false
 
-	// 如果是服务端的话，那就是 localServer.IsUseTLS == true, 此时，我们正常握手，然后我们需要判断的是它承载的数据
+	// 如果是服务端的话，那就是 inServer.IsUseTLS == true, 此时，我们正常握手，然后我们需要判断的是它承载的数据
 
 	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 Recorder中
 	var serverEndLocalServerTlsRawReadRecorder *tlsLayer.Recorder
@@ -181,7 +181,7 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 		if err != nil {
 
 			if utils.CanLogErr() {
-				log.Println("failed in handshake localServer tls", inServer.AddrStr(), err)
+				log.Println("failed in handshake inServer tls", inServer.AddrStr(), err)
 
 			}
 			thisLocalConnectionInstance.Close()
@@ -237,7 +237,7 @@ afterLocalServerHandshake:
 			log.Println("trying routing feature")
 		}
 
-		//目前只支持一个 localServer/remoteClient, 所以目前根据tag分流是没有意义的，以后再说
+		//目前只支持一个 inServer/outClient, 所以目前根据tag分流是没有意义的，以后再说
 		// 现在就用addr分流就行
 		outtag := routePolicy.GetOutTag(&netLayer.TargetDescription{
 			Addr: targetAddr,
@@ -254,7 +254,7 @@ afterLocalServerHandshake:
 	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个和要发送到tls的信息是一模一样的，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5进行判断
 	//
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
-	// 所以总之都是要在 localServer判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
+	// 所以总之都是要在 inServer 判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
 
 	if tls_lazy_encrypt {
 
@@ -276,7 +276,7 @@ afterLocalServerHandshake:
 				// 	而且也不在这里处理监听事件，client自己会在额外的 goroutine里处理
 				//	server也一样，会在特定的场合给 CRUMFURS 传值，这个机制是与main函数无关的
 
-				// 而且 thisLocalConnectionInstance 会被 localServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
+				// 而且 thisLocalConnectionInstance 会被 inServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
 
 				return
 
@@ -297,7 +297,7 @@ afterLocalServerHandshake:
 			// 此时socks5包已经帮我们dial好了一个udp连接，即wlc，但是还未读取到客户端想要访问的东西
 			udpConn := wlc.(*socks5.UDPConn)
 
-			// 将 remoteClient 视为 UDP_Putter ，就可以转发udp信息了
+			// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
 			// direct 也实现了 UDP_Putter (通过 UDP_Pipe和 RelayUDP_to_Direct函数), 所以目前 socks5直接转发udp到direct 的功能 已经实现。
 
 			// 我在 vless v1 的client 的 UserConn 中实现了 UDP_Putter, vless 的 client的 新连接的Handshake过程会在 UDP_Putter.WriteUDPRequest 被调用 时发生
@@ -428,7 +428,7 @@ afterLocalServerHandshake:
 
 		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
 		if err != nil {
-			log.Println("failed in handshake remoteClient tls", targetAddr.String(), ", Reason: ", err)
+			log.Println("failed in handshake outClient tls", targetAddr.String(), ", Reason: ", err)
 			return
 		}
 
@@ -601,7 +601,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
 				if err != nil {
 					if utils.CanLogErr() {
-						log.Println("failed in handshake remoteClient tls", ", Reason: ", err)
+						log.Println("failed in handshake outClient tls", ", Reason: ", err)
 
 					}
 					return

@@ -91,6 +91,8 @@ Server and Client
 
 我们服务端和 客户端的程序，都是有至少一个入口和一个出口的。入口我们叫做 inServer ，出口我们叫做 outClient.
 
+这两个词的含义和 v2ray的 inbound 和 outbound 是等价的.
+
 在 inServer 中，我们负责监听未知连接；在 outClient 中，我们负责拨号特定目标服务器.
 
 */
@@ -109,10 +111,11 @@ import (
 )
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
+// 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息
 type ProxyCommon interface {
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
 	SetAddrStr(string)
-	CantRoute() bool //for localServer,
+	CantRoute() bool //for inServer, 分流属于netLayer的指责
 	GetTag() string
 
 	SetUseTLS()
@@ -120,6 +123,7 @@ type ProxyCommon interface {
 
 	HasAdvancedApplicationLayer() bool //如果使用了ws或者grpc，这个要返回true
 
+	//tls属于tlsLayer的指责
 	SetTLS_Server(*tlsLayer.Server)
 	SetTLS_Client(*tlsLayer.Client)
 
@@ -139,7 +143,9 @@ func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommon) error
 	}
 
 	if isclient {
-		com.SetTLS_Client(tlsLayer.NewTlsClient(u.Host, insecure))
+		utlsStr := u.Query().Get("utls")
+		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
+		com.SetTLS_Client(tlsLayer.NewTlsClient(u.Host, insecure, useUtls))
 
 	} else {
 		certFile := u.Query().Get("cert")
@@ -166,7 +172,7 @@ type ProxyCommonStruct struct {
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
 
-	cantRoute bool //for localServer, 若为true，则 localServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
+	cantRoute bool //for inServer, 若为true，则 inServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
 }
 
 func (pcs *ProxyCommonStruct) CantRoute() bool {

@@ -4,7 +4,7 @@ verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母�
 
 verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂
 
-只有项目名称是v2ray_simple，其它所有场合全 使用 verysimple 这个名称，可简称 "vs"。
+只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。
 
 规定，编译出的文件名必须以 verysimple 开头.
 
@@ -130,22 +130,57 @@ cp server.example.json server.json
 
 ```sh
 #客户端
-v2ray_simple -c client.json
+verysimple -c client.json
 
 #服务端
-v2ray_simple -c server.json
+verysimple -c server.json
 ```
 
-如果你不是放在path里的，则要 `./v2ray_simple`, 前面要加一个点和一个斜杠。windows没这个要求。
+如果你不是放在path里的，则要 `./verysimple`, 前面要加一个点和一个斜杠。windows没这个要求。
+
+注意，如果你是自己直接 go build 编译的，则可执行文件与项目名称一致，为 v2ray_simple；
+
+如果用的下载的官方编译版本，则可执行文件叫做 verysimple. 可以通过文件名称判断是自己编译的还是下载的。
+
+官方发布版统一叫做verysimple是为了与 v2ray区别开。
 
 关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
 
 目前配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
 
+如果学会了配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
+
+```sh
+#客户端
+verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:443?insecure=true
+
+#服务端
+verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
+```
+
 ## 验证方式
 
 对于功能的golang test，请使用 `go test ./...` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
+## 关于证书
+
+不要在实际场合使用我提供的证书！自己生成！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
+
+而且用了真证书后，别忘了把配置文件中的 `insecure=true` 给删掉.
+
+使用自签名证书是会被中间人攻击的，再次特地提醒。如果被中间人攻击，就能直接获取你的uuid，然后你的服务器 攻击者就也能用了。
+
+要想申请真实证书，仅有ip是不够的，要拥有一个域名。本项目提供的自签名证书仅供快速测试使用，切勿用于实际场合。
+
+### 生成自签名证书
+
+注意运行第二行命令时会要求你输入一些信息。确保至少有一行不是空白即可，比如打个1
+```sh
+openssl ecparam -genkey -name prime256v1 -out cert.key
+openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
+```
+
+此命令会生成ecc证书，这个证书比rsa证书 速度更快, 有利于网速加速（加速tls握手）。
 
 ## 开发标准以及理念
 
@@ -206,24 +241,12 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 
 不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。**只是兼容配置格式，不是兼容所有协议！目前只有vless v0 协议是兼容的，可以直接使用现有其它客户端**
 
+目前的json格式被称作“极简模式”，只需给定url就可以完整确认一个协议的配置.
+
 其它开发计划请参考
 https://github.com/hahahrfool/v2ray_simple/discussions/3
 
-## 生成自签名证书
 
-注意运行第二行命令时会要求你输入一些信息。确保至少有一行不是空白即可，比如打个1
-```sh
-openssl ecparam -genkey -name prime256v1 -out cert.key
-openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
-```
-
-我给出的命令会生成ecc证书，这个证书速度更快, 有利于网速加速（加速tls握手）。
-
-不要在实际场合使用我提供的证书！自己生成！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
-
-使用自签名证书是会被中间人攻击的，再次特地提醒。如果被中间人攻击，就能直接获取你的uuid，然后你的服务器 攻击者就也能用了。
-
-仅有ip是不够的，要结合域名。本项目提供的自签名证书仅供快速测试使用，切勿用于实际场合。
 ## 测速
 
 测试环境：ubuntu虚拟机, 使用开源测试工具
