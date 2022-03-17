@@ -456,7 +456,7 @@ afterLocalServerHandshake:
 		return
 	}
 
-	if !routedToDirect && client.Name() != "direct" && tls_lazy_encrypt {
+	if !routedToDirect && tls_lazy_encrypt {
 
 		// 这里的错误是，我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
 		if !isServerEnd {
@@ -758,13 +758,13 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 
 		if isgood {
 			if runtime.GOOS == "linux" {
-				//runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
+				runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
 			}
 
 			if tlsLayer.PDD {
 				log.Println("成功SpliceRead R方向")
 				num, e1 := rawWRC.ReadFrom(wlccc_raw)
-				log.Println("SpliceRead R方向 读完，", e1, ", 长度:", num)
+				log.Println("SpliceRead R方向 传完，", e1, ", 长度:", num)
 			} else {
 				rawWRC.ReadFrom(wlccc_raw)
 			}
@@ -869,13 +869,13 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 		}
 
 		if runtime.GOOS == "linux" {
-			//runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
+			runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的。不过不一定对，因为我很笨，只是看xray的代码有这一行
 
 		}
 		if tlsLayer.PDD {
 
 			num, e2 := wlccc_raw.ReadFrom(rawWRC) //看起来是ReadFrom，实际上是向 wlccc_raw进行Write，即箭头向左
-			log.Println("SpliceRead W方向 读完，", e2, ", 长度:", num)
+			log.Println("SpliceRead W方向 传完，", e2, ", 长度:", num)
 		} else {
 			wlccc_raw.ReadFrom(rawWRC)
 		}
