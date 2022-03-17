@@ -266,7 +266,7 @@ https://github.com/librespeed/speedtest-go
 
 注意访问测速网页时要访问https的，否则测的 splice的速度实际上还是普通的tls速度，并没有真正splice。
 
-访问 htts://自己ip/example-singleServer-full.html
+访问 https://自己ip/example-singleServer-full.html
 注意这个自己ip不能为 127.0.0.1，因为本地回环是永远不过代理的，要配置成自己的局域网ip。
 
 ### 结果
@@ -274,6 +274,8 @@ https://github.com/librespeed/speedtest-go
 左侧下载，右侧上传，单位Mbps。我的虚拟机性能太差，所以就算内网连接速度也很低。
 
 不过这样正好可以测出不同代理协议之间的差距。
+
+verysimple 版本 v1.0.3
 
 ```
 //直连

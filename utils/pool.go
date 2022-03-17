@@ -22,25 +22,25 @@ const maxBufLen int = 64 * 1024
 
 func init() {
 	standardBytesPool = sync.Pool{
-		New: func() any {
+		New: func() interface{} {
 			return make([]byte, StandardBytesLength)
 		},
 	}
 
 	standardPacketPool = sync.Pool{
-		New: func() any {
+		New: func() interface{} {
 			return make([]byte, maxBufLen)
 		},
 	}
 
 	customBytesPool = sync.Pool{
-		New: func() any {
+		New: func() interface{} {
 			return make([]byte, maxBufLen)
 		},
 	}
 
 	bufPool = sync.Pool{
-		New: func() any {
+		New: func() interface{} {
 			return &bytes.Buffer{}
 		},
 	}

@@ -4,6 +4,8 @@ nginx + https ，firefox,
 
 nginx 最大上传缓存：512MB
 
+verysimple 版本 v1.0.3
+
 ## 直连 127.0.0.1本地回环
 
 ```

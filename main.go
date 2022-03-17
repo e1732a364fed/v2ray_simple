@@ -505,7 +505,7 @@ afterLocalServerHandshake:
 }
 
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
-//  和 xtls的splice 含义相同.
+//  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 // 第一个参数仅用于 tls_lazy_secure
 func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, clientAddr *netLayer.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {

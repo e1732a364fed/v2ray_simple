@@ -9,6 +9,8 @@ firefox
 
 nginx 最大上传缓存：51MB
 
+verysimple 版本 v1.0.3
+
 ## http, 本地回环
 
 2325, 1546

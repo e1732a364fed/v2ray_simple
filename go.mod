@@ -1,6 +1,6 @@
 module github.com/hahahrfool/v2ray_simple
 
-go 1.18
+go 1.17
 
 require (
 	github.com/oschwald/maxminddb-golang v1.8.0
