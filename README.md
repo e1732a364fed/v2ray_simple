@@ -32,7 +32,11 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 v2simple vless v1 + direct 的服务端。
 
+v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1](vless_v1.md)
 
+vless v1协议还处在开发阶段，我随时可能新增、修改定义。
+
+因为本作率先提出了 vless v1的开发，所以本作的版本号 也直接从 v1.0.0开始
 
 ### 关于udp
 

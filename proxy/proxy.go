@@ -115,7 +115,7 @@ import (
 type ProxyCommon interface {
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
 	SetAddrStr(string)
-	CantRoute() bool //for inServer, 分流属于netLayer的指责
+	CantRoute() bool //for inServer
 	GetTag() string
 
 	SetUseTLS()
@@ -123,19 +123,18 @@ type ProxyCommon interface {
 
 	HasAdvancedApplicationLayer() bool //如果使用了ws或者grpc，这个要返回true
 
-	//tls属于tlsLayer的指责
-	SetTLS_Server(*tlsLayer.Server)
-	SetTLS_Client(*tlsLayer.Client)
-
 	GetTLS_Server() *tlsLayer.Server
 	GetTLS_Client() *tlsLayer.Client
+
+	setTLS_Server(*tlsLayer.Server)
+	setTLS_Client(*tlsLayer.Client)
 
 	setCantRoute(bool)
 	setTag(string)
 }
 
 //给 ProxyCommon 的tls做一些配置上的准备，从url读取配置
-func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommon) error {
+func prepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommon) error {
 	insecureStr := u.Query().Get("insecure")
 	insecure := false
 	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
@@ -145,7 +144,7 @@ func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommon) error
 	if isclient {
 		utlsStr := u.Query().Get("utls")
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
-		com.SetTLS_Client(tlsLayer.NewTlsClient(u.Host, insecure, useUtls))
+		com.setTLS_Client(tlsLayer.NewTlsClient(u.Host, insecure, useUtls))
 
 	} else {
 		certFile := u.Query().Get("cert")
@@ -156,7 +155,7 @@ func PrepareTLS_forProxyCommon(u *url.URL, isclient bool, com ProxyCommon) error
 
 		tlsserver, err := tlsLayer.NewServer(hostAndPort, sni, certFile, keyFile, insecure)
 		if err == nil {
-			com.SetTLS_Server(tlsserver)
+			com.setTLS_Server(tlsserver)
 		} else {
 			return err
 		}
@@ -199,10 +198,10 @@ func (pcs *ProxyCommonStruct) InitFromUrl(u *url.URL) {
 	pcs.Addr = u.Host
 }
 
-func (pcs *ProxyCommonStruct) SetTLS_Server(s *tlsLayer.Server) {
+func (pcs *ProxyCommonStruct) setTLS_Server(s *tlsLayer.Server) {
 	pcs.tls_s = s
 }
-func (s *ProxyCommonStruct) SetTLS_Client(c *tlsLayer.Client) {
+func (s *ProxyCommonStruct) setTLS_Client(c *tlsLayer.Client) {
 	s.tls_c = c
 }
 
@@ -276,7 +275,7 @@ func ClientFromURL(s string) (Client, error) {
 			}
 
 			c.SetUseTLS()
-			PrepareTLS_forProxyCommon(u, true, c)
+			prepareTLS_forProxyCommon(u, true, c)
 
 			return c, err
 
@@ -357,7 +356,7 @@ func ServerFromURL(s string) (Server, error) {
 			configCommonForServer(server, u)
 
 			server.SetUseTLS()
-			PrepareTLS_forProxyCommon(u, false, server)
+			prepareTLS_forProxyCommon(u, false, server)
 			return server, nil
 
 		}

@@ -37,9 +37,11 @@ func NewRouteSetForMyCountry(iso string) *RouteSet {
 	}
 	rs := &RouteSet{
 		Countries: make(map[string]bool),
+		Domains:   make(map[string]bool),
 		OutTag:    "direct",
 	}
 	rs.Countries[iso] = true
+	rs.Domains[strings.ToLower(iso)] = true //iso字符串的小写正好可以作为顶级域名
 	return rs
 }
 
@@ -94,18 +96,29 @@ func (sg *RouteSet) IsAddrIn(a *Addr) bool {
 			}
 		}
 	}
-	if a.Name != "" && sg.Domains != nil {
-		tokens := strings.Split(a.Name, ".")
-		if len(tokens) > 1 {
-			suffix := tokens[len(tokens)-1]
-			for i := len(tokens) - 2; i >= 0; i-- {
-				suffix = tokens[i] + "." + suffix
+	if a.Name != "" {
+		if sg.Domains != nil {
+
+			lastDotIndex := len(a.Name)
+
+			suffix := a.Name
+			for {
+
+				lastDotIndex = strings.LastIndex(a.Name[:lastDotIndex], ".")
+
+				suffix = a.Name[lastDotIndex+1:]
 				if _, found := sg.Domains[suffix]; found {
 					return true
 				}
+				if lastDotIndex == -1 {
+					goto afterName
+				}
 			}
+
 		}
+
 	}
+afterName:
 	return false
 }
 
