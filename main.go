@@ -32,13 +32,16 @@ var (
 
 	//另外，本作暂时不考虑引入外界log包。依赖越少越好。
 
-	conf         *Config
+	conf         *SimpleConfig
 	directClient proxy.Client
 
 	tls_lazy_encrypt bool
 	tls_lazy_secure  bool
 
 	routePolicy *netLayer.RoutePolicy
+
+	listenURL string
+	dialURL   string
 )
 
 func init() {
@@ -48,6 +51,9 @@ func init() {
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
 	flag.StringVar(&configFileName, "c", "client.json", "config file name")
+
+	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the local part in config file), only enbled when config file is not provided.")
+	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the remote part in config file), only enbled when config file is not provided.")
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
 }
@@ -69,24 +75,19 @@ func main() {
 
 	var err error
 
-	conf, err = loadConfig(configFileName)
-	if err != nil {
+	//in config.go
+	loadConfig()
 
-		log.Println("can not load config file: ", err)
-
-		os.Exit(-1)
-	}
-
-	localServer, err := proxy.ServerFromURL(conf.Server_ThatListenPort_Url)
+	inServer, err := proxy.ServerFromURL(conf.Server_ThatListenPort_Url)
 	if err != nil {
 
 		log.Println("can not create local server: ", err)
 
 		os.Exit(-1)
 	}
-	defer localServer.Stop()
+	defer inServer.Stop()
 
-	if !localServer.CantRoute() && conf.Route != nil {
+	if !inServer.CantRoute() && conf.Route != nil {
 
 		netLayer.LoadMaxmindGeoipFile("")
 
@@ -98,20 +99,20 @@ func main() {
 		}
 	}
 
-	remoteClient, err := proxy.ClientFromURL(conf.Client_ThatDialRemote_Url)
+	outClient, err := proxy.ClientFromURL(conf.Client_ThatDialRemote_Url)
 	if err != nil {
 		log.Println("can not create remote client: ", err)
 		os.Exit(-1)
 	}
 
-	listener, err := net.Listen("tcp", localServer.AddrStr())
+	listener, err := net.Listen("tcp", inServer.AddrStr())
 	if err != nil {
-		log.Println("can not listen on", localServer.AddrStr(), err)
+		log.Println("can not listen on", inServer.AddrStr(), err)
 		os.Exit(-1)
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(localServer.Name(), "is listening TCP on ", localServer.AddrStr())
+		log.Println(inServer.Name(), "is listening TCP on ", inServer.AddrStr())
 
 	}
 
@@ -134,7 +135,7 @@ func main() {
 				continue
 			}
 
-			go handleNewIncomeConnection(localServer, remoteClient, lc)
+			go handleNewIncomeConnection(inServer, outClient, lc)
 
 		}
 	}()
@@ -146,7 +147,7 @@ func main() {
 	}
 }
 
-func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Client, thisLocalConnectionInstance net.Conn) {
+func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, thisLocalConnectionInstance net.Conn) {
 
 	baseLocalConn := thisLocalConnectionInstance
 
@@ -165,7 +166,7 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 Recorder中
 	var serverEndLocalServerTlsRawReadRecorder *tlsLayer.Recorder
 
-	if localServer.IsUseTLS() {
+	if inServer.IsUseTLS() {
 
 		if tls_lazy_encrypt {
 			serverEndLocalServerTlsRawReadRecorder = tlsLayer.NewRecorder()
@@ -176,11 +177,11 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 			thisLocalConnectionInstance = teeConn
 		}
 
-		tlsConn, err := localServer.GetTLS_Server().Handshake(thisLocalConnectionInstance)
+		tlsConn, err := inServer.GetTLS_Server().Handshake(thisLocalConnectionInstance)
 		if err != nil {
 
 			if utils.CanLogErr() {
-				log.Println("failed in handshake localServer tls", localServer.AddrStr(), err)
+				log.Println("failed in handshake localServer tls", inServer.AddrStr(), err)
 
 			}
 			thisLocalConnectionInstance.Close()
@@ -198,14 +199,14 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 	//isfallback := false
 	var theFallback httpLayer.Fallback
 
-	wlc, targetAddr, err := localServer.Handshake(thisLocalConnectionInstance)
+	wlc, targetAddr, err := inServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
 
 		if utils.CanLogWarn() {
-			log.Println("failed in handshake from", localServer.AddrStr(), err)
+			log.Println("failed in handshake from", inServer.AddrStr(), err)
 		}
 
-		if localServer.CanFallback() {
+		if inServer.CanFallback() {
 			fe, ok := err.(httpLayer.FallbackErr)
 			if ok {
 				f := fe.Fallback()
@@ -227,10 +228,10 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 afterLocalServerHandshake:
 
-	var client proxy.Client = remoteClient
+	var client proxy.Client = outClient
 
 	//如果可以route
-	if !localServer.CantRoute() && routePolicy != nil {
+	if !inServer.CantRoute() && routePolicy != nil {
 
 		if utils.CanLogInfo() {
 			log.Println("trying routing feature")
@@ -265,7 +266,7 @@ afterLocalServerHandshake:
 	//如果目标是udp则要分情况讨论
 	if targetAddr.IsUDP {
 
-		switch localServer.Name() {
+		switch inServer.Name() {
 		case "vlesss":
 			fallthrough
 		case "vless":
@@ -301,7 +302,7 @@ afterLocalServerHandshake:
 
 			// 我在 vless v1 的client 的 UserConn 中实现了 UDP_Putter, vless 的 client的 新连接的Handshake过程会在 UDP_Putter.WriteUDPRequest 被调用 时发生
 
-			if putter := remoteClient.(proxy.UDP_Putter); putter != nil {
+			if putter := outClient.(proxy.UDP_Putter); putter != nil {
 
 				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
 
@@ -339,7 +340,7 @@ afterLocalServerHandshake:
 
 		var unknownRemoteAddrMsgWriter proxy.UDPResponseWriter
 
-		switch localServer.Name() {
+		switch inServer.Name() {
 		case "vlesss":
 			fallthrough
 		case "vless":
@@ -354,7 +355,7 @@ afterLocalServerHandshake:
 
 			id := uc.GetIdentityStr()
 
-			vlessServer := localServer.(*vless.Server)
+			vlessServer := inServer.(*vless.Server)
 
 			theCRUMFURS := vlessServer.Get_CRUMFURS(id)
 
@@ -459,7 +460,7 @@ afterLocalServerHandshake:
 			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测
 
-			if userServer := localServer.(proxy.UserServer); userServer != nil {
+			if userServer := inServer.(proxy.UserServer); userServer != nil {
 				tryRawCopy(false, nil, userServer, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
 				return
 			}

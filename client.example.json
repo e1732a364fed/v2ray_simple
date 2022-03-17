@@ -1,5 +1,5 @@
 {
-  "local": "socks5://127.0.0.1:10800#myvlesss1",
-  "remote": "vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&version=0",
+  "listen": "socks5://127.0.0.1:10800#myvlesss1",
+  "dial": "vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&version=0",
   "route":{ "mycountry":"CN" ,"comment":"route这一项是可选的,如果没给出的话,就不分流;写了mycountry后, 向该国家的ip发送的请求就会直连, 然后其他的过代理;本comment项你可以自行删掉, 注意要删的话, 连着前面的逗号一起删"}
 }

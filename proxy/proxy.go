@@ -89,11 +89,10 @@ Contents of proxy package - proxy包内容
 
 Server and Client
 
-我们服务端和 客户端的程序，都是有至少一个入口和一个出口的。入口我们叫做localServer，出口我们叫做remoteClient.
+我们服务端和 客户端的程序，都是有至少一个入口和一个出口的。入口我们叫做 inServer ，出口我们叫做 outClient.
 
-在localServer中，我们负责监听未知连接；在remoteClient中，我们负责拨号特定目标服务器.
+在 inServer 中，我们负责监听未知连接；在 outClient 中，我们负责拨号特定目标服务器.
 
-这里的local和remote指的是 数据传输的目的地。
 */
 package proxy
 
