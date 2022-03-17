@@ -7,10 +7,10 @@ import (
 	"net"
 	"testing"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/vless"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func TestVlesss(t *testing.T) {
@@ -18,11 +18,11 @@ func TestVlesss(t *testing.T) {
 }
 
 func testTls(protocol string, port string, t *testing.T) {
-	if !common.FileExist("../cert.pem") {
+	if !utils.FileExist("../cert.pem") {
 		ioutil.WriteFile("../cert.pem", []byte(sampleCertStr), 0777)
 	}
 
-	if !common.FileExist("../cert.key") {
+	if !utils.FileExist("../cert.key") {
 		ioutil.WriteFile("../cert.key", []byte(sampleKeyStr), 0777)
 	}
 

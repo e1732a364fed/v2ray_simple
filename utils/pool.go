@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	standardBytesPool sync.Pool //1500
+	standardBytesPool sync.Pool //1500, 最大MTU的长度
 
 	// 实际上tcp默认是 16384, 16k，实际上范围是1k～128k之间，我们64k已经够了
 	//而 udp则最大还不到 64k。(65535－20－8)
@@ -22,25 +22,25 @@ const maxBufLen int = 64 * 1024
 
 func init() {
 	standardBytesPool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]byte, StandardBytesLength)
 		},
 	}
 
 	standardPacketPool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]byte, maxBufLen)
 		},
 	}
 
 	customBytesPool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return make([]byte, maxBufLen)
 		},
 	}
 
 	bufPool = sync.Pool{
-		New: func() interface{} {
+		New: func() any {
 			return &bytes.Buffer{}
 		},
 	}
