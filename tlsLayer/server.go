@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"net"
 
-	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 type Server struct {
@@ -34,7 +34,7 @@ func (s *Server) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 	rawTlsConn := tls.Server(underlay, s.tlsConfig)
 	err = rawTlsConn.Handshake()
 	if err != nil {
-		err = common.NewErr("tlsLayer: tls握手失败", err)
+		err = utils.NewErr("tlsLayer: tls握手失败", err)
 
 		return
 	}

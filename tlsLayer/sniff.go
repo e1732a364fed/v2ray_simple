@@ -9,7 +9,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 var PDD bool //print tls detect detail
@@ -130,7 +130,7 @@ func (c *ComSniff) GetFailReason() int {
 }
 
 // 总之，如果读写都用同样的判断代码的话，客户端和服务端应该就能同步进行 相同的TLS判断
-func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
+func (cd *ComSniff) utilsDetect(p []byte, isRead bool) {
 
 	/*
 		我们把tls的细节放在这个注释里，便于参考
@@ -441,7 +441,7 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 				if n >= ubl {
 
 					if cd.UH.HasUserByBytes(p[:ubl]) {
-						bs := common.GetBytes(ubl)
+						bs := utils.GetBytes(ubl)
 						copy(bs, p[:ubl])
 						cd.SpecialCommandBytes = bs
 
@@ -506,7 +506,7 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 
 }
 
-func commonFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
+func utilsFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
 	if !OnlyTest && (cd.DefinitelyNotTLS || cd.IsTls) { //确定了是TLS 或者肯定不是 tls了的话，就直接return掉
 		return
 	}
@@ -524,7 +524,7 @@ func commonFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
 	}
 
 	if len(p) > 3 {
-		cd.commonDetect(p, isRead)
+		cd.utilsDetect(p, isRead)
 	}
 
 }
@@ -542,7 +542,7 @@ type DetectReader struct {
 func (dr *DetectReader) Read(p []byte) (n int, err error) {
 	n, err = dr.Reader.Read(p)
 
-	commonFilterStep(err, &dr.ComSniff, p[:n], true)
+	utilsFilterStep(err, &dr.ComSniff, p[:n], true)
 
 	if PDD {
 		if dr.DefinitelyNotTLS {
@@ -616,7 +616,7 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
-	commonFilterStep(nil, &dw.ComSniff, p, false)
+	utilsFilterStep(nil, &dw.ComSniff, p, false)
 
 	// 经过判断之后，确认是 tls了，则我们缓存这个记录， 然后通过tls发送特殊指令
 	if dw.IsTls {

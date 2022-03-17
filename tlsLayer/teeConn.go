@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 // 和TeeConn配合的是Recorder, 每次调用Write就会记录一个新Buffer
@@ -47,7 +47,7 @@ func (wr *Recorder) ReleaseBuffers() {
 	wr.Buflist = nil //make([]*bytes.Buffer, 0, 10)
 
 	for _, v := range tmp {
-		common.PutBuf(v)
+		utils.PutBuf(v)
 	}
 
 }
@@ -68,14 +68,14 @@ func (wr *Recorder) DigestAll() {
 
 }
 
-// 每Write一遍， 就写入一个新的buffer, 使用 common.GetBuf() 获取
+// 每Write一遍， 就写入一个新的buffer, 使用 utils.GetBuf() 获取
 func (wr *Recorder) Write(p []byte) (n int, err error) {
 	if wr.stop {
 		return len(p), nil
 	}
 
 	if wr.writeCount > 0 { //舍弃第一个包，因为第一个包我们要做 tls的handshake检测 以及 vless的uuid检测，所以不可能没有tls的 数据包
-		buf := common.GetBuf()
+		buf := utils.GetBuf()
 		n, err = buf.Write(p)
 
 		wr.Buflist = append(wr.Buflist, buf)

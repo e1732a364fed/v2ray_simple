@@ -1,3 +1,14 @@
+# 该Makefile 只支持linux中使用. 不过幸亏golang厉害，交叉编译相当简单
+#
+# for building with filename "verysimple" and pack into verysimple_xxx.tgz:
+#	make PACK=1
+#
+# 我们只支持64位
+#
+# for embedding geoip file:
+#	make tags="embed_geoip" macm1
+# 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
+
 BUILD_VERSION   := v1.0.4
 
 prefix          :=verysimple
@@ -8,10 +19,7 @@ macosAmd        :=_macos_
 macosArm        :=_macos_m1_
 windows         :=_win10_
 
-# for building with filename "verysimple" and pack into verysimple_xxx.tgz:
-#	make PACK=1
 
-#我们只支持64位
 
 linuxAmdFn:=${prefix}${linuxAmd}${BUILD_VERSION}
 linuxArmFn:=${prefix}${linuxArm}${BUILD_VERSION}
@@ -19,8 +27,6 @@ macFn     :=${prefix}${macosAmd}${BUILD_VERSION}
 macM1Fn   :=${prefix}${macosArm}${BUILD_VERSION}
 winFn     :=${prefix}${windows}${BUILD_VERSION}
 
-# for embedding geoip file:
-#	make tags="embed_geoip" macm1
 
 cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
 

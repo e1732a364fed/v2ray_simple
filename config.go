@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hahahrfool/v2ray_simple/common"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 type Config struct {
@@ -20,7 +20,7 @@ type RouteStruct struct {
 }
 
 func loadConfig(fileName string) (*Config, error) {
-	path := common.GetFilePath(fileName)
+	path := utils.GetFilePath(fileName)
 	if len(path) > 0 {
 		if cf, err := os.Open(path); err == nil {
 			defer cf.Close()
@@ -38,7 +38,7 @@ func loadConfig(fileName string) (*Config, error) {
 func loadConfigFromStr(str string) (*Config, error) {
 	config := &Config{}
 	if err := json.Unmarshal([]byte(str), config); err != nil {
-		return nil, common.NewErr("can not parse config ", err)
+		return nil, utils.NewErr("can not parse config ", err)
 	}
 	return config, nil
 }

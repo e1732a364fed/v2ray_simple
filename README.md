@@ -140,7 +140,7 @@ v2ray_simple -c server.json
 
 关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
 
-目前配置文件一共就4行，其中两行还是花括号，这要是还要我解释我就打你屁股
+目前配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
 
 ## 验证方式
 
@@ -159,6 +159,10 @@ v2ray_simple -c server.json
 本项目所生成的文档在 https://pkg.go.dev/github.com/hahahrfool/v2ray_simple
 
 再次重复，文档越多越好，尽量降低开发者入门的门槛。
+
+我有时也会时常在 discussion里发一些研究、讨论的文章，大家也要踊跃发言
+https://github.com/hahahrfool/v2ray_simple/discussions
+
 
 ### 代码
 

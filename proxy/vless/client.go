@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func init() {
@@ -101,7 +101,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 
 			UMFURS_conn.Write(buf.Bytes())
 
-			common.PutBuf(buf)
+			utils.PutBuf(buf)
 
 			bs := []byte{0}
 			n, err := UMFURS_conn.Read(bs)
@@ -131,7 +131,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 
 	_, err = underlay.Write(buf.Bytes())
 
-	common.PutBuf(buf)
+	utils.PutBuf(buf)
 
 	return &UserConn{
 		Conn:    underlay,
@@ -192,7 +192,7 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 
 func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {
 	v := c.version
-	buf := common.GetBuf()
+	buf := utils.GetBuf()
 	buf.WriteByte(byte(v)) //version
 	buf.Write(c.user[:])
 	if v == 0 {
@@ -215,7 +215,7 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 
 		if c.HasAdvancedApplicationLayer() {
 
-			buf_for_umfurs := common.GetPacket()
+			buf_for_umfurs := utils.GetPacket()
 			n, err := UMFURS_conn.Read(buf_for_umfurs)
 			if err != nil {
 				break

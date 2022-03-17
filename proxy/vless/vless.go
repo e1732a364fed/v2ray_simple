@@ -8,8 +8,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 const Name = "vless"
@@ -64,7 +64,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 		if uc.isServerEnd && !uc.isntFirstPacket {
 			uc.isntFirstPacket = true
 
-			writeBuf = common.GetBuf()
+			writeBuf = utils.GetBuf()
 
 			//v0 中，服务端的回复的第一个包也是要有数据头的(和客户端的handshake类似，只是第一个包有)，第一字节版本，第二字节addon长度（都是0）
 
@@ -80,7 +80,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 
 				_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
 
-				common.PutBuf(writeBuf)
+				utils.PutBuf(writeBuf)
 
 				if err != nil {
 					return 0, err
@@ -99,7 +99,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 		} else {
 			l := int16(len(p))
 			if writeBuf == nil {
-				writeBuf = common.GetBuf()
+				writeBuf = utils.GetBuf()
 			}
 
 			writeBuf.WriteByte(byte(l >> 8))
@@ -108,7 +108,7 @@ func (uc *UserConn) Write(p []byte) (int, error) {
 
 			_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
 
-			common.PutBuf(writeBuf)
+			utils.PutBuf(writeBuf)
 
 			if err != nil {
 				return 0, err
@@ -165,7 +165,7 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 
 				uc.isntFirstPacket = true
 
-				bs := common.GetPacket()
+				bs := utils.GetPacket()
 				n, e := from.Read(bs)
 
 				if e != nil {
@@ -176,7 +176,7 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 					return 0, errors.New("vless response head too short")
 				}
 				n = copy(p, bs[2:n])
-				common.PutPacket(bs)
+				utils.PutPacket(bs)
 				return n, nil
 
 			}
@@ -251,7 +251,7 @@ func (uc *UserConn) readudp_withLenthHead(p []byte) (int, error) {
 	}
 
 	l := int(int16(b1)<<8 + int16(b2))
-	bs := common.GetBytes(l)
+	bs := utils.GetBytes(l)
 	n, err := io.ReadFull(uc.bufr, bs)
 	if err != nil {
 		return 0, err

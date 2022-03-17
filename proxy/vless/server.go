@@ -13,10 +13,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func init() {
@@ -143,19 +143,19 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 	// 因此v1.0.3以及更老版本都是直接一段一段read的。
 	//但是，因为需要支持fallback技术，所以还是要 进行缓存, 然后返回的UserConn要使用MultiReader，重用之前读过的部分，没办法。
 
-	readbs := common.GetBytes(common.StandardBytesLength)
+	readbs := utils.GetBytes(utils.StandardBytesLength)
 
 	//var auth [17]byte
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		return nil, nil, common.NewDataErr("read err", err, wholeReadLen)
+		return nil, nil, utils.NewDataErr("read err", err, wholeReadLen)
 	}
 
 	if wholeReadLen < 17 {
 		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
 		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
 
-		return nil, nil, common.NewDataErr("fallback, msg too short", nil, wholeReadLen)
+		return nil, nil, utils.NewDataErr("fallback, msg too short", nil, wholeReadLen)
 
 	}
 
@@ -183,7 +183,7 @@ realPart:
 	version := auth[0]
 	if version > 1 {
 
-		returnErr = common.NewDataErr("Vless invalid version ", nil, version)
+		returnErr = utils.NewDataErr("Vless invalid version ", nil, version)
 		goto errorPart
 
 	}
@@ -215,9 +215,9 @@ realPart:
 
 			//读一下然后直接舍弃
 			/*
-				tmpBuf := common.GetBytes(int(addonLenByte))
+				tmpBuf := utils.GetBytes(int(addonLenByte))
 				underlay.Read(tmpBuf)
-				common.PutBytes(tmpBuf)
+				utils.PutBytes(tmpBuf)
 			*/
 			if tmpbs := readbuf.Next(int(addonLenByte)); len(tmpbs) != int(addonLenByte) {
 				return nil, nil, errors.New("vless short read in addon")
@@ -252,7 +252,7 @@ realPart:
 		_, err = underlay.Write([]byte{CRUMFURS_ESTABLISHED})
 		if err != nil {
 
-			returnErr = common.NewErr("write to crumfurs err", err)
+			returnErr = utils.NewErr("write to crumfurs err", err)
 			goto errorPart
 		}
 
@@ -300,7 +300,7 @@ realPart:
 		case netLayer.AtypIP4:
 
 			ip_or_domain_bytesLength = net.IPv4len
-			addr.IP = common.GetBytes(net.IPv4len)
+			addr.IP = utils.GetBytes(net.IPv4len)
 
 		case netLayer.AtypDomain:
 			// 解码域名的长度
@@ -317,14 +317,14 @@ realPart:
 		case netLayer.AtypIP6:
 
 			ip_or_domain_bytesLength = net.IPv6len
-			addr.IP = common.GetBytes(net.IPv6len)
+			addr.IP = utils.GetBytes(net.IPv6len)
 		default:
 
 			returnErr = fmt.Errorf("unknown address type %v", addrTypeByte)
 			goto errorPart
 		}
 
-		ip_or_domain := common.GetBytes(int(ip_or_domain_bytesLength))
+		ip_or_domain := utils.GetBytes(int(ip_or_domain_bytesLength))
 
 		_, err = readbuf.Read(ip_or_domain)
 
@@ -338,7 +338,7 @@ realPart:
 			addr.Name = string(ip_or_domain)
 		}
 
-		common.PutBytes(ip_or_domain)
+		utils.PutBytes(ip_or_domain)
 
 	default:
 
@@ -378,7 +378,7 @@ func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
 	if len(a.IP) > 4 {
 		atype = netLayer.AtypIP6
 	}
-	buf := common.GetBuf()
+	buf := utils.GetBuf()
 
 	buf.WriteByte(atype)
 	buf.Write(a.IP)
@@ -395,6 +395,6 @@ func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
 
 	_, err = c.Write(buf.Bytes())
 
-	common.PutBuf(buf)
+	utils.PutBuf(buf)
 	return
 }

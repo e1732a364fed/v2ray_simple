@@ -104,9 +104,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
@@ -250,7 +250,7 @@ func ClientFromURL(s string) (Client, error) {
 	u, err := url.Parse(s)
 	if err != nil {
 
-		return nil, common.NewDataErr("can not parse client url", err, s)
+		return nil, utils.NewDataErr("can not parse client url", err, s)
 	}
 
 	schemeName := strings.ToLower(u.Scheme)
@@ -279,7 +279,7 @@ func ClientFromURL(s string) (Client, error) {
 
 	}
 
-	return nil, common.NewDataErr("unknown client scheme '", nil, u.Scheme)
+	return nil, utils.NewDataErr("unknown client scheme '", nil, u.Scheme)
 }
 
 // Server 用于监听 客户端 的连接
@@ -328,7 +328,7 @@ func PrintAllClientNames() {
 func ServerFromURL(s string) (Server, error) {
 	u, err := url.Parse(s)
 	if err != nil {
-		return nil, common.NewDataErr("can not parse server url ", err, s)
+		return nil, utils.NewDataErr("can not parse server url ", err, s)
 	}
 
 	schemeName := strings.ToLower(u.Scheme)
@@ -358,7 +358,7 @@ func ServerFromURL(s string) (Server, error) {
 		}
 	}
 
-	return nil, common.NewDataErr("unknown server scheme '", nil, u.Scheme)
+	return nil, utils.NewDataErr("unknown server scheme '", nil, u.Scheme)
 }
 
 func configCommonForServer(ser ProxyCommon, u *url.URL) {

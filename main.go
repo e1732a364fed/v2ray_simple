@@ -12,22 +12,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
-)
-
-const (
-	log_debug = iota
-	log_info
-	log_warning
-	log_error
 )
 
 var (
@@ -36,7 +29,6 @@ var (
 	configFileName string
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
-	logLevel         int    //值越小越唠叨, 废话越多，值越大打印的越少，见log_开头的常量
 
 	//另外，本作暂时不考虑引入外界log包。依赖越少越好。
 
@@ -51,8 +43,6 @@ var (
 
 func init() {
 	directClient, _ = proxy.ClientFromURL("direct://")
-
-	flag.IntVar(&logLevel, "ll", log_warning, "log level,0=debug, 1=info, 2=warning, 3=error")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -81,13 +71,17 @@ func main() {
 
 	conf, err = loadConfig(configFileName)
 	if err != nil {
+
 		log.Println("can not load config file: ", err)
+
 		os.Exit(-1)
 	}
 
 	localServer, err := proxy.ServerFromURL(conf.Server_ThatListenPort_Url)
 	if err != nil {
+
 		log.Println("can not create local server: ", err)
+
 		os.Exit(-1)
 	}
 	defer localServer.Stop()
@@ -115,7 +109,11 @@ func main() {
 		log.Println("can not listen on", localServer.AddrStr(), err)
 		os.Exit(-1)
 	}
-	log.Println(localServer.Name(), "is listening TCP on ", localServer.AddrStr())
+
+	if utils.CanLogInfo() {
+		log.Println(localServer.Name(), "is listening TCP on ", localServer.AddrStr())
+
+	}
 
 	// 后台运行主代码，而main函数只监听中断信号
 	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用
@@ -152,7 +150,10 @@ func handleNewIncomeConnection(localServer proxy.Server, remoteClient proxy.Clie
 
 	baseLocalConn := thisLocalConnectionInstance
 
-	//log.Println("got new", thisLocalConnectionInstance.RemoteAddr().String())
+	if utils.CanLogInfo() {
+		log.Println("got new", thisLocalConnectionInstance.RemoteAddr().String())
+
+	}
 
 	var err error
 
@@ -224,7 +225,7 @@ afterLocalServerHandshake:
 	//如果可以route
 	if !localServer.CantRoute() && routePolicy != nil {
 
-		if logLevel <= log_info {
+		if utils.CanLogInfo() {
 			log.Println("enabling routing feature")
 		}
 
@@ -235,7 +236,7 @@ afterLocalServerHandshake:
 		})
 		if outtag == "direct" {
 			client = directClient
-			if logLevel <= log_info {
+			if utils.CanLogInfo() {
 				log.Println("routed to direct", targetAddr.UrlString())
 			}
 		}
@@ -450,7 +451,7 @@ afterLocalServerHandshake:
 	if theFallback != nil {
 		//这里注意，因为是吧tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
 		wrc.Write(theFallback.FirstBuffer().Bytes())
-		common.PutBytes(theFallback.FirstBuffer().Bytes()) //这个Buf不是从common.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
+		utils.PutBytes(theFallback.FirstBuffer().Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
 	}
 
 	/*
@@ -548,7 +549,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 		//wrc 要实现 ReaderFrom才行, 或者把最底层TCPConn暴露，然后 wlccc 也要把最底层 TCPConn暴露出来
 		// 这里就直接采取底层方式
 
-		p := common.GetPacket()
+		p := utils.GetPacket()
 		isgood := false
 		isbad := false
 
@@ -704,7 +705,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 				}
 			}
 		}
-		common.PutPacket(p)
+		utils.PutPacket(p)
 
 		if isbad {
 			//直接退化成普通Copy
@@ -732,7 +733,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 	isgood2 := false
 	isbad2 := false
 
-	p := common.GetPacket()
+	p := utils.GetPacket()
 
 	count := 0
 
@@ -809,7 +810,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 			isbad2 = true
 		}
 	}
-	common.PutPacket(p)
+	utils.PutPacket(p)
 
 	if isbad2 {
 

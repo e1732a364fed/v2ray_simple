@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/common"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
@@ -62,8 +62,8 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
-	buf := common.GetPacket()
-	defer common.PutPacket(buf)
+	buf := utils.GetPacket()
+	defer utils.PutPacket(buf)
 
 	// Read hello message
 	// 一般握手包发来的是 [5 1 0]
