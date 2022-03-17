@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -42,6 +43,8 @@ var (
 
 	listenURL string
 	dialURL   string
+
+	isServerEnd bool
 )
 
 func init() {
@@ -104,6 +107,7 @@ func main() {
 		log.Println("can not create remote client: ", err)
 		os.Exit(-1)
 	}
+	isServerEnd = outClient.Name() == "direct"
 
 	listener, err := net.Listen("tcp", inServer.AddrStr())
 	if err != nil {
@@ -230,6 +234,8 @@ afterLocalServerHandshake:
 
 	var client proxy.Client = outClient
 
+	var routedToDirect bool
+
 	//如果可以route
 	if !inServer.CantRoute() && routePolicy != nil {
 
@@ -244,6 +250,7 @@ afterLocalServerHandshake:
 		})
 		if outtag == "direct" {
 			client = directClient
+			routedToDirect = true
 
 			if utils.CanLogInfo() {
 				log.Println("routed to direct", targetAddr.UrlString())
@@ -251,14 +258,18 @@ afterLocalServerHandshake:
 		}
 	}
 
-	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个和要发送到tls的信息是一模一样的，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5进行判断
+	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个 就是要发送到 outClient 的信息，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5 对 tls 进行判断
 	//
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
 	// 所以总之都是要在 inServer 判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
 
-	if tls_lazy_encrypt {
+	if tls_lazy_encrypt && !(!isServerEnd && routedToDirect) {
 
-		wlc = tlsLayer.NewSniffConn(baseLocalConn, wlc, client.IsUseTLS(), tls_lazy_secure)
+		if tlsLayer.PDD {
+			log.Println("loading TLS SniffConn", !isServerEnd)
+		}
+
+		wlc = tlsLayer.NewSniffConn(baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
 
 		//clientConn = cc
 	}
@@ -445,22 +456,25 @@ afterLocalServerHandshake:
 		return
 	}
 
-	if tls_lazy_encrypt {
-		isclient := client.IsUseTLS()
-		if isclient {
+	if !routedToDirect && client.Name() != "direct" && tls_lazy_encrypt {
 
-			//必须是 UserClient
-			if userClient := client.(proxy.UserClient); userClient != nil {
-				tryRawCopy(false, userClient, nil, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
-				return
+		// 这里的错误是，我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
+		if !isServerEnd {
+
+			if client.IsUseTLS() {
+				//必须是 UserClient
+				if userClient := client.(proxy.UserClient); userClient != nil {
+					tryRawCopy(false, userClient, nil, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+					return
+				}
 			}
 
 		} else {
 
 			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
-			// 否则将无法开启splice功能。这是为了防止0-rtt 探测
+			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
-			if userServer := inServer.(proxy.UserServer); userServer != nil {
+			if userServer, ok := inServer.(proxy.UserServer); ok {
 				tryRawCopy(false, nil, userServer, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
 				return
 			}
@@ -488,7 +502,6 @@ afterLocalServerHandshake:
 
 	go io.Copy(wrc, wlc)
 	io.Copy(wlc, wrc)
-
 }
 
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
@@ -744,6 +757,9 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 		}
 
 		if isgood {
+			if runtime.GOOS == "linux" {
+				//runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
+			}
 
 			if tlsLayer.PDD {
 				log.Println("成功SpliceRead R方向")
@@ -852,6 +868,10 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 			log.Println("成功SpliceRead W方向,准备 直连对拷")
 		}
 
+		if runtime.GOOS == "linux" {
+			//runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
+
+		}
 		if tlsLayer.PDD {
 
 			num, e2 := wlccc_raw.ReadFrom(rawWRC) //看起来是ReadFrom，实际上是向 wlccc_raw进行Write，即箭头向左
