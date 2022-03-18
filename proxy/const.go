@@ -103,3 +103,11 @@ CreateClientFromMap 和 CreateClientFromURL 实际上是等价的, FromMap 专�
 
 */
 package proxy
+
+// CMD types, for vless and vmess
+const (
+	_ byte = iota
+	CmdTCP
+	CmdUDP
+	CmdMux
+)

@@ -28,7 +28,7 @@ type Direct struct {
 
 type ClientCreator struct{}
 
-func CreateClient() (proxy.Client, error) {
+func NewClient() (proxy.Client, error) {
 	d := &Direct{
 		UDP_Pipe: proxy.NewUDP_Pipe(),
 	}
@@ -37,11 +37,11 @@ func CreateClient() (proxy.Client, error) {
 }
 
 func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
-	return CreateClient()
+	return NewClient()
 }
 
 func (_ ClientCreator) NewClient(*config.DialConf, map[string]interface{}) (proxy.Client, error) {
-	return CreateClient()
+	return NewClient()
 }
 
 func (d *Direct) Name() string { return name }

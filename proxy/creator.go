@@ -176,6 +176,7 @@ func ServerFromURL(s string) (Server, error) {
 	return nil, utils.NewDataErr("unknown server scheme '", nil, u.Scheme)
 }
 
+//setTag, setCantRoute
 func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 	nr := false
 	q := u.Query()
@@ -187,6 +188,7 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 
 }
 
+//setTag, setCantRoute
 func configCommonForServer(ser ProxyCommon, lc *config.ListenConf) {
 	ser.setTag(lc.Tag)
 	ser.setCantRoute(lc.NoRoute)
