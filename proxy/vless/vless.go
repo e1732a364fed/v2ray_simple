@@ -31,7 +31,7 @@ type UserConn struct {
 	isUDP          bool
 	isServerEnd    bool //for v0
 
-	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），接着读
+	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），须接着读
 	udpUnreadPart []byte //for udp
 
 	bufr            *bufio.Reader //for udp

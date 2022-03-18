@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -45,6 +46,8 @@ var (
 	dialURL   string
 
 	isServerEnd bool
+
+	mainFallback *httpLayer.ClassicFallback
 )
 
 func init() {
@@ -200,8 +203,8 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 		thisLocalConnectionInstance = tlsConn
 
 	}
-	//isfallback := false
-	var theFallback httpLayer.Fallback
+
+	var theFallbackFirstBuffer *bytes.Buffer
 
 	wlc, targetAddr, err := inServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
@@ -210,24 +213,61 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 			log.Println("failed in handshake from", inServer.AddrStr(), err)
 		}
 
-		if inServer.CanFallback() {
-			fe, ok := err.(httpLayer.FallbackErr)
-			if ok {
-				f := fe.Fallback()
-				theFallback = f
-				if httpLayer.HasFallbackType(f.SupportType(), httpLayer.FallBack_default) {
-					targetAddr = f.GetFallback(httpLayer.FallBack_default, "")
+		if !inServer.CanFallback() {
+			thisLocalConnectionInstance.Close()
+			return
+		}
 
-					wlc = thisLocalConnectionInstance
-					//isfallback = true
-					goto afterLocalServerHandshake
+		fe, ok := err.(httpLayer.FallbackErr)
+		if !ok {
+			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
+			thisLocalConnectionInstance.Close()
+			return
+		}
+
+		//fe提供的fallback是该服务器默认的fallback；我们先试图使用mainFallback，都不满足条件的话，再回落到默认fallback
+		f := fe.Fallback()
+
+		buf := f.FirstBuffer()
+		if buf == nil {
+			//不应该啊，至少能读到1字节的。
+			log.Fatal("No FirstBuffer")
+		}
+
+		var fbAddr *netLayer.Addr
+
+		goto checkFallback
+
+	fallbackok:
+
+		theFallbackFirstBuffer = buf
+		targetAddr = fbAddr
+		wlc = thisLocalConnectionInstance
+		goto afterLocalServerHandshake
+
+	checkFallback:
+
+		if mainFallback != nil {
+
+			path := httpLayer.GetRequestPATH_from_Bytes(buf.Bytes())
+			if path != "" {
+				fbAddr = mainFallback.GetFallback(httpLayer.Fallback_path, path)
+
+				if fbAddr != nil {
+					goto fallbackok
 				}
-
 			}
 		}
 
-		thisLocalConnectionInstance.Close()
-		return
+		if httpLayer.HasFallbackType(f.SupportType(), httpLayer.FallBack_default) {
+			fbAddr = f.GetFallback(httpLayer.FallBack_default, "")
+
+			if fbAddr != nil {
+				goto fallbackok
+			}
+
+		}
+
 	}
 
 afterLocalServerHandshake:
@@ -483,10 +523,10 @@ afterLocalServerHandshake:
 
 	}
 
-	if theFallback != nil {
+	if theFallbackFirstBuffer != nil {
 		//这里注意，因为是吧tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-		wrc.Write(theFallback.FirstBuffer().Bytes())
-		utils.PutBytes(theFallback.FirstBuffer().Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
+		wrc.Write(theFallbackFirstBuffer.Bytes())
+		utils.PutBytes(theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
 	}
 
 	/*

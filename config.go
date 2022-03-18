@@ -16,20 +16,23 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 type SimpleConfig struct {
-	Server_ThatListenPort_Url string       `json:"listen"`
-	Client_ThatDialRemote_Url string       `json:"dial"`
-	Route                     *RouteStruct `json:"route"`
+	Server_ThatListenPort_Url string                    `json:"listen"`
+	Client_ThatDialRemote_Url string                    `json:"dial"`
+	Route                     *RouteStruct              `json:"route"`
+	Fallbacks                 []*httpLayer.FallbackConf `json:"fallbacks"`
 }
 
 type RouteStruct struct {
-	MyCountryISO_3166 string `json:"mycountry"` //加了mycountry后，就会自动按照geoip分流
+	MyCountryISO_3166 string `json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
 }
 
-// set conf variable, or exit the program
+// set conf variable, or exit the program; 还会设置mainFallback
+// 先检查configFileName是否存在，存在就尝试加载文件，否则尝试 -L参数
 func loadConfig() {
 	var err error
 
@@ -39,6 +42,9 @@ func loadConfig() {
 		if err != nil {
 
 			log.Fatalln("can not load config file: ", err)
+		}
+		if conf.Fallbacks != nil {
+			mainFallback = httpLayer.NewClassicFallbackFromConfList(conf.Fallbacks)
 		}
 	} else {
 		if listenURL != "" {
@@ -82,6 +88,7 @@ func loadConfigFile(fileNamePath string) (*SimpleConfig, error) {
 		if err = json.Unmarshal(bs, config); err != nil {
 			return nil, utils.NewDataErr("can not parse config file ", err, fileNamePath)
 		}
+
 		return config, nil
 	} else {
 		return nil, utils.NewErr("can't open config file", err)

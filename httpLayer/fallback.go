@@ -2,6 +2,8 @@ package httpLayer
 
 import (
 	"bytes"
+	"log"
+	"strconv"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
@@ -62,6 +64,38 @@ func NewClassicFallback() *ClassicFallback {
 	}
 }
 
+type FallbackConf struct {
+	Path string      `json:"path"`
+	Dest interface{} `json:"dest"` //可为数字端口号，或者 字符串的ip:port
+}
+
+func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
+	cfb := NewClassicFallback()
+	for _, v := range fcl {
+		//log.Println("NewClassicFallbackFromConfList called", reflect.TypeOf(v.Dest))
+		//json 默认把数字转换成float64，就算是整数也一样
+
+		if thefloat, ok := v.Dest.(float64); ok {
+
+			log.Println("got num", thefloat)
+			if thefloat > 65535 || thefloat < 1 {
+				log.Println("int port not valid", thefloat)
+
+				continue
+			}
+
+			integer := int(thefloat)
+
+			addr, e := netLayer.NewAddr("127.0.0.1:" + strconv.Itoa(integer))
+			if e != nil {
+				log.Fatalln("addr create failed", e, strconv.Itoa(integer))
+			}
+			cfb.MapByPath[v.Path] = addr
+		}
+	}
+	return cfb
+}
+
 func (ef *ClassicFallback) FirstBuffer() *bytes.Buffer {
 	return ef.First
 }
@@ -116,7 +150,7 @@ type ErrSingleFallback struct {
 
 func (ef *ErrSingleFallback) Error() string {
 	if ef.eStr == "" {
-		ef.eStr = ef.Err.Error() + ", and will fallback to " + ef.FallbackAddr.String()
+		ef.eStr = ef.Err.Error() + ", default fallback is " + ef.FallbackAddr.String()
 	}
 	return ef.eStr
 }
