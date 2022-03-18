@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"io"
@@ -88,6 +87,8 @@ func UUIDToStr(u [16]byte) string {
 	return string(buf)
 }
 
+/*
+//vmess legacy代码，先放这里，什么时候想实现vmess了再说
 // GetKey returns the key of AES-128-CFB encrypter
 // Key：MD5(UUID + []byte('c48619fe-8f02-49e0-b9e9-edf763e17e21'))
 func Get_cmdKey(uuid [16]byte) []byte {
@@ -96,3 +97,4 @@ func Get_cmdKey(uuid [16]byte) []byte {
 	md5hash.Write([]byte("c48619fe-8f02-49e0-b9e9-edf763e17e21"))
 	return md5hash.Sum(nil)
 }
+*/

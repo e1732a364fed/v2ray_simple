@@ -1,11 +1,14 @@
-package main
+package config_test
 
 import (
 	"net/url"
 	"testing"
+
+	"github.com/BurntSushi/toml"
+	"github.com/hahahrfool/v2ray_simple/config"
 )
 
-func TestNormalClientConfig(t *testing.T) {
+func TestClientSimpleConfig(t *testing.T) {
 	confstr1 := `{
 	"local": "socks5://0.0.0.0:10800#taglocal",
 	"remote": "vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:4433?insecure=true&version=0#tag1",
@@ -18,7 +21,7 @@ func TestNormalClientConfig(t *testing.T) {
   ]
 }`
 
-	mc, err := loadConfigFromStr(confstr1)
+	mc, err := config.LoadSimpleConfigFromStr(confstr1)
 	if err != nil {
 		t.Log("loadConfigFromStr err", err)
 		t.FailNow()
@@ -45,3 +48,44 @@ func TestNormalClientConfig(t *testing.T) {
 		t.Log(i, v)
 	}
 }
+
+func TestTomlConfig(t *testing.T) {
+
+	var conf config.Standard
+	_, err := toml.Decode(testTomlConfStr, &conf)
+
+	if err != nil {
+		t.FailNow()
+	}
+
+	t.Log(conf)
+	t.Log(conf.Dial[0])
+	t.Log(conf.Listen[0])
+	t.Log(conf.Route)
+	t.Log(conf.Fallbacks)
+}
+
+const testTomlConfStr = `# this is a verysimple standard config
+[[dial]]
+tag = "my_vlesss1"
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "127.0.0.1"
+port = 4433
+version = 0
+insecure = true
+utls = true
+
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 1080
+tag = "my_socks51"
+
+[route]
+mycountry = "CN"
+
+[[fallback]]
+path = "/asf"
+dest = 6060
+`

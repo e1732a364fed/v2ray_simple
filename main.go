@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
@@ -25,6 +26,12 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
+const (
+	simpleMode = iota
+	standardMode
+	v2rayCompatibleMode
+)
+
 var (
 	desc = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
 
@@ -34,7 +41,9 @@ var (
 
 	//另外，本作暂时不考虑引入外界log包。依赖越少越好。
 
-	conf         *SimpleConfig
+	confMode     int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
+	simpleConf   *config.Simple
+	standardConf *config.Standard
 	directClient proxy.Client
 
 	tls_lazy_encrypt bool
@@ -79,42 +88,84 @@ func main() {
 
 	flag.Parse()
 
-	var err error
-
 	//in config.go
 	loadConfig()
 
-	inServer, err := proxy.ServerFromURL(conf.Server_ThatListenPort_Url)
-	if err != nil {
-
-		log.Println("can not create local server: ", err)
-
-		os.Exit(-1)
+	if confMode < 0 {
+		log.Fatal("no config exist")
 	}
+
+	var inServer proxy.Server
+	var outClient proxy.Client
+	var err error
+
+	switch confMode {
+	case simpleMode:
+		inServer, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
+		if err != nil {
+			log.Fatalln("can not create local server: ", err)
+		}
+
+		if !inServer.CantRoute() && simpleConf.Route != nil {
+
+			netLayer.LoadMaxmindGeoipFile("")
+
+			//目前只支持通过 mycountry进行 geoip分流 这一种情况
+			routePolicy = netLayer.NewRoutePolicy()
+			if simpleConf.Route.MyCountryISO_3166 != "" {
+				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.Route.MyCountryISO_3166))
+
+			}
+		}
+	case standardMode:
+		//虽然标准模式支持多个Server，目前先只考虑一个
+		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
+
+		if len(standardConf.Listen) < 1 {
+			log.Fatal("没有配置listen内容！")
+		}
+
+		firstConf := standardConf.Listen[0]
+
+		inServer, err = proxy.NewServer(firstConf, nil)
+		if err != nil {
+			log.Fatalln("can not create local server: ", err)
+		}
+
+		if !inServer.CantRoute() && standardConf.Route != nil {
+
+			netLayer.LoadMaxmindGeoipFile("")
+
+			//目前只支持通过 mycountry进行 geoip分流 这一种情况
+			routePolicy = netLayer.NewRoutePolicy()
+			if standardConf.Route.MyCountryISO_3166 != "" {
+				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.Route.MyCountryISO_3166))
+
+			}
+		}
+
+	}
+
 	defer inServer.Stop()
 
-	if !inServer.CantRoute() && conf.Route != nil {
-
-		netLayer.LoadMaxmindGeoipFile("")
-
-		//目前只支持通过 mycountry进行 geoip分流 这一种情况
-		routePolicy = netLayer.NewRoutePolicy()
-		if conf.Route.MyCountryISO_3166 != "" {
-			routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(conf.Route.MyCountryISO_3166))
-
+	switch confMode {
+	case simpleMode:
+		outClient, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
+		if err != nil {
+			log.Fatalln("can not create remote client: ", err)
+		}
+	case standardMode:
+		outClient, err = proxy.NewClient(standardConf.Dial[0], nil)
+		if err != nil {
+			log.Fatalln("can not create remote client: ", err)
 		}
 	}
 
-	outClient, err := proxy.ClientFromURL(conf.Client_ThatDialRemote_Url)
-	if err != nil {
-		log.Println("can not create remote client: ", err)
-		os.Exit(-1)
-	}
 	isServerEnd = outClient.Name() == "direct"
 
 	listener, err := net.Listen("tcp", inServer.AddrStr())
 	if err != nil {
-		log.Println("can not listen on", inServer.AddrStr(), err)
+		log.Println("can not listen inServer on", inServer.AddrStr(), err)
 		os.Exit(-1)
 	}
 
@@ -249,10 +300,17 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 
 		if mainFallback != nil {
 
+			if utils.CanLogDebug() {
+				log.Println("checkFallback")
+			}
+
 			path := httpLayer.GetRequestPATH_from_Bytes(buf.Bytes())
+
 			if path != "" {
 				fbAddr = mainFallback.GetFallback(httpLayer.Fallback_path, path)
-
+				if utils.CanLogDebug() {
+					log.Println("checkFallback ", path, "matched fallback:", fbAddr)
+				}
 				if fbAddr != nil {
 					goto fallbackok
 				}

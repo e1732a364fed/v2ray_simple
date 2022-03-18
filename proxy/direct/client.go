@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
@@ -14,7 +15,7 @@ import (
 const name = "direct"
 
 func init() {
-	proxy.RegisterClient(name, NewDirectClient)
+	proxy.RegisterClientWithURL(name, &ClientCreator{})
 }
 
 type Direct struct {
@@ -25,12 +26,22 @@ type Direct struct {
 	addrStr    string
 }
 
-func NewDirectClient(url *url.URL) (proxy.Client, error) {
+type ClientCreator struct{}
+
+func CreateClient() (proxy.Client, error) {
 	d := &Direct{
 		UDP_Pipe: proxy.NewUDP_Pipe(),
 	}
 	go RelayUDP_to_Direct(d.UDP_Pipe)
 	return d, nil
+}
+
+func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
+	return CreateClient()
+}
+
+func (_ ClientCreator) NewClient(*config.DialConf, map[string]interface{}) (proxy.Client, error) {
+	return CreateClient()
 }
 
 func (d *Direct) Name() string { return name }

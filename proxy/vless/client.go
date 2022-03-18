@@ -11,13 +11,14 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func init() {
-	proxy.RegisterClient(Name, NewVlessClient)
+	proxy.RegisterClientWithURL(Name, &ClientCreator{})
 }
 
 //实现 proxy.UserClient
@@ -38,7 +39,39 @@ type Client struct {
 	crumfursBuf *bufio.Reader //在不使用ws或者grpc时，需要一个缓存 来读取 CRUMFURS
 }
 
-func NewVlessClient(url *url.URL) (proxy.Client, error) {
+type ClientCreator struct{}
+
+func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
+	return NewClient(u)
+}
+
+func (_ ClientCreator) NewClient(dc *config.DialConf, m map[string]interface{}) (proxy.Client, error) {
+
+	uuidStr := dc.Uuid
+	id, err := proxy.NewV2rayUser(uuidStr)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Client{
+		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},
+		user:              id,
+	}
+	v := dc.Version
+	if v >= 0 {
+
+		if v == 1 {
+			c.version = 1
+			c.knownUDPDestinations = make(map[string]io.ReadWriter)
+			c.udpResponseChan = make(chan *proxy.UDPAddrData, 20)
+		}
+
+	}
+
+	return c, nil
+}
+
+func NewClient(url *url.URL) (proxy.Client, error) {
 	addr := url.Host
 	uuidStr := url.User.Username()
 	id, err := proxy.NewV2rayUser(uuidStr)

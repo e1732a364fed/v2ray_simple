@@ -13,6 +13,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
@@ -20,7 +21,7 @@ import (
 )
 
 func init() {
-	proxy.RegisterServer(Name, NewVlessServer)
+	proxy.RegisterServerWithURL(Name, &ServerCreator{})
 }
 
 //实现 proxy.UserServer 以及 tlsLayer.UserHaser
@@ -33,7 +34,41 @@ type Server struct {
 	defaultfallbackAddr *netLayer.Addr
 }
 
-func NewVlessServer(url *url.URL) (proxy.Server, error) {
+type ServerCreator struct{}
+
+func (_ ServerCreator) NewServer(lc *config.ListenConf, m map[string]interface{}) (proxy.Server, error) {
+	uuidStr := lc.Uuid
+	id, err := proxy.NewV2rayUser(uuidStr)
+	if err != nil {
+		return nil, err
+	}
+	s := &Server{
+		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: lc.GetAddr()},
+		userHashes:        make(map[[16]byte]*proxy.V2rayUser),
+		userCRUMFURS:      make(map[[16]byte]*CRUMFURS),
+	}
+
+	fallbackStr := lc.Fallback
+
+	if fallbackStr != "" {
+		fa, err := netLayer.NewAddr(fallbackStr)
+
+		if err != nil {
+			return nil, fmt.Errorf("invalid fallback %v", fallbackStr)
+		}
+
+		s.defaultfallbackAddr = fa
+	}
+
+	s.addV2User(id)
+
+	return s, nil
+}
+
+func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+	return NewServer(u)
+}
+func NewServer(url *url.URL) (proxy.Server, error) {
 
 	addr := url.Host
 	uuidStr := url.User.Username()

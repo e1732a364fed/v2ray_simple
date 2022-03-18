@@ -1,9 +1,7 @@
-/*
-Package httpLayer 提供http层的一些方法和定义，比如fallback
-*/
 package httpLayer
 
 //从一个字节串中试图获取 http请求的 path, 空字节表示获取失败
+// 同时可以用这个方法判断明文 是不是 http1.1的 http请求,http1.0, http0.9的 http请求
 func GetRequestPATH_from_Bytes(bs []byte) string {
 	goto check
 no:
@@ -11,7 +9,7 @@ no:
 
 check:
 
-	if len(bs) < 18 {
+	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18
 		goto no
 	}
 
@@ -32,6 +30,9 @@ check:
 	// 7字节，options，connect
 
 	if bs[5] == ' ' {
+		// 没有五字节长度的 http请求方法
+		// 但是也会匹配到4字节+根目录的情况：
+		// 如果是 POST / HTTP/1.1, 或者HEAD, 倒是也会出现这种情况，但是反正只要配置default fallback，一样可以捕捉 / path的情况, 而且一般没人path分流会给 /, 根目录的情况直接就用default fallback了。
 		goto no
 	}
 
@@ -78,12 +79,22 @@ check:
 	//一般请求样式类似 GET /sdfdsffs.html HTTP/1.1
 	//所以找到第二个空格的位置即可，
 
-	for i := shouldSlashIndex; i < shouldSlashIndex+64; i++ {
+	last := len(bs)
+	if last > 64 {
+		last = 64
+	}
+
+	for i := shouldSlashIndex; i < last; i++ {
 		b := bs[i]
 		if b == '\r' || b == '\n' {
-			break
+			goto no
 		}
 		if b == ' ' {
+			// 空格后面至少还有 HTTP/1.1\r\n 这种字样，也就是说空格后长度至少为 10
+			//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
+			if len(bs)-i-1 < 10 {
+				goto no
+			}
 			return string(bs[shouldSlashIndex:i])
 		}
 	}

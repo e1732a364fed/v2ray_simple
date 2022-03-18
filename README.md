@@ -104,11 +104,15 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 以后会添加ws/grpc的支持。并且对于ws/grpc，我设计的vless v1协议会针对它们 有专门的udp优化。
 ## 安装方式：
 
-```go
+```sh
 git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
 cp client.example.json client.json
 cp server.example.json server.json
+
+#如果使用 toml，则复制toml文件：
+cp client.example.toml client.toml
+cp server.example.toml server.toml
 ```
 
 详细优化的编译参数请参考Makefile文件
@@ -130,15 +134,55 @@ cp server.example.json server.json
 
 因为为了减小文件体积，所以才内嵌的gzip格式，而不是直接内嵌原始数据
 
-## 使用方式
+## 运行方式
+
+本作支持多种配置格式，方便不同需求的同学使用
+### 极简模式
+极简模式
+```sh
+#客户端, 极简模式
+verysimple -c client.json
+
+#服务端, 极简模式
+verysimple -c server.json
+```
+
+关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
+
+目前极简模式配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
+
+极简模式使用json格式，内部使用分享链接url的方式，所以非常节省空间;
+
+### 命令行模式
+
+如果学会了极简模式里的url配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
 
 ```sh
 #客户端
-verysimple -c client.json
+verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:443?insecure=true
 
 #服务端
-verysimple -c server.json
+verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
 ```
+### 标准模式
+
+标准模式
+```sh
+
+#客户端，标准模式
+verysimple -c client.toml
+#服务端，标准模式
+verysimple -c server.toml
+
+```
+
+标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。
+
+### 兼容模式
+
+未来会推出兼容v2ray的json配置文件的模式。
+
+### 其他说明
 
 如果你不是放在path里的，则要 `./verysimple`, 前面要加一个点和一个斜杠。windows没这个要求。
 
@@ -148,19 +192,8 @@ verysimple -c server.json
 
 官方发布版统一叫做verysimple是为了与 v2ray区别开。
 
-关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
 
-目前配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
 
-如果学会了配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
-
-```sh
-#客户端
-verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:443?insecure=true
-
-#服务端
-verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
-```
 
 ## 验证方式
 
@@ -208,6 +241,8 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 代码的理念就是极简！这也是本项目名字由来！
 
 根据 奥卡姆剃刀原理，不要搞一大堆复杂机制，最简单的能实现的代码就是最好的代码。
+
+**想要为本作贡献的同学，要学习本作的这些理念，并能够贯彻你的代码。不够极简或者解释不够清晰的代码我们将会进行淘汰或修正。**
 
 
 ## 本项目所使用的开源协议

@@ -3,9 +3,11 @@ package httpLayer
 import (
 	"bytes"
 	"log"
+	"reflect"
 	"strconv"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 const (
@@ -74,6 +76,7 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 	for _, v := range fcl {
 		//log.Println("NewClassicFallbackFromConfList called", reflect.TypeOf(v.Dest))
 		//json 默认把数字转换成float64，就算是整数也一样
+		var integer int
 
 		if thefloat, ok := v.Dest.(float64); ok {
 
@@ -84,14 +87,22 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 				continue
 			}
 
-			integer := int(thefloat)
+			integer = int(thefloat)
 
-			addr, e := netLayer.NewAddr("127.0.0.1:" + strconv.Itoa(integer))
-			if e != nil {
-				log.Fatalln("addr create failed", e, strconv.Itoa(integer))
+		} else if theInt64, ok := v.Dest.(int64); ok { //toml 可把数字加载为int64
+			integer = int(theInt64)
+		} else {
+			if utils.CanLogErr() {
+				log.Println("Fallback port config type err", reflect.TypeOf(v.Dest))
 			}
-			cfb.MapByPath[v.Path] = addr
+			continue
 		}
+
+		addr, e := netLayer.NewAddr("127.0.0.1:" + strconv.Itoa(integer))
+		if e != nil {
+			log.Fatalln("addr create failed", e, strconv.Itoa(integer))
+		}
+		cfb.MapByPath[v.Path] = addr
 	}
 	return cfb
 }

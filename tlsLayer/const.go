@@ -1,5 +1,5 @@
 /*
-Package tlsLayer 提供tls流量的基本探测功能
+Package tlsLayer 提供tls流量的基本嗅探功能
 */
 package tlsLayer
 

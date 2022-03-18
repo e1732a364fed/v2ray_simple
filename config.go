@@ -1,34 +1,51 @@
 /*
 Package main 读取配置文件，将其内容转化为 proxy.Client和 proxy.Server，然后进行代理转发.
 
-目前的配置文件是json格式，而且被称为“极简模式”(即 verysimple mode)，入口和出口仅有一个，而且都是使用共享链接的url格式来配置.
+命令行参数请使用 --help查看详情。
+
+Config Format  配置格式
+
+一共有三种配置格式，极简模式，标准模式，兼容模式。
+
+“极简模式”(即 verysimple mode)，入口和出口仅有一个，而且都是使用共享链接的url格式来配置.
+
+标准模式使用toml格式。
+
+兼容模式可以兼容v2ray现有json格式。（暂未实现）。
 
 极简模式的理念是，配置文件的字符尽量少，尽量短小精悍;
 
-命令行参数请使用 --help查看详情。
+还有个命令行模式，就是直接把极简模式的url 放到命令行参数中，比如:
+
+	verysimple -L socks5://sfdfsaf -D direct://
+
+
+Structure 本项目结构
+
+	main -> config -> netLayer-> tlsLayer -> httpLayer -> proxy.
+
+	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，然后都搞好后，传到proxy，然后就开始转发
+
 */
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
+	"flag"
 	"log"
 	"net/url"
-	"os"
+	"path/filepath"
 
+	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-type SimpleConfig struct {
-	Server_ThatListenPort_Url string                    `json:"listen"`
-	Client_ThatDialRemote_Url string                    `json:"dial"`
-	Route                     *RouteStruct              `json:"route"`
-	Fallbacks                 []*httpLayer.FallbackConf `json:"fallbacks"`
-}
+var (
+	jsonMode int
+)
 
-type RouteStruct struct {
-	MyCountryISO_3166 string `json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
+func init() {
+	flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
 }
 
 // set conf variable, or exit the program; 还会设置mainFallback
@@ -38,14 +55,35 @@ func loadConfig() {
 
 	fpath := utils.GetFilePath(configFileName)
 	if fpath != "" {
-		conf, err = loadConfigFile(configFileName)
-		if err != nil {
 
-			log.Fatalln("can not load config file: ", err)
+		ext := filepath.Ext(fpath)
+		if ext == ".toml" {
+			standardConf, err = config.LoadTomlConfFile(configFileName)
+			if err != nil {
+
+				log.Fatalln("can not load standard config file: ", err)
+			}
+			//log.Println("standardConf.Fallbacks: ", len(standardConf.Fallbacks))
+			if len(standardConf.Fallbacks) != 0 {
+				mainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
+
+			}
+			confMode = 1
+			return
+		} else {
+			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法
+
+			simpleConf, err = config.LoadSimpleConfigFile(configFileName)
+			if err != nil {
+
+				log.Fatalln("can not load simple config file: ", err)
+			}
+			if simpleConf.Fallbacks != nil {
+				mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
+			}
+			confMode = 0
 		}
-		if conf.Fallbacks != nil {
-			mainFallback = httpLayer.NewClassicFallbackFromConfList(conf.Fallbacks)
-		}
+
 	} else {
 		if listenURL != "" {
 			_, err = url.Parse(listenURL)
@@ -54,7 +92,7 @@ func loadConfig() {
 
 			}
 
-			conf = &SimpleConfig{
+			simpleConf = &config.Simple{
 				Server_ThatListenPort_Url: listenURL,
 			}
 
@@ -66,7 +104,7 @@ func loadConfig() {
 
 				}
 
-				conf.Client_ThatDialRemote_Url = dialURL
+				simpleConf.Client_ThatDialRemote_Url = dialURL
 			}
 
 		} else {
@@ -74,32 +112,7 @@ func loadConfig() {
 
 		}
 	}
-	if conf.Client_ThatDialRemote_Url == "" {
-		conf.Client_ThatDialRemote_Url = "direct://"
+	if simpleConf.Client_ThatDialRemote_Url == "" {
+		simpleConf.Client_ThatDialRemote_Url = "direct://"
 	}
-}
-
-func loadConfigFile(fileNamePath string) (*SimpleConfig, error) {
-
-	if cf, err := os.Open(fileNamePath); err == nil {
-		defer cf.Close()
-		bs, _ := ioutil.ReadAll(cf)
-		config := &SimpleConfig{}
-		if err = json.Unmarshal(bs, config); err != nil {
-			return nil, utils.NewDataErr("can not parse config file ", err, fileNamePath)
-		}
-
-		return config, nil
-	} else {
-		return nil, utils.NewErr("can't open config file", err)
-	}
-
-}
-
-func loadConfigFromStr(str string) (*SimpleConfig, error) {
-	config := &SimpleConfig{}
-	if err := json.Unmarshal([]byte(str), config); err != nil {
-		return nil, utils.NewErr("can not parse config ", err)
-	}
-	return config, nil
 }

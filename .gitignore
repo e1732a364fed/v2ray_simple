@@ -1,5 +1,7 @@
 client.json
 server.json
+client.toml
+server.toml
 v2ray_simple
 v2ray_simple_*
 verysimple

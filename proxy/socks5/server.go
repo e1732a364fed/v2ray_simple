@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 
@@ -18,27 +19,37 @@ import (
 )
 
 func init() {
-	proxy.RegisterServer(Name, NewSocks5Server)
+	proxy.RegisterServerWithURL(Name, &ServerCreator{})
 }
 
 type Server struct {
-	user     string
-	password string
-
 	proxy.ProxyCommonStruct
+	//user string
+	//password string
 }
 
-func NewSocks5Server(url *url.URL) (proxy.Server, error) {
-	addr := url.Host
+//只有地址和port需要配资，非常简单
+type ServerCreator struct{}
+
+func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+	return NewServer(u)
+}
+
+func (_ ServerCreator) NewServer(dc *config.ListenConf, m map[string]interface{}) (proxy.Server, error) {
+
+	s := &Server{
+		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},
+	}
+	return s, nil
+}
+
+func NewServer(url *url.URL) (proxy.Server, error) {
+	addr := url.Host //若不给出port，那就只有host名，这样不好，我们默认配置里肯定给了port
 
 	// TODO: Support Auth
-	user := url.User.Username()
-	password, _ := url.User.Password()
 
 	s := &Server{
 		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: addr},
-		user:              user,
-		password:          password,
 	}
 	s.ProxyCommonStruct.InitFromUrl(url)
 	return s, nil
