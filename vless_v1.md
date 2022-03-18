@@ -2,7 +2,9 @@
 
 具体我的探讨还可以查看 https://github.com/v2fly/v2ray-core/discussions/1655
 
-总的来说 vless v1 简化了一些流程, 约定永远使用tls（与trojan相同）,并重点考虑  非多路复用的 udp over tcp的  fullcone实现
+总的来说 vless v1 简化了一些流程, 约定永远使用tls（与trojan相同）,并重点考虑  非多路复用的 udp over tcp的  fullcone实现。
+
+除了fullcone，我还想到了关于 内层加密， 连接池，以及 自动dns的 对协议的改进，请阅读全文了解详情。
 
 vless v0中服务端 的回复也是有数据头的，第一字节版本号，第二字节addon长度；而首先v2ray根本没有addon，所以第二字节总是0，
 
@@ -34,7 +36,7 @@ https://www.zhihu.com/question/29916578
 
 v1主要还是 隔离信道的 udp over tcp 的  fullcone 的实现属于重要的创新，上面提到的优化也就占20%的 v1协议的独特之处。请接着读下文查看fullcone部分
 
-除了fullcone，我还想到了关于 连接池，以及 自动dns的 对协议的改进，请阅读全文了解详情
+
 ## 关于udp over tcp 的 vless 的 fullcone
 
 将目标地址放到一个map里，udp建立过的连接 也放到一个map里。然后第二次访问时查看map看有没有用过的，有的话就使用之前的连接
@@ -172,6 +174,14 @@ CRUMFURS 信道与普通UDP信道一样，要传 udp长度头。在应用ws或�
 感觉这个方法不错，使用这种方法，则只需一个geoip数据库就可以判断 分流，不再需要额外的 geosite
 
 
+## 内层加密
 
+vmess的加密方式过于繁琐，而且如果怕封未知流量的话还是要套tls
+
+有些小伙伴怕纯tls 容易被中间人攻击，那么我们如果内层也加密的话就不怕了
+
+可以考虑推出一种简化版的加密方式
+
+vmess我觉得最复杂的地方就是客户端和服务端每次都要同时生成一大串数，很麻烦啊！
 
 

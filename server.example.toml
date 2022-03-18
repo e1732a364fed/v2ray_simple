@@ -14,7 +14,8 @@ key = "cert.key"
 [[dial]]
 protocol = "direct"
 
-
+# fallback这一项是可选的，如果没有的话，或者未匹配，则默认使用listen提供的fallback
+# 如果listen也没提供fallback，那就会直接断开连接
 [[fallback]]
 path = "/asf"
 dest = 6060

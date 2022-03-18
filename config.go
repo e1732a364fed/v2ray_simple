@@ -82,9 +82,15 @@ func loadConfig() {
 				mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
 			}
 			confMode = 0
+
+			if simpleConf.Client_ThatDialRemote_Url == "" {
+				simpleConf.Client_ThatDialRemote_Url = "direct://"
+			}
+			return
 		}
 
 	} else {
+		log.Println("No Such Config File:", configFileName, ",will try using -L parameter ")
 		if listenURL != "" {
 			_, err = url.Parse(listenURL)
 			if err != nil {
@@ -108,11 +114,9 @@ func loadConfig() {
 			}
 
 		} else {
-			log.Fatalln("no listen URL provided ", configFileName)
+			log.Fatalln("no -L listen URL provided ")
 
 		}
 	}
-	if simpleConf.Client_ThatDialRemote_Url == "" {
-		simpleConf.Client_ThatDialRemote_Url = "direct://"
-	}
+
 }

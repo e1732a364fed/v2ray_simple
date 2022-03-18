@@ -2,13 +2,15 @@
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 
 
-verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂
+verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
+
+而且 verysimple 还研发了一些新技术，详情见下文。
 
 只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。
 
 规定，编译出的文件名必须以 verysimple 开头.
 
-## 特点
+## 创新点
 
 实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），入口使用socks5协议
 
@@ -19,6 +21,16 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
 
 经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。反过来也是成立的。
+
+## 协议之外的已实现的代理特性
+
+多种配置文件格式
+
+默认回落，以及按path 回落
+
+按 geoip 分流，以及 按国别 顶级域名分流
+
+支持utls伪装tls指纹
 
 ### 关于vless v1
 
@@ -138,7 +150,7 @@ cp server.example.toml server.toml
 
 本作支持多种配置格式，方便不同需求的同学使用
 ### 极简模式
-极简模式
+
 ```sh
 #客户端, 极简模式
 verysimple -c client.json
@@ -166,9 +178,7 @@ verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.k
 ```
 ### 标准模式
 
-标准模式
 ```sh
-
 #客户端，标准模式
 verysimple -c client.toml
 #服务端，标准模式

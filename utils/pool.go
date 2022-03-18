@@ -12,12 +12,13 @@ var (
 	//而 udp则最大还不到 64k。(65535－20－8)
 	standardPacketPool sync.Pool //64*1024
 
-	customBytesPool sync.Pool // >1500
-
 	bufPool sync.Pool
 )
 
+//即MTU
 const StandardBytesLength int = 1500
+
+//本作设定的最大buf大小，64k
 const maxBufLen int = 64 * 1024
 
 func init() {
@@ -28,12 +29,6 @@ func init() {
 	}
 
 	standardPacketPool = sync.Pool{
-		New: func() interface{} {
-			return make([]byte, maxBufLen)
-		},
-	}
-
-	customBytesPool = sync.Pool{
 		New: func() interface{} {
 			return make([]byte, maxBufLen)
 		},
@@ -55,11 +50,12 @@ func PutBuf(buf *bytes.Buffer) {
 	bufPool.Put(buf)
 }
 
-//建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的byte（64*1024字节）
+//建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte（64*1024字节）
 func GetPacket() []byte {
 	return standardPacketPool.Get().([]byte)
 }
 
+// 放回用 GetPacket 获取的 []byte, 或者长度够长的可回收的 []byte
 func PutPacket(bs []byte) {
 	c := cap(bs)
 	if c < maxBufLen { //如果不够大，考虑放到更小的 pool里
@@ -90,14 +86,15 @@ func GetBytes(size int) []byte {
 
 }
 
+// 根据bs长度 选择放入各种pool中, 只有cap>=1500 才会被处理
 func PutBytes(bs []byte) {
 	c := cap(bs)
 	if c < StandardBytesLength {
 
 		return
-	} else if c == StandardBytesLength {
+	} else if c >= StandardBytesLength && c < maxBufLen {
 		standardBytesPool.Put(bs[:c])
-	} else {
-		customBytesPool.Put(bs)
+	} else if c >= maxBufLen {
+		standardPacketPool.Put(bs[:c])
 	}
 }

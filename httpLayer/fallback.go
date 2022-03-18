@@ -146,6 +146,7 @@ func (ef *ClassicFallback) GetFallback(ftype byte, s string) *netLayer.Addr {
 
 }
 
+// FallbackErr 可以在返回错误时，同时给定一个 指定的 Fallback
 type FallbackErr interface {
 	Error() string
 	Fallback() Fallback

@@ -35,7 +35,7 @@ ifdef PACK
 define compile
 	GOOS=$(2) GOARCH=$(3) $(cmd) $(1)
 	mv $(1) verysimple$(4)
-	tar -czf $(1).tgz verysimple$(4)
+	tar -czf $(1).tgz verysimple$(4) server.example.toml server.example.json client.example.toml client.example.json
 	rm verysimple$(4)
 endef
 

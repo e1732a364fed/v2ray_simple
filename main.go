@@ -155,6 +155,11 @@ func main() {
 			log.Fatalln("can not create remote client: ", err)
 		}
 	case standardMode:
+
+		if len(standardConf.Dial) < 1 {
+			log.Fatal("没有配置 dial 内容！")
+		}
+
 		outClient, err = proxy.NewClient(standardConf.Dial[0], nil)
 		if err != nil {
 			log.Fatalln("can not create remote client: ", err)
@@ -281,7 +286,7 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 
 		buf := f.FirstBuffer()
 		if buf == nil {
-			//不应该啊，至少能读到1字节的。
+			//不应该，至少能读到1字节的。
 			log.Fatal("No FirstBuffer")
 		}
 
