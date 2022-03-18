@@ -15,7 +15,7 @@ const (
 var LogLevel int
 
 func init() {
-	flag.IntVar(&LogLevel, "ll", Log_info, "log level,0=debug, 1=info, 2=warning, 3=error, 4=fatal")
+	flag.IntVar(&LogLevel, "ll", Log_info, "log level,0=debug, 1=info, 2=warning, 3=error,4=fatal, 4=fatal")
 
 }
 
