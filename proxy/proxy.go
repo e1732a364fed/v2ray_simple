@@ -44,7 +44,7 @@ type Server interface {
 	Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error)
 	Stop()
 
-	CanFallback() bool //如果能fallback，则handshake失败后，会专门返回 ErrFallback
+	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 }
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
@@ -115,6 +115,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	return nil
 }
 
+// ProxyCommonStruct 实现 ProxyCommon
 type ProxyCommonStruct struct {
 	Addr string
 	TLS  bool

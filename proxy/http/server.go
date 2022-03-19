@@ -130,11 +130,12 @@ func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriter, targetAddr
 			firstData: b[:n],
 			Conn:      underlay,
 		}
+
 	}
 	return
 }
 
-//用于http proxy中，dial后，第一次要把客户端的数据原封不动发送给远程服务端
+//用于纯http的 代理，dial后，第一次要把客户端的数据原封不动发送给远程服务端
 // 就是说，第一次从 ProxyConn Read时，读到的一定是之前读过的数据，原理有点像 fallback
 type ProxyConn struct {
 	net.Conn
@@ -153,4 +154,13 @@ func (pc *ProxyConn) Read(p []byte) (int, error) {
 	n := copy(p, bs)
 	utils.PutBytes(bs)
 	return n, nil
+}
+
+// ReadFrom implements the io.ReaderFrom ReadFrom method.
+// 专门用于适配 tcp的splice.
+func (pc *ProxyConn) ReadFrom(r io.Reader) (n int64, e error) {
+
+	//pc.Conn肯定不是udp，但有可能是 unix domain socket。暂时先不考虑这种情况
+
+	return pc.Conn.(*net.TCPConn).ReadFrom(r)
 }

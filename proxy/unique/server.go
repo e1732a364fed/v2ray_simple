@@ -21,10 +21,13 @@ func init() {
 
 type ServerCreator struct{}
 
+// NewServerFromURL returns "Not implemented".
+//因为 tcp:// 这种url没法轻易放在 url的query里，还需转义，所以不实用
 func (_ ServerCreator) NewServerFromURL(*url.URL) (proxy.Server, error) {
 	return nil, errors.New("Not implemented")
 }
 
+// use lc.TargetAddr
 func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	ta, e := netLayer.NewAddrByURL(lc.TargetAddr)
 	if e != nil {
@@ -41,7 +44,6 @@ type Server struct {
 	proxy.ProxyCommonStruct
 
 	targetAddr *netLayer.Addr
-	addrStr    string
 }
 
 func NewServer() (proxy.Server, error) {
@@ -57,5 +59,4 @@ func (s *Server) CanFallback() bool {
 	return false
 }
 func (s *Server) Stop() {
-	// Nothing to stop or close
 }
