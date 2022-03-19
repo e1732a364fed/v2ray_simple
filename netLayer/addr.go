@@ -2,6 +2,7 @@ package netLayer
 
 import (
 	"net"
+	"net/url"
 	"strconv"
 )
 
@@ -44,6 +45,39 @@ func NewAddr(addrStr string) (*Addr, error) {
 	} else {
 		a.Name = host
 	}
+	return a, nil
+}
+
+// 如 tcp://127.0.0.1:443
+func NewAddrByURL(addrStr string) (*Addr, error) {
+
+	u, err := url.Parse(addrStr)
+	if err != nil {
+		return nil, err
+	}
+
+	addrStr = u.Host
+
+	host, portStr, err := net.SplitHostPort(addrStr)
+	if err != nil {
+		return nil, err
+	}
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port, err := strconv.Atoi(portStr)
+
+	a := &Addr{Port: port}
+	if ip := net.ParseIP(host); ip != nil {
+		a.IP = ip
+	} else {
+		a.Name = host
+	}
+
+	if u.Scheme == "udp" {
+		a.IsUDP = true
+	}
+
 	return a, nil
 }
 
