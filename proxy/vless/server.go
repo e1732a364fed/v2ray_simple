@@ -21,7 +21,7 @@ import (
 )
 
 func init() {
-	proxy.RegisterServerWithURL(Name, &ServerCreator{})
+	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
 //实现 proxy.UserServer 以及 tlsLayer.UserHaser
@@ -36,7 +36,7 @@ type Server struct {
 
 type ServerCreator struct{}
 
-func (_ ServerCreator) NewServer(lc *config.ListenConf, m map[string]interface{}) (proxy.Server, error) {
+func (_ ServerCreator) NewServer(lc *config.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {

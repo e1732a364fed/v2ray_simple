@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	proxy.RegisterClientWithURL(Name, &ClientCreator{})
+	proxy.RegisterClient(Name, &ClientCreator{})
 }
 
 //实现 proxy.UserClient
@@ -45,7 +45,7 @@ func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
 	return NewClient(u)
 }
 
-func (_ ClientCreator) NewClient(dc *config.DialConf, m map[string]interface{}) (proxy.Client, error) {
+func (_ ClientCreator) NewClient(dc *config.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
 	id, err := proxy.NewV2rayUser(uuidStr)

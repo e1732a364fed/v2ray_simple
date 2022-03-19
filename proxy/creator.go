@@ -11,13 +11,13 @@ import (
 
 type ClientCreator interface {
 	//程序从某种配置文件格式中读取出 config.DialConf, 然后多出的配置部分以map形式给出
-	NewClient(*config.DialConf, map[string]interface{}) (Client, error)
+	NewClient(*config.DialConf) (Client, error)
 	NewClientFromURL(url *url.URL) (Client, error)
 }
 
 type ServerCreator interface {
 	//程序从某种配置文件格式中读取出 config.ListenConf, 然后多出的配置部分以map形式给出
-	NewServer(*config.ListenConf, map[string]interface{}) (Server, error)
+	NewServer(*config.ListenConf) (Server, error)
 	NewServerFromURL(url *url.URL) (Server, error)
 }
 
@@ -27,28 +27,28 @@ var (
 	serverCreatorMap = make(map[string]ServerCreator)
 )
 
-// RegisterClientWithURL is used to register a client.
+// RegisterClient is used to register a client.
 // 规定，每个 实现Client的包必须使用本函数进行注册
-func RegisterClientWithURL(name string, c ClientCreator) {
+func RegisterClient(name string, c ClientCreator) {
 	clientCreatorMap[name] = c
 }
 
-// RegisterServerWithURL is used to register a proxy server
+// RegisterServer is used to register a proxy server
 // 规定，每个 实现 Server 的包必须使用本函数进行注册
-func RegisterServerWithURL(name string, c ServerCreator) {
+func RegisterServer(name string, c ServerCreator) {
 	serverCreatorMap[name] = c
 }
 
-func NewClient(dc *config.DialConf, m map[string]interface{}) (Client, error) {
+func NewClient(dc *config.DialConf) (Client, error) {
 	protocol := dc.Protocol
 	creator, ok := clientCreatorMap[protocol]
 	if ok {
-		return creator.NewClient(dc, m)
+		return creator.NewClient(dc)
 	} else {
 		realScheme := strings.TrimSuffix(protocol, "s")
 		creator, ok = clientCreatorMap[realScheme]
 		if ok {
-			c, err := creator.NewClient(dc, m)
+			c, err := creator.NewClient(dc)
 			if err != nil {
 				return c, err
 			}
@@ -102,11 +102,11 @@ func ClientFromURL(s string) (Client, error) {
 	return nil, utils.NewDataErr("unknown client scheme '", nil, u.Scheme)
 }
 
-func NewServer(lc *config.ListenConf, m map[string]interface{}) (Server, error) {
+func NewServer(lc *config.ListenConf) (Server, error) {
 	protocol := lc.Protocol
 	creator, ok := serverCreatorMap[protocol]
 	if ok {
-		ser, err := creator.NewServer(lc, m)
+		ser, err := creator.NewServer(lc)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func NewServer(lc *config.ListenConf, m map[string]interface{}) (Server, error) 
 		realScheme := strings.TrimSuffix(protocol, "s")
 		creator, ok = serverCreatorMap[realScheme]
 		if ok {
-			ser, err := creator.NewServer(lc, m)
+			ser, err := creator.NewServer(lc)
 			if err != nil {
 				return nil, err
 			}

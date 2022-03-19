@@ -19,7 +19,7 @@ import (
 )
 
 func init() {
-	proxy.RegisterServerWithURL(Name, &ServerCreator{})
+	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
 type Server struct {
@@ -28,14 +28,14 @@ type Server struct {
 	//password string
 }
 
-//只有地址和port需要配资，非常简单
+//只有地址和port需要配置，非常简单
 type ServerCreator struct{}
 
 func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	return NewServer(u)
 }
 
-func (_ ServerCreator) NewServer(dc *config.ListenConf, m map[string]interface{}) (proxy.Server, error) {
+func (_ ServerCreator) NewServer(dc *config.ListenConf) (proxy.Server, error) {
 
 	s := &Server{
 		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},

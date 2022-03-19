@@ -18,6 +18,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
@@ -127,7 +128,7 @@ func main() {
 
 		firstConf := standardConf.Listen[0]
 
-		inServer, err = proxy.NewServer(firstConf, nil)
+		inServer, err = proxy.NewServer(firstConf)
 		if err != nil {
 			log.Fatalln("can not create local server: ", err)
 		}
@@ -160,7 +161,7 @@ func main() {
 			log.Fatal("没有配置 dial 内容！")
 		}
 
-		outClient, err = proxy.NewClient(standardConf.Dial[0], nil)
+		outClient, err = proxy.NewClient(standardConf.Dial[0])
 		if err != nil {
 			log.Fatalln("can not create remote client: ", err)
 		}
@@ -309,9 +310,9 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 				log.Println("checkFallback")
 			}
 
-			path := httpLayer.GetRequestPATH_from_Bytes(buf.Bytes())
+			_, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(buf.Bytes(), false)
 
-			if path != "" {
+			if failreason != 0 {
 				fbAddr = mainFallback.GetFallback(httpLayer.Fallback_path, path)
 				if utils.CanLogDebug() {
 					log.Println("checkFallback ", path, "matched fallback:", fbAddr)

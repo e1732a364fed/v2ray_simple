@@ -15,7 +15,7 @@ import (
 const name = "direct"
 
 func init() {
-	proxy.RegisterClientWithURL(name, &ClientCreator{})
+	proxy.RegisterClient(name, &ClientCreator{})
 }
 
 type Direct struct {
@@ -40,7 +40,7 @@ func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
 	return NewClient()
 }
 
-func (_ ClientCreator) NewClient(*config.DialConf, map[string]interface{}) (proxy.Client, error) {
+func (_ ClientCreator) NewClient(*config.DialConf) (proxy.Client, error) {
 	return NewClient()
 }
 
