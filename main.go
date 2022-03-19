@@ -16,14 +16,16 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy/direct"
-	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
-	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
-	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/proxy/direct"
+	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
+	"github.com/hahahrfool/v2ray_simple/proxy/vless"
+
+	_ "github.com/hahahrfool/v2ray_simple/proxy/dokodemo"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
 )
 
 const (

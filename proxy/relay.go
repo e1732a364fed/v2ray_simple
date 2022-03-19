@@ -6,9 +6,9 @@ import (
 )
 
 // 阻塞
-func RelayTCP(selfLocalServerConn, selfRemoteConn net.Conn) {
-	go io.Copy(selfRemoteConn, selfLocalServerConn)
-	io.Copy(selfLocalServerConn, selfRemoteConn)
+func RelayTCP(conn1, conn2 net.Conn) {
+	go io.Copy(conn2, conn1)
+	io.Copy(conn1, conn2)
 }
 
 // 阻塞.
