@@ -13,7 +13,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
@@ -36,7 +35,7 @@ type Server struct {
 
 type ServerCreator struct{}
 
-func (_ ServerCreator) NewServer(lc *config.ListenConf) (proxy.Server, error) {
+func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {

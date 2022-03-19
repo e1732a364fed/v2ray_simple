@@ -5,25 +5,23 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 type ClientCreator interface {
-	//程序从某种配置文件格式中读取出 config.DialConf, 然后多出的配置部分以map形式给出
-	NewClient(*config.DialConf) (Client, error)
+	//程序从某种配置文件格式中读取出 DialConf, 然后多出的配置部分以map形式给出
+	NewClient(*DialConf) (Client, error)
 	NewClientFromURL(url *url.URL) (Client, error)
 }
 
 type ServerCreator interface {
-	//程序从某种配置文件格式中读取出 config.ListenConf, 然后多出的配置部分以map形式给出
-	NewServer(*config.ListenConf) (Server, error)
+	//程序从某种配置文件格式中读取出 ListenConf, 然后多出的配置部分以map形式给出
+	NewServer(*ListenConf) (Server, error)
 	NewServerFromURL(url *url.URL) (Server, error)
 }
 
 var (
 	clientCreatorMap = make(map[string]ClientCreator)
-
 	serverCreatorMap = make(map[string]ServerCreator)
 )
 
@@ -39,7 +37,7 @@ func RegisterServer(name string, c ServerCreator) {
 	serverCreatorMap[name] = c
 }
 
-func NewClient(dc *config.DialConf) (Client, error) {
+func NewClient(dc *DialConf) (Client, error) {
 	protocol := dc.Protocol
 	creator, ok := clientCreatorMap[protocol]
 	if ok {
@@ -102,7 +100,7 @@ func ClientFromURL(s string) (Client, error) {
 	return nil, utils.NewDataErr("unknown client scheme '", nil, u.Scheme)
 }
 
-func NewServer(lc *config.ListenConf) (Server, error) {
+func NewServer(lc *ListenConf) (Server, error) {
 	protocol := lc.Protocol
 	creator, ok := serverCreatorMap[protocol]
 	if ok {
@@ -189,7 +187,7 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 }
 
 //setTag, setCantRoute
-func configCommonForServer(ser ProxyCommon, lc *config.ListenConf) {
+func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 	ser.setTag(lc.Tag)
 	ser.setCantRoute(lc.NoRoute)
 

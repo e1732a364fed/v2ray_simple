@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 )
@@ -71,12 +70,12 @@ type ProxyCommon interface {
 	setTag(string)
 }
 
-func prepareTLS_forClient(com ProxyCommon, dc *config.DialConf) error {
+func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	com.setTLS_Client(tlsLayer.NewTlsClient(dc.Host, dc.Insecure, dc.Utls))
 	return nil
 }
 
-func prepareTLS_forServer(com ProxyCommon, lc *config.ListenConf) error {
+func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	tlsserver, err := tlsLayer.NewServer(lc.GetAddr(), lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure)
 	if err == nil {
 		com.setTLS_Server(tlsserver)

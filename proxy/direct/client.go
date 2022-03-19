@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
@@ -40,7 +39,7 @@ func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
 	return NewClient()
 }
 
-func (_ ClientCreator) NewClient(*config.DialConf) (proxy.Client, error) {
+func (_ ClientCreator) NewClient(*proxy.DialConf) (proxy.Client, error) {
 	return NewClient()
 }
 

@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 
@@ -35,7 +34,7 @@ func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	return NewServer(u)
 }
 
-func (_ ServerCreator) NewServer(dc *config.ListenConf) (proxy.Server, error) {
+func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 
 	s := &Server{
 		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},

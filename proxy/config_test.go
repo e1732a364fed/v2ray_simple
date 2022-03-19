@@ -1,11 +1,11 @@
-package config_test
+package proxy_test
 
 import (
 	"net/url"
 	"testing"
 
 	"github.com/BurntSushi/toml"
-	"github.com/hahahrfool/v2ray_simple/config"
+	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
 func TestClientSimpleConfig(t *testing.T) {
@@ -21,7 +21,7 @@ func TestClientSimpleConfig(t *testing.T) {
   ]
 }`
 
-	mc, err := config.LoadSimpleConfigFromStr(confstr1)
+	mc, err := proxy.LoadSimpleConfigFromStr(confstr1)
 	if err != nil {
 		t.Log("loadConfigFromStr err", err)
 		t.FailNow()
@@ -51,7 +51,7 @@ func TestClientSimpleConfig(t *testing.T) {
 
 func TestTomlConfig(t *testing.T) {
 
-	var conf config.Standard
+	var conf proxy.Standard
 	_, err := toml.Decode(testTomlConfStr, &conf)
 
 	if err != nil {

@@ -35,8 +35,8 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -58,7 +58,7 @@ func loadConfig() {
 
 		ext := filepath.Ext(fpath)
 		if ext == ".toml" {
-			standardConf, err = config.LoadTomlConfFile(configFileName)
+			standardConf, err = proxy.LoadTomlConfFile(configFileName)
 			if err != nil {
 
 				log.Fatalln("can not load standard config file: ", err)
@@ -73,7 +73,7 @@ func loadConfig() {
 		} else {
 			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法
 
-			simpleConf, err = config.LoadSimpleConfigFile(configFileName)
+			simpleConf, err = proxy.LoadSimpleConfigFile(configFileName)
 			if err != nil {
 
 				log.Fatalln("can not load simple config file: ", err)
@@ -98,7 +98,7 @@ func loadConfig() {
 
 			}
 
-			simpleConf = &config.Simple{
+			simpleConf = &proxy.Simple{
 				Server_ThatListenPort_Url: listenURL,
 			}
 

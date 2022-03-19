@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -45,7 +44,7 @@ func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
 	return NewClient(u)
 }
 
-func (_ ClientCreator) NewClient(dc *config.DialConf) (proxy.Client, error) {
+func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
 	id, err := proxy.NewV2rayUser(uuidStr)

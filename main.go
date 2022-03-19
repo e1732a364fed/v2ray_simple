@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/config"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
@@ -43,8 +42,8 @@ var (
 	//另外，本作暂时不考虑引入外界log包。依赖越少越好。
 
 	confMode     int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	simpleConf   *config.Simple
-	standardConf *config.Standard
+	simpleConf   *proxy.Simple
+	standardConf *proxy.Standard
 	directClient proxy.Client
 
 	tls_lazy_encrypt bool
@@ -89,7 +88,7 @@ func main() {
 
 	flag.Parse()
 
-	//in config.go
+	//in proxy.go
 	loadConfig()
 
 	if confMode < 0 {

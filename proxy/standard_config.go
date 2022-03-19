@@ -1,4 +1,4 @@
-package config
+package proxy
 
 import (
 	"io/ioutil"
