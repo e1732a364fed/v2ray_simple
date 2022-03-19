@@ -116,6 +116,13 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 以后会添加ws/grpc的支持。并且对于ws/grpc，我设计的vless v1协议会针对它们 有专门的udp优化。
 ## 安装方式：
 
+### 下载安装
+
+如果是 linux服务器，可以参考我的一篇指导文章 [install.md](install.md)
+
+电脑客户端的话直接自己到release下载就行。
+### 编译安装
+
 ```sh
 git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
@@ -131,7 +138,7 @@ cp server.example.toml server.toml
 
 如果你是直接下载的可执行文件，则不需要 go build了，直接复制example.json文件即可
 
-### 关于内嵌geoip 文件
+#### 关于内嵌geoip 文件
 
 默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
 
@@ -145,6 +152,8 @@ cp server.example.toml server.toml
 
 
 因为为了减小文件体积，所以才内嵌的gzip格式，而不是直接内嵌原始数据
+
+
 
 ## 运行方式
 

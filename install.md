@@ -6,16 +6,18 @@
 wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.5/verysimple_linux_amd64_v1.0.5.tgz
 
 tar -xzf verysimple_linux_amd64_v1.0.5.tgz
-mkdir -p /usr/local/etc/verysimple
-mv verysimple /usr/local/etc/verysimple/
-mv server.example.toml /usr/local/etc/verysimple/server.toml
+sudo mkdir -p /usr/local/etc/verysimple
+sudo mv verysimple /usr/local/etc/verysimple/
+sudo mv server.example.toml /usr/local/etc/verysimple/server.toml
 
 ```
+
+v1.0.5的tgz打包文件中，没有包含toml示例文件，需要你再 wget 下载一下 示例文件。
 
 然后修改 `/usr/local/etc/verysimple/server.toml` ,使配置达到你想要的效果
 
 
-然后修改
+然后编辑服务文件
 `sudo vi /etc/systemd/system/verysimple.service`
 
 ```sh
