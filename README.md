@@ -12,7 +12,9 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 ## 创新点
 
-实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），入口使用socks5协议
+实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），
+
+其它监听协议还支持 socks5, http, dokodemo
 
 在本项目里 制定 并实现了 vless v1标准，添加了非mux的fullcone；
 
@@ -27,7 +29,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 默认回落，以及按path 回落
 
-按 geoip 分流，以及 按国别 顶级域名分流，用到了 mmdb
+按 geoip,ip,cidr,domain,inTag,network 分流，以及 按国别 顶级域名分流，用到了 mmdb
 
 支持utls伪装tls指纹
 

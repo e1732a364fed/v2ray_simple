@@ -46,3 +46,4 @@ dialTag = "my_vless1"
 # ip = ["0.0.0.0/8","10.0.0.0/8","fe80::/10","10.0.0.1"]
 # domain = ["www.google.com","www.twitter.com"]
 # network = ["tcp","udp"]
+# inTag = ["tag1","tag2"]
