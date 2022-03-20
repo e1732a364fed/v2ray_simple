@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -42,11 +41,19 @@ var (
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
-	confMode     int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	simpleConf   *proxy.Simple
-	standardConf *proxy.Standard
-	directClient proxy.Client
-	default_uuid string
+	confMode         int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
+	simpleConf       *proxy.Simple
+	standardConf     *proxy.Standard
+	directClient     proxy.Client
+	defaultOutClient proxy.Client
+	defaultInServer  proxy.Server
+	default_uuid     string
+
+	allServers []proxy.Server
+	allClients []proxy.Client
+
+	serversTagMap map[string]proxy.Server
+	clientsTagMap map[string]proxy.Client
 
 	tls_lazy_encrypt bool
 	tls_lazy_secure  bool
@@ -73,6 +80,9 @@ func init() {
 	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the remote part in config file), only enbled when config file is not provided.")
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
+
+	allServers = make([]proxy.Server, 0, 8)
+	allClients = make([]proxy.Client, 0, 8)
 }
 
 func printDesc() {
@@ -80,8 +90,6 @@ func printDesc() {
 	proxy.PrintAllServerNames()
 
 	proxy.PrintAllClientNames()
-
-	fmt.Printf("=============== 所有协议均可套tls ================\n")
 }
 
 func main() {
@@ -90,25 +98,22 @@ func main() {
 
 	flag.Parse()
 
-	//in proxy.go
 	loadConfig()
 
 	if confMode < 0 {
 		log.Fatal("no config exist")
 	}
 
-	var inServer proxy.Server
-	var outClient proxy.Client
 	var err error
 
 	switch confMode {
 	case simpleMode:
-		inServer, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
+		defaultInServer, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
 		if err != nil {
 			log.Fatalln("can not create local server: ", err)
 		}
 
-		if !inServer.CantRoute() && simpleConf.Route != nil {
+		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
 
 			netLayer.LoadMaxmindGeoipFile("")
 
@@ -124,93 +129,69 @@ func main() {
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
 
 		if len(standardConf.Listen) < 1 {
-			log.Fatal("没有配置listen内容！")
+			log.Fatal("no Listen in config settings!")
 		}
 
-		firstListenConf := standardConf.Listen[0]
+		for _, serverConf := range standardConf.Listen {
+			thisConf := serverConf
 
-		if firstListenConf.Uuid == "" && default_uuid != "" {
-			firstListenConf.Uuid = default_uuid
-		}
-
-		inServer, err = proxy.NewServer(firstListenConf)
-		if err != nil {
-			log.Fatalln("can not create local server: ", err)
-		}
-
-		if !inServer.CantRoute() && standardConf.Route != nil {
-
-			netLayer.LoadMaxmindGeoipFile("")
-
-			//目前只支持通过 mycountry进行 geoip分流 这一种情况
-			routePolicy = netLayer.NewRoutePolicy()
-			if standardConf.Route.MyCountryISO_3166 != "" {
-				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.Route.MyCountryISO_3166))
-
+			if thisConf.Uuid == "" && default_uuid != "" {
+				thisConf.Uuid = default_uuid
 			}
+
+			thisServer, err := proxy.NewServer(thisConf)
+			if err != nil {
+				log.Fatalln("can not create local server: ", err)
+			}
+
+			if !thisServer.CantRoute() && standardConf.Route != nil {
+
+				netLayer.LoadMaxmindGeoipFile("")
+
+				//目前只支持通过 mycountry进行 geoip分流 这一种情况
+				routePolicy = netLayer.NewRoutePolicy()
+				if standardConf.Route.MyCountryISO_3166 != "" {
+					routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.Route.MyCountryISO_3166))
+
+				}
+			}
+
+			allServers = append(allServers, thisServer)
 		}
 
 	}
 
-	defer inServer.Stop()
-
 	switch confMode {
 	case simpleMode:
-		outClient, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
+		defaultOutClient, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
 		if err != nil {
 			log.Fatalln("can not create remote client: ", err)
 		}
 	case standardMode:
 
 		if len(standardConf.Dial) < 1 {
-			log.Fatal("没有配置 dial 内容！")
+			log.Fatal("no dial in config settings!")
 		}
 		firstDialConf := standardConf.Dial[0]
 		if firstDialConf.Uuid == "" && default_uuid != "" {
 			firstDialConf.Uuid = default_uuid
 		}
-		outClient, err = proxy.NewClient(firstDialConf)
+		defaultOutClient, err = proxy.NewClient(firstDialConf)
 		if err != nil {
 			log.Fatalln("can not create remote client: ", err)
 		}
 	}
 
-	isServerEnd = outClient.Name() == "direct"
-
-	listener, err := net.Listen("tcp", inServer.AddrStr())
-	if err != nil {
-		log.Println("can not listen inServer on", inServer.AddrStr(), err)
-		os.Exit(-1)
-	}
-
-	if utils.CanLogInfo() {
-		log.Println(inServer.Name(), "is listening TCP on ", inServer.AddrStr())
-
-	}
+	isServerEnd = defaultOutClient.Name() == "direct"
 
 	// 后台运行主代码，而main函数只监听中断信号
 	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用
-	go func() {
-		for {
-			lc, err := listener.Accept()
-			if err != nil {
-				errStr := err.Error()
-				if strings.Contains(errStr, "closed") {
-					log.Println("local connection closed", err)
-					break
-				}
-				log.Println("failed to accepted connection: ", err)
-				if strings.Contains(errStr, "too many") {
-					log.Println("To many incoming conn! Sleep ", errStr)
-					time.Sleep(time.Millisecond * 500)
-				}
-				continue
-			}
+	if confMode == simpleMode {
+		go listenSer(nil, defaultInServer)
+	} else {
+		go listenAllServers()
 
-			go handleNewIncomeConnection(inServer, outClient, lc)
-
-		}
-	}()
+	}
 
 	{
 		osSignals := make(chan os.Signal, 1)
@@ -219,7 +200,63 @@ func main() {
 	}
 }
 
-func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, thisLocalConnectionInstance net.Conn) {
+func listenAllServers() {
+
+	for _, inServer := range allServers {
+
+		listener, err := net.Listen("tcp", inServer.AddrStr())
+		defer inServer.Stop()
+
+		if err != nil {
+			log.Fatalln("can not listen inServer on", inServer.AddrStr(), err)
+
+		}
+
+		if utils.CanLogInfo() {
+			log.Println(proxy.GetFullName(inServer), "is listening TCP on ", inServer.AddrStr())
+
+		}
+
+		go listenSer(listener, inServer)
+
+	}
+
+}
+
+func listenSer(listener net.Listener, inServer proxy.Server) {
+
+	var err error
+	if listener == nil {
+		listener, err = net.Listen("tcp", inServer.AddrStr())
+
+		if err != nil {
+			log.Fatalln("can not listen inServer on", inServer.AddrStr(), err)
+
+		}
+	}
+
+	for {
+		lc, err := listener.Accept()
+		if err != nil {
+			errStr := err.Error()
+			if strings.Contains(errStr, "closed") {
+				log.Println("local connection closed", err)
+				break
+			}
+			log.Println("failed to accepted connection: ", err)
+			if strings.Contains(errStr, "too many") {
+				log.Println("To many incoming conn! Sleep ", errStr)
+				time.Sleep(time.Millisecond * 500)
+			}
+			continue
+		}
+
+		go handleNewIncomeConnection(inServer, lc)
+
+	}
+}
+
+func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstance net.Conn) {
 
 	baseLocalConn := thisLocalConnectionInstance
 
@@ -361,7 +398,7 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 
 afterLocalServerHandshake:
 
-	var client proxy.Client = outClient
+	var client proxy.Client = defaultOutClient
 
 	var routedToDirect bool
 
@@ -442,7 +479,7 @@ afterLocalServerHandshake:
 
 			// 我在 vless v1 的client 的 UserConn 中实现了 UDP_Putter, vless 的 client的 新连接的Handshake过程会在 UDP_Putter.WriteUDPRequest 被调用 时发生
 
-			if putter := outClient.(netLayer.UDP_Putter); putter != nil {
+			if putter := client.(netLayer.UDP_Putter); putter != nil {
 
 				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
 

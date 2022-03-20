@@ -15,11 +15,19 @@ import (
 const Name = "vless"
 
 const (
-	Cmd_CRUMFURS byte = 4 // start from vless v1
-
 	CRUMFURS_ESTABLISHED byte = 20
 
 	CRUMFURS_Established_Str = "CRUMFURS_Established"
+)
+
+// CMD types, for vless and vmess
+const (
+	_ byte = iota
+	CmdTCP
+	CmdUDP
+	CmdMux
+	Cmd_CRUMFURS //byte = 4 // start from vless v1
+
 )
 
 type UserConn struct {

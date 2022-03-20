@@ -3,24 +3,25 @@ protocol = "socks5"
 host = "127.0.0.1"
 port = 10800
 
+[[dial]]
+tag = "my_vless1"  
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003" 
+host = "127.0.0.1"
+port = 4433
+version = 0    
+insecure = true 
+utls = true   
+
 
 [[dial]]
-tag = "my_vless1"
+tag = "my_ws1"
 protocol = "vlesss"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
-port = 4433
+port = 4434
 insecure = true
 utls = true
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" 
 
-[[dial]]
-tag = "my_ws1"  
-protocol = "vlesss"
-uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003" 
-host = "127.0.0.1"
-port = 4434
-version = 0    
-insecure = true 
-utls = true   

@@ -49,15 +49,30 @@ type Server interface {
 	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 }
 
+// FullName 可以完整表示 一个 代理的 VSI 层级.
+// 这里认为, tcp/udp/kcp/raw_socket 是FirstName，具体的协议名称是 LastName, 中间层是 MiddleName
+// An Example of a full name:  tcp+tls+ws+vless
+func GetFullName(pc ProxyCommon) string {
+	if pc.IsUDP() {
+		return "udp" + pc.MiddleName() + pc.Name()
+
+	}
+	return "tcp" + pc.MiddleName() + pc.Name()
+
+}
+
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
 // 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息
 type ProxyCommon interface {
-	Name() string
+	Name() string       //代理协议名称, 如vless
+	MiddleName() string //其它VSI层 所使用的协议，如 +tls+ws
 
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
 	SetAddrStr(string)
 	CantRoute() bool //for inServer
 	GetTag() string
+
+	IsUDP() bool
 
 	IsDial() bool //true则为 Dial 端，false 则为 Listen 端
 	GetListenConf() *ListenConf
@@ -155,6 +170,21 @@ type ProxyCommonStruct struct {
 	AdvancedL string
 
 	ws_c *ws.Client
+}
+
+func (pcs *ProxyCommonStruct) IsUDP() bool {
+	return false
+}
+
+func (pcs *ProxyCommonStruct) MiddleName() string {
+	str := ""
+	if pcs.TLS {
+		str += "+tls"
+	}
+	if pcs.AdvancedL != "" {
+		str += "+" + pcs.AdvancedL
+	}
+	return str + "+"
 }
 
 func (pcs *ProxyCommonStruct) CantRoute() bool {

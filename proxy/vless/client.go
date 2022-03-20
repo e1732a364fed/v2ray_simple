@@ -118,7 +118,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	port := target.Port
 	addr, atyp := target.AddressBytes()
 
-	cmd := proxy.CmdTCP
+	cmd := CmdTCP
 	if target.IsUDP {
 		if c.version == 1 && !c.is_CRUMFURS_established {
 
@@ -155,7 +155,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 
 		}
 
-		cmd = proxy.CmdUDP
+		cmd = CmdUDP
 
 	}
 
