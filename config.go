@@ -75,8 +75,9 @@ func loadConfig() {
 
 			}
 			confMode = 1
-			if standardConf.App != nil {
-				utils.LogLevel = standardConf.App.LogLevel
+			if appConf := standardConf.App; appConf != nil {
+				utils.LogLevel = appConf.LogLevel
+				default_uuid = appConf.DefaultUUID
 			}
 			return
 		} else {

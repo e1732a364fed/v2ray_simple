@@ -96,5 +96,6 @@ func LoadTomlConfFile(fileNamePath string) (*Standard, error) {
 }
 
 type AppConf struct {
-	LogLevel int `toml:"loglevel"`
+	LogLevel    int    `toml:"loglevel"`
+	DefaultUUID string `toml:"default_uuid"`
 }

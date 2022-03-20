@@ -24,6 +24,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 
+	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/dokodemo"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
 )
@@ -45,6 +46,7 @@ var (
 	simpleConf   *proxy.Simple
 	standardConf *proxy.Standard
 	directClient proxy.Client
+	default_uuid string
 
 	tls_lazy_encrypt bool
 	tls_lazy_secure  bool
@@ -125,9 +127,13 @@ func main() {
 			log.Fatal("没有配置listen内容！")
 		}
 
-		firstConf := standardConf.Listen[0]
+		firstListenConf := standardConf.Listen[0]
 
-		inServer, err = proxy.NewServer(firstConf)
+		if firstListenConf.Uuid == "" && default_uuid != "" {
+			firstListenConf.Uuid = default_uuid
+		}
+
+		inServer, err = proxy.NewServer(firstListenConf)
 		if err != nil {
 			log.Fatalln("can not create local server: ", err)
 		}
@@ -159,8 +165,11 @@ func main() {
 		if len(standardConf.Dial) < 1 {
 			log.Fatal("没有配置 dial 内容！")
 		}
-
-		outClient, err = proxy.NewClient(standardConf.Dial[0])
+		firstDialConf := standardConf.Dial[0]
+		if firstDialConf.Uuid == "" && default_uuid != "" {
+			firstDialConf.Uuid = default_uuid
+		}
+		outClient, err = proxy.NewClient(firstDialConf)
 		if err != nil {
 			log.Fatalln("can not create remote client: ", err)
 		}
@@ -645,6 +654,8 @@ afterLocalServerHandshake:
 	io.Copy(wlc, wrc)
 }
 
+var tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
+
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
@@ -898,7 +909,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 		}
 
 		if isgood {
-			if runtime.GOOS == "linux" {
+			if tlslazy_willuseSystemCall {
 				runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
 			}
 
@@ -1009,7 +1020,7 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 			log.Println("成功SpliceRead W方向,准备 直连对拷")
 		}
 
-		if runtime.GOOS == "linux" {
+		if tlslazy_willuseSystemCall {
 			runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的。不过不一定对，因为我很笨，只是看xray的代码有这一行
 
 		}

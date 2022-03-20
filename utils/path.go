@@ -12,10 +12,15 @@ func FileExist(path string) bool {
 }
 
 // Function that search the specified file in the following directories:
+//  0. if starts with '/', return directly
 //	1. Same folder with exec file
 //  2. Same folder of the source file, 应该是用于 go test等情况
 //  3. Same folder of working folder
 func GetFilePath(fileName string) string {
+
+	if fileName[0] == '/' {
+		return fileName
+	}
 
 	if execFile, err := os.Executable(); err == nil {
 

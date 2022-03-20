@@ -21,17 +21,17 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
 
 经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。反过来也是成立的。
-### 协议之外的已实现的代理特性
+### 协议之外的已实现的有用特性
 
 多种配置文件格式,包括自有的 toml标准格式
 
 默认回落，以及按path 回落
 
-按 geoip 分流，以及 按国别 顶级域名分流
+按 geoip 分流，以及 按国别 顶级域名分流，用到了 mmdb
 
 支持utls伪装tls指纹
 
-支持websocket
+支持websocket, 使用性能最高的 gobwas/ws 包
 
 ### 关于vless v1
 
@@ -64,6 +64,8 @@ vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 在最新代码里，还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
 
 tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
+
+在系统 不支持splice和sendfile 系统调用时，lazy特性等价于 xtls 的 direct 流控.
 
 因为是双向的，而xtls的splice是单向，所以 理论上 tls lazy encrypt 比xtls 还快，应该是正好快一倍？不懂。反正我是读写都是用的splice。
 

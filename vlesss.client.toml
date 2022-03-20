@@ -1,5 +1,15 @@
 # this is a verysimple standard client config
 # toml 格式 要注意的是，字符串类型 必须用 引号括起来
+
+[app]   # app 项是可选的
+
+# 日志等级, 0=debug, 1=info, 2=warning, 3=error,4=fatal,默认为1. 推荐测试时使用1, 服务端使用2或3
+loglevel = 1
+
+# 如果 default_uuid 给出了，且某个 需要uuid的地方没给出，则会使用 default_uuid 的值
+# default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+
+
 [[listen]]
 tag = "my_socks5"   # 可选, 但不可与其他tag重复
 protocol = "socks5" # 必填
@@ -31,3 +41,4 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 # 同时，必须要一个 GeoLite2-Country.mmdb 文件 放在verysimple的相同目录下. 详情见 README.md
 [route]
 mycountry = "CN"
+
