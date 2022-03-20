@@ -12,13 +12,22 @@ func FileExist(path string) bool {
 }
 
 // Function that search the specified file in the following directories:
-//  0. if starts with '/', return directly
+//  -1. if starts with '/', return directly
+//  0. if starts with things similar to "C:/" or "D:\\", return directly
 //	1. Same folder with exec file
 //  2. Same folder of the source file, 应该是用于 go test等情况
 //  3. Same folder of working folder
 func GetFilePath(fileName string) string {
+	if len(fileName) < 1 {
+		return ""
+	}
 
-	if fileName[0] == '/' {
+	fb := fileName[0]
+	if fb == '/' && len(fileName) > 1 {
+		return fileName
+	}
+
+	if len(fileName) > 3 && fb >= 'C' && fb <= 'Z' && fileName[1] == ':' && (fileName[2] == '/' || fileName[2] == '\\') {
 		return fileName
 	}
 

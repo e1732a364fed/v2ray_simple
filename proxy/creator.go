@@ -235,6 +235,7 @@ func configCommon(ser ProxyCommon, cc *CommonConf) {
 func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	cli.setIsDial(true)
 	cli.setDialConf(dc)
+	cli.setTag(dc.Tag)
 
 	configCommon(cli, &dc.CommonConf)
 

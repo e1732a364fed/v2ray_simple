@@ -1,8 +1,10 @@
-# this is a verysimple standard server config
+[app]
+loglevel = 1
+default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+
 [[listen]]
 tag = "my_vlesss1"
 protocol = "vlesss"
-uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "0.0.0.0"
 port = 4433
 insecure = true
@@ -13,7 +15,6 @@ key = "cert.key"
 [[listen]]
 tag = "my_ws1"
 protocol = "vlesss"
-uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "0.0.0.0"
 port = 4434
 insecure = true
@@ -26,7 +27,4 @@ path = "/ohmygod_verysimple_is_very_simple"
 [[dial]]
 protocol = "direct"
 
-
-[app]
-loglevel = 1
 

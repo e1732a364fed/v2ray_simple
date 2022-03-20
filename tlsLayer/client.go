@@ -26,7 +26,7 @@ func NewTlsClient(host string, insecure bool, useTls bool) *Client {
 	}
 
 	if useTls && utils.CanLogInfo() {
-		log.Println("using utls and Chrome fingerprint")
+		log.Println("using utls and Chrome fingerprint for", host)
 	}
 
 	return c

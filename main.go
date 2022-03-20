@@ -83,6 +83,9 @@ func init() {
 
 	allServers = make([]proxy.Server, 0, 8)
 	allClients = make([]proxy.Client, 0, 8)
+
+	serversTagMap = make(map[string]proxy.Server)
+	clientsTagMap = make(map[string]proxy.Client)
 }
 
 func printDesc() {
@@ -106,6 +109,7 @@ func main() {
 
 	var err error
 
+	//load server and routePolicy
 	switch confMode {
 	case simpleMode:
 		defaultInServer, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
@@ -119,8 +123,8 @@ func main() {
 
 			//目前只支持通过 mycountry进行 geoip分流 这一种情况
 			routePolicy = netLayer.NewRoutePolicy()
-			if simpleConf.Route.MyCountryISO_3166 != "" {
-				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.Route.MyCountryISO_3166))
+			if simpleConf.MyCountryISO_3166 != "" {
+				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
 
 			}
 		}
@@ -144,23 +148,28 @@ func main() {
 				log.Fatalln("can not create local server: ", err)
 			}
 
-			if !thisServer.CantRoute() && standardConf.Route != nil {
+			allServers = append(allServers, thisServer)
+			if tag := thisServer.GetTag(); tag != "" {
+				serversTagMap[tag] = thisServer
+			}
+		}
 
-				netLayer.LoadMaxmindGeoipFile("")
+		if standardConf.Route != nil || standardConf.App.MyCountryISO_3166 != "" {
 
-				//目前只支持通过 mycountry进行 geoip分流 这一种情况
-				routePolicy = netLayer.NewRoutePolicy()
-				if standardConf.Route.MyCountryISO_3166 != "" {
-					routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.Route.MyCountryISO_3166))
+			netLayer.LoadMaxmindGeoipFile("")
 
-				}
+			routePolicy = netLayer.NewRoutePolicy()
+			if appConf := standardConf.App; appConf.MyCountryISO_3166 != "" {
+				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(appConf.MyCountryISO_3166))
+
 			}
 
-			allServers = append(allServers, thisServer)
+			proxy.LoadRulesForRoutePolicy(standardConf.Route, routePolicy)
 		}
 
 	}
 
+	// load client
 	switch confMode {
 	case simpleMode:
 		defaultOutClient, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
@@ -172,14 +181,24 @@ func main() {
 		if len(standardConf.Dial) < 1 {
 			log.Fatal("no dial in config settings!")
 		}
-		firstDialConf := standardConf.Dial[0]
-		if firstDialConf.Uuid == "" && default_uuid != "" {
-			firstDialConf.Uuid = default_uuid
+
+		for _, thisConf := range standardConf.Dial {
+			if thisConf.Uuid == "" && default_uuid != "" {
+				thisConf.Uuid = default_uuid
+			}
+
+			thisClient, err := proxy.NewClient(thisConf)
+			if err != nil {
+				log.Fatalln("can not create remote client: ", err)
+			}
+			allClients = append(allClients, thisClient)
+
+			if tag := thisClient.GetTag(); tag != "" {
+				clientsTagMap[tag] = thisClient
+			}
 		}
-		defaultOutClient, err = proxy.NewClient(firstDialConf)
-		if err != nil {
-			log.Fatalln("can not create remote client: ", err)
-		}
+
+		defaultOutClient = allClients[0]
 	}
 
 	isServerEnd = defaultOutClient.Name() == "direct"
@@ -190,7 +209,6 @@ func main() {
 		go listenSer(nil, defaultInServer)
 	} else {
 		go listenAllServers()
-
 	}
 
 	{
@@ -405,8 +423,8 @@ afterLocalServerHandshake:
 	//如果可以route
 	if !inServer.CantRoute() && routePolicy != nil {
 
-		if utils.CanLogInfo() {
-			log.Println("trying routing feature")
+		if utils.CanLogDebug() {
+			log.Println("try routing")
 		}
 
 		//目前只支持一个 inServer/outClient, 所以目前根据tag分流是没有意义的，以后再说
@@ -420,6 +438,15 @@ afterLocalServerHandshake:
 
 			if utils.CanLogInfo() {
 				log.Println("routed to direct", targetAddr.UrlString())
+			}
+		} else {
+			//log.Println("outtag", outtag, clientsTagMap)
+
+			if tagC, ok := clientsTagMap[outtag]; ok {
+				client = tagC
+				if utils.CanLogInfo() {
+					log.Println("routed to", outtag, proxy.GetFullName(client))
+				}
 			}
 		}
 	}
@@ -557,7 +584,7 @@ afterLocalServerHandshake:
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(client.Name(), cachedRemoteAddr, " want to dial ", targetAddr.UrlString())
+		log.Println(client.Name(), cachedRemoteAddr, " want to dial ", proxy.GetFullName(client), targetAddr.UrlString())
 
 	}
 

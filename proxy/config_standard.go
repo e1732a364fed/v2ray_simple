@@ -2,12 +2,16 @@ package proxy
 
 import (
 	"io/ioutil"
+	"net"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/yl2chen/cidranger"
 )
 
 // CommonConf 是标准配置中 Listen和Dial 都有的部分
@@ -23,7 +27,7 @@ type CommonConf struct {
 	TLS      bool   `toml:"tls"`      //可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
 	Insecure bool   `toml:"insecure"` //tls 是否安全
 
-	IsUDP bool `toml:"udp"` //默认使用tcp监听，如果udp项给出了，则用udp监听。比如ss协议时就会用到
+	IsUDP bool `toml:"udp"` //默认使用tcp监听，如果udp项给出了，则用udp监听。一些即能监听udp又能监听tcp的协议就需要这一项配置.
 
 	AdvancedLayer string `toml:"advancedLayer"` //可不填，或者为ws，或者为grpc
 
@@ -59,8 +63,22 @@ type DialConf struct {
 	Utls bool `toml:"utls"`
 }
 
-type RouteStruct struct {
-	MyCountryISO_3166 string `json:"mycountry" toml:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
+type AppConf struct {
+	LogLevel          int    `toml:"loglevel"`
+	DefaultUUID       string `toml:"default_uuid"`
+	MyCountryISO_3166 string `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
+
+}
+
+type RuleConf struct {
+	DialTag string `toml:"dialTag"`
+
+	InTags []string `toml:"inTag"`
+
+	Countries []string `toml:"country"` // 如果类似 !CN, 则意味着专门匹配不为CN 的国家（目前还未实现）
+	IPs       []string `toml:"ip"`
+	Domains   []string `toml:"domain"`
+	Network   []string `toml:"network"`
 }
 
 //标准配置。默认使用toml格式
@@ -69,7 +87,7 @@ type RouteStruct struct {
 type Standard struct {
 	Listen []*ListenConf `toml:"listen"`
 	Dial   []*DialConf   `toml:"dial"`
-	Route  *RouteStruct  `toml:"route"`
+	Route  []*RuleConf   `toml:"route"`
 
 	Fallbacks []*httpLayer.FallbackConf `toml:"fallback"`
 
@@ -95,7 +113,48 @@ func LoadTomlConfFile(fileNamePath string) (*Standard, error) {
 
 }
 
-type AppConf struct {
-	LogLevel    int    `toml:"loglevel"`
-	DefaultUUID string `toml:"default_uuid"`
+func LoadRulesForRoutePolicy(rules []*RuleConf, policy *netLayer.RoutePolicy) {
+	for _, rc := range rules {
+		newrs := LoadRuleForRouteSet(rc)
+		policy.List = append(policy.List, newrs)
+	}
+}
+
+func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
+	rs = netLayer.NewFullRouteSet()
+	rs.OutTag = rule.DialTag
+
+	for _, c := range rule.Countries {
+		rs.Countries[c] = true
+	}
+
+	for _, c := range rule.Domains {
+		rs.Domains[c] = true
+	}
+
+	for _, c := range rule.InTags {
+		rs.InTags[c] = true
+	}
+
+	//ip 过滤 需要 分辨 cidr 和普通ip
+
+	for _, ipStr := range rule.IPs {
+		if strings.Contains(ipStr, "/") {
+			if _, net, err := net.ParseCIDR(ipStr); err == nil {
+				rs.NetRanger.Insert(cidranger.NewBasicRangerEntry(*net))
+			}
+			continue
+		}
+		if ip := net.ParseIP(ipStr); ip != nil {
+			rs.IPs[ipStr] = ip
+			continue
+		}
+	}
+
+	for _, ns := range rule.Network {
+		tp := netLayer.StrToTransportProtocol(ns)
+		rs.AllowedTransportLayerProtocols |= tp
+	}
+
+	return rs
 }

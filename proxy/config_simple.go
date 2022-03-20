@@ -13,8 +13,9 @@ import (
 type Simple struct {
 	Server_ThatListenPort_Url string                    `json:"listen"`
 	Client_ThatDialRemote_Url string                    `json:"dial"`
-	Route                     *RouteStruct              `json:"route" toml:"route"`
+	Route                     []*RuleConf               `json:"route" toml:"route"`
 	Fallbacks                 []*httpLayer.FallbackConf `json:"fallbacks"`
+	MyCountryISO_3166         string                    `toml:"mycountry" json:"mycountry"`
 }
 
 func LoadSimpleConfigFile(fileNamePath string) (*Simple, error) {
