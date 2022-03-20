@@ -3,11 +3,13 @@ package proxy
 import (
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/url"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
+	"github.com/hahahrfool/v2ray_simple/ws"
 )
 
 func PrintAllServerNames() {
@@ -25,21 +27,21 @@ func PrintAllClientNames() {
 	}
 }
 
-// Client 用于向 服务端 拨号
+// Client 用于向 服务端 拨号. 服务端是一种 “泛目标”代理，所以我们Handshake要传入目标地址
+// 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据
 type Client interface {
 	ProxyCommon
 
-	Name() string
-
 	// Handshake的 underlay有可能传入nil，所以要求 所有的 Client 都要能够自己dial
+	// 不过目前暂时全在main函数里dial
 	Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriter, error)
 }
 
-// Server 用于监听 客户端 的连接
+// Server 用于监听 客户端 的连接.
+// 服务端是一种 “泛目标”代理，所以我们Handshake要返回 客户端请求的目标地址
+// 一个 Server 掌握从最底层的tcp等到最上层的 代理协议间的所有数据
 type Server interface {
 	ProxyCommon
-
-	Name() string
 
 	Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error)
 	Stop()
@@ -50,15 +52,21 @@ type Server interface {
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
 // 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息
 type ProxyCommon interface {
+	Name() string
+
 	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
 	SetAddrStr(string)
 	CantRoute() bool //for inServer
 	GetTag() string
 
+	IsDial() bool //true则为 Dial 端，false 则为 Listen 端
+	GetListenConf() *ListenConf
+	GetDialConf() *DialConf
+
 	SetUseTLS()
 	IsUseTLS() bool
 
-	HasAdvancedApplicationLayer() bool //如果使用了ws或者grpc，这个要返回true
+	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
 
 	GetTLS_Server() *tlsLayer.Server
 	GetTLS_Client() *tlsLayer.Client
@@ -68,14 +76,28 @@ type ProxyCommon interface {
 
 	setCantRoute(bool)
 	setTag(string)
+	setAdvancedLayer(string)
+
+	setIsDial(bool)
+	setListenConf(*ListenConf) //for inServer
+	setDialConf(*DialConf)     //for outClient
+
+	GetWS_Client() *ws.Client //for outClient
+
+	initWS_client() //for outClient
+
 }
 
+//use dc.Host, dc.Insecure, dc.Utls
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	com.setTLS_Client(tlsLayer.NewTlsClient(dc.Host, dc.Insecure, dc.Utls))
 	return nil
 }
 
+//use lc.GetAddr(), lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
+	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
+	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径
 	tlsserver, err := tlsLayer.NewServer(lc.GetAddr(), lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure)
 	if err == nil {
 		com.setTLS_Server(tlsserver)
@@ -115,7 +137,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	return nil
 }
 
-// ProxyCommonStruct 实现 ProxyCommon
+// ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法
 type ProxyCommonStruct struct {
 	Addr string
 	TLS  bool
@@ -124,7 +146,15 @@ type ProxyCommonStruct struct {
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
 
+	isdial     bool
+	listenConf *ListenConf
+	dialConf   *DialConf
+
 	cantRoute bool //for inServer, 若为true，则 inServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
+
+	AdvancedL string
+
+	ws_c *ws.Client
 }
 
 func (pcs *ProxyCommonStruct) CantRoute() bool {
@@ -143,8 +173,12 @@ func (pcs *ProxyCommonStruct) setCantRoute(cr bool) {
 	pcs.cantRoute = cr
 }
 
-func (pcs *ProxyCommonStruct) HasAdvancedApplicationLayer() bool {
-	return false
+func (pcs *ProxyCommonStruct) setAdvancedLayer(adv string) {
+	pcs.AdvancedL = adv
+}
+
+func (pcs *ProxyCommonStruct) AdvancedLayer() string {
+	return pcs.AdvancedL
 }
 
 // 从 url 初始化一些通用的配置，目前只有 u.Host
@@ -178,4 +212,46 @@ func (s *ProxyCommonStruct) IsUseTLS() bool {
 }
 func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
+}
+func (s *ProxyCommonStruct) setIsDial(b bool) {
+	s.isdial = b
+}
+func (s *ProxyCommonStruct) setListenConf(lc *ListenConf) {
+	s.listenConf = lc
+}
+func (s *ProxyCommonStruct) setDialConf(dc *DialConf) {
+	s.dialConf = dc
+}
+
+//true则为 Dial 端，false 则为 Listen 端
+func (s *ProxyCommonStruct) IsDial() bool {
+	return s.isdial
+}
+func (s *ProxyCommonStruct) GetListenConf() *ListenConf {
+	return s.listenConf
+}
+func (s *ProxyCommonStruct) GetDialConf() *DialConf {
+	return s.dialConf
+}
+
+//for outClient
+func (s *ProxyCommonStruct) GetWS_Client() *ws.Client {
+	return s.ws_c
+}
+
+//for outClient
+func (s *ProxyCommonStruct) initWS_client() {
+	if s.dialConf == nil {
+		log.Fatal("initWS_client failed when no dialConf assigned")
+	}
+	path := s.dialConf.Path
+	if path == "" { // 至少Path需要为 "/"
+		path = "/"
+	}
+	c, e := ws.NewClient(s.dialConf.GetAddr(), path)
+	if e != nil {
+		log.Fatal("initWS_client failed", e)
+	}
+	s.ws_c = c
+
 }

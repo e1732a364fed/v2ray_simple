@@ -23,13 +23,15 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。反过来也是成立的。
 ### 协议之外的已实现的代理特性
 
-多种配置文件格式
+多种配置文件格式,包括自有的 toml标准格式
 
 默认回落，以及按path 回落
 
 按 geoip 分流，以及 按国别 顶级域名分流
 
 支持utls伪装tls指纹
+
+支持websocket
 
 ### 关于vless v1
 
@@ -41,7 +43,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 我 实现了 一种独创的 非mux型“隔离信道”方法的 udp over tcp 的fullcone
 
-测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 v2simple vless v1 + direct 的服务端。
+测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 verysimple vless v1 + direct 的服务端。
 
 v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1](vless_v1.md)
 
@@ -103,16 +105,19 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 1. 我不使用循环进行tls过滤，而且不魔改tls包
 2. 我直接开启了双向splice；xtls只能优化客户端性能，我们两端都会优化;一般而言大部分服务器都是linux的，所以这样就大大提升了所有连接的性能.
 3. 因为我的vless v1的fullcone是非mux的，分离信道，所以说是可以应用splice的（以后会添加支持，可能需要加一些代码，有待考察）
-4. 因为我不魔改tls包，所以说可以套任何tls包的，比如utls
+4. 因为我不魔改tls包，所以说可以套任何tls包的，比如utls，目前已经添加了utls。所以你可以享受伪装的同时享受splice
 
 而且alert根本不需要过滤，因为反正xtls本身过滤了还是有两个issue存在，是吧。
 
 而且后面可以考虑，如果底层是使用的tls1.2，那么我们上层也可以用 tls1.2来握手。这个是可以做到的，因为底层的判断在客户端握手刚发生时就可以做到，而此时我们先判断，然后再发起对 服务端的连接，即可。
+
 也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/hahahrfool/v2ray_simple/discussions/2
 
 ### ws/grpc
 
-以后会添加ws/grpc的支持。并且对于ws/grpc，我设计的vless v1协议会针对它们 有专门的udp优化。
+目前最新代码已经支持了ws
+
+以后会添加grpc的支持。并且对于ws/grpc，我设计的vless v1协议将会针对它们 有专门的udp优化。
 ## 安装方式：
 
 ### 下载安装
@@ -125,17 +130,19 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 ```sh
 git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
-cp client.example.json client.json
-cp server.example.json server.json
 
-#如果使用 toml，则复制toml文件：
-cp client.example.toml client.toml
-cp server.example.toml server.toml
+#如果使用极简模式，则复制vs.json文件
+cp client.vs.json client.json
+cp server.vs.json server.json
+
+#如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
+cp vlesss.client.toml client.toml
+cp vlesss.server.toml server.toml
 ```
 
 详细优化的编译参数请参考Makefile文件
 
-如果你是直接下载的可执行文件，则不需要 go build了，直接复制example.json文件即可
+如果你是直接下载的可执行文件，则不需要 go build了，直接复制 示例文件即可
 
 #### 关于内嵌geoip 文件
 
@@ -173,6 +180,8 @@ verysimple -c server.json
 
 极简模式使用json格式，内部使用分享链接url的方式，所以非常节省空间;
 
+极简模式暂不支持 ws/grpc 特性
+
 ### 命令行模式
 
 如果学会了极简模式里的url配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
@@ -184,6 +193,11 @@ verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:
 #服务端
 verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
 ```
+
+命令行模式 实际上就是把命令行的内容转化成极简模式的配置 然后再处理
+
+命令行模式 不支持 回落 和分流 等任何高级特性
+
 ### 标准模式
 
 ```sh
@@ -194,7 +208,7 @@ verysimple -c server.toml
 
 ```
 
-标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。
+标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
 ### 兼容模式
 

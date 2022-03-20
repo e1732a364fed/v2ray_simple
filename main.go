@@ -18,6 +18,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/hahahrfool/v2ray_simple/ws"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
@@ -67,7 +68,7 @@ func init() {
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
-	flag.StringVar(&configFileName, "c", "client.json", "config file name")
+	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
 
 	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the local part in config file), only enbled when config file is not provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the remote part in config file), only enbled when config file is not provided.")
@@ -246,7 +247,7 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 		if err != nil {
 
 			if utils.CanLogErr() {
-				log.Println("failed in handshake inServer tls", inServer.AddrStr(), err)
+				log.Println("failed in inServer tls handshake ", inServer.AddrStr(), err)
 
 			}
 			thisLocalConnectionInstance.Close()
@@ -262,13 +263,27 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 
 	}
 
+	if adv := inServer.AdvancedLayer(); adv != "" {
+		if adv == "ws" {
+			wsConn, err := ws.Handshake(inServer.GetListenConf().Path, thisLocalConnectionInstance)
+			if err != nil {
+				if utils.CanLogErr() {
+					log.Println("failed in inServer websocket handshake ", inServer.AddrStr(), err)
+
+				}
+				return
+			}
+			thisLocalConnectionInstance = wsConn
+		}
+	}
+
 	var theFallbackFirstBuffer *bytes.Buffer
 
 	wlc, targetAddr, err := inServer.Handshake(thisLocalConnectionInstance)
 	if err != nil {
 
 		if utils.CanLogWarn() {
-			log.Println("failed in handshake from", inServer.AddrStr(), err)
+			log.Println("failed in inServer proxy handshake from", inServer.AddrStr(), err)
 		}
 
 		if !inServer.CanFallback() {
@@ -515,6 +530,8 @@ afterLocalServerHandshake:
 		return
 	}
 
+	log.Println("dial real addr ok", realTargetAddr)
+
 	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
 
 	if client.IsUseTLS() { //即客户端
@@ -552,6 +569,23 @@ afterLocalServerHandshake:
 
 	}
 
+	if adv := client.AdvancedLayer(); adv != "" {
+		if adv == "ws" {
+			wsClient := client.GetWS_Client()
+
+			wc, err := wsClient.Handshake(clientConn)
+			if err != nil {
+				if utils.CanLogErr() {
+					log.Println("failed in handshake ws to", targetAddr.String(), ", Reason: ", err)
+
+				}
+				return
+			}
+
+			clientConn = wc
+		}
+	}
+
 	wrc, err := client.Handshake(clientConn, targetAddr)
 	if err != nil {
 		if utils.CanLogErr() {
@@ -560,6 +594,7 @@ afterLocalServerHandshake:
 		}
 		return
 	}
+	log.Println("all handshake finished")
 
 	if !routedToDirect && tls_lazy_encrypt {
 

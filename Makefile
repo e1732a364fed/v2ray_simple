@@ -35,7 +35,7 @@ ifdef PACK
 define compile
 	GOOS=$(2) GOARCH=$(3) $(cmd) $(1)
 	mv $(1) verysimple$(4)
-	tar -czf $(1).tgz verysimple$(4) server.example.toml client.example.toml
+	tar -czf $(1).tgz verysimple$(4) vlesss.server.toml vlesss.client.toml ws.client.toml ws.server.toml
 	rm verysimple$(4)
 endef
 
@@ -60,7 +60,7 @@ linux_arm64:
 macos:
 	$(call compile, $(macFn),darwin,amd64)
 
-#我也提供macos 的apple silicon版本.
+#提供macos 的apple silicon版本.
 macm1:
 	$(call compile, $(macM1Fn),darwin,arm64)
 

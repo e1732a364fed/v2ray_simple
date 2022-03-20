@@ -1,0 +1,33 @@
+# this is a verysimple standard client config
+# toml 格式 要注意的是，字符串类型 必须用 引号括起来
+[[listen]]
+tag = "my_socks5"   # 可选
+protocol = "socks5" # 必填
+host = "127.0.0.1"
+port = 10800
+
+[[dial]]
+tag = "my_vlesss1"  # 可选
+protocol = "vlesss" # vless 的 尾缀s 表示 使用tls
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # 这个只是一个示例uuid,请自己生成一个新的.
+host = "127.0.0.1"      
+
+# ip = "127.0.0.1" 
+
+# 除了host之外，也可使用 ip = "127.0.0.1"; 一般用了host就不需要再写ip, 
+# 但是如果用了cdn或者 tls的 insecure = false 的话, 就要单独提供 ip 和 host
+
+# tls = true    # 除了在 protocol 字段使用 s尾缀 之外，还可以明示使用tls. 这两种方法不可重复使用.我们首选前者, 更简约
+
+port = 4433
+version = 0     # 协议版本, 可省略, 省略则默认为最老版本
+insecure = true # 我们示例使用自签名证书，所以要开启 insecure. 实际场合请使用真证书并关闭 insecure
+utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
+
+
+# route 是在我们代理界是分流的意思。 这一项是可选的,如果没给出的话,就不分流;
+# 写了 mycountry 后, 向该国家的ip发送的请求就会直连, 然后其他的过代理
+# mycountry的字母必须是两个，而且必须大写。这个也会自动被用于顶级域名的国别分流
+# 同时，必须要一个 GeoLite2-Country.mmdb 文件 放在verysimple的相同目录下. 详情见 README.md
+[route]
+mycountry = "CN"

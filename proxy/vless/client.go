@@ -249,9 +249,9 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 	}
 
 	for {
-		//之前讨论了，udp信息通通要传长度头，CRUMFURS 也不例外，在 实现ws或grpc前，统一都要加udp长度头
+		//之前讨论了，udp信息通通要传长度头，CRUMFURS 也不例外，在 没有AdvancedLayer时，统一都要加udp长度头
 
-		if c.HasAdvancedApplicationLayer() {
+		if c.AdvancedL != "" {
 
 			buf_for_umfurs := utils.GetPacket()
 			n, err := UMFURS_conn.Read(buf_for_umfurs)

@@ -273,7 +273,7 @@ realPart:
 	addr := &netLayer.Addr{}
 
 	switch commandByte {
-	case proxy.CmdMux: //实际目前暂时verysimple还未实现mux，先这么写
+	case proxy.CmdMux: //实际目前verysimple 暂时还未实现mux，先这么写
 
 		addr.Port = 0
 		addr.Name = "v1.mux.cool"

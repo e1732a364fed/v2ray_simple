@@ -10,15 +10,17 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+// CommonConf 是标准配置中 Listen和Dial 都有的部分
 //如果新协议有其他新项，可以放入 Extra.
 type CommonConf struct {
 	Tag      string `toml:"tag"`      //可选
-	Protocol string `toml:"protocol"` //约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls
+	Protocol string `toml:"protocol"` //约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
 	Uuid     string `toml:"uuid"`     //一个用户的唯一标识，建议使用uuid，但也不一定
 	Host     string `toml:"host"`     //ip 或域名.
 	IP       string `toml:"ip"`       //给出Host后，该项可以省略; 既有Host又有ip的情况比较适合cdn
 	Port     int    `toml:"port"`
 	Version  int    `toml:"ver"`      //可选
+	TLS      bool   `toml:"tls"`      //可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
 	Insecure bool   `toml:"insecure"` //tls 是否安全
 
 	IsUDP bool `toml:"udp"` //默认使用tcp监听，如果udp项给出了，则用udp监听。比如ss协议时就会用到
@@ -38,11 +40,11 @@ func (cc *CommonConf) GetAddr() string {
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为监听地址与端口
 type ListenConf struct {
 	CommonConf
-	Fallback string `toml:"fallback"` //回落的地址，一般可以是ip:port 或者 unix socket
+	Fallback string `toml:"fallback"` //可选，默认回落的地址，一般可以是ip:port 或者 unix socket的文件名
 	TLSCert  string `toml:"cert"`
 	TLSKey   string `toml:"key"`
 
-	NoRoute bool `toml:"noroute"` //noroute 意味着 不会进行分流，一定会被转发到默认的 dial
+	NoRoute bool `toml:"noroute"` //noroute 意味着 传入的数据 不会被分流，一定会被转发到默认的 dial
 
 	TargetAddr string `toml:"target"` //若使用dokodemo协议，则这一项会给出. 格式 tcp://127.0.0.1:443 , 必须带scheme，以及端口。只能为tcp或udp
 
