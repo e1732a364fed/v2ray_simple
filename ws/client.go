@@ -1,20 +1,7 @@
-// Pakcage ws implements websocket handshake
-//
-//websocket rfc: https://datatracker.ietf.org/doc/html/rfc6455/
-package ws
+/* Pakcage ws implements websocket handshake
 
-import (
-	"bytes"
-	"context"
-	"io"
-	"net"
-	"net/url"
+websocket rfc: https://datatracker.ietf.org/doc/html/rfc6455/
 
-	"github.com/gobwas/ws"
-	"github.com/gobwas/ws/wsutil"
-)
-
-/*
 下面把一个握手放在这里作为参考
 
 请求
@@ -36,7 +23,26 @@ HTTP/1.1 101 Switching Protocols
 
 总之，一个websocket的请求头直接就是一个 合法的http请求头，所以也没必要额外包一个http连接，
 直接使用tcp/tls 连接即可。
+
+websocket 库比较 https://yalantis.com/blog/how-to-build-websockets-in-go/
+
+中文翻译：
+https://tonybai.com/2019/09/28/how-to-build-websockets-in-go/
+
+总之 gobwas/ws 是最好的库. 本包使用 gobwas/ws
 */
+package ws
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"net"
+	"net/url"
+
+	"github.com/gobwas/ws"
+	"github.com/gobwas/ws/wsutil"
+)
 
 // 注意，Client并不实现 proxy.Client.
 // Client只是在tcp/tls 的基础上包了一层websocket而已，不管其他内容.

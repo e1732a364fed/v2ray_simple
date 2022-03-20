@@ -180,7 +180,9 @@ verysimple -c server.json
 
 极简模式使用json格式，内部使用分享链接url的方式，所以非常节省空间;
 
-极简模式暂不支持 ws/grpc 特性
+极简模式暂不支持 ws/grpc 特性.
+
+极简模式继承自v2simple，理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
 
 ### 命令行模式
 
@@ -210,11 +212,15 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
-我的 vlesss.client.toml 文件以及 vlesss.server.toml 文件中 提供了大量解释性的注释, 所以对新手很友好
+我的 vlesss.client.toml 文件以及 vlesss.server.toml 文件中 提供了大量解释性的注释, 对新手很友好
 
 ### 兼容模式
 
 未来会推出兼容v2ray的json配置文件的模式。
+
+### 交互模式
+
+未来会推出交互模式, 可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
 
 ### 其他说明
 
@@ -381,10 +387,20 @@ https://t.me/shadowrocket_unofficial
 
 ## 免责
 
-MIT协议！我不负任何责任。本项目只是个代理项目，适合内网测试使用，以及适合阅读代码了解原理。
+MIT协议！作者不负任何责任。本项目只是个代理项目，适合内网测试使用，以及适合阅读代码了解原理。
 
-你如果用于任何其它目的，我不会帮助你。
+你如果用于任何其它目的，我们不会帮助你。
 
-我只会帮助研究理论的朋友。而且我不帮你你也没话说，MIT协议。
+我们只会帮助研究理论的朋友。
 
 同时，我们对于v2ray/xray等项目也是没有任何责任的。
+
+## 引用的外部包
+
+```
+github.com/oschwald/maxminddb-golang v1.8.0
+github.com/yl2chen/cidranger v1.0.2
+github.com/BurntSushi/toml v1.0.0
+github.com/gobwas/ws v1.1.0
+```
+
