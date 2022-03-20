@@ -103,6 +103,7 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 		// 在调用了 DisableFlush 方法后，还是必须要调用 Flush, 否则还是什么也不写入
 		e = c.w.Flush()
 
+		//似乎Flush之后还要Reset？不知道是不是没Reset 导致了 分片时 读取出问题的情况
 	}
 	//log.Println("ws Write finish", n, e)
 	return

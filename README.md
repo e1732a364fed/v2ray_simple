@@ -210,6 +210,8 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
+我的 vlesss.client.toml 文件以及 vlesss.server.toml 文件中 提供了大量解释性的注释, 所以对新手很友好
+
 ### 兼容模式
 
 未来会推出兼容v2ray的json配置文件的模式。

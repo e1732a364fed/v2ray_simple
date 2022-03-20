@@ -226,7 +226,7 @@ type UDPConn struct {
 // 阻塞
 // 从 udpPutter.GetNewUDPResponse 循环阅读 所有需要发送给客户端的 数据，然后发送给客户端
 //  这些响应数据是 由其它设施 写入 udpProxy的
-func (u *UDPConn) StartPushResponse(udpPutter proxy.UDP_Putter) {
+func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 	for {
 		raddr, bs, err := udpPutter.GetNewUDPResponse()
 		if err != nil {
@@ -258,13 +258,13 @@ func (u *UDPConn) StartPushResponse(udpPutter proxy.UDP_Putter) {
 // 阻塞
 // 监听 与客户端的udp连接；循环查看客户端发来的请求信息; 然后将该请求 用 udpPutter.WriteUDPRequest 发送给 udpPutter
 //	至于fullcone与否它是不管的。
-func (u *UDPConn) StartReadRequest(udpPutter proxy.UDP_Putter) {
+func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter) {
 
 	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
 		u.clientSupposedAddrIsNothing = true
 	}
 
-	bs := make([]byte, proxy.MaxUDP_packetLen)
+	bs := make([]byte, netLayer.MaxUDP_packetLen)
 	for {
 		n, addr, err := u.UDPConn.ReadFromUDP(bs)
 		if err != nil {

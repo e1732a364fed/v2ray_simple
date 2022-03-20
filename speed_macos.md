@@ -97,4 +97,15 @@ verysimple 版本 v1.0.3
 总之，我的双向splice功能在mac上发挥不出作用，因为mac不是linux，没splice函数。。。
 
 
+# verysimple 后续测试
+## v1.0.5测试
 
+macos vless v0 +tls
+1535, 1385
+1536, 1398
+
+macos, vless v0 +tls + lazy
+
+1625, 1457
+1571, 1451
+1562, 1432

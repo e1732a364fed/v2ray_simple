@@ -21,7 +21,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/ws"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/proxy/direct"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 
@@ -217,8 +216,11 @@ func handleNewIncomeConnection(inServer proxy.Server, outClient proxy.Client, th
 
 	baseLocalConn := thisLocalConnectionInstance
 
+	var cachedRemoteAddr string
+
 	if utils.CanLogInfo() {
-		log.Println("Got new", thisLocalConnectionInstance.RemoteAddr().String())
+		cachedRemoteAddr = thisLocalConnectionInstance.RemoteAddr().String()
+		log.Println("New req from", cachedRemoteAddr)
 
 	}
 
@@ -433,7 +435,7 @@ afterLocalServerHandshake:
 
 			// 我在 vless v1 的client 的 UserConn 中实现了 UDP_Putter, vless 的 client的 新连接的Handshake过程会在 UDP_Putter.WriteUDPRequest 被调用 时发生
 
-			if putter := outClient.(proxy.UDP_Putter); putter != nil {
+			if putter := outClient.(netLayer.UDP_Putter); putter != nil {
 
 				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
 
@@ -469,7 +471,7 @@ afterLocalServerHandshake:
 
 	if targetAddr.IsUDP {
 
-		var unknownRemoteAddrMsgWriter proxy.UDPResponseWriter
+		var unknownRemoteAddrMsgWriter netLayer.UDPResponseWriter
 
 		switch inServer.Name() {
 		case "vlesss":
@@ -493,9 +495,9 @@ afterLocalServerHandshake:
 			unknownRemoteAddrMsgWriter = theCRUMFURS
 		}
 
-		uniExtractor := proxy.NewUniUDP_Extractor(targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
+		uniExtractor := netLayer.NewUniUDP_Extractor(targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
 
-		direct.RelayUDP_to_Direct(uniExtractor) //阻塞
+		netLayer.RelayUDP_to_Direct(uniExtractor) //阻塞
 
 		return
 	}
@@ -511,7 +513,7 @@ afterLocalServerHandshake:
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(client.Name(), " want to dial ", targetAddr.UrlString())
+		log.Println(client.Name(), cachedRemoteAddr, " want to dial ", targetAddr.UrlString())
 
 	}
 
@@ -530,7 +532,7 @@ afterLocalServerHandshake:
 		return
 	}
 
-	log.Println("dial real addr ok", realTargetAddr)
+	//log.Println("dial real addr ok", realTargetAddr)
 
 	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
 
@@ -594,7 +596,7 @@ afterLocalServerHandshake:
 		}
 		return
 	}
-	log.Println("all handshake finished")
+	//log.Println("all handshake finished")
 
 	if !routedToDirect && tls_lazy_encrypt {
 
@@ -640,6 +642,7 @@ afterLocalServerHandshake:
 		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 	*/
 
+	//如果两个都是*net.TCPConn, 则Copy会自动进行splice/sendfile，无需额外处理
 	go io.Copy(wrc, wlc)
 	io.Copy(wlc, wrc)
 }

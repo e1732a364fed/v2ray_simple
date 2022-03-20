@@ -59,9 +59,11 @@ func NewClient(hostAddr, path string) (*Client, error) {
 
 //与服务端进行 websocket握手，并返回可直接用于读写 websocket 二进制数据的 net.Conn
 func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
+
+	const bufsize = 1024 * 10
 	d := ws.Dialer{
-		//ReadBufferSize:  readBufSize,
-		//WriteBufferSize: writeBufSize,
+		ReadBufferSize:  bufsize,
+		WriteBufferSize: bufsize, //实测默认的4096过小,因为 实测 tls握手的serverHello 就有可能超过了4096,
 		NetDial: func(ctx context.Context, net, addr string) (net.Conn, error) {
 			return underlay, nil
 		},

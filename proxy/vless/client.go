@@ -24,7 +24,7 @@ func init() {
 type Client struct {
 	proxy.ProxyCommonStruct
 
-	udpResponseChan chan *proxy.UDPAddrData
+	udpResponseChan chan *netLayer.UDPAddrData
 
 	version int
 
@@ -62,7 +62,7 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 		if v == 1 {
 			c.version = 1
 			c.knownUDPDestinations = make(map[string]io.ReadWriter)
-			c.udpResponseChan = make(chan *proxy.UDPAddrData, 20)
+			c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
 		}
 
 	}
@@ -91,7 +91,7 @@ func NewClient(url *url.URL) (proxy.Client, error) {
 			if v == 1 {
 				c.version = 1
 				c.knownUDPDestinations = make(map[string]io.ReadWriter)
-				c.udpResponseChan = make(chan *proxy.UDPAddrData, 20)
+				c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
 			}
 		}
 	}
@@ -204,7 +204,7 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 		c.mutex.Unlock()
 
 		go func() {
-			bs := make([]byte, proxy.MaxUDP_packetLen)
+			bs := make([]byte, netLayer.MaxUDP_packetLen)
 			for {
 				n, err := knownConn.Read(bs)
 				if err != nil {
@@ -216,7 +216,7 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 				msg := make([]byte, n)
 				copy(msg, bs[:n])
 
-				c.udpResponseChan <- &proxy.UDPAddrData{
+				c.udpResponseChan <- &netLayer.UDPAddrData{
 					Addr: a,
 					Data: msg,
 				}
@@ -278,7 +278,7 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 
 			port := int16(msg[portIndex])<<8 + int16(msg[portIndex+1])
 
-			c.udpResponseChan <- &proxy.UDPAddrData{
+			c.udpResponseChan <- &netLayer.UDPAddrData{
 				Addr: &net.UDPAddr{
 					IP:   theIP,
 					Port: int(port),
@@ -334,7 +334,7 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 				break
 			}
 
-			c.udpResponseChan <- &proxy.UDPAddrData{
+			c.udpResponseChan <- &netLayer.UDPAddrData{
 				Addr: &net.UDPAddr{
 					IP:   theIP,
 					Port: port,

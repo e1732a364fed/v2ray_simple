@@ -36,7 +36,7 @@ func (cc *CommonConf) GetAddr() string {
 	return cc.Host + ":" + strconv.Itoa(cc.Port)
 }
 
-// 监听所使用的设置
+// 监听所使用的设置, 使用者可以叫 listener 或者 inServer
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为监听地址与端口
 type ListenConf struct {
 	CommonConf
@@ -44,13 +44,15 @@ type ListenConf struct {
 	TLSCert  string `toml:"cert"`
 	TLSKey   string `toml:"key"`
 
-	NoRoute bool `toml:"noroute"` //noroute 意味着 传入的数据 不会被分流，一定会被转发到默认的 dial
+	//noroute 意味着 传入的数据 不会被分流，一定会被转发到默认的 dial
+	// 这一项是针对 mycountry 分流功能的. 如果不设noroute, 且给定了 route.mycountry, 则所有listener 得到的流量都会被 试图 进行国别分流
+	NoRoute bool `toml:"noroute"`
 
 	TargetAddr string `toml:"target"` //若使用dokodemo协议，则这一项会给出. 格式 tcp://127.0.0.1:443 , 必须带scheme，以及端口。只能为tcp或udp
 
 }
 
-// 拨号所使用的设置
+// 拨号所使用的设置, 使用者可以叫 dialer 或者 outClient
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为拨号地址与端口
 type DialConf struct {
 	CommonConf

@@ -1,13 +1,13 @@
 # this is a verysimple standard client config
 # toml 格式 要注意的是，字符串类型 必须用 引号括起来
 [[listen]]
-tag = "my_socks5"   # 可选
+tag = "my_socks5"   # 可选, 但不可与其他tag重复
 protocol = "socks5" # 必填
-host = "127.0.0.1"
-port = 10800
+host = "127.0.0.1"  # 必填
+port = 10800        # 必填
 
 [[dial]]
-tag = "my_vlesss1"  # 可选
+tag = "my_vlesss1"  # 可选, 但不可与其他tag重复
 protocol = "vlesss" # vless 的 尾缀s 表示 使用tls
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # 这个只是一个示例uuid,请自己生成一个新的.
 host = "127.0.0.1"      
