@@ -1,10 +1,8 @@
-package proxy
+package netLayer
 
 import (
 	"io"
 	"net"
-
-	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
 
 // 阻塞
@@ -14,7 +12,7 @@ func RelayTCP(conn1, conn2 net.Conn) {
 }
 
 // 阻塞.
-func RelayUDP(putter netLayer.UDP_Putter, extractor netLayer.UDP_Extractor) {
+func RelayUDP(putter UDP_Putter, extractor UDP_Extractor) {
 
 	go func() {
 		for {
