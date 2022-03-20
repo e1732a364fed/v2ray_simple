@@ -20,8 +20,14 @@ dokodemo 每监听到一个新连接， 就会新增一条 与 target 间的信�
 我们只告诉C 服务器B 的地址，然后告诉它B使用vless协议。然后C就会用vless协议对B 拨号。
 
 此时B我们实际配置 为用 dokodemo 监听，而不是用vless监听；然后 dokodemo 的目标 指向 服务器A 的 vless监听端口.
-
 这样就形成了一个中转机制.
+
+实际例子：
+https://www.40huo.cn/blog/wireguard-over-vless.html
+
+就是说，任意门把客户数据的出口、自己的入口点从本地搬到了某个代理服务器的入口，然后指定了该数据的实际远程目标；就好像数据是从代理服务器直接发出的一样
+
+到底是哪个代理服务器，由outbound（即本作的dial）以及routing配置决定的。如果没有配置routing，那就是默认走第一个dial.
 */
 package dokodemo
 

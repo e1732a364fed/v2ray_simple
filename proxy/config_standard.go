@@ -23,6 +23,10 @@ type CommonConf struct {
 
 	IsUDP bool `toml:"udp"` //默认使用tcp监听，如果udp项给出了，则用udp监听。比如ss协议时就会用到
 
+	AdvancedLayer string `toml:"advancedLayer"` //可不填，或者为ws，或者为grpc
+
+	Path string `toml:"path"` //grpc或ws 的path
+
 	Extra map[string]interface{} `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
 }
 
@@ -40,7 +44,7 @@ type ListenConf struct {
 
 	NoRoute bool `toml:"noroute"` //noroute 意味着 不会进行分流，一定会被转发到默认的 dial
 
-	TargetAddr string `toml:"target"` //若使用unique协议，则这一项会给出. 格式 tcp://127.0.0.1:443 , 必须带scheme，只能为tcp或udp
+	TargetAddr string `toml:"target"` //若使用dokodemo协议，则这一项会给出. 格式 tcp://127.0.0.1:443 , 必须带scheme，以及端口。只能为tcp或udp
 
 }
 
