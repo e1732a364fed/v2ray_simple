@@ -41,8 +41,6 @@ var (
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
-	//另外，本作暂时不考虑引入外界log包。依赖越少越好。
-
 	confMode     int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
 	simpleConf   *proxy.Simple
 	standardConf *proxy.Standard

@@ -64,13 +64,16 @@ type RouteStruct struct {
 }
 
 //标准配置。默认使用toml格式
-// toml：https://toml.io/cn/v1.0.0
+// toml：https://toml.io/cn/
+// english: https://toml.io/en/
 type Standard struct {
 	Listen []*ListenConf `toml:"listen"`
 	Dial   []*DialConf   `toml:"dial"`
 	Route  *RouteStruct  `toml:"route"`
 
 	Fallbacks []*httpLayer.FallbackConf `toml:"fallback"`
+
+	App *AppConf `toml:"app"`
 }
 
 func LoadTomlConfStr(str string) (c *Standard, err error) {
@@ -90,4 +93,8 @@ func LoadTomlConfFile(fileNamePath string) (*Standard, error) {
 		return nil, utils.NewErr("can't open config file", err)
 	}
 
+}
+
+type AppConf struct {
+	LogLevel int `toml:"loglevel"`
 }

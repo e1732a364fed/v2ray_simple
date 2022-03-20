@@ -16,12 +16,11 @@ const (
 var LogLevel int
 
 func init() {
-	flag.IntVar(&LogLevel, "ll", Log_info, "log level,0=debug, 1=info, 2=warning, 3=error,4=fatal, 4=fatal")
-
+	flag.IntVar(&LogLevel, "ll", Log_info, "log level,0=debug, 1=info, 2=warning, 3=error, 4=fatal")
 }
 
 //return LogLevel <= l
-func CanLogWithLevel(l int) bool {
+func CanLogLevel(l int) bool {
 	return LogLevel <= l
 
 }
@@ -36,10 +35,10 @@ func CanLogInfo() bool {
 
 }
 func CanLogWarn() bool {
-	return LogLevel <= Log_info
+	return LogLevel <= Log_warning
 
 }
 func CanLogDebug() bool {
-	return LogLevel <= Log_info
+	return LogLevel == 0
 
 }

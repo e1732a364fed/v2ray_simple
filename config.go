@@ -3,6 +3,8 @@ Package main 读取配置文件，将其内容转化为 proxy.Client和 proxy.Se
 
 命令行参数请使用 --help查看详情。
 
+如果一个命令行参数无法在标准配置中进行配置，那么它就属于高级选项，或者不推荐的选项，或者正在开发中的功能.
+
 Config Format  配置格式
 
 一共有三种配置格式，极简模式，标准模式，兼容模式。
@@ -25,6 +27,10 @@ Structure 本项目结构
 	main -> config -> netLayer-> tlsLayer -> httpLayer -> proxy.
 
 	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，然后都搞好后，传到proxy，然后就开始转发
+
+Other - 其他
+
+另外，本作暂时不考虑引入外界log包。依赖越少越好。
 
 */
 package main
@@ -69,9 +75,13 @@ func loadConfig() {
 
 			}
 			confMode = 1
+			if standardConf.App != nil {
+				utils.LogLevel = standardConf.App.LogLevel
+			}
 			return
 		} else {
 			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法
+			// 默认所有json格式的文件都为 极简模式
 
 			simpleConf, err = proxy.LoadSimpleConfigFile(configFileName)
 			if err != nil {

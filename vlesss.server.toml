@@ -20,3 +20,8 @@ protocol = "direct"
 path = "/asf"
 dest = 6060
 
+[app]
+
+# 日志等级, 0=debug, 1=info, 2=warning, 3=error,4=fatal, 推荐测试时使用1, 服务端使用2或3
+loglevel = 1
+
