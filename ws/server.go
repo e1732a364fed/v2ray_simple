@@ -22,10 +22,9 @@ func Handshake(path string, underlay net.Conn) (net.Conn, error) {
 	// 我们的 httpLayer 的 过滤方法仍然是最安全的，可以杜绝 所有非法数据；
 	// 而 ws.Upgrader.Upgrade 使用了 readLine 函数。如果客户提供一个非法的超长的一行的话，它就会陷入泥淖
 	// 这个以后 可以先用 httpLayer的过滤方法，过滤掉后，再用 MultiReader组装回来，提供给 upgrader.Upgrade
-	//目前设一个 ReadBufferSize即可, 看了，默认是 4096，已经够大
+	// ReadBufferSize默认是 4096，已经够大
 
 	upgrader := &ws.Upgrader{
-		//ReadBufferSize: 1,
 		OnRequest: func(uri []byte) error {
 			struri := string(uri)
 			if struri != path {
@@ -40,7 +39,6 @@ func Handshake(path string, underlay net.Conn) (net.Conn, error) {
 	}
 
 	_, err := upgrader.Upgrade(underlay)
-	//log.Println(hs, err)
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +52,6 @@ func Handshake(path string, underlay net.Conn) (net.Conn, error) {
 	//不想客户端；服务端是不怕客户端在握手阶段传来任何多余数据的
 	// 因为我们还没实现 0-rtt
 	theConn.r.OnIntermediate = wsutil.ControlFrameHandler(underlay, ws.StateServerSide)
-	//theConn.w.DisableFlush() //发现分片的话，会出问题，所以就先关了. 搞清楚分片的问题再说。
 
 	return theConn, nil
 }

@@ -21,6 +21,7 @@ tag = "my_vlesss1"  # 可选, 但不可与其他tag重复
 protocol = "vlesss" # vless 的 尾缀s 表示 使用tls
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # 这个只是一个示例uuid,请自己生成一个新的.
 host = "127.0.0.1"      
+#network = "udp"   #network 目前支持 udp,tcp 和unix;如果不给出则默认为 tcp
 
 # ip = "127.0.0.1" 
 

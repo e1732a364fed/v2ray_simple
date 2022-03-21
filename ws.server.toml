@@ -10,6 +10,7 @@ cert = "cert.pem"
 key = "cert.key"
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple"
+network = "udp"
 
 [[dial]]
 protocol = "direct"

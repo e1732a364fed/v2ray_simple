@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"unsafe"
 )
 
 // Atyp, for vless and vmess; 注意与 trojan和socks5的区别，trojan和socks5的相同含义的值是1，3，4
@@ -15,17 +16,20 @@ const (
 
 // Addr represents a address that you want to access by proxy. Either Name or IP is used exclusively.
 type Addr struct {
-	Name  string // domain name
-	IP    net.IP
-	Port  int
-	IsUDP bool
+	Name string // domain name, 或者 unix domain socket 的 文件路径
+	IP   net.IP
+	Port int
+	//IsUDP bool
+
+	Network string
 }
 
 func NewAddrFromUDPAddr(addr *net.UDPAddr) *Addr {
 	return &Addr{
-		IP:    addr.IP,
-		Port:  addr.Port,
-		IsUDP: true,
+		IP:   addr.IP,
+		Port: addr.Port,
+		//IsUDP: true,
+		Network: "udp",
 	}
 }
 
@@ -74,9 +78,12 @@ func NewAddrByURL(addrStr string) (*Addr, error) {
 		a.Name = host
 	}
 
-	if u.Scheme == "udp" {
-		a.IsUDP = true
-	}
+	a.Network = u.Scheme
+
+	/*
+		if u.Scheme == "udp" {
+			a.IsUDP = true
+		}*/
 
 	return a, nil
 }
@@ -92,14 +99,12 @@ func (a *Addr) String() string {
 
 func (a *Addr) UrlString() string {
 	str := a.String()
-	if a.IsUDP {
-		return "udp://" + str
-	}
-	return "tcp://" + str
+
+	return a.Network + "://" + str
 }
 
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
-	if !a.IsUDP {
+	if a.Network != "udp" {
 		return nil
 	}
 	ua, err := net.ResolveUDPAddr("udp", a.String())
@@ -118,10 +123,19 @@ func (a *Addr) HostStr() string {
 }
 
 func (addr *Addr) Dial() (net.Conn, error) {
-	if addr.IsUDP {
-		return net.Dial("udp", addr.String())
+	//log.Println("Dial called", addr, addr.Network)
+
+	switch addr.Network {
+	case "":
+		return net.Dial("tcp", addr.String())
+
+	case "udp":
+		return DialUDP(addr.ToUDPAddr())
+	default:
+		return net.Dial(addr.Network, addr.String())
+
 	}
-	return net.Dial("tcp", addr.String())
+
 }
 
 // Returned address bytes and type
@@ -192,4 +206,17 @@ func ParseStrToAddr(s string) (atyp byte, addr []byte, port_uint16 uint16, err e
 	port_uint16 = uint16(portUint64)
 
 	return
+}
+
+func UDPAddr2Byte(addr *net.UDPAddr) [6]byte {
+	ip := addr.IP.To4()
+
+	port := uint16(addr.Port)
+
+	var allByte [6]byte
+	abs := allByte[:]
+	copy(abs, ip)
+	copy(abs[4:], (*(*[2]byte)(unsafe.Pointer(&port)))[:])
+
+	return allByte
 }

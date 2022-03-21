@@ -73,6 +73,11 @@ func (sg *RouteSet) IsTransportProtocolAllowed(p uint16) bool {
 	return sg.AllowedTransportLayerProtocols&p > 0
 }
 
+func (sg *RouteSet) IsAddrNetworkAllowed(a *Addr) bool {
+	p := StrToTransportProtocol(a.Network)
+	return sg.IsTransportProtocolAllowed(p)
+}
+
 func (sg *RouteSet) IsUDPAllowed() bool {
 	return sg.IsTransportProtocolAllowed(UDP)
 }
@@ -85,7 +90,7 @@ func (sg *RouteSet) IsAddrIn(a *Addr) bool {
 	//我们先过滤传输层，再过滤网络层
 
 	//目前我们仅支持udp和tcp这两种传输层协议，所以可以如此。以后如果加了更多的话，还需改动
-	if a.IsUDP && !sg.IsUDPAllowed() || !a.IsUDP && !sg.IsTCPAllowed() {
+	if !sg.IsAddrNetworkAllowed(a) {
 		return false
 
 	} else if sg.NetRanger == nil && sg.IPs == nil && sg.Domains == nil && sg.InTags == nil && sg.Countries == nil {

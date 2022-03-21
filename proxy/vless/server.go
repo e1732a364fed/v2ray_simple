@@ -320,7 +320,7 @@ realPart:
 		addr.Port = int(binary.BigEndian.Uint16(portbs))
 
 		if commandByte == CmdUDP {
-			addr.IsUDP = true
+			addr.Network = "udp"
 		}
 
 		var ip_or_domain_bytesLength byte = 0
@@ -388,7 +388,7 @@ realPart:
 		optionalReader: io.MultiReader(readbuf, underlay),
 		uuid:           thisUUIDBytes,
 		version:        int(version),
-		isUDP:          addr.IsUDP,
+		isUDP:          addr.Network == "udp",
 		isServerEnd:    true,
 	}, addr, nil
 

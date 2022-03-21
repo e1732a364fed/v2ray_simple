@@ -41,7 +41,7 @@ type Client struct {
 type ClientCreator struct{}
 
 func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
-	return NewClient(u)
+	return NewClientByURL(u)
 }
 
 func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
@@ -70,7 +70,7 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	return c, nil
 }
 
-func NewClient(url *url.URL) (proxy.Client, error) {
+func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	addr := url.Host
 	uuidStr := url.User.Username()
 	id, err := proxy.NewV2rayUser(uuidStr)
@@ -119,7 +119,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	addr, atyp := target.AddressBytes()
 
 	cmd := CmdTCP
-	if target.IsUDP {
+	if target.Network == "udp" {
 		if c.version == 1 && !c.is_CRUMFURS_established {
 
 			//log.Println("尝试拨号 Cmd_CRUMFURS 信道")
@@ -175,7 +175,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 		Conn:    underlay,
 		uuid:    *c.user,
 		version: c.version,
-		isUDP:   target.IsUDP,
+		isUDP:   target.Network == "udp",
 	}, err
 }
 

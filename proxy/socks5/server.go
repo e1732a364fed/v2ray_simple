@@ -151,10 +151,11 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 
 	if cmd == CmdUDPAssociate {
 		clientFutureAddr := &netLayer.Addr{
-			IP:    theIP,
-			Name:  theName,
-			Port:  thePort,
-			IsUDP: true,
+			IP:   theIP,
+			Name: theName,
+			Port: thePort,
+			//IsUDP: true,
+			Network: "udp",
 		}
 
 		serverAtyp, serverAddr, _, err := netLayer.ParseStrToAddr(s.Addr)
@@ -336,10 +337,10 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter) {
 		newStart := off + l
 
 		thisaddr := &netLayer.Addr{
-			IP:    theIP,
-			Name:  theName,
-			Port:  thePort,
-			IsUDP: true,
+			IP:      theIP,
+			Name:    theName,
+			Port:    thePort,
+			Network: "udp",
 		}
 
 		udpPutter.WriteUDPRequest(thisaddr.ToUDPAddr(), bs[newStart:n-newStart])

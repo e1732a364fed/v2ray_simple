@@ -9,9 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strings"
 	"syscall"
-	"time"
 
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
@@ -35,8 +33,6 @@ const (
 )
 
 var (
-	desc = "v2ray_simple, a very simple implementation of V2Ray, 并且在某些地方试图走在v2ray前面"
-
 	configFileName string
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
@@ -55,17 +51,17 @@ var (
 	serversTagMap = make(map[string]proxy.Server)
 	clientsTagMap = make(map[string]proxy.Client)
 
-	tls_lazy_encrypt bool
-	tls_lazy_secure  bool
-
-	routePolicy *netLayer.RoutePolicy
-
 	listenURL string
 	dialURL   string
 
-	isServerEnd bool
+	tls_lazy_encrypt bool
+	tls_lazy_secure  bool
 
+	routePolicy  *netLayer.RoutePolicy
 	mainFallback *httpLayer.ClassicFallback
+
+	isServerEnd bool //这个是代码里推断的，不一定准确；不过目前仅被用于tls lazy encrypt，所以不是很重要
+
 )
 
 func init() {
@@ -206,7 +202,9 @@ func main() {
 	if confMode == simpleMode {
 		go listenSer(nil, defaultInServer)
 	} else {
-		go listenAllServers()
+		for _, inServer := range allServers {
+			go listenSer(nil, inServer)
+		}
 	}
 
 	{
@@ -216,59 +214,26 @@ func main() {
 	}
 }
 
-func listenAllServers() {
-
-	for _, inServer := range allServers {
-
-		listener, err := net.Listen("tcp", inServer.AddrStr())
-		defer inServer.Stop()
-
-		if err != nil {
-			log.Fatalln("can not listen inServer on", inServer.AddrStr(), err)
-
-		}
-
-		if utils.CanLogInfo() {
-			log.Println(proxy.GetFullName(inServer), "is listening TCP on ", inServer.AddrStr())
-
-		}
-
-		go listenSer(listener, inServer)
-
-	}
-
-}
-
 func listenSer(listener net.Listener, inServer proxy.Server) {
 
-	var err error
-	if listener == nil {
-		listener, err = net.Listen("tcp", inServer.AddrStr())
+	theFunc := func(conn net.Conn) {
+		handleNewIncomeConnection(inServer, conn)
+	}
 
+	network := inServer.Network()
+	err := netLayer.ListenAndAccept(network, inServer.AddrStr(), theFunc)
+
+	if err == nil {
+		if utils.CanLogInfo() {
+			log.Println(proxy.GetFullName(inServer), "is listening ", network, "on", inServer.AddrStr())
+
+		}
+
+	} else {
 		if err != nil {
 			log.Fatalln("can not listen inServer on", inServer.AddrStr(), err)
 
 		}
-	}
-
-	for {
-		lc, err := listener.Accept()
-		if err != nil {
-			errStr := err.Error()
-			if strings.Contains(errStr, "closed") {
-				log.Println("local connection closed", err)
-				break
-			}
-			log.Println("failed to accepted connection: ", err)
-			if strings.Contains(errStr, "too many") {
-				log.Println("To many incoming conn! Sleep ", errStr)
-				time.Sleep(time.Millisecond * 500)
-			}
-			continue
-		}
-
-		go handleNewIncomeConnection(inServer, lc)
-
 	}
 }
 
@@ -324,6 +289,8 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 		thisLocalConnectionInstance = tlsConn
 
 	}
+
+	//log.Println("handshake passed tls")
 
 	if adv := inServer.AdvancedLayer(); adv != "" {
 		if adv == "ws" {
@@ -463,7 +430,7 @@ afterLocalServerHandshake:
 	}
 
 	//如果目标是udp则要分情况讨论
-	if targetAddr.IsUDP {
+	if targetAddr.Network == "udp" {
 
 		switch inServer.Name() {
 		case "vlesss":
@@ -535,7 +502,7 @@ afterLocalServerHandshake:
 	// 因为direct使用 proxy.RelayUDP_to_Direct 函数 直接实现了fullcone
 	// 那么我们只需要传入一个  UDP_Extractor 即可
 
-	if targetAddr.IsUDP {
+	if targetAddr.Network == "udp" {
 
 		var unknownRemoteAddrMsgWriter netLayer.UDPResponseWriter
 
@@ -587,12 +554,13 @@ afterLocalServerHandshake:
 		//log.Println("will dial", client.AddrStr())
 
 		realTargetAddr, _ = netLayer.NewAddr(client.AddrStr())
+		realTargetAddr.Network = client.Network()
 	}
 
 	clientConn, err := realTargetAddr.Dial()
 	if err != nil {
 		if utils.CanLogErr() {
-			log.Println("failed in dial", targetAddr.String(), ", Reason: ", err)
+			log.Println("failed in dial", realTargetAddr.String(), ", Reason: ", err)
 
 		}
 		return

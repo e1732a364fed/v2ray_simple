@@ -10,6 +10,7 @@ const (
 	MaxUDP_packetLen = 64 * 1024 // 关于 udp包数据长度，可参考 https://cloud.tencent.com/developer/article/1021196
 )
 
+//本文件内含 一些 转发 udp 数据的 接口与方法
 //////////////////// 接口 ////////////////////
 
 type UDPRequestReader interface {

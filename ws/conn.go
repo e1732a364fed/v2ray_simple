@@ -9,7 +9,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-// 因为 gobwas/ws 不包装conn，在写入和读取二进制时需要使用 wsutil包的特殊函数才行，
+// 因为 gobwas/ws 不包装conn，在写入和读取二进制时需要使用 较为底层的函数才行，并未被提供标准的Read和Write
 // 因此我们包装一下，统一使用Read和Write函数 来读写 二进制数据。因为我们这里是代理，
 // 所以我们默认 抛弃 websocket的 数据帧 长度。
 // 如果以后考虑与 vless v1的 udp 相结合的话，则数据包长度 不能丢弃，需要使用另外的实现。
@@ -44,6 +44,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 			return n, e
 		}
 		c.remainLenForLastFrame -= int64(n)
+		// 这里之所以可以放心 减去 n，不怕减成负的，是因为 r的代码里 在读取一帧的数据时，用到了 io.LimitedReader, 一帧的读取长度的上限已被限定，直到 该帧完全被读完为止
 		return n, nil
 	}
 

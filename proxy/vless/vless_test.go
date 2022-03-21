@@ -202,9 +202,9 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	targetStr_forFakeUDPServer := "127.0.0.1:" + strconv.Itoa(thePort)
 	targetStruct_forFakeUDPServer := &netLayer.Addr{
-		Name:  "127.0.0.1",
-		Port:  thePort,
-		IsUDP: true,
+		Name:    "127.0.0.1",
+		Port:    thePort,
+		Network: "udp",
 	}
 	// 监听 Client End LocalServer
 	listener, err := net.Listen("tcp", fakeServerEndLocalServer.AddrStr())
@@ -232,7 +232,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 				remoteAddrStr := targetAddr.String()
 
-				if remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.IsUDP == false {
+				if remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.Network != "udp" {
 					t.Log("remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.IsUDP == false ")
 					t.Fail()
 					return

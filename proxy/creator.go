@@ -231,8 +231,9 @@ func configCommon(ser ProxyCommon, cc *CommonConf) {
 
 }
 
-//setIsDial(true),setDialConf(dc), call  configCommon
+//setNetwork, setIsDial(true),setDialConf(dc), call  configCommon
 func configCommonForClient(cli ProxyCommon, dc *DialConf) {
+	cli.setNetwork(dc.Network)
 	cli.setIsDial(true)
 	cli.setDialConf(dc)
 	cli.setTag(dc.Tag)
@@ -244,8 +245,9 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	}
 }
 
-//setTag, setCantRoute,setListenConf(lc), call configCommon
+//setNetwork, setTag, setCantRoute,setListenConf(lc), call configCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
+	ser.setNetwork(lc.Network)
 	ser.setListenConf(lc)
 	ser.setTag(lc.Tag)
 	ser.setCantRoute(lc.NoRoute)

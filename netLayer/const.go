@@ -1,10 +1,11 @@
 package netLayer
 
 const (
-	// transport Layer
+	// transport Layer, 使用uint16 mask，所以最多支持16种
 
 	TCP uint16 = 1 << iota
 	UDP
+	UNIX //unix domain socket
 	Raw_socket
 	KCP
 	Quic //quic是一个横跨多个层的协议，这里也算一个，毕竟与kcp类似
@@ -19,6 +20,8 @@ func StrToTransportProtocol(s string) uint16 {
 		return TCP
 	case "udp":
 		return UDP
+	case "unix":
+		return UNIX
 	case "raw":
 		return Raw_socket
 	case "kcp":

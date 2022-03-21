@@ -53,11 +53,8 @@ type Server interface {
 // 这里认为, tcp/udp/kcp/raw_socket 是FirstName，具体的协议名称是 LastName, 中间层是 MiddleName
 // An Example of a full name:  tcp+tls+ws+vless
 func GetFullName(pc ProxyCommon) string {
-	if pc.IsUDP() {
-		return "udp" + pc.MiddleName() + pc.Name()
 
-	}
-	return "tcp" + pc.MiddleName() + pc.Name()
+	return pc.Network() + pc.MiddleName() + pc.Name()
 
 }
 
@@ -67,21 +64,25 @@ type ProxyCommon interface {
 	Name() string       //代理协议名称, 如vless
 	MiddleName() string //其它VSI层 所使用的协议，如 +tls+ws
 
-	AddrStr() string //地址，在server就是监听地址，在client就是拨号地址
+	/////////////////// 网络层/传输层 ///////////////////
+
+	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是uds则是文件路径 ，
+	// 在server就是监听地址，在client就是拨号地址
+	AddrStr() string
 	SetAddrStr(string)
+	Network() string
+
 	CantRoute() bool //for inServer
 	GetTag() string
-
-	IsUDP() bool
 
 	IsDial() bool //true则为 Dial 端，false 则为 Listen 端
 	GetListenConf() *ListenConf
 	GetDialConf() *DialConf
 
+	/////////////////// TLS层 ///////////////////
+
 	SetUseTLS()
 	IsUseTLS() bool
-
-	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
 
 	GetTLS_Server() *tlsLayer.Server
 	GetTLS_Client() *tlsLayer.Client
@@ -89,17 +90,22 @@ type ProxyCommon interface {
 	setTLS_Server(*tlsLayer.Server)
 	setTLS_Client(*tlsLayer.Client)
 
-	setCantRoute(bool)
-	setTag(string)
-	setAdvancedLayer(string)
+	/////////////////// 高级层 ///////////////////
 
-	setIsDial(bool)
-	setListenConf(*ListenConf) //for inServer
-	setDialConf(*DialConf)     //for outClient
+	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
 
 	GetWS_Client() *ws.Client //for outClient
 
 	initWS_client() //for outClient
+
+	setCantRoute(bool)
+	setTag(string)
+	setAdvancedLayer(string)
+	setNetwork(string)
+
+	setIsDial(bool)
+	setListenConf(*ListenConf) //for inServer
+	setDialConf(*DialConf)     //for outClient
 
 }
 
@@ -154,9 +160,10 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 
 // ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法
 type ProxyCommonStruct struct {
-	Addr string
-	TLS  bool
-	Tag  string //可用于路由, 见 netLayer.route.go
+	Addr    string
+	TLS     bool
+	Tag     string //可用于路由, 见 netLayer.route.go
+	network string
 
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
@@ -172,8 +179,8 @@ type ProxyCommonStruct struct {
 	ws_c *ws.Client
 }
 
-func (pcs *ProxyCommonStruct) IsUDP() bool {
-	return false
+func (pcs *ProxyCommonStruct) Network() string {
+	return pcs.network
 }
 
 func (pcs *ProxyCommonStruct) MiddleName() string {
@@ -197,6 +204,15 @@ func (pcs *ProxyCommonStruct) GetTag() string {
 
 func (pcs *ProxyCommonStruct) setTag(tag string) {
 	pcs.Tag = tag
+}
+func (pcs *ProxyCommonStruct) setNetwork(net string) {
+	if net == "" {
+		pcs.network = "tcp"
+
+	} else {
+		pcs.network = net
+
+	}
 }
 
 func (pcs *ProxyCommonStruct) setCantRoute(cr bool) {
