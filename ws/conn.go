@@ -22,10 +22,20 @@ type Conn struct {
 	//w     *wsutil.Writer //wsutil.Writer会在内部进行缓存,并且有时会分片发送,降低性能,不建议使用
 
 	remainLenForLastFrame int64
+
+	serverEndGotEarlyData []byte
 }
 
 //Read websocket binary frames
 func (c *Conn) Read(p []byte) (int, error) {
+
+	//log.Println("real ws read called", len(p))
+
+	if len(c.serverEndGotEarlyData) > 0 {
+		n := copy(p, c.serverEndGotEarlyData)
+		c.serverEndGotEarlyData = c.serverEndGotEarlyData[n:]
+		return n, nil
+	}
 
 	//websocket 协议中帧长度上限为2^64，超大，考虑到我们vs的标准Packet缓存是64k，也就是2^16,
 	// https://www.rfc-editor.org/rfc/rfc6455#section-5.2
@@ -91,7 +101,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 	//这种产生EOF的情况，时 gobwas/ws包的一种特性，这样可以说每一次读取都能有明确的EOF边界，便于使用 io.ReadAll
 
 	n, e := c.r.Read(p)
-	//log.Println("read data result", e, n)
+	//log.Println("read data result", e, n, h.Length)
 
 	c.remainLenForLastFrame -= int64(n)
 
@@ -116,6 +126,7 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 	} else {
 		e = wsutil.WriteServerBinary(c.Conn, p)
 	}
+	//log.Println("ws Write finished", n, e, len(p))
 
 	if e == nil {
 		n = len(p)

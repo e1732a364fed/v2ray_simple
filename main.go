@@ -294,7 +294,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 	if adv := inServer.AdvancedLayer(); adv != "" {
 		if adv == "ws" {
-			wsConn, err := ws.Handshake(inServer.GetListenConf().Path, thisLocalConnectionInstance)
+			wsConn, err := inServer.GetWS_Server().Handshake(thisLocalConnectionInstance)
 			if err != nil {
 				if utils.CanLogErr() {
 					log.Println("failed in inServer websocket handshake ", inServer.AddrStr(), err)
@@ -612,7 +612,38 @@ afterLocalServerHandshake:
 		if adv == "ws" {
 			wsClient := client.GetWS_Client()
 
-			wc, err := wsClient.Handshake(clientConn)
+			var ed []byte
+
+			if wsClient.UseEarlyData {
+				//若配置了 MaxEarlyDataLen，则我们先读一段;
+				edBuf := utils.GetPacket()
+				edBuf = edBuf[:ws.MaxEarlyDataLen]
+				n, e := wlc.Read(edBuf)
+				if e != nil {
+					if utils.CanLogErr() {
+						log.Println("err when reading ws early data", e)
+					}
+					return
+				}
+				ed = edBuf[:n]
+				//log.Println("will send early data", n, ed)
+
+			}
+
+			// 我们verysimple的架构是 ws握手之后，再进行vless握手
+			// 但是如果要传输earlydata的话，则必须要在握手阶段就 预知 vless 的所有数据才行
+			// 所以我们需要一种特殊方法
+
+			var wc net.Conn
+
+			if len(ed) > 0 {
+				wc, err = wsClient.HandshakeWithEarlyData(clientConn, ed)
+
+			} else {
+				wc, err = wsClient.Handshake(clientConn)
+
+			}
+			//wc, err := wsClient.Handshake(clientConn, ed)
 			if err != nil {
 				if utils.CanLogErr() {
 					log.Println("failed in handshake ws to", targetAddr.String(), ", Reason: ", err)

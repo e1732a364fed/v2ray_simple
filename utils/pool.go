@@ -21,7 +21,7 @@ var (
 const StandardBytesLength int = 1500
 
 //本作设定的最大buf大小，64k
-const maxBufLen int = 64 * 1024
+const MaxBufLen = 64 * 1024
 
 func init() {
 	standardBytesPool = sync.Pool{
@@ -32,7 +32,7 @@ func init() {
 
 	standardPacketPool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, maxBufLen)
+			return make([]byte, MaxBufLen)
 		},
 	}
 
@@ -52,7 +52,7 @@ func PutBuf(buf *bytes.Buffer) {
 	bufPool.Put(buf)
 }
 
-//建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte（64*1024字节）
+//建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte（MaxBufLen, 64*1024字节）
 func GetPacket() []byte {
 	return standardPacketPool.Get().([]byte)
 }
@@ -60,7 +60,7 @@ func GetPacket() []byte {
 // 放回用 GetPacket 获取的 []byte, 或者长度够长的可回收的 []byte
 func PutPacket(bs []byte) {
 	c := cap(bs)
-	if c < maxBufLen { //如果不够大，考虑放到更小的 pool里
+	if c < MaxBufLen { //如果不够大，考虑放到更小的 pool里
 		if c > StandardBytesLength {
 			standardBytesPool.Put(bs[:c])
 		}
@@ -94,9 +94,9 @@ func PutBytes(bs []byte) {
 	if c < StandardBytesLength {
 
 		return
-	} else if c >= StandardBytesLength && c < maxBufLen {
+	} else if c >= StandardBytesLength && c < MaxBufLen {
 		standardBytesPool.Put(bs[:c])
-	} else if c >= maxBufLen {
+	} else if c >= MaxBufLen {
 		standardPacketPool.Put(bs[:c])
 	}
 }

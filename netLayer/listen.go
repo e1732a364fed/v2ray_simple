@@ -53,6 +53,7 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 		}
 		go loopAccept(listener, acceptFunc)
 	case "unix":
+		// 参考 https://eli.thegreenplace.net/2019/unix-domain-sockets-in-go/
 		//监听 unix domain socket后，就会自动创建 相应文件;
 		// 而且程序退出后，该文件不会被删除
 		//  而且再次启动后如果遇到了这个文件，就会报错，就像tcp端口已经被监听 的错误一样:

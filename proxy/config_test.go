@@ -60,8 +60,9 @@ func TestTomlConfig(t *testing.T) {
 	}
 
 	t.Log(conf)
-	t.Log(conf.Dial[0])
-	t.Log(conf.Listen[0])
+	t.Log("dial0", conf.Dial[0])
+	t.Log("listen0", conf.Listen[0])
+	t.Log("extra", conf.Listen[0].Extra)
 	t.Log(conf.Route[0])
 	t.Log(conf.Route[1])
 	t.Log(conf.Fallbacks)
@@ -87,6 +88,8 @@ protocol = "socks5"
 host = "127.0.0.1"
 port = 1080
 tag = "my_socks51"
+extra = { ws_earlydata = 4096 }
+
 
 [[route]]
 dialTag = "my_ws1"

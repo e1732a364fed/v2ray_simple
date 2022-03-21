@@ -252,4 +252,8 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 	ser.setTag(lc.Tag)
 	ser.setCantRoute(lc.NoRoute)
 	configCommon(ser, &lc.CommonConf)
+
+	if lc.AdvancedLayer == "ws" {
+		ser.initWS_server()
+	}
 }

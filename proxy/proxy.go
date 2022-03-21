@@ -95,8 +95,10 @@ type ProxyCommon interface {
 	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
 
 	GetWS_Client() *ws.Client //for outClient
+	GetWS_Server() *ws.Server //for inServer
 
 	initWS_client() //for outClient
+	initWS_server() //for inServer
 
 	setCantRoute(bool)
 	setTag(string)
@@ -177,6 +179,7 @@ type ProxyCommonStruct struct {
 	AdvancedL string
 
 	ws_c *ws.Client
+	ws_s *ws.Server
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
@@ -284,6 +287,9 @@ func (s *ProxyCommonStruct) GetDialConf() *DialConf {
 func (s *ProxyCommonStruct) GetWS_Client() *ws.Client {
 	return s.ws_c
 }
+func (s *ProxyCommonStruct) GetWS_Server() *ws.Server {
+	return s.ws_s
+}
 
 //for outClient
 func (s *ProxyCommonStruct) initWS_client() {
@@ -294,10 +300,44 @@ func (s *ProxyCommonStruct) initWS_client() {
 	if path == "" { // 至少Path需要为 "/"
 		path = "/"
 	}
+
+	var useEarlyData bool
+	if s.dialConf.Extra != nil {
+		if thing := s.dialConf.Extra["ws_earlydata"]; thing != nil {
+			if use, ok := thing.(bool); ok && use {
+				useEarlyData = true
+			}
+		}
+	}
+
 	c, e := ws.NewClient(s.dialConf.GetAddr(), path)
 	if e != nil {
 		log.Fatal("initWS_client failed", e)
 	}
+	c.UseEarlyData = useEarlyData
 	s.ws_c = c
 
+}
+
+func (s *ProxyCommonStruct) initWS_server() {
+	if s.listenConf == nil {
+		log.Fatal("initWS_server failed when no listenConf assigned")
+	}
+	path := s.listenConf.Path
+	if path == "" { // 至少Path需要为 "/"
+		path = "/"
+	}
+
+	var useEarlyData bool
+	if s.listenConf.Extra != nil {
+		if thing := s.listenConf.Extra["ws_earlydata"]; thing != nil {
+			if use, ok := thing.(bool); ok && use {
+				useEarlyData = true
+			}
+		}
+	}
+	wss := ws.NewServer(path)
+	wss.UseEarlyData = useEarlyData
+
+	s.ws_s = wss
 }

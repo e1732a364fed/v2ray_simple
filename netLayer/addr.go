@@ -16,6 +16,8 @@ const (
 )
 
 // Addr represents a address that you want to access by proxy. Either Name or IP is used exclusively.
+// Addr完整地表示了一个 传输层的目标，同时用 Network 字段 来记录网络层协议名
+// Addr 还可以用Dial 方法直接进行拨号
 type Addr struct {
 	Name string // domain name, 或者 unix domain socket 的 文件路径
 	IP   net.IP
