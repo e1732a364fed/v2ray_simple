@@ -1,7 +1,6 @@
-/*
-Package proxy 定义了代理转发所需的必备组件
+/*Package proxy 定义了代理转发所需的必备组件.
 
-Layer Definition 层级讨论
+Layer Definition
 
 目前认为，一个传输过程由四个部分组成，基础连接（udp/tcp），TLS（可选），中间层（ws、grpc、http等，可选），具体协议（socks5，vless，trojan等）.
 

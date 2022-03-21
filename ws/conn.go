@@ -26,7 +26,7 @@ type Conn struct {
 	//lastReadFrameIsFragmented bool
 }
 
-//读取binary
+//Read websocket binary frames
 func (c *Conn) Read(p []byte) (int, error) {
 
 	//websocket 协议中帧长度上限为2^64，超大，考虑到我们vs的标准Packet缓存是64k，也就是2^16,
@@ -92,7 +92,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 	return n, nil
 }
 
-//Write binary
+//Write websocket binary frames
 func (c *Conn) Write(p []byte) (n int, e error) {
 	//log.Println("ws Write called", len(p))
 	n, e = c.w.Write(p)
