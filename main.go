@@ -49,11 +49,11 @@ var (
 	defaultInServer  proxy.Server
 	default_uuid     string
 
-	allServers []proxy.Server
-	allClients []proxy.Client
+	allServers = make([]proxy.Server, 0, 8)
+	allClients = make([]proxy.Client, 0, 8)
 
-	serversTagMap map[string]proxy.Server
-	clientsTagMap map[string]proxy.Client
+	serversTagMap = make(map[string]proxy.Server)
+	clientsTagMap = make(map[string]proxy.Client)
 
 	tls_lazy_encrypt bool
 	tls_lazy_secure  bool
@@ -81,11 +81,6 @@ func init() {
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
 
-	allServers = make([]proxy.Server, 0, 8)
-	allClients = make([]proxy.Client, 0, 8)
-
-	serversTagMap = make(map[string]proxy.Server)
-	clientsTagMap = make(map[string]proxy.Client)
 }
 
 func printDesc() {
@@ -154,13 +149,15 @@ func main() {
 			}
 		}
 
-		if standardConf.Route != nil || standardConf.App.MyCountryISO_3166 != "" {
+		hasMyCountry := (standardConf.App != nil && standardConf.App.MyCountryISO_3166 != "")
+
+		if standardConf.Route != nil || hasMyCountry {
 
 			netLayer.LoadMaxmindGeoipFile("")
 
 			routePolicy = netLayer.NewRoutePolicy()
-			if appConf := standardConf.App; appConf.MyCountryISO_3166 != "" {
-				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(appConf.MyCountryISO_3166))
+			if hasMyCountry {
+				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
 
 			}
 
@@ -700,8 +697,7 @@ afterLocalServerHandshake:
 		utils.PutBytes(theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
-	/*
-		// debug时可以使用这段代码
+	if utils.CanLogDebug() {
 		go func() {
 			n, e := io.Copy(wrc, wlc)
 			log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
@@ -709,11 +705,13 @@ afterLocalServerHandshake:
 		n, e := io.Copy(wlc, wrc)
 
 		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
-	*/
 
-	//如果两个都是 *net.TCPConn或uds, 则Copy会自动进行splice/sendfile，无需额外处理
-	go io.Copy(wrc, wlc)
-	io.Copy(wlc, wrc)
+	} else {
+		//如果两个都是 *net.TCPConn或uds, 则Copy会自动进行splice/sendfile，无需额外处理
+		go io.Copy(wrc, wlc)
+		io.Copy(wlc, wrc)
+	}
+
 }
 
 var tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"

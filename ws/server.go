@@ -47,14 +47,14 @@ func Handshake(path string, underlay net.Conn) (net.Conn, error) {
 
 	theConn := &Conn{
 		Conn:  underlay,
-		state: ws.StateClientSide,
-		w:     wsutil.NewWriter(underlay, ws.StateServerSide, ws.OpBinary),
-		r:     wsutil.NewServerSideReader(underlay),
+		state: ws.StateServerSide,
+		//w:     wsutil.NewWriter(underlay, ws.StateServerSide, ws.OpBinary),
+		r: wsutil.NewServerSideReader(underlay),
 	}
 	//不想客户端；服务端是不怕客户端在握手阶段传来任何多余数据的
 	// 因为我们还没实现 0-rtt
 	theConn.r.OnIntermediate = wsutil.ControlFrameHandler(underlay, ws.StateServerSide)
-	theConn.w.DisableFlush() //发现分片的话，会出问题，所以就先关了. 搞清楚分片的问题再说。
+	//theConn.w.DisableFlush() //发现分片的话，会出问题，所以就先关了. 搞清楚分片的问题再说。
 
 	return theConn, nil
 }

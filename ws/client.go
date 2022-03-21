@@ -33,10 +33,14 @@ func NewClient(hostAddr, path string) (*Client, error) {
 //与服务端进行 websocket握手，并返回可直接用于读写 websocket 二进制数据的 net.Conn
 func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 
-	const bufsize = 1024 * 10
+	//实测默认的4096过小,因为 实测 tls握手的serverHello 就有可能超过了4096,
+	// 但是仔细思考，发现tls握手是在websocket的外部发生的，而我们传输的是数据的内层tls握手，那么就和Dialer没关系了，dialer只是负责读最初的握手部分；
+	// 所以我们就算要配置buffer尺寸，也不是在这里配置，而是要配置 theConn.w 的buffer
+
+	//const bufsize = 1024 * 10
 	d := ws.Dialer{
-		ReadBufferSize:  bufsize,
-		WriteBufferSize: bufsize, //实测默认的4096过小,因为 实测 tls握手的serverHello 就有可能超过了4096,
+		//ReadBufferSize:  bufsize,
+		//WriteBufferSize: bufsize,
 		NetDial: func(ctx context.Context, net, addr string) (net.Conn, error) {
 			return underlay, nil
 		},
@@ -54,9 +58,9 @@ func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 	theConn := &Conn{
 		Conn:  underlay,
 		state: ws.StateClientSide,
-		w:     wsutil.NewWriter(underlay, ws.StateClientSide, ws.OpBinary),
+		//w:     wsutil.NewWriter(underlay, ws.StateClientSide, ws.OpBinary),
 	}
-	theConn.w.DisableFlush() //发现使用ws分片功能的话会出问题，所以就先关了. 搞清楚分片的问题再说。
+	//theConn.w.DisableFlush() //发现使用ws分片功能的话会出问题，所以就先关了. 搞清楚分片的问题再说。
 
 	// 根据 gobwas/ws的代码，在服务器没有返回任何数据时，br为nil
 	if br == nil {
