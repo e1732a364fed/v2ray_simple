@@ -121,7 +121,7 @@ func main() {
 
 			netLayer.LoadMaxmindGeoipFile("")
 
-			//目前只支持通过 mycountry进行 geoip分流 这一种情况
+			//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
 			routePolicy = netLayer.NewRoutePolicy()
 			if simpleConf.MyCountryISO_3166 != "" {
 				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
@@ -204,7 +204,8 @@ func main() {
 	isServerEnd = defaultOutClient.Name() == "direct"
 
 	// 后台运行主代码，而main函数只监听中断信号
-	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用
+	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用;
+	//  或可用于交互生成自己想要的配置
 	if confMode == simpleMode {
 		go listenSer(nil, defaultInServer)
 	} else {
@@ -294,15 +295,15 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 	// 如果是服务端的话，那就是 inServer.IsUseTLS == true, 此时，我们正常握手，然后我们需要判断的是它承载的数据
 
 	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 Recorder中
-	var serverEndLocalServerTlsRawReadRecorder *tlsLayer.Recorder
+	var inServerTlsRawReadRecorder *tlsLayer.Recorder
 
 	if inServer.IsUseTLS() {
 
 		if tls_lazy_encrypt {
-			serverEndLocalServerTlsRawReadRecorder = tlsLayer.NewRecorder()
+			inServerTlsRawReadRecorder = tlsLayer.NewRecorder()
 
-			serverEndLocalServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
-			teeConn := tlsLayer.NewTeeConn(baseLocalConn, serverEndLocalServerTlsRawReadRecorder)
+			inServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
+			teeConn := tlsLayer.NewTeeConn(baseLocalConn, inServerTlsRawReadRecorder)
 
 			thisLocalConnectionInstance = teeConn
 		}
@@ -320,7 +321,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 		if tls_lazy_encrypt {
 			//此时已经握手完毕，可以记录了
-			serverEndLocalServerTlsRawReadRecorder.StartRecord()
+			inServerTlsRawReadRecorder.StartRecord()
 		}
 
 		thisLocalConnectionInstance = tlsConn
@@ -420,17 +421,16 @@ afterLocalServerHandshake:
 
 	var routedToDirect bool
 
-	//如果可以route
+	//尝试分流
 	if !inServer.CantRoute() && routePolicy != nil {
 
 		if utils.CanLogDebug() {
 			log.Println("try routing")
 		}
 
-		//目前只支持一个 inServer/outClient, 所以目前根据tag分流是没有意义的，以后再说
-		// 现在就用addr分流就行
 		outtag := routePolicy.GetOutTag(&netLayer.TargetDescription{
 			Addr: targetAddr,
+			Tag:  inServer.GetTag(),
 		})
 		if outtag == "direct" {
 			client = directClient
@@ -463,8 +463,6 @@ afterLocalServerHandshake:
 		}
 
 		wlc = tlsLayer.NewSniffConn(baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
-
-		//clientConn = cc
 	}
 
 	//如果目标是udp则要分情况讨论
@@ -688,7 +686,7 @@ afterLocalServerHandshake:
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
 			if userServer, ok := inServer.(proxy.UserServer); ok {
-				tryRawCopy(false, nil, userServer, nil, wrc, wlc, baseLocalConn, false, serverEndLocalServerTlsRawReadRecorder)
+				tryRawCopy(false, nil, userServer, nil, wrc, wlc, baseLocalConn, false, inServerTlsRawReadRecorder)
 				return
 			}
 
@@ -699,7 +697,7 @@ afterLocalServerHandshake:
 	if theFallbackFirstBuffer != nil {
 		//这里注意，因为是吧tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
 		wrc.Write(theFallbackFirstBuffer.Bytes())
-		utils.PutBytes(theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的
+		utils.PutBytes(theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
 	/*
@@ -713,7 +711,7 @@ afterLocalServerHandshake:
 		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 	*/
 
-	//如果两个都是*net.TCPConn, 则Copy会自动进行splice/sendfile，无需额外处理
+	//如果两个都是 *net.TCPConn或uds, 则Copy会自动进行splice/sendfile，无需额外处理
 	go io.Copy(wrc, wlc)
 	io.Copy(wlc, wrc)
 }

@@ -14,16 +14,18 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），
 
-其它监听协议还支持 socks5, http, dokodemo
-
 在本项目里 制定 并实现了 vless v1标准，添加了非mux的fullcone；
 
 本项目 发明了独特的非魔改tls包的 双向splice
 
+使用了简单的架构，单单因为架构简单就可以提升性能。
+
 v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
 
-经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。反过来也是成立的。
-### 协议之外的已实现的有用特性
+经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。
+### 创新之外的已实现的有用特性
+
+其它监听协议还支持 socks5, http, dokodemo
 
 多种配置文件格式,包括自有的 toml标准格式
 
@@ -129,6 +131,9 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 如果是 linux服务器，可以参考我的一篇指导文章 [install.md](install.md)
 
 电脑客户端的话直接自己到release下载就行。
+
+注意如果要geoip分流，还要下载mmdb
+
 ### 编译安装
 
 ```sh
@@ -136,8 +141,8 @@ git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
 
 #如果使用极简模式，则复制vs.json文件
-cp client.vs.json client.json
-cp server.vs.json server.json
+cp vs.client.json client.json
+cp vs.server.json server.json
 
 #如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
 cp vlesss.client.toml client.toml
@@ -216,7 +221,7 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
-我的 vlesss.client.toml 文件以及 vlesss.server.toml 文件中 提供了大量解释性的注释, 对新手很友好
+我的 vlesss.client.toml, vlesss.server.toml , z_multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好
 
 ### 兼容模式
 

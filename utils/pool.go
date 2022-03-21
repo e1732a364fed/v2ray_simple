@@ -8,8 +8,10 @@ import (
 var (
 	standardBytesPool sync.Pool //1500, 最大MTU的长度
 
-	// 实际上tcp默认是 16384, 16k，实际上范围是1k～128k之间，我们64k已经够了
-	//而 udp则最大还不到 64k。(65535－20－8)
+	// 作为参考对比，tcp默认是 16384, 16k，实际上范围是1k～128k之间
+	// 而 udp则最大还不到 64k。(65535－20－8)
+	// io.Copy 内部默认buffer大小为 32k
+	// 总之 我们64k已经够了
 	standardPacketPool sync.Pool //64*1024
 
 	bufPool sync.Pool

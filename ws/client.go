@@ -49,7 +49,7 @@ import (
 // 而 proxy.Client 是要 把 需要代理的 真实目标 地址 以某种方式 写入 数据内容的.
 // 这也是 我们ws包 并没有被 放在proxy文件夹中 的原因
 type Client struct {
-	requestURL *url.URL //因为调用gobwas/ws 时要传入url，所以我们直接提供包装好的即可
+	requestURL *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可
 }
 
 // 这里默认，传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查

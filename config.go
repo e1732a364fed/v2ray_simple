@@ -24,9 +24,11 @@ Config Format  配置格式
 
 Structure 本项目结构
 
-	main -> config -> netLayer-> tlsLayer -> httpLayer -> proxy.
+	main -> proxy.Standard(配置文件) -> netLayer-> tlsLayer -> httpLayer -> ws -> proxy.
 
-	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，然后都搞好后，传到proxy，然后就开始转发
+	main中，读取配置文件，生成 Dail、Listen 和 RoutePolicy 对象后，开始监听；
+
+	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，可选经过ws, 然后都搞好后，传到proxy，然后就开始转发
 
 Other - 其他
 
