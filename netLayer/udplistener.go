@@ -8,14 +8,11 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//UDPListener provide a udp listener which acts just like a tcp listener.
-//It will block when called Accept.The Accept() returns a new Conn which
-//just work for the communication between localhost and the remote dialer.
+// UDPListener 实现了 net.Listener.
+// UDPListener 监听 UDPAddr，并不断对新远程地址 创建 新UDPConn并提供给Accept;
+// 然后读到的信息缓存到 UDPConn 中，让它能在Read时读到.
 //
 //UDPListener can also dial a remote host by calling NewConn.
-// UDPListener 监听 UDPAddr，并不断对新远程地址 创建 新UDPConn，
-// 并把读到的信息发送给 UDPConn；
-// UDPListener 实现了 net.Listener
 type UDPListener struct {
 	conn *net.UDPConn
 
@@ -24,6 +21,7 @@ type UDPListener struct {
 	mux         sync.RWMutex
 }
 
+// NewUDPListener 返回一个 *UDPListener, 该Listener实现了 net.Listener
 func NewUDPListener(laddr *net.UDPAddr) (*UDPListener, error) {
 	c, err := net.ListenUDP("udp4", laddr)
 	if err != nil {

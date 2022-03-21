@@ -14,4 +14,3 @@ insecure = true
 utls = true
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好
-network = "udp"

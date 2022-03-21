@@ -553,7 +553,10 @@ afterLocalServerHandshake:
 	if client.AddrStr() != "" {
 		//log.Println("will dial", client.AddrStr())
 
-		realTargetAddr, _ = netLayer.NewAddr(client.AddrStr())
+		realTargetAddr, err = netLayer.NewAddr(client.AddrStr())
+		if err != nil {
+			log.Fatal("convert addr err:", err)
+		}
 		realTargetAddr.Network = client.Network()
 	}
 

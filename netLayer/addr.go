@@ -4,6 +4,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -34,6 +35,11 @@ func NewAddrFromUDPAddr(addr *net.UDPAddr) *Addr {
 }
 
 func NewAddr(addrStr string) (*Addr, error) {
+	if !strings.Contains(addrStr, ":") {
+		//如果 是unix domain socket
+		return &Addr{Name: addrStr}, nil
+	}
+
 	host, portStr, err := net.SplitHostPort(addrStr)
 	if err != nil {
 		return nil, err
@@ -80,21 +86,21 @@ func NewAddrByURL(addrStr string) (*Addr, error) {
 
 	a.Network = u.Scheme
 
-	/*
-		if u.Scheme == "udp" {
-			a.IsUDP = true
-		}*/
-
 	return a, nil
 }
 
 // Return host:port string
 func (a *Addr) String() string {
-	port := strconv.Itoa(a.Port)
-	if a.IP == nil {
-		return net.JoinHostPort(a.Name, port)
+	if a.Network == "unix" {
+		return a.Name
+	} else {
+		port := strconv.Itoa(a.Port)
+		if a.IP == nil {
+			return net.JoinHostPort(a.Name, port)
+		}
+		return net.JoinHostPort(a.IP.String(), port)
 	}
-	return net.JoinHostPort(a.IP.String(), port)
+
 }
 
 func (a *Addr) UrlString() string {
