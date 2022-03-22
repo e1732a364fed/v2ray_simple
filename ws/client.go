@@ -11,6 +11,7 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -44,10 +45,7 @@ func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 	// 但是仔细思考，发现tls握手是在websocket的外部发生的，而我们传输的是数据的内层tls握手，那么就和Dialer没关系了，dialer只是负责读最初的握手部分；
 	// 所以我们就算要配置buffer尺寸，也不是在这里配置，而是要配置 theConn.w 的buffer
 
-	//const bufsize = 1024 * 10
 	d := ws.Dialer{
-		//ReadBufferSize:  bufsize,
-		//WriteBufferSize: bufsize,
 		NetDial: func(ctx context.Context, net, addr string) (net.Conn, error) {
 			return underlay, nil
 		},
@@ -64,11 +62,12 @@ func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 	// 所以我们的用例中，br一定是nil
 
 	theConn := &Conn{
-		Conn:  underlay,
-		state: ws.StateClientSide,
+		Conn:            underlay,
+		state:           ws.StateClientSide,
+		underlayIsBasic: netLayer.IsBasicConn(underlay),
 		//w:     wsutil.NewWriter(underlay, ws.StateClientSide, ws.OpBinary),
 	}
-	//theConn.w.DisableFlush() //发现使用ws分片功能的话会出问题，所以就先关了. 搞清楚分片的问题再说。
+	//theConn.w.DisableFlush() //使用ws分片功能会降低性能
 
 	// 根据 gobwas/ws的代码，在服务器没有返回任何数据时，br为nil
 	if br == nil {
@@ -153,11 +152,12 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 		utils.PutBuf(outBuf)
 
 		theConn := &Conn{
-			Conn:  edc.Conn,
-			state: ws.StateClientSide,
+			Conn:            edc.Conn,
+			state:           ws.StateClientSide,
+			underlayIsBasic: netLayer.IsBasicConn(edc.Conn),
 		}
 
-		//实测总是 br==nil，就算发送了earlydata也是如此
+		//实测总是 br==nil，就算发送了earlydata也是如此;不过理论上有可能粘包,只要远程目标服务器的响应够快
 
 		if br == nil {
 			//log.Println(" br == nil")

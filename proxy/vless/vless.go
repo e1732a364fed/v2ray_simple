@@ -30,11 +30,14 @@ const (
 
 )
 
+//实现 net.Conn 以及 utils.MultiWriter
 type UserConn struct {
 	net.Conn
 	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
 
 	remainFirstBufLen int //记录读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
+
+	underlayIsBasic bool
 
 	uuid             [16]byte
 	convertedUUIDStr string
@@ -60,6 +63,36 @@ func (uc *UserConn) GetIdentityStr() string {
 	}
 
 	return uc.convertedUUIDStr
+}
+
+func (c *UserConn) canDirectWrite() bool {
+	return c.version == 1 && !c.isUDP || c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket)
+}
+
+func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
+
+	if c.canDirectWrite() {
+
+		//底层连接可以是 ws，或者 tls，或者 基本连接
+
+		//本作的 ws.Conn 实现了 utils.MultiWriter
+
+		if c.underlayIsBasic {
+			nb := net.Buffers(buffers)
+			return nb.WriteTo(c.Conn)
+
+		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
+			return mr.WriteBuffers(buffers)
+		}
+	}
+
+	bigbs, dup := utils.MergeBuffers(buffers)
+	n, e := c.Write(bigbs)
+	if dup {
+		utils.PutPacket(bigbs)
+	}
+	return int64(n), e
+
 }
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。

@@ -7,3 +7,18 @@ Package netLayer contains definitions in network layer AND transport layer.
 
 */
 package netLayer
+
+import "net"
+
+func IsBasicConn(r interface{}) bool {
+	switch r.(type) {
+	case *net.TCPConn:
+		return true
+	case *net.UDPConn:
+		return true
+	case *net.UnixConn:
+		return true
+	}
+
+	return false
+}

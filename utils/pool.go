@@ -67,17 +67,17 @@ func PutPacket(bs []byte) {
 	c := cap(bs)
 	if c < MaxBufLen {
 		if c >= StandardBytesLength {
-			standardBytesPool.Put(bs[:c])
+			standardBytesPool.Put(bs[:StandardBytesLength])
 		}
 		return
 	}
 
-	standardPacketPool.Put(bs[:c])
+	standardPacketPool.Put(bs[:MaxBufLen])
 }
 
 // 从Pool中获取一个 StandardBytesLength 长度的 []byte
 func GetMTU() []byte {
-	return standardBytesPool.Get().([]byte)[:StandardBytesLength]
+	return standardBytesPool.Get().([]byte)
 }
 
 // 从pool中获取 []byte, 根据给出长度不同，来源于的Pool会不同.
@@ -98,8 +98,8 @@ func PutBytes(bs []byte) {
 
 		return
 	} else if c >= StandardBytesLength && c < MaxBufLen {
-		standardBytesPool.Put(bs[:c])
+		standardBytesPool.Put(bs[:StandardBytesLength])
 	} else if c >= MaxBufLen {
-		standardPacketPool.Put(bs[:c])
+		standardPacketPool.Put(bs[:MaxBufLen])
 	}
 }

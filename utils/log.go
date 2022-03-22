@@ -1,3 +1,4 @@
+// Package utils provides utils that needed by all sub-packages in verysimle
 package utils
 
 import "flag"

@@ -6,6 +6,7 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -105,8 +106,9 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	//log.Println("thePotentialEarlyData", len(thePotentialEarlyData))
 
 	theConn := &Conn{
-		Conn:  underlay,
-		state: ws.StateServerSide,
+		Conn:            underlay,
+		underlayIsBasic: netLayer.IsBasicConn(underlay),
+		state:           ws.StateServerSide,
 		//w:     wsutil.NewWriter(underlay, ws.StateServerSide, ws.OpBinary),
 		r: wsutil.NewServerSideReader(underlay),
 	}

@@ -172,10 +172,11 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	utils.PutBuf(buf)
 
 	return &UserConn{
-		Conn:    underlay,
-		uuid:    *c.user,
-		version: c.version,
-		isUDP:   target.Network == "udp",
+		Conn:            underlay,
+		uuid:            *c.user,
+		version:         c.version,
+		isUDP:           target.Network == "udp",
+		underlayIsBasic: netLayer.IsBasicConn(underlay),
 	}, err
 }
 

@@ -40,6 +40,13 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var mr utils.MultiReader
 	var buffers net.Buffers
 	var rawConn syscall.RawConn
+	var isWriteConn_a_MultiWriter bool
+	var multiWriter utils.MultiWriter
+	isWriteConnBasic := IsBasicConn(writeConn)
+
+	if !isWriteConnBasic {
+		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
+	}
 
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
@@ -67,17 +74,29 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	if utils.CanLogDebug() {
 		log.Println("copying with readv")
 	}
+
 	for {
 		buffers, err = ReadFromMultiReader(rawConn, mr)
 		if err != nil {
 			return 0, err
 		}
-		num, err2 := buffers.WriteTo(writeConn)
+		var num int64
+		var err2 error
+
+		//如vless协议，肯定走这里，因为 vless.UserConn 实现了 utils.MultiWriter
+		if isWriteConn_a_MultiWriter {
+			num, err2 = multiWriter.WriteBuffers(buffers)
+
+		} else {
+			num, err2 = buffers.WriteTo(writeConn)
+		}
+
 		allnum += num
 		if err2 != nil {
 			err = err2
 			return
 		}
+
 		ReleaseNetBuffers(buffers)
 	}
 classic:

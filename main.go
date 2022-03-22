@@ -977,7 +977,12 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 			if tlsLayer.PDD {
 				log.Println("SpliceRead R方向 退化……", wlcdc.R.GetFailReason())
 			}
-			io.Copy(wrc, wlc)
+			if netLayer.UseReadv {
+				netLayer.TryCopy(wrc, wlc)
+			} else {
+				io.Copy(wrc, wlc)
+
+			}
 			return
 		}
 
@@ -1084,7 +1089,12 @@ func tryRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_serve
 		if tlsLayer.PDD {
 			log.Println("SpliceRead W方向 退化……", wlcdc.W.GetFailReason())
 		}
-		io.Copy(wlc, wrc)
+		if netLayer.UseReadv { //就算不用splice, 一样可以用readv来在读那一端增强性能
+			netLayer.TryCopy(wlc, wrc)
+		} else {
+			io.Copy(wlc, wrc)
+
+		}
 		return
 	}
 

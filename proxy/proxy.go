@@ -113,7 +113,7 @@ type ProxyCommon interface {
 
 //use dc.Host, dc.Insecure, dc.Utls
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
-	com.setTLS_Client(tlsLayer.NewTlsClient(dc.Host, dc.Insecure, dc.Utls))
+	com.setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls))
 	return nil
 }
 
@@ -141,7 +141,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	if isclient {
 		utlsStr := u.Query().Get("utls")
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
-		com.setTLS_Client(tlsLayer.NewTlsClient(u.Host, insecure, useUtls))
+		com.setTLS_Client(tlsLayer.NewClient(u.Host, insecure, useUtls))
 
 	} else {
 		certFile := u.Query().Get("cert")

@@ -390,6 +390,7 @@ realPart:
 		uuid:              thisUUIDBytes,
 		version:           int(version),
 		isUDP:             addr.Network == "udp",
+		underlayIsBasic:   netLayer.IsBasicConn(underlay),
 		isServerEnd:       true,
 	}, addr, nil
 

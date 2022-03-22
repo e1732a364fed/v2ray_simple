@@ -10,22 +10,25 @@ import (
 	utls "github.com/refraction-networking/utls"
 )
 
+// 关于utls的简单分析，可参考
+//https://github.com/hahahrfool/v2ray_simple/discussions/7
+
 type Client struct {
 	tlsConfig *tls.Config
-	useTls    bool
+	use_uTls  bool
 }
 
-func NewTlsClient(host string, insecure bool, useTls bool) *Client {
+func NewClient(host string, insecure bool, use_uTls bool) *Client {
 
 	c := &Client{
 		tlsConfig: &tls.Config{
 			InsecureSkipVerify: insecure,
 			ServerName:         host,
 		},
-		useTls: useTls,
+		use_uTls: use_uTls,
 	}
 
-	if useTls && utils.CanLogInfo() {
+	if use_uTls && utils.CanLogInfo() {
 		log.Println("using utls and Chrome fingerprint for", host)
 	}
 
@@ -34,7 +37,7 @@ func NewTlsClient(host string, insecure bool, useTls bool) *Client {
 
 func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
-	if c.useTls {
+	if c.use_uTls {
 		utlsConn := utls.UClient(underlay, &utls.Config{
 			InsecureSkipVerify: c.tlsConfig.InsecureSkipVerify,
 			ServerName:         c.tlsConfig.ServerName,

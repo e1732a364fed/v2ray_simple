@@ -9,6 +9,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+// 实现 net.Conn 以及 utils.MultiWriter
 // 因为 gobwas/ws 不包装conn，在写入和读取二进制时需要使用 较为底层的函数才行，并未被提供标准的Read和Write
 // 因此我们包装一下，统一使用Read和Write函数 来读写 二进制数据。因为我们这里是代理，
 // 所以我们默认 抛弃 websocket的 数据帧 长度。
@@ -24,6 +25,8 @@ type Conn struct {
 	remainLenForLastFrame int64
 
 	serverEndGotEarlyData []byte
+
+	underlayIsBasic bool
 }
 
 //Read websocket binary frames
@@ -114,6 +117,60 @@ func (c *Conn) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+//实现 utils.MultiWriter
+// 主要是针对一串数据的情况，如果底层连接可以用writev， 此时我们不要每一小段都包包头 然后写N次，
+// 而是只在最前面包数据头，然后即可用writev 一次发送出去
+// 比如从 socks5 读数据，写入 tcp +ws + vless 协议, 就是这种情况
+// 若底层是tls，那我们也合并再发出，这样能少些很多头部,也能减少Write次数
+func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
+
+	nb := net.Buffers(buffers)
+	if c.underlayIsBasic {
+		allLen := utils.BuffersLen(buffers)
+
+		if c.state == ws.StateClientSide {
+
+			//如果是客户端，需要将全部数据进行掩码处理，超烦人的！
+			//我们直接将所有数据合并到一起, 然后自行写入 frame, 而不是使用 wsutil的函数，能省内存拷贝开销
+
+			bigbs, dup := utils.MergeBuffers(buffers)
+			frame := ws.NewFrame(ws.OpBinary, true, bigbs)
+			frame = ws.MaskFrameInPlace(frame)
+			e := ws.WriteFrame(c.Conn, frame)
+			if dup {
+				utils.PutPacket(bigbs)
+			}
+
+			if e != nil {
+				return 0, e
+			}
+			return int64(allLen), nil
+		} else {
+			wsH := ws.Header{
+				Fin:    true,
+				OpCode: ws.OpBinary,
+				Length: int64(allLen),
+			}
+
+			e := ws.WriteHeader(c.Conn, wsH)
+			if e != nil {
+				return 0, e
+			}
+			return nb.WriteTo(c.Conn)
+		}
+
+	} else {
+
+		bigbs, dup := utils.MergeBuffers(buffers)
+		n, e := c.Write(bigbs)
+		if dup {
+			utils.PutPacket(bigbs)
+
+		}
+		return int64(n), e
+	}
+}
+
 //Write websocket binary frames
 func (c *Conn) Write(p []byte) (n int, e error) {
 	//log.Println("ws Write called", len(p))
@@ -122,7 +179,7 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 	// 不分片的效率更高,因为无需缓存,zero copy
 
 	if c.state == ws.StateClientSide {
-		e = wsutil.WriteClientBinary(c.Conn, p)
+		e = wsutil.WriteClientBinary(c.Conn, p) //实际我查看它的代码，发现Client端 最终调用到的 writeFrame 函数 还是多了一次拷贝; 它是为了防止篡改客户数据；但是我们代理的话不会使用数据，只是转发而已
 	} else {
 		e = wsutil.WriteServerBinary(c.Conn, p)
 	}
@@ -159,8 +216,6 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 
 			// 在调用了 DisableFlush 方法后，还是必须要调用 Flush, 否则还是什么也不写入
 			e = c.w.Flush()
-
-			//似乎Flush之后还要Reset？不知道是不是没Reset 导致了 分片时 读取出问题的情况
 		}
 		//log.Println("ws Write finish", n, e)
 		return
