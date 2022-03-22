@@ -36,11 +36,11 @@ type UserConn struct {
 
 	remainFirstBufLen int //记录读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
 
-	uuid         [16]byte
-	convertedStr string
-	version      int
-	isUDP        bool
-	isServerEnd  bool //for v0
+	uuid             [16]byte
+	convertedUUIDStr string
+	version          int
+	isUDP            bool
+	isServerEnd      bool //for v0
 
 	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），须接着读
 	udpUnreadPart []byte //for udp
@@ -55,11 +55,11 @@ func (uc *UserConn) GetProtocolVersion() int {
 	return uc.version
 }
 func (uc *UserConn) GetIdentityStr() string {
-	if uc.convertedStr == "" {
-		uc.convertedStr = proxy.UUIDToStr(uc.uuid)
+	if uc.convertedUUIDStr == "" {
+		uc.convertedUUIDStr = proxy.UUIDToStr(uc.uuid)
 	}
 
-	return uc.convertedStr
+	return uc.convertedUUIDStr
 }
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。

@@ -28,22 +28,26 @@ type Addr struct {
 	Network string
 }
 
+func RandPortStr() string {
+	return strconv.Itoa(rand.Intn(60000) + 4096)
+}
+
 func GetRandLocalAddr() string {
-	return "0.0.0.0:" + strconv.Itoa(rand.Intn(60000)+4096)
+	return "0.0.0.0:" + RandPortStr()
 }
 
 func NewAddrFromUDPAddr(addr *net.UDPAddr) *Addr {
 	return &Addr{
-		IP:   addr.IP,
-		Port: addr.Port,
-		//IsUDP: true,
+		IP:      addr.IP,
+		Port:    addr.Port,
 		Network: "udp",
 	}
 }
 
+//addrStr格式一般为 host:port 的格式；如果不含冒号，将直接认为该字符串是域名或文件名
 func NewAddr(addrStr string) (*Addr, error) {
 	if !strings.Contains(addrStr, ":") {
-		//如果 是unix domain socket
+		//unix domain socket, 或者域名默认端口的情况
 		return &Addr{Name: addrStr}, nil
 	}
 

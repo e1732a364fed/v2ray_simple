@@ -46,10 +46,12 @@ func init() {
 	}
 }
 
+//从Pool中获取一个 *bytes.Buffer
 func GetBuf() *bytes.Buffer {
 	return bufPool.Get().(*bytes.Buffer)
 }
 
+//将 buf 放回 Pool
 func PutBuf(buf *bytes.Buffer) {
 	buf.Reset()
 	bufPool.Put(buf)
@@ -73,12 +75,12 @@ func PutPacket(bs []byte) {
 	standardPacketPool.Put(bs[:c])
 }
 
+// 从Pool中获取一个 StandardBytesLength 长度的 []byte
 func GetMTU() []byte {
 	return standardBytesPool.Get().([]byte)[:StandardBytesLength]
 }
 
-// 从pool中获取 []byte, 在 size <= StandardBytesLength 时有最佳性能
-// 否则会直接调用 GetPacket
+// 从pool中获取 []byte, 根据给出长度不同，来源于的Pool会不同.
 func GetBytes(size int) []byte {
 	if size <= StandardBytesLength {
 		bs := standardBytesPool.Get().([]byte)
@@ -89,7 +91,7 @@ func GetBytes(size int) []byte {
 
 }
 
-// 根据bs长度 选择放入各种pool中, 只有cap>=1500 才会被处理
+// 根据bs长度 选择放入各种pool中, 只有 cap(bs)>=1500 才会被处理
 func PutBytes(bs []byte) {
 	c := cap(bs)
 	if c < StandardBytesLength {

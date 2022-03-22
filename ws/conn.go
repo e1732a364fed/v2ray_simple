@@ -54,7 +54,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 			return n, e
 		}
 		c.remainLenForLastFrame -= int64(n)
-		// 这里之所以可以放心 减去 n，不怕减成负的，是因为 r的代码里 在读取一帧的数据时，用到了 io.LimitedReader, 一帧的读取长度的上限已被限定，直到 该帧完全被读完为止
+		// 这里之所以可以放心 减去 n，不怕减成负的，是因为 wsutil.Reader 的代码里 在读取一帧的数据时，用到了 io.LimitedReader, 一帧的读取长度的上限已被限定，直到 该帧完全被读完为止
 		return n, nil
 	}
 

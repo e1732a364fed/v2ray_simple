@@ -15,11 +15,11 @@ import (
 )
 
 func TestVLess0(t *testing.T) {
-	testVLess(0, "9527", t)
+	testVLess(0, netLayer.RandPortStr(), t)
 }
 
 func TestVLess1(t *testing.T) {
-	testVLess(1, "9538", t)
+	testVLess(1, netLayer.RandPortStr(), t)
 }
 
 func testVLess(version int, port string, t *testing.T) {
@@ -115,7 +115,7 @@ func testVLess(version int, port string, t *testing.T) {
 }
 
 func TestVLess0_udp(t *testing.T) {
-	testVLessUDP(0, "9638", t)
+	testVLessUDP(0, netLayer.RandPortStr(), t)
 }
 
 //func TestVLess1_udp(t *testing.T) {

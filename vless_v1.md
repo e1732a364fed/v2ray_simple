@@ -1,5 +1,8 @@
 # vless v1
 
+目前v1仍然处于研发当中。建议先用v0，等v1完全出炉了再说，本文只是理论探索，实际代码暂未完整实现所有的设计.
+## 握手协议格式
+
 具体我的探讨还可以查看 https://github.com/v2fly/v2ray-core/discussions/1655
 
 总的来说 vless v1 简化了一些流程, 约定永远使用tls（与trojan相同）,并重点考虑  非多路复用的 udp over tcp的  fullcone实现。

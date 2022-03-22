@@ -11,6 +11,35 @@ const (
 )
 
 //本文件内含 一些 转发 udp 数据的 接口与方法
+
+// 阻塞.
+func RelayUDP(putter UDP_Putter, extractor UDP_Extractor) {
+
+	go func() {
+		for {
+			raddr, bs, err := extractor.GetNewUDPRequest()
+			if err != nil {
+				break
+			}
+			err = putter.WriteUDPRequest(raddr, bs)
+			if err != nil {
+				break
+			}
+		}
+	}()
+
+	for {
+		raddr, bs, err := putter.GetNewUDPResponse()
+		if err != nil {
+			break
+		}
+		err = extractor.WriteUDPResponse(raddr, bs)
+		if err != nil {
+			break
+		}
+	}
+}
+
 //////////////////// 接口 ////////////////////
 
 type UDPRequestReader interface {

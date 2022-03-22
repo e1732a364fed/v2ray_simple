@@ -1,16 +1,19 @@
-package ws
+package ws_test
 
 import (
 	"bytes"
 	"crypto/rand"
 	"net"
 	"testing"
+
+	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/ws"
 )
 
 // ws基本读写功能测试.
 // 分别测试写入短数据和长数据
 func TestWs(t *testing.T) {
-	listenAddr := "127.0.0.1:7777"
+	listenAddr := netLayer.GetRandLocalAddr()
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		t.Log(err)
@@ -35,7 +38,7 @@ func TestWs(t *testing.T) {
 			return
 		}
 
-		s := NewServer(wsPath)
+		s := ws.NewServer(wsPath)
 
 		wsConn, err := s.Handshake(conn)
 		if err != nil {
@@ -64,7 +67,7 @@ func TestWs(t *testing.T) {
 		}
 	}()
 
-	cli, err := NewClient(listenAddr, wsPath)
+	cli, err := ws.NewClient(listenAddr, wsPath)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()

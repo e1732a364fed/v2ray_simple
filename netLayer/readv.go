@@ -26,7 +26,7 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 }
 
 // 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况
-// 小贴士：将该 net.Buffers 写入io.Writer的话，只需使用 其WriteTo方法。
+// 小贴士：将该 net.Buffers 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
 /*
 	使用方式
 

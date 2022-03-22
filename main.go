@@ -31,6 +31,7 @@ const (
 	standardMode
 	v2rayCompatibleMode
 )
+const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 
 var (
 	configFileName string
@@ -216,12 +217,12 @@ func main() {
 
 func listenSer(listener net.Listener, inServer proxy.Server) {
 
-	theFunc := func(conn net.Conn) {
+	handleFunc := func(conn net.Conn) {
 		handleNewIncomeConnection(inServer, conn)
 	}
 
 	network := inServer.Network()
-	err := netLayer.ListenAndAccept(network, inServer.AddrStr(), theFunc)
+	err := netLayer.ListenAndAccept(network, inServer.AddrStr(), handleFunc)
 
 	if err == nil {
 		if utils.CanLogInfo() {
@@ -700,7 +701,18 @@ afterLocalServerHandshake:
 	}
 
 	if utils.CanLogDebug() {
-		/*
+
+		if netLayer.UseReadv {
+			go func() {
+				n, e := netLayer.TryCopy(wrc, wlc)
+				log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+			}()
+
+			n, e := netLayer.TryCopy(wlc, wrc)
+			log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+
+		} else {
+
 			go func() {
 				n, e := io.Copy(wrc, wlc)
 				log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
@@ -708,26 +720,14 @@ afterLocalServerHandshake:
 			n, e := io.Copy(wlc, wrc)
 
 			log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
-		*/
 
-		go func() {
-			n, e := netLayer.TryCopy(wrc, wlc)
-			log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
-		}()
-
-		n, e := netLayer.TryCopy(wlc, wrc)
-		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+		}
 
 	} else {
-		//如果两个都是 *net.TCPConn或uds, 则Copy会自动进行splice/sendfile，无需额外处理
-		//go io.Copy(wrc, wlc)
-		//io.Copy(wlc, wrc)
 		netLayer.Relay(wlc, wrc)
 	}
 
 }
-
-var tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
