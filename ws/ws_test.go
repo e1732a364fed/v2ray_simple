@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// ws基本读写功能测试.
 // 分别测试写入短数据和长数据
 func TestWs(t *testing.T) {
 	listenAddr := "127.0.0.1:7777"

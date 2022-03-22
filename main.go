@@ -694,24 +694,35 @@ afterLocalServerHandshake:
 	}
 
 	if theFallbackFirstBuffer != nil {
-		//这里注意，因为是吧tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
+		//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
 		wrc.Write(theFallbackFirstBuffer.Bytes())
 		utils.PutBytes(theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
 	if utils.CanLogDebug() {
+		/*
+			go func() {
+				n, e := io.Copy(wrc, wlc)
+				log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+			}()
+			n, e := io.Copy(wlc, wrc)
+
+			log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+		*/
+
 		go func() {
-			n, e := io.Copy(wrc, wlc)
+			n, e := netLayer.TryCopy(wrc, wlc)
 			log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
 		}()
-		n, e := io.Copy(wlc, wrc)
 
+		n, e := netLayer.TryCopy(wlc, wrc)
 		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 
 	} else {
 		//如果两个都是 *net.TCPConn或uds, 则Copy会自动进行splice/sendfile，无需额外处理
-		go io.Copy(wrc, wlc)
-		io.Copy(wlc, wrc)
+		//go io.Copy(wrc, wlc)
+		//io.Copy(wlc, wrc)
+		netLayer.Relay(wlc, wrc)
 	}
 
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
@@ -43,6 +44,9 @@ func loadConfig() {
 			if appConf := standardConf.App; appConf != nil {
 				utils.LogLevel = appConf.LogLevel
 				default_uuid = appConf.DefaultUUID
+				if appConf.NoReadV {
+					netLayer.UseReadv = false
+				}
 			}
 			return
 		} else {

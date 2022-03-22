@@ -59,9 +59,6 @@ func (s *Server) Name() string { return Name }
 func (s *Server) CanFallback() bool {
 	return false
 }
-func (s *Server) Stop() {
-	// Nothing to stop or close
-}
 
 //English: https://www.ietf.org/rfc/rfc1928.txt
 

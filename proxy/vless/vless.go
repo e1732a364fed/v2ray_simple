@@ -32,12 +32,15 @@ const (
 
 type UserConn struct {
 	net.Conn
-	optionalReader io.Reader //在使用了缓存读取包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
-	uuid           [16]byte
-	convertedStr   string
-	version        int
-	isUDP          bool
-	isServerEnd    bool //for v0
+	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
+
+	remainFirstBufLen int //记录读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
+
+	uuid         [16]byte
+	convertedStr string
+	version      int
+	isUDP        bool
+	isServerEnd  bool //for v0
 
 	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），须接着读
 	udpUnreadPart []byte //for udp
@@ -170,6 +173,7 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 		if !uc.isUDP {
 
 			if !uc.isServerEnd && !uc.isntFirstPacket {
+				//先读取响应头
 
 				uc.isntFirstPacket = true
 

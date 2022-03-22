@@ -53,9 +53,7 @@ func (_ Server) CanFallback() bool {
 func (_ Server) Name() string {
 	return name
 }
-func (_ Server) Stop() {
-	return
-}
+
 func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriter, targetAddr *netLayer.Addr, err error) {
 	var b = utils.GetBytes(300) //一般要获取请求信息，不需要那么长; 就算是http，加了path，path也不会上千字节吧
 

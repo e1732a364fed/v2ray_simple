@@ -76,6 +76,7 @@ type AppConf struct {
 	DefaultUUID       string `toml:"default_uuid"`
 	MyCountryISO_3166 string `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
 
+	NoReadV bool `toml:"noreadv"`
 }
 
 type RuleConf struct {

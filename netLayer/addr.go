@@ -1,6 +1,7 @@
 package netLayer
 
 import (
+	"math/rand"
 	"net"
 	"net/url"
 	"strconv"
@@ -25,6 +26,10 @@ type Addr struct {
 	//IsUDP bool
 
 	Network string
+}
+
+func GetRandLocalAddr() string {
+	return "0.0.0.0:" + strconv.Itoa(rand.Intn(60000)+4096)
 }
 
 func NewAddrFromUDPAddr(addr *net.UDPAddr) *Addr {

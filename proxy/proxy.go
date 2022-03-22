@@ -161,6 +161,9 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 }
 
 // ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法
+// 规定，所有的proxy都要内嵌本struct
+// 这是verysimple的架构所要求的。verysimple规定，在加载完配置文件后，一个listen和一个dial所使用的全部层级都是确定了的
+//  因为所有使用的层级都是确定的，就可以进行针对性优化
 type ProxyCommonStruct struct {
 	Addr    string
 	TLS     bool
@@ -228,6 +231,10 @@ func (pcs *ProxyCommonStruct) setAdvancedLayer(adv string) {
 
 func (pcs *ProxyCommonStruct) AdvancedLayer() string {
 	return pcs.AdvancedL
+}
+
+//do nothing. As a placeholder.
+func (s *ProxyCommonStruct) Stop() {
 }
 
 // 从 url 初始化一些通用的配置，目前只有 u.Host

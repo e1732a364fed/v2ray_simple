@@ -384,16 +384,14 @@ realPart:
 	}
 
 	return &UserConn{
-		Conn:           underlay,
-		optionalReader: io.MultiReader(readbuf, underlay),
-		uuid:           thisUUIDBytes,
-		version:        int(version),
-		isUDP:          addr.Network == "udp",
-		isServerEnd:    true,
+		Conn:              underlay,
+		optionalReader:    io.MultiReader(readbuf, underlay),
+		remainFirstBufLen: readbuf.Len(),
+		uuid:              thisUUIDBytes,
+		version:           int(version),
+		isUDP:             addr.Network == "udp",
+		isServerEnd:       true,
 	}, addr, nil
-
-}
-func (s *Server) Stop() {
 
 }
 

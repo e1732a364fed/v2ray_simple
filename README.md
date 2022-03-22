@@ -246,7 +246,7 @@ verysimple -c server.toml
 
 ## 验证方式
 
-对于功能的golang test，请使用 `go test ./...` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
+对于功能的golang test，请使用 `go test ./...  -count=1` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
 ## 关于证书
 
