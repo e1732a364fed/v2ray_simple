@@ -3,12 +3,12 @@
 
 
 ```sh
-wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.5/verysimple_linux_amd64_v1.0.5.tgz
+wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.7/verysimple_linux_amd64_v1.0.7.tgz
 
-tar -xzf verysimple_linux_amd64_v1.0.5.tgz
+tar -xzf verysimple_linux_amd64_v1.0.7.tgz
 sudo mkdir -p /usr/local/etc/verysimple
 sudo mv verysimple /usr/local/etc/verysimple/
-sudo mv server.example.toml /usr/local/etc/verysimple/server.toml
+sudo mv vlesss.server.toml /usr/local/etc/verysimple/server.toml
 
 ```
 

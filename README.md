@@ -25,7 +25,11 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。
 ### 创新之外的已实现的有用特性
 
+使用readv 进行加速
+
 其它监听协议还支持 socks5, http, dokodemo
+
+支持 用tcp/udp/unix domain socket  作为网络层。
 
 多种配置文件格式,包括自有的 toml标准格式
 
@@ -35,7 +39,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持utls伪装tls指纹
 
-支持websocket, 使用性能最高的 gobwas/ws 包
+支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，与现有xray/v2ray兼容
 
 ### 关于vless v1
 
