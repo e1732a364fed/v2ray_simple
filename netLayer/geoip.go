@@ -29,7 +29,7 @@ func HasEmbedGeoip() bool {
 func loadMaxmindGeoipBytes(bs []byte) {
 	db, err := maxminddb.FromBytes(bs)
 	if err != nil {
-		log.Fatalln("loadMaxmindGeoipBytes", err)
+		log.Fatalln("err when loadMaxmindGeoipBytes", err)
 	}
 	the_geoipdb = db
 }

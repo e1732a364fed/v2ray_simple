@@ -1,7 +1,7 @@
 package netLayer
 
 const (
-	// transport Layer, 使用uint16 mask，所以最多支持16种
+	// Transport Layer Protocols, 使用uint16 mask，所以最多支持16种
 
 	TCP uint16 = 1 << iota
 	UDP
@@ -16,9 +16,9 @@ const (
 
 func StrToTransportProtocol(s string) uint16 {
 	switch s {
-	case "tcp":
+	case "tcp", "tcp4", "tcp6":
 		return TCP
-	case "udp":
+	case "udp", "udp4", "udp6":
 		return UDP
 	case "unix":
 		return UNIX
@@ -28,7 +28,6 @@ func StrToTransportProtocol(s string) uint16 {
 		return KCP
 	case "quic":
 		return Quic
-
 	}
 	return 0
 }

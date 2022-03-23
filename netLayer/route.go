@@ -1,7 +1,7 @@
 package netLayer
 
 import (
-	"net"
+	"net/netip"
 	"strings"
 
 	"github.com/yl2chen/cidranger"
@@ -18,18 +18,17 @@ type TargetDescription struct {
 //  这里的相同点，就是它们同属于 将发往一个方向, 即同属一个路由策略
 // 任意一个参数匹配后，都将发往相同的方向，由该方向OutTag 指定
 // RouteSet 只负责把一些属性相同的 “网络层/传输层 特征” 放到一起
-//
-// 目前先使用map，以后优化时再考虑使用 能加速查找 的数据结构
 type RouteSet struct {
 	//网络层
-	NetRanger                  cidranger.Ranger  //一个范围
-	IPs                        map[string]net.IP //一个确定值
-	Domains, InTags, Countries map[string]bool   // Countries 使用 ISO 3166 字符串 作为key
+	NetRanger                  cidranger.Ranger    //一个范围
+	IPs                        map[netip.Addr]bool //一个确定值
+	Domains, InTags, Countries map[string]bool     // Countries 使用 ISO 3166 字符串 作为key
 
 	//传输层
 	AllowedTransportLayerProtocols uint16
 
 	OutTag string //目标
+
 }
 
 func NewRouteSetForMyCountry(iso string) *RouteSet {
@@ -51,7 +50,7 @@ func NewRouteSetForMyCountry(iso string) *RouteSet {
 func NewFullRouteSet() *RouteSet {
 	return &RouteSet{
 		NetRanger:                      cidranger.NewPCTrieRanger(),
-		IPs:                            make(map[string]net.IP),
+		IPs:                            make(map[netip.Addr]bool),
 		Domains:                        make(map[string]bool),
 		InTags:                         make(map[string]bool),
 		Countries:                      make(map[string]bool),
@@ -60,7 +59,7 @@ func NewFullRouteSet() *RouteSet {
 }
 
 func (sg *RouteSet) IsIn(td *TargetDescription) bool {
-	if td.Tag != "" {
+	if td.Tag != "" && sg.InTags != nil {
 		if _, found := sg.InTags[td.Tag]; found {
 			return true
 		}
@@ -89,16 +88,15 @@ func (sg *RouteSet) IsTCPAllowed() bool {
 func (sg *RouteSet) IsAddrIn(a *Addr) bool {
 	//我们先过滤传输层，再过滤网络层
 
-	//目前我们仅支持udp和tcp这两种传输层协议，所以可以如此。以后如果加了更多的话，还需改动
 	if !sg.IsAddrNetworkAllowed(a) {
 		return false
 
-	} else if sg.NetRanger == nil && sg.IPs == nil && sg.Domains == nil && sg.InTags == nil && sg.Countries == nil {
+	} else if sg.NetRanger == nil && sg.IPs == nil && sg.Domains == nil && sg.Countries == nil {
 		//如果仅限制了一个传输层协议，且本集合里没有任何其它内容，那就直接通过
 		return true
 	}
 	//开始网络层判断
-	if a.IP != nil {
+	if len(a.IP) > 0 {
 		if sg.NetRanger != nil {
 			if has, _ := sg.NetRanger.Contains(a.IP); has {
 				return true
@@ -114,7 +112,7 @@ func (sg *RouteSet) IsAddrIn(a *Addr) bool {
 
 		}
 		if sg.IPs != nil {
-			if _, found := sg.IPs[a.IP.To16().String()]; found {
+			if _, found := sg.IPs[a.GetNetIPAddr()]; found {
 				return true
 			}
 		}

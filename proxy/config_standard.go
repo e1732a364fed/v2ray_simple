@@ -3,6 +3,7 @@ package proxy
 import (
 	"io/ioutil"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -154,9 +155,10 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
 			}
 			continue
 		}
-		if ip := net.ParseIP(ipStr); ip != nil {
-			rs.IPs[ipStr] = ip
-			continue
+
+		na, e := netip.ParseAddr(ipStr)
+		if e == nil {
+			rs.IPs[na] = true
 		}
 	}
 

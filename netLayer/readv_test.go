@@ -357,11 +357,11 @@ func BenchmarkClassicCopy_SimulateRealWorld_ReadV(b *testing.B) {
 		b.Log(err)
 		b.FailNow()
 	}
+	unit := bigBytesLen / 10
 
 	b.StartTimer()
 
 	for i := 0; i < transmitCount; i++ {
-		unit := bigBytesLen / 10
 
 		for cursor := 0; cursor < bigBytesLen; cursor += unit {
 			_, e := tcpConn.Write(bigBytes[cursor : cursor+unit])

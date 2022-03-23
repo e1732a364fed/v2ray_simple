@@ -125,6 +125,16 @@ func (a *Addr) UrlString() string {
 	return a.Network + "://" + url.PathEscape(str)
 }
 
+func (a *Addr) GetNetIPAddr() (na netip.Addr) {
+	if len(a.IP) < 1 {
+		return
+	}
+
+	na, _ = netip.AddrFromSlice(a.IP)
+
+	return
+}
+
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
 	switch a.Network {
 	case "udp", "udp4", "udp6":
