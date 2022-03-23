@@ -6,9 +6,9 @@ import "log"
 // 该 MultiReader 的用例请参照 netLayer.ReadFromMultiReader , 在 netLayer/readv.go中
 //具体实现见 readv_*.go; 用 GetReadVReader() 函数来获取本平台的对应实现。
 type MultiReader interface {
-	Init([][]byte)         //将 给出的buffer 放入内部实际数据中
-	Read(fd uintptr) int32 //读取一次文件，并放入 buffer中
-	Clear()                //清理内部buffer
+	Init([][]byte)                   //将 给出的buffer 放入内部实际数据中
+	Read(fd uintptr) (uint32, error) //读取一次文件，并放入 buffer中
+	Clear()                          //清理内部buffer
 }
 
 // 因为 net.Buffers 的 WriteTo方法只会查看其是否实现了net包私有的 writeBuffers 接口
@@ -41,6 +41,7 @@ type MultiWriter interface {
 	WriteBuffers([][]byte) (int64, error)
 }
 
+//获取所有子[]byte 长度总和
 func BuffersLen(bs [][]byte) (allnum int) {
 	if len(bs) < 1 {
 		return 0
@@ -57,6 +58,7 @@ func PrintBuffers(bs [][]byte) {
 	}
 }
 
+// AllocMTUBuffers 获取指定 子[]byte 数量的 [][]byte, 并用 mr.Init 给mr里的缓存指针赋值.
 // 每个子[]byte 长度固定为 StandardBytesLenth
 func AllocMTUBuffers(mr MultiReader, len int) [][]byte {
 	bs := make([][]byte, len)
@@ -68,6 +70,7 @@ func AllocMTUBuffers(mr MultiReader, len int) [][]byte {
 	return bs
 }
 
+//将mb恢复原先长度后，将mb的所有子[]byte  放回Pool中
 func ReleaseBuffers(mb [][]byte, oldLen int) {
 	if mb == nil {
 		return
@@ -78,10 +81,10 @@ func ReleaseBuffers(mb [][]byte, oldLen int) {
 	}
 }
 
-//删减buffer内部的子[]byte 到合适的长度
+//削减buffer内部的子[]byte 到合适的长度;返回削减后 bs应有的长度.
 func ShrinkBuffers(bs [][]byte, all_len int) int {
-	nBuf := 0
-	for nBuf < len(bs) {
+	curIndex := 0
+	for curIndex < len(bs) {
 		if all_len <= 0 {
 			break
 		}
@@ -89,13 +92,14 @@ func ShrinkBuffers(bs [][]byte, all_len int) int {
 		if end > StandardBytesLength {
 			end = StandardBytesLength
 		}
-		bs[nBuf] = bs[nBuf][:end]
+		bs[curIndex] = bs[curIndex][:end]
 		all_len -= end
-		nBuf++
+		curIndex++
 	}
-	return nBuf
+	return curIndex
 }
 
+//通过reslice 方式将 bs的长度以及 子 []byte 的长度 恢复至指定长度
 func RecoverBuffers(bs [][]byte, oldLen, old_sub_len int) [][]byte {
 	bs = bs[:oldLen]
 	for i, v := range bs {

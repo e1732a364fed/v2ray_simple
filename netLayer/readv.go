@@ -2,7 +2,6 @@ package netLayer
 
 import (
 	"io"
-	"log"
 	"net"
 	"syscall"
 
@@ -14,27 +13,11 @@ import (
 // 16个1500那就是 24000, 23.4375 KB, 不算小了;
 var readv_buffer_allocLen = 16
 
-func GetRawConn(reader io.Reader) syscall.RawConn {
-	if sc, ok := reader.(syscall.Conn); ok {
-		rawConn, err := sc.SyscallConn()
-		if err != nil {
-			if utils.CanLogDebug() {
-				log.Println("can't convert syscall.Conn to syscall.RawConn", reader, err)
-			}
-			return nil
-		} else {
-			return rawConn
-		}
-	}
-
-	return nil
-}
-
 /* ReadFromMultiReader 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
 
 若allocedBuffers未给出，会使用 utils.AllocMTUBuffers 来初始化 缓存。
 
-返回错误时，依然会返回 原buffer 或者 在函数内部新分配的buffer. 本函数不负责 释放分配的内存. 这样有时可以重复利用缓存。
+返回错误时，依然会返回 原buffer 或者 在函数内部新分配的buffer. 本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
 
 小贴士：将该 net.Buffers 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
 
@@ -46,10 +29,10 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allo
 		allocedBuffers = utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
 	}
 
-	var nBytes int32
+	var nBytes uint32
 	err := rawReadConn.Read(func(fd uintptr) bool {
-		n := mr.Read(fd)
-		if n < 0 {
+		n, e := mr.Read(fd)
+		if e != nil {
 			return false
 		}
 
@@ -61,7 +44,6 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allo
 		return allocedBuffers, err
 	}
 	if nBytes == 0 {
-		err = io.EOF
 		return allocedBuffers, io.EOF
 	}
 
@@ -69,7 +51,7 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allo
 	/*
 		if utils.CanLogDebug() {
 			// 可用于查看到底用了几个buf, 便于我们调整buf最大长度
-			log.Println("release buf", len(bs)-nBuf)
+			log.Println("release buf", len(allocedBuffers)-nBuf)
 		}
 	*/
 

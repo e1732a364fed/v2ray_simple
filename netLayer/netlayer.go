@@ -8,17 +8,35 @@ Package netLayer contains definitions in network layer AND transport layer.
 */
 package netLayer
 
-import "net"
+import (
+	"io"
+	"log"
+	"syscall"
 
+	"github.com/hahahrfool/v2ray_simple/utils"
+)
+
+//net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
 func IsBasicConn(r interface{}) bool {
-	switch r.(type) {
-	case *net.TCPConn:
-		return true
-	case *net.UDPConn:
-		return true
-	case *net.UnixConn:
+	if _, ok := r.(syscall.Conn); ok {
 		return true
 	}
 
 	return false
+}
+
+func GetRawConn(reader io.Reader) syscall.RawConn {
+	if sc, ok := reader.(syscall.Conn); ok {
+		rawConn, err := sc.SyscallConn()
+		if err != nil {
+			if utils.CanLogDebug() {
+				log.Println("can't convert syscall.Conn to syscall.RawConn", reader, err)
+			}
+			return nil
+		}
+		return rawConn
+
+	}
+
+	return nil
 }

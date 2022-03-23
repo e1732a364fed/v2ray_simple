@@ -30,12 +30,13 @@ func (r *posixReader) Init(bs [][]byte) {
 	r.iovecs = iovecs
 }
 
-func (r *posixReader) Read(fd uintptr) int32 {
+//正常readv返回的应该是 ssize_t, 在64位机器上应该是 int64, 但是负数只用于返回-1错误，而且我们提供的buffer长度远远小于 uint32的上限；所以uint32可以
+func (r *posixReader) Read(fd uintptr) (uint32, error) {
 	n, _, e := syscall.Syscall(syscall.SYS_READV, fd, uintptr(unsafe.Pointer(&r.iovecs[0])), uintptr(len(r.iovecs)))
 	if e != 0 {
-		return -1
+		return 0, e
 	}
-	return int32(n)
+	return uint32(n), nil
 }
 
 func (r *posixReader) Clear() {
