@@ -19,9 +19,9 @@ func init() {
 	proxy.RegisterServer(name, &ServerCreator{})
 }
 
-//只有地址和port需要配置，非常简单
 type ServerCreator struct{}
 
+//只有地址和port需要配置，非常简单
 func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	addr := u.Host //若不给出port，那就只有host名，这样不好，我们“默认”, 配置里肯定给了port
 
@@ -36,9 +36,7 @@ func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 
 func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 
-	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},
-	}
+	s := &Server{}
 	return s, nil
 }
 

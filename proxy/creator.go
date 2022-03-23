@@ -231,12 +231,16 @@ func configCommon(ser ProxyCommon, cc *CommonConf) {
 
 }
 
-//setNetwork, setIsDial(true),setDialConf(dc), call  configCommon
+//SetAddrStr, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon
 func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	cli.setNetwork(dc.Network)
 	cli.setIsDial(true)
 	cli.setDialConf(dc)
 	cli.setTag(dc.Tag)
+
+	if cli.Name() != "direct" {
+		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
+	}
 
 	configCommon(cli, &dc.CommonConf)
 
@@ -245,8 +249,9 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	}
 }
 
-//setNetwork, setTag, setCantRoute,setListenConf(lc), call configCommon
+//SetAddrStr,setNetwork, setTag, setCantRoute,setListenConf(lc), call configCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
+	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	ser.setNetwork(lc.Network)
 	ser.setListenConf(lc)
 	ser.setTag(lc.Tag)

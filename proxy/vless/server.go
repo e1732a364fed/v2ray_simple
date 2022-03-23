@@ -42,9 +42,8 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: lc.GetAddr()},
-		userHashes:        make(map[[16]byte]*proxy.V2rayUser),
-		userCRUMFURS:      make(map[[16]byte]*CRUMFURS),
+		userHashes:   make(map[[16]byte]*proxy.V2rayUser),
+		userCRUMFURS: make(map[[16]byte]*CRUMFURS),
 	}
 
 	fallbackStr := lc.Fallback

@@ -121,7 +121,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
 	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径
-	tlsserver, err := tlsLayer.NewServer(lc.GetAddr(), lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure)
+	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure)
 	if err == nil {
 		com.setTLS_Server(tlsserver)
 	} else {
@@ -150,7 +150,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 		hostAndPort := u.Host
 		sni, _, _ := net.SplitHostPort(hostAndPort)
 
-		tlsserver, err := tlsLayer.NewServer(hostAndPort, sni, certFile, keyFile, insecure)
+		tlsserver, err := tlsLayer.NewServer(sni, certFile, keyFile, insecure)
 		if err == nil {
 			com.setTLS_Server(tlsserver)
 		} else {
@@ -317,7 +317,7 @@ func (s *ProxyCommonStruct) initWS_client() {
 		}
 	}
 
-	c, e := ws.NewClient(s.dialConf.GetAddr(), path)
+	c, e := ws.NewClient(s.dialConf.GetAddrStr(), path)
 	if e != nil {
 		log.Fatal("initWS_client failed", e)
 	}

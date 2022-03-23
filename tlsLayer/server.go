@@ -8,18 +8,16 @@ import (
 )
 
 type Server struct {
-	addr      string
 	tlsConfig *tls.Config
 }
 
-func NewServer(hostAndPort, host, certFile, keyFile string, isInsecure bool) (*Server, error) {
+func NewServer(host, certFile, keyFile string, isInsecure bool) (*Server, error) {
 
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
 		return nil, err
 	}
 	s := &Server{
-		addr: hostAndPort,
 		tlsConfig: &tls.Config{
 			InsecureSkipVerify: isInsecure,
 			ServerName:         host,

@@ -53,8 +53,7 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	}
 
 	c := &Client{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},
-		user:              id,
+		user: id,
 	}
 	v := dc.Version
 	if v >= 0 {

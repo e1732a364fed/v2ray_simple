@@ -65,8 +65,7 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 		return nil, e
 	}
 	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: lc.GetAddr()}, //监听地址，不要与TargetAddr混淆
-		targetAddr:        ta,
+		targetAddr: ta,
 	}
 	return s, nil
 }

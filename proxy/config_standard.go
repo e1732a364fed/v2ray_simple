@@ -37,13 +37,38 @@ type CommonConf struct {
 	Extra map[string]interface{} `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
 }
 
-func (cc *CommonConf) GetAddr() string {
+func (cc *CommonConf) GetAddrStr() string {
 	switch cc.Network {
 	case "unix":
 		return cc.Host
 
 	default:
-		return cc.Host + ":" + strconv.Itoa(cc.Port)
+		if cc.Host != "" {
+
+			return cc.Host + ":" + strconv.Itoa(cc.Port)
+		} else {
+			return cc.IP + ":" + strconv.Itoa(cc.Port)
+
+		}
+
+	}
+
+}
+
+//和 GetAddr的区别是，它优先使用ip，其次再使用host
+func (cc *CommonConf) GetAddrStrForListenOrDial() string {
+	switch cc.Network {
+	case "unix":
+		return cc.Host
+
+	default:
+		if cc.IP != "" {
+			return cc.IP + ":" + strconv.Itoa(cc.Port)
+
+		} else {
+			return cc.Host + ":" + strconv.Itoa(cc.Port)
+
+		}
 
 	}
 

@@ -27,7 +27,6 @@ type Server struct {
 	//password string
 }
 
-//只有地址和port需要配置，非常简单
 type ServerCreator struct{}
 
 func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
@@ -36,12 +35,11 @@ func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 
 func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 
-	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: dc.GetAddr()},
-	}
+	s := &Server{}
 	return s, nil
 }
 
+//只有地址和port需要配置，非常简单
 func NewServer(url *url.URL) (proxy.Server, error) {
 	addr := url.Host //若不给出port，那就只有host名，这样不好，我们默认配置里肯定给了port
 
