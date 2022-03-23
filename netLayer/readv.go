@@ -9,6 +9,11 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+//v2ray里还使用了动态分配的方式，我们为了简便先啥也不做
+// 实测16个buf已经完全够用，平时也就偶尔遇到5个buf的情况, 极速测速时会占用更多；
+// 16个1500那就是 24000, 23.4375 KB, 不算小了;
+var readv_buffer_allocLen = 16
+
 func GetRawConn(reader io.Reader) syscall.RawConn {
 	if sc, ok := reader.(syscall.Conn); ok {
 		rawConn, err := sc.SyscallConn()
@@ -25,34 +30,19 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 	return nil
 }
 
-// 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况
-// 小贴士：将该 net.Buffers 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
-/*
-	使用方式
+/* ReadFromMultiReader 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
+返回错误时，依然返回原 buffer或者新分配的buffer. 本函数不负责 释放分配的内存. 这样有时可以重复利用缓存。
+若allocedBuffers未给出，会使用 utils.AllocMTUBuffers 来初始化 缓存。
 
-	var readConn, writeConn net.Conn
-	//想办法初始化这两个Conn
+小贴士：将该 net.Buffers 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
 
-	rawConn:= netLayer.GetRawConn(readConn)
-	mr:=utils.GetReadVReader()
-	buffers,err:= netLayer.ReadFromMultiReader(rawConn,mr)
-	if err!=nil{
-		log.Fatal("sfdfdaf")
-	}
-	buffers.WriteTo(writeConn)
-
-	包装的代码见 TryCopy 函数; Relay函数也用到了
-
+TryCopy函数使用到了本函数。
 */
-func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader) (net.Buffers, error) {
-	//v2ray里还使用了动态分配的方式，我们为了简便先啥也不做
-	bs := make([][]byte, 16)
-	// 实测16个buf已经完全够用，平时也就偶尔遇到5个buf的情况, 极速测速时会占用更多；
-	// 16个1500那就是 24000, 23.4375 KB, 不算小了;
-	for i := range bs {
-		bs[i] = utils.GetMTU()
+func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allocedBuffers net.Buffers) (net.Buffers, error) {
+
+	if allocedBuffers == nil {
+		allocedBuffers = utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
 	}
-	mr.Init(bs)
 
 	var nBytes int32
 	err := rawReadConn.Read(func(fd uintptr) bool {
@@ -64,45 +54,22 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader) (net
 		nBytes = n
 		return true
 	})
-	mr.Clear()
 	if err != nil {
-		ReleaseNetBuffers(bs)
-		return nil, err
+
+		return allocedBuffers, err
 	}
 	if nBytes == 0 {
-		ReleaseNetBuffers(bs)
-		return nil, io.EOF
+		err = io.EOF
+		return allocedBuffers, io.EOF
 	}
 
-	//删减buffer 到合适的长度，并释放没用到的buf
-
-	nBuf := 0
-	for nBuf < len(bs) {
-		if nBytes <= 0 {
-			break
-		}
-		end := nBytes
-		if end > int32(utils.StandardBytesLength) {
-			end = int32(utils.StandardBytesLength)
-		}
-		bs[nBuf] = bs[nBuf][:end]
-		nBytes -= end
-		nBuf++
-	}
+	nBuf := utils.ShrinkBuffers(allocedBuffers, int(nBytes))
 	/*
 		if utils.CanLogDebug() {
 			// 可用于查看到底用了几个buf, 便于我们调整buf最大长度
 			log.Println("release buf", len(bs)-nBuf)
 		}
 	*/
-	ReleaseNetBuffers(bs[nBuf:])
 
-	return bs[:nBuf], nil
-}
-
-func ReleaseNetBuffers(mb [][]byte) {
-	for i := range mb {
-		utils.PutBytes(mb[i])
-
-	}
+	return allocedBuffers[:nBuf], nil
 }

@@ -2,12 +2,13 @@ package utils
 
 import "log"
 
+// MultiReader 是平台相关的 用于 调用readv的 工具.
 // 该 MultiReader 的用例请参照 netLayer.ReadFromMultiReader , 在 netLayer/readv.go中
 //具体实现见 readv_*.go; 用 GetReadVReader() 函数来获取本平台的对应实现。
 type MultiReader interface {
-	Init([][]byte)
-	Read(fd uintptr) int32
-	Clear()
+	Init([][]byte)         //将 给出的buffer 放入内部实际数据中
+	Read(fd uintptr) int32 //读取一次文件，并放入 buffer中
+	Clear()                //清理内部buffer
 }
 
 // 因为 net.Buffers 的 WriteTo方法只会查看其是否实现了net包私有的 writeBuffers 接口
@@ -54,6 +55,53 @@ func PrintBuffers(bs [][]byte) {
 	for i, b := range bs {
 		log.Println(i, b)
 	}
+}
+
+// 每个子[]byte 长度固定为 StandardBytesLenth
+func AllocMTUBuffers(mr MultiReader, len int) [][]byte {
+	bs := make([][]byte, len)
+
+	for i := range bs {
+		bs[i] = GetMTU()
+	}
+	mr.Init(bs)
+	return bs
+}
+
+func ReleaseBuffers(mb [][]byte, oldLen int) {
+	if mb == nil {
+		return
+	}
+	mb = mb[:oldLen]
+	for i := range mb {
+		PutBytes(mb[i])
+	}
+}
+
+//删减buffer内部的子[]byte 到合适的长度
+func ShrinkBuffers(bs [][]byte, all_len int) int {
+	nBuf := 0
+	for nBuf < len(bs) {
+		if all_len <= 0 {
+			break
+		}
+		end := all_len
+		if end > StandardBytesLength {
+			end = StandardBytesLength
+		}
+		bs[nBuf] = bs[nBuf][:end]
+		all_len -= end
+		nBuf++
+	}
+	return nBuf
+}
+
+func RecoverBuffers(bs [][]byte, oldLen, old_sub_len int) [][]byte {
+	bs = bs[:oldLen]
+	for i, v := range bs {
+		bs[i] = v[:old_sub_len]
+	}
+	return bs
 }
 
 // 如果 分配了新内存来 包含数据，则 duplicate ==true; 如果利用了原有的第一个[]byte, 则 duplicate==false

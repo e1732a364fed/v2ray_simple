@@ -74,9 +74,11 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	if utils.CanLogDebug() {
 		log.Println("copying with readv")
 	}
+	defer mr.Clear()
+	defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
 
 	for {
-		buffers, err = ReadFromMultiReader(rawConn, mr)
+		buffers, err = ReadFromMultiReader(rawConn, mr, buffers)
 		if err != nil {
 			return 0, err
 		}
@@ -97,7 +99,8 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			return
 		}
 
-		ReleaseNetBuffers(buffers)
+		buffers = utils.RecoverBuffers(buffers, 16, utils.StandardBytesLength)
+
 	}
 classic:
 	if utils.CanLogDebug() {
@@ -135,14 +138,15 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	if utils.CanLogDebug() {
 		log.Println("copying with readv")
 	}
+	defer mr.Clear()
+	defer utils.ReleaseBuffers(buffers, 16)
 
-	buffers, err = ReadFromMultiReader(rawConn, mr)
+	buffers, err = ReadFromMultiReader(rawConn, mr, nil)
 	if err != nil {
 		return 0, err
 	}
 	allnum, err = buffers.WriteTo(writeConn)
 
-	ReleaseNetBuffers(buffers)
 	return
 
 classic:
