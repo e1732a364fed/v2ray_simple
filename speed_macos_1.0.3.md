@@ -92,7 +92,7 @@ verysimple 版本 v1.0.3
 
 在macos上，verysimple的上传速度是很强大的。不过在下载速度上略输 xray。
 
-不过我还没有实现readv，等我加了readv后，有可能实现反超。
+注意，这个测速是在v1.0.3时测的，当时我还没实现readv。最新代码已经实现了readv，理论上macos上也能超过xray，有机会测一测。
 
 总之，我的双向splice功能在mac上发挥不出作用，因为mac不是linux，没splice函数。。。
 

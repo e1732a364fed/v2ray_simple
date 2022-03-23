@@ -83,7 +83,7 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 该特性不完全稳定，可能会导致一些网页访问有时出现异常,有时出现bad mac alert;刷新页面可以解决
 
-不是速度慢，是因为 目前的tls过滤方式有点问题, 对close_alert等情况没处理好。而且使用不同的浏览器，现象也会不同，似乎对safari支持好一些， chrome就差一些
+不是速度慢，是因为 目前的tls过滤方式有点问题, 对close_alert等情况没处理好。而且使用不同的浏览器，现象也会不同
 
 在我的最新代码里，采用了独特的技术，已经规避了大部分不稳定性。总之比较适合看视频，毕竟双向splice，不是白给的！
 
@@ -145,12 +145,12 @@ git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
 
 #如果使用极简模式，则复制vs.json文件
-cp vs.client.json client.json
-cp vs.server.json server.json
+cp examples/vs.client.json client.json
+cp examples/vs.server.json server.json
 
 #如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
-cp vlesss.client.toml client.toml
-cp vlesss.server.toml server.toml
+cp examples/vlesss.client.toml client.toml
+cp examples/vlesss.server.toml server.toml
 ```
 
 详细优化的编译参数请参考Makefile文件
@@ -225,7 +225,7 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
-我的 vlesss.client.toml, vlesss.server.toml , z_multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好
+本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , z_multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好
 
 ### 兼容模式
 
@@ -317,7 +317,7 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后我不承担�
 
 verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如socks协议只能用于客户端入口，没法用于出口。
 
-本项目的目的类似于一种 proof of concept. 方便理解，也因为极简所以能比官方v2ray快一些。
+本项目的目的类似于一种 proof of concept. 方便理解，也因为极简所以比官方v2ray快。
 
 也因为是poc，所以我有时会尝试向 verysimple 中添加一些我设计的新功能。目前正在计划的有
 

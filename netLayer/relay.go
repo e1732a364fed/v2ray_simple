@@ -38,15 +38,11 @@ func CanSplice(r interface{}) bool {
 //会接连尝试 splice、循环readv 以及 原始Copy方法
 func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
 	var mr utils.MultiReader
+	var multiWriter utils.MultiWriter
+
 	var buffers net.Buffers
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
-	var multiWriter utils.MultiWriter
-	isWriteConnBasic := IsBasicConn(writeConn)
-
-	if !isWriteConnBasic {
-		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
-	}
 
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
@@ -70,10 +66,16 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		goto classic
 	}
 
-	mr = utils.GetReadVReader()
 	if utils.CanLogDebug() {
 		log.Println("copying with readv")
 	}
+
+	if !IsBasicConn(writeConn) {
+		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
+	}
+
+	mr = utils.GetReadVReader()
+
 	defer mr.Clear()
 	defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
 
@@ -85,7 +87,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		var num int64
 		var err2 error
 
-		//如vless协议，肯定走这里，因为 vless.UserConn 实现了 utils.MultiWriter
+		// vless.UserConn 和 ws.Conn 实现了 utils.MultiWriter
 		if isWriteConn_a_MultiWriter {
 			num, err2 = multiWriter.WriteBuffers(buffers)
 
