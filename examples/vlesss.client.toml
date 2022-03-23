@@ -10,6 +10,7 @@ loglevel = 1
 
 # default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
+# mycountry = "CN" 全局级的 国别分流配置, 见下面route的注释
 
 [[listen]]
 tag = "my_socks5"   # 可选, 但不可与其他tag重复
@@ -49,12 +50,11 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 
 # route 是在我们代理界是分流的意思。 这一项是可选的,如果没给出的话,就不分流;
-# 写了 mycountry 后, 向该国家的ip发送的请求就会直连, 然后其他的过代理
-# mycountry的字母必须是两个，而且必须大写。这个也会自动被用于顶级域名的国别分流
+# 写了 country 后, 向该国家的ip发送的请求就会直连, 然后其他的过代理
+# country的字母必须是两个，而且必须大写。这个也会自动被用于顶级域名的国别分流
 # 同时，必须要一个 GeoLite2-Country.mmdb 文件 放在verysimple的相同目录下. 详情见 README.md
 
-# 具体的其它详细 分流配置请参考 z_multi.client.toml 和 z_multi.server.toml 文件, 因为会涉及到多个dial
+# 具体的其它详细 分流配置请参考 multi.client.toml 和 multi.server.toml 文件, 因为会涉及到多个dial
 
-[route]
-mycountry = "CN"
-
+[[route]]
+country = ["CN"]
