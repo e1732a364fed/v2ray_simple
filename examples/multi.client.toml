@@ -1,0 +1,49 @@
+# 本示例文件之所以 以 z_ 开头，是为了确保 “所有示例文件” 的开头字母都是 v 及v以后的字母
+# 这样可以保证示例文件 尽量被 放在文件夹列表的末尾
+
+[app]
+loglevel = 1
+default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10800
+
+[[dial]]
+tag = "my_vless1"  
+protocol = "vlesss"
+host = "127.0.0.1"
+port = 4433
+version = 0    
+insecure = true 
+utls = true   
+
+
+[[dial]]
+tag = "my_ws1"
+protocol = "vlesss"
+host = "127.0.0.1"
+port = 4434
+insecure = true
+utls = true
+advancedLayer = "ws"
+path = "/ohmygod_verysimple_is_very_simple" 
+
+# route就是分流规则，分流规则从上到下匹配，匹配到哪一个就用哪一个. 
+
+[[route]]
+dialTag = "my_ws1"
+country = ["CN"]
+
+[[route]]
+dialTag = "my_vless1"
+
+# 这里我们只给了tag, 没给其它限定条件，也就是说肯定会匹配到这一条 规则
+# 如果所有route均不匹配，则数据会流向 proxy 这个tag，如果这个tag没有具体的dial，则流向第一个dial
+# 如果匹配了mycountry, 则数据会直接被直连.
+# 其它分流匹配示例：
+# ip = ["0.0.0.0/8","10.0.0.0/8","fe80::/10","10.0.0.1"]
+# domain = ["www.google.com","www.twitter.com"]
+# network = ["tcp","udp"]
+# inTag = ["tag1","tag2"]

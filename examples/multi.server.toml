@@ -1,0 +1,30 @@
+[app]
+loglevel = 1
+default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+
+[[listen]]
+tag = "my_vlesss1"
+protocol = "vlesss"
+host = "0.0.0.0"
+port = 4433
+insecure = true
+fallback = ":80"
+cert = "cert.pem"
+key = "cert.key"
+
+[[listen]]
+tag = "my_ws1"
+protocol = "vlesss"
+host = "0.0.0.0"
+port = 4434
+insecure = true
+cert = "cert.pem"
+key = "cert.key"
+advancedLayer = "ws"
+path = "/ohmygod_verysimple_is_very_simple"
+
+
+[[dial]]
+protocol = "direct"
+
+
