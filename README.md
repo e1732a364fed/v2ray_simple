@@ -225,7 +225,7 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
-本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , z_multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好
+本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。
 
 ### 兼容模式
 
