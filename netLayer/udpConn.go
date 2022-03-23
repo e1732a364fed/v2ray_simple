@@ -41,16 +41,19 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 		MakePipeDeadline(), []byte{}, isClient}
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
-	conn.SetReadBuffer(64 * 1024)
-	conn.SetWriteBuffer(64 * 1024)
+	conn.SetReadBuffer(MaxUDP_packetLen)
+	conn.SetWriteBuffer(MaxUDP_packetLen)
 
 	if isClient {
 
-		//客户端要自己循环读取udp
+		//客户端要自己循环读取udp,
 		go func() {
 			for {
 				buf := utils.GetPacket()
 				n, _, err := conn.ReadFromUDP(buf)
+
+				//这里默认认为每个客户端都是在NAT后的,不怕遇到其它raddr,
+				// 即默认认为只可能读到 我们服务器发来的数据.
 
 				inDataChan <- buf[:n] //该数据会被ReadMsg和 Read读到
 
@@ -90,7 +93,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 	var msg []byte
 	msg, err = uc.ReadMsg()
 	if err != nil {
-		return 0, err
+		return
 	}
 	n = copy(buf, msg)
 
@@ -99,6 +102,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 
 		uc.unread = append(uc.unread, msg[n:]...)
 	} else {
+		//我们Read时统一用的 GetPacket, 所以整个拷贝完后可以放回
 		utils.PutPacket(msg)
 	}
 

@@ -3,6 +3,7 @@ package netLayer
 import (
 	"io"
 	"net"
+	"net/netip"
 	"sync"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -17,13 +18,13 @@ type UDPListener struct {
 	conn *net.UDPConn
 
 	newConnChan chan *UDPConn
-	connMap     map[[6]byte]*UDPConn
+	connMap     map[netip.AddrPort]*UDPConn
 	mux         sync.RWMutex
 }
 
 // NewUDPListener 返回一个 *UDPListener, 该Listener实现了 net.Listener
 func NewUDPListener(laddr *net.UDPAddr) (*UDPListener, error) {
-	c, err := net.ListenUDP("udp4", laddr)
+	c, err := net.ListenUDP("udp", laddr)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func NewUDPListener(laddr *net.UDPAddr) (*UDPListener, error) {
 func NewUDPListenerConn(conn *net.UDPConn) (*UDPListener, error) {
 	ul := new(UDPListener)
 	ul.conn = conn
-	ul.connMap = make(map[[6]byte]*UDPConn)
+	ul.connMap = make(map[netip.AddrPort]*UDPConn)
 	ul.newConnChan = make(chan *UDPConn, 100)
 	go ul.run()
 
@@ -42,22 +43,21 @@ func NewUDPListenerConn(conn *net.UDPConn) (*UDPListener, error) {
 
 //It can be used to dial a remote udp
 func (ul *UDPListener) NewConn(raddr *net.UDPAddr) *UDPConn {
-	addrb := UDPAddr2Byte(raddr)
-	return ul.newConn(raddr, addrb)
+	return ul.newConn(raddr, UDPAddr2AddrPort(raddr))
 }
 
 //newConn 创建一个新的 UDPConn,并存储在 ul.connMap 中
-func (ul *UDPListener) newConn(raddr *net.UDPAddr, addrb [6]byte) *UDPConn {
+func (ul *UDPListener) newConn(raddr *net.UDPAddr, addrport netip.AddrPort) *UDPConn {
 	newC := NewUDPConn(raddr, ul.conn, false)
 	ul.mux.Lock()
-	ul.connMap[addrb] = newC
+	ul.connMap[addrport] = newC
 	ul.mux.Unlock()
 	return newC
 }
 
-func (ul *UDPListener) DeleteConn(addrb [6]byte) {
+func (ul *UDPListener) DeleteConn(addrport netip.AddrPort) {
 	ul.mux.Lock()
-	delete(ul.connMap, addrb)
+	delete(ul.connMap, addrport)
 	ul.mux.Unlock()
 }
 
@@ -117,15 +117,15 @@ func (ul *UDPListener) run() {
 		n, raddr, err := conn.ReadFromUDP(buf)
 
 		go func(theraddr *net.UDPAddr, thebuf []byte) {
-			addrb := UDPAddr2Byte(theraddr)
+			addrport := UDPAddr2AddrPort(theraddr)
 			var oldConn *UDPConn
 
 			ul.mux.RLock()
-			oldConn = ul.connMap[addrb] //每次都从connMap查找是很慢的,先这样，以后使用更快的方法
+			oldConn = ul.connMap[addrport] //每次都从connMap查找是很慢的,先这样，以后使用更快的方法
 			ul.mux.RUnlock()
 
 			if oldConn == nil {
-				oldConn = ul.newConn(raddr, addrb)
+				oldConn = ul.newConn(raddr, addrport)
 
 				ul.newConnChan <- oldConn //此时 ul 的 Accept的调用者就会收到一个新Conn
 			}

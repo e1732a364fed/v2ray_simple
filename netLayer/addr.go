@@ -1,8 +1,10 @@
 package netLayer
 
 import (
+	"errors"
 	"math/rand"
 	"net"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -23,7 +25,6 @@ type Addr struct {
 	Name string // domain name, 或者 unix domain socket 的 文件路径
 	IP   net.IP
 	Port int
-	//IsUDP bool
 
 	Network string
 }
@@ -69,14 +70,17 @@ func NewAddr(addrStr string) (*Addr, error) {
 	return a, nil
 }
 
-// 如 tcp://127.0.0.1:443
+// 如 tcp://127.0.0.1:443 , tcp://google.com:443 ;
+// 不支持unix domain socket, 因为它是文件路径, / 还需要转义，太麻烦;不是我们代码麻烦, 而是怕用户嫌麻烦
 func NewAddrByURL(addrStr string) (*Addr, error) {
 
 	u, err := url.Parse(addrStr)
 	if err != nil {
 		return nil, err
 	}
-
+	if u.Scheme == "unix" {
+		return nil, errors.New("parse unix domain socket by url is not supported")
+	}
 	addrStr = u.Host
 
 	host, portStr, err := net.SplitHostPort(addrStr)
@@ -114,16 +118,21 @@ func (a *Addr) String() string {
 
 }
 
+//返回以url表示的 地址. unix的话文件名若带斜杠则会被转义
 func (a *Addr) UrlString() string {
 	str := a.String()
 
-	return a.Network + "://" + str
+	return a.Network + "://" + url.PathEscape(str)
 }
 
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
-	if a.Network != "udp" {
+	switch a.Network {
+	case "udp", "udp4", "udp6":
+
+	default:
 		return nil
 	}
+
 	ua, err := net.ResolveUDPAddr("udp", a.String())
 	if err != nil {
 		return nil
@@ -146,7 +155,8 @@ func (addr *Addr) Dial() (net.Conn, error) {
 	case "":
 		return net.Dial("tcp", addr.String())
 
-	case "udp":
+	case "udp", "udp4", "udp6":
+
 		return DialUDP(addr.ToUDPAddr())
 	default:
 		return net.Dial(addr.Network, addr.String())
@@ -225,7 +235,7 @@ func ParseStrToAddr(s string) (atyp byte, addr []byte, port_uint16 uint16, err e
 	return
 }
 
-func UDPAddr2Byte(addr *net.UDPAddr) [6]byte {
+func UDPAddr_v4_to_Bytes(addr *net.UDPAddr) [6]byte {
 	ip := addr.IP.To4()
 
 	port := uint16(addr.Port)
@@ -236,4 +246,9 @@ func UDPAddr2Byte(addr *net.UDPAddr) [6]byte {
 	copy(abs[4:], (*(*[2]byte)(unsafe.Pointer(&port)))[:])
 
 	return allByte
+}
+
+func UDPAddr2AddrPort(ua *net.UDPAddr) netip.AddrPort {
+	a, _ := netip.AddrFromSlice(ua.IP)
+	return netip.AddrPortFrom(a, uint16(ua.Port))
 }

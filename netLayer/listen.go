@@ -42,7 +42,7 @@ func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
 // 非阻塞，在自己的goroutine中监听.
 func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 	switch network {
-	case "udp":
+	case "udp", "udp4", "udp6":
 		ua, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return err
