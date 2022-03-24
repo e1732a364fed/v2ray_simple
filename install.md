@@ -3,9 +3,9 @@
 
 
 ```sh
-wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.7/verysimple_linux_amd64_v1.0.7.tgz
+wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.8/verysimple_linux_amd64_v1.0.8.tgz
 
-tar -xzf verysimple_linux_amd64_v1.0.7.tgz
+tar -xzf verysimple_linux_amd64_v1.0.8.tgz
 sudo mkdir -p /usr/local/etc/verysimple
 sudo mv verysimple /usr/local/etc/verysimple/
 sudo mv vlesss.server.toml /usr/local/etc/verysimple/server.toml
@@ -27,7 +27,7 @@ v1.0.5的tgz打包文件中，没有包含toml示例文件，需要你再 wget �
 After=network.service
 
 [Service]
-ExecStart=/usr/local/bin/verysimple -c server.toml
+ExecStart=/usr/local/etc/verysimple/verysimple -c server.toml
 
 [Install]
 
