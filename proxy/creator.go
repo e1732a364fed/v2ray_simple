@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -213,6 +214,17 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 
 	configCommonByURL(ser, u)
 
+	fallbackStr := q.Get("fallback")
+
+	if fallbackStr != "" {
+		fa, err := netLayer.NewAddr(fallbackStr)
+
+		if err != nil {
+			log.Fatalln("invalid fallback ", fallbackStr)
+		}
+
+		ser.setFallback(fa)
+	}
 }
 
 //setAdvancedLayer
@@ -261,4 +273,17 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 	if lc.AdvancedLayer == "ws" {
 		ser.initWS_server()
 	}
+
+	fallbackThing := lc.Fallback
+
+	if fallbackThing != nil {
+		fa, err := netLayer.NewAddrFromAny(fallbackThing)
+
+		if err != nil {
+			log.Fatalln("invalid fallback", fallbackThing)
+		}
+
+		ser.setFallback(fa)
+	}
+
 }

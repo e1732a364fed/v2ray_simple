@@ -90,6 +90,11 @@ type ProxyCommon interface {
 	setTLS_Server(*tlsLayer.Server)
 	setTLS_Client(*tlsLayer.Client)
 
+	//http
+	//默认回落地址.
+	GetFallback() *netLayer.Addr
+	setFallback(*netLayer.Addr)
+
 	/////////////////// 高级层 ///////////////////
 
 	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
@@ -183,12 +188,20 @@ type ProxyCommonStruct struct {
 
 	AdvancedL string
 
-	ws_c *ws.Client
-	ws_s *ws.Server
+	ws_c         *ws.Client
+	ws_s         *ws.Server
+	FallbackAddr *netLayer.Addr
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
 	return pcs.network
+}
+
+func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {
+	return pcs.FallbackAddr
+}
+func (pcs *ProxyCommonStruct) setFallback(a *netLayer.Addr) {
+	pcs.FallbackAddr = a
 }
 
 func (pcs *ProxyCommonStruct) MiddleName() string {

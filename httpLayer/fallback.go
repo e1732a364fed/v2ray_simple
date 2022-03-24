@@ -70,7 +70,7 @@ type ClassicFallback struct {
 
 	supportedTypeMask byte
 
-	Map map[byte]map[FallbackConditionSet]*netLayer.Addr
+	Map map[FallbackConditionSet]*netLayer.Addr
 }
 
 type FallbackConditionSet struct {
@@ -181,7 +181,7 @@ func (fcs *FallbackConditionSet) GetAllSubSets() (rs []FallbackConditionSet) {
 
 func NewClassicFallback() *ClassicFallback {
 	return &ClassicFallback{
-		Map: make(map[byte]map[FallbackConditionSet]*netLayer.Addr),
+		Map: make(map[FallbackConditionSet]*netLayer.Addr),
 	}
 }
 
@@ -232,14 +232,12 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 }
 
 func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, addr *netLayer.Addr) {
-	ctype := condition.GetType()
 
-	theMap := cfb.Map[ctype]
-	if theMap == nil {
-		theMap = make(map[FallbackConditionSet]*netLayer.Addr)
-		cfb.Map[ctype] = theMap
-		cfb.supportedTypeMask |= ctype
-	}
+	theMap := cfb.Map
+
+	ftype := condition.GetType()
+	cfb.supportedTypeMask |= ftype
+
 	theMap[condition] = addr
 }
 
@@ -262,10 +260,8 @@ func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr
 		return cfb.Default
 	}
 
-	theMap := cfb.Map[ftype]
-	if theMap == nil || len(theMap) == 0 {
-		return nil
-	}
+	//log.Println("GetFallback.", cfb.supportedTypeMask, ftype, ss)
+
 	cd := FallbackConditionSet{}
 
 	ss_cursor := 0
@@ -301,11 +297,21 @@ func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr
 			cd.Sni = param
 		}
 	}
+
+	/*log.Println("will check ", cd, cd.GetAllSubSets())
+	for x := range cfb.Map {
+		log.Println("has", x)
+	}
+	*/
+
+	theMap := cfb.Map
 	addr := theMap[cd]
 	if addr == nil {
 
 		ass := cd.GetAllSubSets()
 		for _, v := range ass {
+			//log.Println("will check ", v)
+
 			addr = theMap[v]
 			if addr != nil {
 				break
@@ -321,27 +327,4 @@ func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr
 type FallbackErr interface {
 	Error() string
 	Fallback() Fallback
-}
-
-//实现 FallbackErr
-type ErrSingleFallback struct {
-	FallbackAddr *netLayer.Addr
-	Err          error
-	eStr         string
-	First        *bytes.Buffer
-}
-
-func (ef *ErrSingleFallback) Error() string {
-	if ef.eStr == "" {
-		ef.eStr = ef.Err.Error() + ", default fallback is " + ef.FallbackAddr.String()
-	}
-	return ef.eStr
-}
-
-//返回 SingleFallback
-func (ef *ErrSingleFallback) Fallback() Fallback {
-	return &SingleFallback{
-		Addr:  ef.FallbackAddr,
-		First: ef.First,
-	}
 }

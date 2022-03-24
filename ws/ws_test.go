@@ -40,7 +40,7 @@ func TestWs(t *testing.T) {
 
 		s := ws.NewServer(wsPath)
 
-		wsConn, err := s.Handshake(conn)
+		wsConn, err := s.Handshake(nil, conn)
 		if err != nil {
 			t.Log(err)
 			t.Fail()

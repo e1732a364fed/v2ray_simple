@@ -3,6 +3,7 @@ package tlsLayer
 import (
 	"crypto/tls"
 	"net"
+	"unsafe"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
@@ -39,6 +40,7 @@ func (s *Server) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
 	tlsConn = &Conn{
 		Conn: rawTlsConn,
+		ptr:  unsafe.Pointer(rawTlsConn),
 	}
 
 	return

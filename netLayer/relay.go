@@ -92,7 +92,26 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			num, err2 = multiWriter.WriteBuffers(buffers)
 
 		} else {
-			num, err2 = buffers.WriteTo(writeConn)
+			//num, err2 = buffers.WriteTo(writeConn)
+			// 实测发现这里不能直接使用 buffers.WriteTo, 因为它会修改buffer本身
+			// 而我们为了缓存,是不能允许篡改的
+			// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
+
+			if IsBasicConn(writeConn) {
+				num, err2 = buffers.WriteTo(writeConn)
+			} else {
+
+				for _, b := range buffers {
+					nb, err := writeConn.Write(b)
+					num += int64(nb)
+					if err != nil {
+
+						err2 = err
+						break
+					}
+				}
+
+			}
 		}
 
 		allnum += num

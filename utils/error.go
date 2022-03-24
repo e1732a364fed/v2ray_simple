@@ -1,6 +1,19 @@
 package utils
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
+
+type ErrFirstBuffer struct {
+	Err   error
+	First *bytes.Buffer
+}
+
+func (ef *ErrFirstBuffer) Error() string {
+
+	return ef.Err.Error()
+}
 
 func NewErr(desc string, e error) *ErrInErr {
 	return &ErrInErr{

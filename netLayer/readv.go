@@ -11,7 +11,7 @@ import (
 //v2ray里还使用了动态分配的方式，我们为了简便先啥也不做
 // 实测16个buf已经完全够用，平时也就偶尔遇到5个buf的情况, 极速测速时会占用更多；
 // 16个1500那就是 24000, 23.4375 KB, 不算小了;
-var readv_buffer_allocLen = 16
+const readv_buffer_allocLen = 16
 
 /* ReadFromMultiReader 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
 

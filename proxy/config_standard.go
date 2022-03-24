@@ -78,7 +78,7 @@ func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为监听地址与端口
 type ListenConf struct {
 	CommonConf
-	Fallback string `toml:"fallback"` //可选，默认回落的地址，一般可以是ip:port 或者 unix socket的文件名
+	Fallback any    `toml:"fallback"` //可选，默认回落的地址，一般可以是ip:port,数字port 或者 unix socket的文件名
 	TLSCert  string `toml:"cert"`
 	TLSKey   string `toml:"key"`
 

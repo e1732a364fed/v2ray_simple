@@ -7,7 +7,7 @@ host = "0.0.0.0"
 port = 4433
 version = 0
 insecure = true
-fallback = ":80"    #默认回落地址.必须是本机ip
+fallback = ":80"    #默认回落地址.必须是本机ip, 或者unix domain socket的文件名/路径
 cert = "cert.pem"   # 这里既可以默认放在程序本身目录下，也可以指定完整路径
 key = "cert.key"
 

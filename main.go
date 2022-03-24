@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -93,11 +94,19 @@ func main() {
 
 	flag.Parse()
 
+	cmdLL := utils.LogLevel
 	loadConfig()
 
 	if confMode < 0 {
 		log.Fatal("no config exist")
 	}
+
+	if cmdLL != utils.DefaultLL && utils.LogLevel != cmdLL {
+		//配置文件配置了日志等级, 但是因为 命令行给出的值优先, 所以要设回
+
+		utils.LogLevel = cmdLL
+	}
+	fmt.Println("Log Level:", utils.LogLevel)
 
 	var err error
 
@@ -294,119 +303,183 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 	}
 
+	var theFallbackFirstBuffer *bytes.Buffer
+
+	var theRequestPath string
+
+	//var defaultFallback httpLayer.Fallback
+	defaultFallbackAddr := inServer.GetFallback()
+	var wlc io.ReadWriter
+	var targetAddr *netLayer.Addr
+
 	//log.Println("handshake passed tls")
 
 	if adv := inServer.AdvancedLayer(); adv != "" {
 		if adv == "ws" {
-			wsConn, err := inServer.GetWS_Server().Handshake(thisLocalConnectionInstance)
+
+			//从ws开始就可以应用fallback了
+			// 但是，不能先upgrade, 因为我们要用path分流, 所以我们要先预读;
+			// 否则的话，正常的http流量频繁地被用不到的 ws 过滤器处理,会损失很多性能,而且gobwas没办法简洁地保留初始buffer.
+
+			var rp httpLayer.RequestParser
+			re := rp.ReadAndParse(thisLocalConnectionInstance)
+			if re != nil {
+				if re == httpLayer.ErrNotHTTP_Request {
+					if utils.CanLogErr() {
+						log.Println("ws: got not http request ", inServer.AddrStr())
+					}
+
+				} else {
+					if utils.CanLogErr() {
+						log.Println("ws: handshake read error ", inServer.AddrStr())
+					}
+				}
+
+				return
+			}
+
+			wss := inServer.GetWS_Server()
+
+			if rp.Method != "GET" || wss.Thepath != rp.Path {
+				theRequestPath = rp.Path
+				theFallbackFirstBuffer = rp.WholeRequestBuf
+
+				if utils.CanLogDebug() {
+					log.Println("ws path not match", rp.Method, rp.Path, "shouldbe:", wss.Thepath)
+
+				}
+
+				goto checkFallback
+
+			}
+
+			//此时path和method都已经匹配了, 如果还不能通过那就说明后面的header等数据不满足ws的upgrade请求格式, 肯定是非法数据了,也不用再回落
+			wsConn, err := wss.Handshake(rp.WholeRequestBuf, thisLocalConnectionInstance)
 			if err != nil {
 				if utils.CanLogErr() {
 					log.Println("failed in inServer websocket handshake ", inServer.AddrStr(), err)
 
 				}
+
 				return
+
 			}
 			thisLocalConnectionInstance = wsConn
 		}
 	}
 
-	var theFallbackFirstBuffer *bytes.Buffer
+	wlc, targetAddr, err = inServer.Handshake(thisLocalConnectionInstance)
+	if err == nil {
+		goto afterLocalServerHandshake
+	}
+	wlc = nil
 
-	wlc, targetAddr, err := inServer.Handshake(thisLocalConnectionInstance)
-	if err != nil {
+	//无错误时直接进行下一步了，下面代码查看是否支持fallback
 
-		if utils.CanLogWarn() {
-			log.Println("failed in inServer proxy handshake from", inServer.AddrStr(), err)
-		}
+	if utils.CanLogWarn() {
+		log.Println("failed in inServer proxy handshake from", inServer.AddrStr(), err)
+	}
 
-		if !inServer.CanFallback() {
-			thisLocalConnectionInstance.Close()
-			return
-		}
+	if !inServer.CanFallback() {
+		thisLocalConnectionInstance.Close()
+		return
+	}
 
-		fe, ok := err.(httpLayer.FallbackErr)
+	{ //为防止goto 跳过变量定义，使用单独代码块
+
+		fe, ok := err.(*utils.ErrFirstBuffer)
 		if !ok {
 			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
 			thisLocalConnectionInstance.Close()
 			return
 		}
 
-		//fe提供的fallback是该服务器默认的fallback；我们先试图使用mainFallback，都不满足条件的话，再回落到默认fallback
-		f := fe.Fallback()
-
-		buf := f.FirstBuffer()
-		if buf == nil {
+		theFallbackFirstBuffer = fe.First
+		if theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
 			log.Fatal("No FirstBuffer")
 		}
+	}
 
-		var fbAddr *netLayer.Addr
+checkFallback:
 
-		goto checkFallback
+	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
 
-	fallbackok:
+	if mainFallback != nil {
 
-		theFallbackFirstBuffer = buf
-		targetAddr = fbAddr
-		wlc = thisLocalConnectionInstance
-		goto afterLocalServerHandshake
+		if utils.CanLogDebug() {
+			log.Println("checkFallback")
+		}
 
-	checkFallback:
+		var thisFallbackType byte
 
-		if mainFallback != nil {
+		fallback_params := make([]string, 0, 4)
 
-			if utils.CanLogDebug() {
-				log.Println("checkFallback")
-			}
+		if theFallbackFirstBuffer != nil && theRequestPath == "" {
+			var failreason int
 
-			var thisFallbackType byte
+			_, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(theFallbackFirstBuffer.Bytes(), false)
 
-			fallback_params := make([]string, 0, 4)
-
-			_, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(buf.Bytes(), false)
-
-			if failreason == 0 {
-
-				fallback_params = append(fallback_params, path)
-				thisFallbackType |= httpLayer.Fallback_path
-			}
-
-			if inServerTlsConn != nil {
-				alpn := inServerTlsConn.GetAlpn()
-				if alpn != "" {
-					fallback_params = append(fallback_params, alpn)
-					thisFallbackType |= httpLayer.Fallback_alpn
-				}
-
-				sni := inServerTlsConn.GetSni()
-				if sni != "" {
-					fallback_params = append(fallback_params, sni)
-					thisFallbackType |= httpLayer.Fallback_sni
-				}
-			}
-
-			fbAddr = mainFallback.GetFallback(thisFallbackType, fallback_params...)
-			if utils.CanLogDebug() {
-				log.Println("checkFallback ", path, "matched fallback:", fbAddr)
-			}
-			if fbAddr != nil {
-				goto fallbackok
+			if failreason != 0 {
+				theRequestPath = ""
 			}
 
 		}
 
-		if httpLayer.HasFallbackType(f.SupportType(), httpLayer.FallBack_default) {
-			fbAddr = f.GetFallback(httpLayer.FallBack_default, "")
+		if theRequestPath != "" {
+			fallback_params = append(fallback_params, theRequestPath)
+			thisFallbackType |= httpLayer.Fallback_path
+		}
 
-			if fbAddr != nil {
-				goto fallbackok
+		if inServerTlsConn != nil {
+			//默认似乎浏览器不会给出alpn和sni项？获得的是空值
+			alpn := inServerTlsConn.GetAlpn()
+			if alpn == "" {
+				alpn = httpLayer.H11_Str
 			}
 
+			fallback_params = append(fallback_params, alpn)
+			thisFallbackType |= httpLayer.Fallback_alpn
+
+			sni := inServerTlsConn.GetSni()
+			if sni != "" {
+				fallback_params = append(fallback_params, sni)
+				thisFallbackType |= httpLayer.Fallback_sni
+			}
+		}
+
+		fbAddr := mainFallback.GetFallback(thisFallbackType, fallback_params...)
+
+		if utils.CanLogDebug() {
+			log.Println("checkFallback ,matched fallback:", fbAddr)
+		}
+		if fbAddr != nil {
+			targetAddr = fbAddr
+			wlc = thisLocalConnectionInstance
+			goto afterLocalServerHandshake
 		}
 
 	}
 
+	//默认回落
+
+	if defaultFallbackAddr != nil {
+
+		targetAddr = defaultFallbackAddr
+		wlc = thisLocalConnectionInstance
+
+	}
+
 afterLocalServerHandshake:
+
+	if wlc == nil {
+		//回落也失败, 直接return
+		if utils.CanLogDebug() {
+			log.Println("invalid request and no matched fallback, hung up.")
+		}
+		thisLocalConnectionInstance.Close()
+		return
+	}
 
 	var client proxy.Client = defaultOutClient
 

@@ -13,7 +13,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -29,8 +28,6 @@ type Server struct {
 	userHashes   map[[16]byte]*proxy.V2rayUser
 	userCRUMFURS map[[16]byte]*CRUMFURS
 	mux4Hashes   sync.RWMutex
-
-	defaultfallbackAddr *netLayer.Addr
 }
 
 type ServerCreator struct{}
@@ -44,18 +41,6 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	s := &Server{
 		userHashes:   make(map[[16]byte]*proxy.V2rayUser),
 		userCRUMFURS: make(map[[16]byte]*CRUMFURS),
-	}
-
-	fallbackStr := lc.Fallback
-
-	if fallbackStr != "" {
-		fa, err := netLayer.NewAddr(fallbackStr)
-
-		if err != nil {
-			return nil, fmt.Errorf("invalid fallback %v", fallbackStr)
-		}
-
-		s.defaultfallbackAddr = fa
 	}
 
 	s.addV2User(id)
@@ -81,19 +66,6 @@ func NewServer(url *url.URL) (proxy.Server, error) {
 	}
 
 	s.ProxyCommonStruct.InitFromUrl(url)
-
-	query := url.Query()
-	fallbackStr := query.Get("fallback")
-
-	if fallbackStr != "" {
-		fa, err := netLayer.NewAddr(fallbackStr)
-
-		if err != nil {
-			return nil, fmt.Errorf("invalid fallback %v", fallbackStr)
-		}
-
-		s.defaultfallbackAddr = fa
-	}
 
 	s.addV2User(id)
 
@@ -200,11 +172,10 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 
 errorPart:
 
-	//fallback 所返回的buffer必须包含所有数据，而Buffer不支持会退，所以只能重新New
-	return nil, nil, &httpLayer.ErrSingleFallback{
-		FallbackAddr: s.defaultfallbackAddr,
-		Err:          returnErr,
-		First:        bytes.NewBuffer(readbs[:wholeReadLen]),
+	//所返回的buffer必须包含所有数据，而Buffer不支持回退，所以只能重新New
+	return nil, nil, &utils.ErrFirstBuffer{
+		Err:   returnErr,
+		First: bytes.NewBuffer(readbs[:wholeReadLen]),
 	}
 
 realPart:

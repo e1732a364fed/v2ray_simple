@@ -1,6 +1,16 @@
 package utils
 
-import "log"
+import (
+	"io"
+	"log"
+)
+
+//一种简单的组合
+// 在ws包中被用到.
+type RW struct {
+	io.Reader
+	io.Writer
+}
 
 // MultiReader 是平台相关的 用于 调用readv的 工具.
 // 该 MultiReader 的用例请参照 netLayer.ReadFromMultiReader , 在 netLayer/readv.go中
