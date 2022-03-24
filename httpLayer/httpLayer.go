@@ -29,6 +29,8 @@ func (pe *RequestErr) Error() string {
 	return "InvaidRequest " + pe.Method + "," + pe.Path
 }
 
+// RequestParser被用于 预读一个链接，判断该连接是否是有效的http请求,
+// 并将相关数据记录在结构中.
 type RequestParser struct {
 	Path            string
 	Method          string
@@ -37,7 +39,7 @@ type RequestParser struct {
 }
 
 // 尝试读取数据并解析HTTP请求, 解析道道 数据会存入 RequestParser 结构中.
-//如果读取错误,会返回错误; 如果读到的不是HTTP请求，返回 ErrNotHTTP_Request;
+//如果读取错误,会返回该错误; 如果读到的不是HTTP请求，返回 ErrNotHTTP_Request;
 func (rhr *RequestParser) ReadAndParse(r io.Reader) error {
 	bs := utils.GetPacket()
 

@@ -3,7 +3,11 @@
 
 [app]
 loglevel = 1
-default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+
+# 使用了default_uuid后, 下面其它dial和listen的uuid就可以省略
+
+default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   
+
 
 [[listen]]
 protocol = "socks5"

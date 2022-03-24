@@ -335,6 +335,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 					}
 				}
 
+				thisLocalConnectionInstance.Close()
 				return
 			}
 
@@ -345,7 +346,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 				theFallbackFirstBuffer = rp.WholeRequestBuf
 
 				if utils.CanLogDebug() {
-					log.Println("ws path not match", rp.Method, rp.Path, "shouldbe:", wss.Thepath)
+					log.Println("ws path not match", rp.Method, rp.Path, "should be:", wss.Thepath)
 
 				}
 
@@ -361,6 +362,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 				}
 
+				thisLocalConnectionInstance.Close()
 				return
 
 			}
@@ -370,11 +372,13 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 	wlc, targetAddr, err = inServer.Handshake(thisLocalConnectionInstance)
 	if err == nil {
+		//无错误时直接进行下一步了
 		goto afterLocalServerHandshake
 	}
-	wlc = nil
 
-	//无错误时直接进行下一步了，下面代码查看是否支持fallback
+	//下面代码查看是否支持fallback; wlc先设为nil, 当所有fallback都不满足时,可以判断nil然后关闭连接
+
+	wlc = nil
 
 	if utils.CanLogWarn() {
 		log.Println("failed in inServer proxy handshake from", inServer.AddrStr(), err)

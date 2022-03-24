@@ -34,3 +34,8 @@ path = "/asf"   # 按path 匹配此 回落
 dest = 6060     # 回落到本机端口 6060
 alpn = ["http/1.1"]
 
+
+[[fallback]]
+path = "/ohmygod_i_love_verysimple" 
+dest = 8080
+alpn = ["http/1.1"]
