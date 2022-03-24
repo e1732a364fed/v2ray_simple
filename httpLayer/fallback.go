@@ -6,6 +6,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"gonum.org/v1/gonum/stat/combin"
 )
 
 const (
@@ -33,6 +34,10 @@ const (
 	alpn_http11 = 1 << iota
 	alpn_http20
 )
+
+func getfallbacktype_byindex(i int) byte {
+	return 1 << (i + 1)
+}
 
 //判断 Fallback.SupportType 返回的 数值 是否具有特定的Fallback类型
 func HasFallbackType(ftype, b byte) bool {
@@ -64,6 +69,10 @@ func (ef *SingleFallback) FirstBuffer() *bytes.Buffer {
 }
 
 //实现 Fallback,支持 path,alpn, sni 分流
+// 内部 map 我们使用通用的集合办法, 而不是多层map嵌套;
+//虽然目前就三个fallback类型，但是谁知道以后会加几个？所以这样更通用.
+// 目前3种fallback性能是没问题的，不过如果 fallback继续增加的话，
+// 最差情况下集合的子集总数会急剧上升,导致最差情况下性能不如多重 map;不过一般没人那么脑残会给出那种配置.
 type ClassicFallback struct {
 	First   *bytes.Buffer
 	Default *netLayer.Addr
@@ -122,6 +131,19 @@ func (fcs *FallbackConditionSet) getSingle(t byte) (s string, b byte) {
 	return
 }
 
+func (fcs *FallbackConditionSet) getSingleByInt(t int) (s string, b byte) {
+	switch t {
+	case 0:
+		s = fcs.Path
+	case 1:
+		b = fcs.AlpnMask
+	case 2:
+		s = fcs.Sni
+
+	}
+	return
+}
+
 func (fcs *FallbackConditionSet) setSingle(t byte, s string, b byte) {
 	switch t {
 	case Fallback_sni:
@@ -134,9 +156,22 @@ func (fcs *FallbackConditionSet) setSingle(t byte, s string, b byte) {
 	return
 }
 
+func (fcs *FallbackConditionSet) setSingleByInt(t int, s string, b byte) {
+	switch t {
+	case 0:
+		fcs.Path = s
+	case 1:
+		fcs.AlpnMask = b
+
+	case 2:
+		fcs.Sni = s
+
+	}
+	return
+}
+
 func (fcs *FallbackConditionSet) extractSingle(t byte) (r FallbackConditionSet) {
 	s, b := fcs.getSingle(t)
-	r = FallbackConditionSet{}
 	r.setSingle(t, s, b)
 	return
 }
@@ -165,7 +200,7 @@ func (fcs *FallbackConditionSet) GetAllSubSets() (rs []FallbackConditionSet) {
 
 		return
 	default:
-		allss := utils.AllSubSets(alltypes)
+		allss := utils.AllSubSets_improve1(alltypes)
 
 		rs = make([]FallbackConditionSet, len(allss))
 		for i, sList := range allss {
@@ -177,6 +212,73 @@ func (fcs *FallbackConditionSet) GetAllSubSets() (rs []FallbackConditionSet) {
 	}
 
 	return
+}
+
+// TestAllSubSets 传入一个map, 对fcs自己以及其所有子集依次测试, 看是否有匹配的。
+// 对比 GetAllSubSets 内存占用较大, 本方法开销则小很多, 因为1是复用内存, 2是匹配到就会返回，一般不会到遍历全部子集.
+func (fcs *FallbackConditionSet) TestAllSubSets(allsupportedTypeMask byte, theMap map[FallbackConditionSet]*netLayer.Addr) *netLayer.Addr {
+
+	if addr := theMap[*fcs]; addr != nil {
+		return addr
+	}
+
+	ftype := fcs.GetType()
+
+	// 该 FallbackConditionSet 所支持的所有类型
+	alltypes := make([]byte, 0, all_non_default_fallbacktype_count)
+	for thisType := byte(Fallback_path); thisType < fallback_end; thisType <<= 1 {
+		if !HasFallbackType(ftype, thisType) {
+			continue
+		}
+		alltypes = append(alltypes, thisType)
+	}
+
+	switch N := len(alltypes); N {
+	case 0, 1:
+		return nil
+	case 2:
+		if addr := theMap[fcs.extractSingle(alltypes[0])]; addr != nil {
+			return addr
+		}
+		if addr := theMap[fcs.extractSingle(alltypes[1])]; addr != nil {
+			return addr
+		}
+
+	default:
+
+		fullbuf := make([]int, N-1)
+
+		for K := N - 1; K > 0; K-- { //对每一种数量的组合方式进行遍历
+			indexList := fullbuf[:K]
+
+			cg := combin.NewCombinationGenerator(N, K)
+
+		nextCombination:
+			for cg.Next() { //每一个组合实例情况都判断一遍
+
+				cg.Combination(indexList)
+				curSet := FallbackConditionSet{}
+
+				for _, typeIndex := range indexList { //按得到的type索引生成本curSet
+
+					//有的单个元素种类不可能在map中出现过
+					if !HasFallbackType(allsupportedTypeMask, getfallbacktype_byindex(typeIndex)) {
+						continue nextCombination
+					}
+
+					s, b := fcs.getSingleByInt(typeIndex)
+					curSet.setSingleByInt(typeIndex, s, b)
+				}
+
+				if addr := theMap[curSet]; addr != nil {
+					return addr
+				}
+			}
+		}
+
+	}
+
+	return nil
 }
 
 func NewClassicFallback() *ClassicFallback {
@@ -305,19 +407,26 @@ func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr
 	*/
 
 	theMap := cfb.Map
-	addr := theMap[cd]
-	if addr == nil {
+	/*
 
-		ass := cd.GetAllSubSets()
-		for _, v := range ass {
-			//log.Println("will check ", v)
+		addr := theMap[cd]
+		if addr == nil {
 
-			addr = theMap[v]
-			if addr != nil {
-				break
+			ass := cd.GetAllSubSets()
+			for _, v := range ass {
+				//log.Println("will check ", v)
+				if !HasFallbackType(cfb.supportedTypeMask, v.GetType()) {
+					continue
+				}
+
+				addr = theMap[v]
+				if addr != nil {
+					break
+				}
 			}
-		}
-	}
+		}*/
+
+	addr := cd.TestAllSubSets(cfb.supportedTypeMask, theMap)
 
 	return addr
 

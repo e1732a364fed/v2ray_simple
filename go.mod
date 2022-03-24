@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/yl2chen/cidranger v1.0.2
+	gonum.org/v1/gonum v0.11.0
 )
 
 require (

@@ -12,6 +12,8 @@ loglevel = 1
 
 # mycountry = "CN" 全局级的 国别分流配置, 见下面route的注释
 
+# noreadv = true    也可以用命令行参数 -readv=false 来关闭 readv
+
 [[listen]]
 tag = "my_socks5"   # 可选, 但不可与其他tag重复
 protocol = "socks5" # 必填

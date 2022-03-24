@@ -1,10 +1,10 @@
 package utils
 
+//Combinatorics
+
 //func AllSubSets edited from https://github.com/mxschmitt/golang-combinations with MIT License
-
-// All returns all combinations for a given int array.
+// All returns all combinations for a given T array.
 // This is essentially a powerset of the given set except that the empty set is disregarded.
-
 func AllSubSets[T comparable](set []T) (subsets [][]T) {
 	length := uint(len(set))
 
@@ -22,6 +22,24 @@ func AllSubSets[T comparable](set []T) (subsets [][]T) {
 			}
 		}
 		// add subset to subsets
+		subsets = append(subsets, subset)
+	}
+	return subsets
+}
+
+//AllSubSets 测速有点慢, 我改进一下内存分配,可加速一倍多
+func AllSubSets_improve1[T comparable](set []T) (subsets [][]T) {
+	length := uint(len(set))
+	subsets = make([][]T, 0, length*length)
+
+	for subsetBits := 1; subsetBits < (1 << length); subsetBits++ {
+		var subset []T = make([]T, 0, length)
+
+		for object := uint(0); object < length; object++ {
+			if (subsetBits>>object)&1 == 1 {
+				subset = append(subset, set[object])
+			}
+		}
 		subsets = append(subsets, subset)
 	}
 	return subsets

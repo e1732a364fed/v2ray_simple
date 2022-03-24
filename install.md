@@ -23,14 +23,12 @@ v1.0.5的tgz打包文件中，没有包含toml示例文件，需要你再 wget �
 ```sh
 
 [Unit]
-
 After=network.service
 
 [Service]
 ExecStart=/usr/local/etc/verysimple/verysimple -c server.toml
 
 [Install]
-
 WantedBy=default.target
 ```
 

@@ -64,10 +64,12 @@ var (
 
 	isServerEnd bool //这个是代码里推断的，不一定准确；不过目前仅被用于tls lazy encrypt，所以不是很重要
 
+	cmdPrintSupportedProtocols bool
 )
 
 func init() {
 	directClient, _ = proxy.ClientFromURL("direct://")
+	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -81,8 +83,11 @@ func init() {
 
 }
 
-func printDesc() {
-	printVersion()
+func mayPrintSupportedProtocols() {
+
+	if !cmdPrintSupportedProtocols {
+		return
+	}
 	proxy.PrintAllServerNames()
 
 	proxy.PrintAllClientNames()
@@ -90,23 +95,36 @@ func printDesc() {
 
 func main() {
 
-	printDesc()
+	printVersion()
 
 	flag.Parse()
 
+	mayPrintSupportedProtocols()
+
 	cmdLL := utils.LogLevel
+	cmdUseReadv := netLayer.UseReadv
 	loadConfig()
 
 	if confMode < 0 {
 		log.Fatal("no config exist")
 	}
 
+	//有点尴尬, 读取配置文件必须要用命令行参数，而配置文件里的部分配置又会覆盖部分命令行参数
+
 	if cmdLL != utils.DefaultLL && utils.LogLevel != cmdLL {
 		//配置文件配置了日志等级, 但是因为 命令行给出的值优先, 所以要设回
 
 		utils.LogLevel = cmdLL
 	}
+
+	if cmdUseReadv == false && netLayer.UseReadv == true {
+		//配置文件配置了日志等级, 但是因为 命令行给出的值优先, 所以要设回
+
+		netLayer.UseReadv = false
+	}
+
 	fmt.Println("Log Level:", utils.LogLevel)
+	fmt.Println("UseReadv:", netLayer.UseReadv)
 
 	var err error
 
