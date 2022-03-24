@@ -70,3 +70,15 @@ func (c *Conn) GetAlpn() string {
 	}
 
 }
+
+func (c *Conn) GetSni() string {
+	if c.tlsPackageType == utlsPackage {
+		cc := (*utls.Conn)(c.ptr)
+		return cc.ConnectionState().ServerName
+
+	} else {
+		cc := (*tls.Conn)(c.ptr)
+		return cc.ConnectionState().ServerName
+	}
+
+}

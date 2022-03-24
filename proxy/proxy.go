@@ -100,6 +100,8 @@ type ProxyCommon interface {
 	initWS_client() //for outClient
 	initWS_server() //for inServer
 
+	/////////////////// 私有方法 ///////////////////
+
 	setCantRoute(bool)
 	setTag(string)
 	setAdvancedLayer(string)
@@ -117,7 +119,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	return nil
 }
 
-//use lc.GetAddr(), lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure
+//use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
 	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径

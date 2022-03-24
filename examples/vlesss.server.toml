@@ -17,6 +17,17 @@ protocol = "direct"
 # fallback这一项是可选的，如果没有的话，或者未匹配，则默认使用listen提供的fallback
 # 如果listen也没提供fallback，那就会直接断开连接
 [[fallback]]
-path = "/asf"
-dest = 6060
+path = "/asf"   # 按path 匹配此 回落
+dest = 6060     # 回落到本机端口 6060
 
+# dest = "127.0.0.1:8080"  # dest 还可以用这种格式
+# dest = "/path/to/your/unix_domain_socket"    # 还可以用 unix domain socket 的文件名,可以绝对路径或者相对路径
+
+# 还可以按sni和 alpn匹配（tls里的host和 alpn）
+
+# sni = "your.domain.com"
+# alpn = ["h2","http/1.1"]
+
+# 一个fallback中 可以多个条件同时匹配，此时只有完全匹配所有条件 才算匹配 此fallback
+
+# 另外，sni和alpn的 匹配 只在 我们listen配置使用了 tls时才会有效，比如如果nginx前置的话，那么我们就是无法匹配这两项的.

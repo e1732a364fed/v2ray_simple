@@ -3,8 +3,6 @@ package httpLayer
 import (
 	"bytes"
 	"log"
-	"reflect"
-	"strconv"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -15,9 +13,25 @@ const (
 )
 const (
 	FallBack_default byte = 1 << iota
-	Fallback_alpn
+
+	//这里剩余fallback按该固定顺序排列. 这是为了方便代码的书写(alpn和sni都是tls的)
+
+	// 虽然alpn和sni都是tls的，但是回落本身是专门用于http的，所以还是放在httpLayer包中
+
 	Fallback_path
+	Fallback_alpn
 	Fallback_sni
+
+	fallback_end
+
+	all_non_default_fallbacktype_count = iota - 2
+
+	alpn_unspecified = 0
+)
+
+const (
+	alpn_http11 = 1 << iota
+	alpn_http20
 )
 
 //判断 Fallback.SupportType 返回的 数值 是否具有特定的Fallback类型
@@ -27,7 +41,7 @@ func HasFallbackType(ftype, b byte) bool {
 
 //实现 Fallback. 这里的fallback只与http协议有关，所以只能按path,alpn 和 sni 进行分类
 type Fallback interface {
-	GetFallback(ftype byte, param string) *netLayer.Addr
+	GetFallback(ftype byte, params ...string) *netLayer.Addr
 	SupportType() byte          //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
 	FirstBuffer() *bytes.Buffer //因为能确认fallback一定是读取过数据的，所以需要给出之前所读的数据，fallback时要用到，要重新传输给目标服务器
 }
@@ -37,7 +51,7 @@ type SingleFallback struct {
 	First *bytes.Buffer
 }
 
-func (ef *SingleFallback) GetFallback(ftype byte, param string) *netLayer.Addr {
+func (ef *SingleFallback) GetFallback(ftype byte, _ ...string) *netLayer.Addr {
 	return ef.Addr
 }
 
@@ -51,98 +65,255 @@ func (ef *SingleFallback) FirstBuffer() *bytes.Buffer {
 
 //实现 Fallback,支持 path,alpn, sni 分流
 type ClassicFallback struct {
-	First     *bytes.Buffer
-	Default   *netLayer.Addr
-	MapByPath map[string]*netLayer.Addr //因为只一次性设置，之后仅用于读，所以不会有多线程问题
-	MapByAlpn map[string]*netLayer.Addr
-	MapBySni  map[string]*netLayer.Addr
+	First   *bytes.Buffer
+	Default *netLayer.Addr
+
+	supportedTypeMask byte
+
+	Map map[byte]map[FallbackConditionSet]*netLayer.Addr
+}
+
+type FallbackConditionSet struct {
+	Path, Sni string
+	AlpnMask  byte
+}
+
+func (fcs *FallbackConditionSet) GetType() (r byte) {
+	if fcs.Path != "" {
+		r |= (Fallback_path)
+	}
+	if fcs.Sni != "" {
+		r |= Fallback_sni
+	}
+	if fcs.AlpnMask > 0 {
+		r |= Fallback_alpn
+	}
+	return r
+}
+
+func (fcs *FallbackConditionSet) GetSub(subType byte) (r FallbackConditionSet) {
+
+	for thisType := byte(Fallback_path); thisType < fallback_end; thisType++ {
+		if !HasFallbackType(subType, thisType) {
+			continue
+		}
+		switch thisType {
+		case Fallback_alpn:
+			r.AlpnMask = fcs.AlpnMask
+
+		case Fallback_path:
+			r.Path = fcs.Path
+		case Fallback_sni:
+			r.Sni = fcs.Sni
+		}
+	}
+	return
+}
+
+func (fcs *FallbackConditionSet) getSingle(t byte) (s string, b byte) {
+	switch t {
+	case Fallback_path:
+		s = fcs.Path
+	case Fallback_sni:
+		s = fcs.Sni
+	case Fallback_alpn:
+		b = fcs.AlpnMask
+	}
+	return
+}
+
+func (fcs *FallbackConditionSet) setSingle(t byte, s string, b byte) {
+	switch t {
+	case Fallback_sni:
+		fcs.Sni = s
+	case Fallback_path:
+		fcs.Path = s
+	case Fallback_alpn:
+		fcs.AlpnMask = b
+	}
+	return
+}
+
+func (fcs *FallbackConditionSet) extractSingle(t byte) (r FallbackConditionSet) {
+	s, b := fcs.getSingle(t)
+	r = FallbackConditionSet{}
+	r.setSingle(t, s, b)
+	return
+}
+
+//返回不包括自己的所有子集
+func (fcs *FallbackConditionSet) GetAllSubSets() (rs []FallbackConditionSet) {
+
+	alltypes := make([]byte, 0, all_non_default_fallbacktype_count)
+	ftype := fcs.GetType()
+	for thisType := byte(Fallback_path); thisType < fallback_end; thisType <<= 1 {
+		if !HasFallbackType(ftype, thisType) {
+			continue
+		}
+		alltypes = append(alltypes, thisType)
+	}
+
+	switch len(alltypes) {
+	case 0, 1:
+
+		return nil
+
+	case 2:
+		rs = make([]FallbackConditionSet, 2)
+		rs[0] = fcs.extractSingle(alltypes[0])
+		rs[1] = fcs.extractSingle(alltypes[1])
+
+		return
+	default:
+		allss := utils.AllSubSets(alltypes)
+
+		rs = make([]FallbackConditionSet, len(allss))
+		for i, sList := range allss {
+			for _, singleType := range sList {
+				s, b := fcs.getSingle(singleType)
+				rs[i].setSingle(singleType, s, b)
+			}
+		}
+	}
+
+	return
 }
 
 func NewClassicFallback() *ClassicFallback {
 	return &ClassicFallback{
-		MapByPath: make(map[string]*netLayer.Addr),
-		MapByAlpn: make(map[string]*netLayer.Addr),
-		MapBySni:  make(map[string]*netLayer.Addr),
+		Map: make(map[byte]map[FallbackConditionSet]*netLayer.Addr),
 	}
 }
 
 type FallbackConf struct {
-	Path string      `json:"path"`
-	Dest interface{} `json:"dest"` //可为数字端口号，或者 字符串的ip:port
+	//必填
+	Dest interface{} `toml:"dest" json:"dest"` //可为数字端口号，或者 字符串的ip:port
+
+	//几种匹配方式，可选
+
+	Path string   `toml:"path" json:"path"`
+	Sni  string   `toml:"sni" json:"sni"`
+	Alpn []string `toml:"alpn" json:"alpn"`
 }
 
 func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 	cfb := NewClassicFallback()
-	for _, v := range fcl {
+	for _, fc := range fcl {
 		//log.Println("NewClassicFallbackFromConfList called", reflect.TypeOf(v.Dest))
-		//json 默认把数字转换成float64，就算是整数也一样
-		var integer int
 
-		if thefloat, ok := v.Dest.(float64); ok {
-
-			log.Println("got num", thefloat)
-			if thefloat > 65535 || thefloat < 1 {
-				log.Println("int port not valid", thefloat)
-
-				continue
-			}
-
-			integer = int(thefloat)
-
-		} else if theInt64, ok := v.Dest.(int64); ok { //toml 可把数字加载为int64
-			integer = int(theInt64)
+		addr, err := netLayer.NewAddrFromAny(fc.Dest)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var aMask byte
+		if len(fc.Alpn) > 2 {
+			//理论上alpn可以为任意值，但是由于我们要回落，搞那么多奇葩的alpn只会增加被审查的概率
+			// 所以这里在代码端直接就禁止这种做法就ok了
 		} else {
-			if utils.CanLogErr() {
-				log.Println("Fallback port config type err", reflect.TypeOf(v.Dest))
+			for _, v := range fc.Alpn {
+				if v == H2_Str {
+					aMask |= alpn_http20
+				} else if v == H11_Str {
+					aMask |= alpn_http11
+				}
 			}
-			continue
 		}
 
-		addr, e := netLayer.NewAddr("127.0.0.1:" + strconv.Itoa(integer))
-		if e != nil {
-			log.Fatalln("addr create failed", e, strconv.Itoa(integer))
+		condition := FallbackConditionSet{
+			Path:     fc.Path,
+			Sni:      fc.Sni,
+			AlpnMask: aMask,
 		}
-		cfb.MapByPath[v.Path] = addr
+
+		cfb.InsertFallbackConditionSet(condition, addr)
+
 	}
 	return cfb
 }
 
-func (ef *ClassicFallback) FirstBuffer() *bytes.Buffer {
-	return ef.First
-}
-func (ef *ClassicFallback) SupportType() byte {
-	var r byte = 0
+func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, addr *netLayer.Addr) {
+	ctype := condition.GetType()
 
-	if ef.Default != nil {
-		r |= FallBack_default
+	theMap := cfb.Map[ctype]
+	if theMap == nil {
+		theMap = make(map[FallbackConditionSet]*netLayer.Addr)
+		cfb.Map[ctype] = theMap
+		cfb.supportedTypeMask |= ctype
 	}
-
-	if len(ef.MapByAlpn) != 0 {
-		r |= Fallback_alpn
-	}
-
-	if len(ef.MapByPath) != 0 {
-		r |= Fallback_path
-	}
-
-	if len(ef.MapBySni) != 0 {
-		r |= Fallback_sni
-	}
-
-	return FallBack_default
+	theMap[condition] = addr
 }
 
-func (ef *ClassicFallback) GetFallback(ftype byte, s string) *netLayer.Addr {
-	switch ftype {
-	default:
-		return ef.Default
-	case Fallback_path:
-		return ef.MapByPath[s]
-	case Fallback_alpn:
-		return ef.MapByAlpn[s]
-	case Fallback_sni:
-		return ef.MapBySni[s]
+func (cfb *ClassicFallback) FirstBuffer() *bytes.Buffer {
+	return cfb.First
+}
+func (cfb *ClassicFallback) SupportType() byte {
+
+	return cfb.supportedTypeMask
+}
+
+// ss 必须按 FallBack_* 类型 从小到大顺序排列
+//
+func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr {
+	if !HasFallbackType(cfb.supportedTypeMask, ftype) {
+		return nil
 	}
+
+	if ftype == FallBack_default {
+		return cfb.Default
+	}
+
+	theMap := cfb.Map[ftype]
+	if theMap == nil || len(theMap) == 0 {
+		return nil
+	}
+	cd := FallbackConditionSet{}
+
+	ss_cursor := 0
+
+	for thisType := byte(Fallback_path); thisType < fallback_end; thisType <<= 1 {
+		if len(ss) <= ss_cursor {
+			break
+		}
+		if !HasFallbackType(ftype, thisType) {
+			continue
+		}
+
+		param := ss[ss_cursor]
+		ss_cursor++
+
+		if param == "" {
+			continue
+		}
+		switch thisType {
+		case Fallback_alpn:
+			var aMask byte
+			if param == H11_Str {
+				aMask |= alpn_http11
+			}
+			if param == H2_Str {
+				aMask |= alpn_http20
+			}
+
+			cd.AlpnMask = aMask
+		case Fallback_path:
+			cd.Path = param
+		case Fallback_sni:
+			cd.Sni = param
+		}
+	}
+	addr := theMap[cd]
+	if addr == nil {
+
+		ass := cd.GetAllSubSets()
+		for _, v := range ass {
+			addr = theMap[v]
+			if addr != nil {
+				break
+			}
+		}
+	}
+
+	return addr
 
 }
 

@@ -260,6 +260,8 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 Recorder中
 	var inServerTlsRawReadRecorder *tlsLayer.Recorder
 
+	var inServerTlsConn *tlsLayer.Conn
+
 	if inServer.IsUseTLS() {
 
 		if tls_lazy_encrypt {
@@ -287,6 +289,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 			inServerTlsRawReadRecorder.StartRecord()
 		}
 
+		inServerTlsConn = tlsConn
 		thisLocalConnectionInstance = tlsConn
 
 	}
@@ -356,17 +359,40 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 				log.Println("checkFallback")
 			}
 
+			var thisFallbackType byte
+
+			fallback_params := make([]string, 0, 4)
+
 			_, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(buf.Bytes(), false)
 
-			if failreason != 0 {
-				fbAddr = mainFallback.GetFallback(httpLayer.Fallback_path, path)
-				if utils.CanLogDebug() {
-					log.Println("checkFallback ", path, "matched fallback:", fbAddr)
+			if failreason == 0 {
+
+				fallback_params = append(fallback_params, path)
+				thisFallbackType |= httpLayer.Fallback_path
+			}
+
+			if inServerTlsConn != nil {
+				alpn := inServerTlsConn.GetAlpn()
+				if alpn != "" {
+					fallback_params = append(fallback_params, alpn)
+					thisFallbackType |= httpLayer.Fallback_alpn
 				}
-				if fbAddr != nil {
-					goto fallbackok
+
+				sni := inServerTlsConn.GetSni()
+				if sni != "" {
+					fallback_params = append(fallback_params, sni)
+					thisFallbackType |= httpLayer.Fallback_sni
 				}
 			}
+
+			fbAddr = mainFallback.GetFallback(thisFallbackType, fallback_params...)
+			if utils.CanLogDebug() {
+				log.Println("checkFallback ", path, "matched fallback:", fbAddr)
+			}
+			if fbAddr != nil {
+				goto fallbackok
+			}
+
 		}
 
 		if httpLayer.HasFallbackType(f.SupportType(), httpLayer.FallBack_default) {
