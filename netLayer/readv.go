@@ -3,6 +3,7 @@ package netLayer
 import (
 	"io"
 	"net"
+	"sync"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -56,4 +57,35 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allo
 	*/
 
 	return allocedBuffers[:nBuf], nil
+}
+
+var (
+	// readv pool, 缓存 mr和buffers，进一步减轻内存分配负担
+	readvPool sync.Pool
+)
+
+type readvMem struct {
+	buffers net.Buffers
+	mr      utils.MultiReader
+}
+
+func init() {
+	readvPool = sync.Pool{
+		New: func() any {
+			mr := utils.GetReadVReader()
+			return &readvMem{
+				mr:      mr,
+				buffers: utils.AllocMTUBuffers(mr, readv_buffer_allocLen),
+			}
+		},
+	}
+}
+
+func get_readvMem() *readvMem {
+	return readvPool.Get().(*readvMem)
+}
+
+func put_readvMem(rm *readvMem) {
+	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, utils.StandardBytesLength)
+	readvPool.Put(rm)
 }

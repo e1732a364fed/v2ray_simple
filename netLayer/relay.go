@@ -44,6 +44,8 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
 
+	var readv_mem *readvMem
+
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 	}
@@ -74,10 +76,17 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
 	}
 
-	mr = utils.GetReadVReader()
+	//mr = utils.GetReadVReader()
 
-	defer mr.Clear()
-	defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
+	readv_mem = get_readvMem()
+
+	buffers = readv_mem.buffers
+	mr = readv_mem.mr
+
+	defer put_readvMem(readv_mem)
+
+	//defer mr.Clear()
+	//defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
 
 	for {
 		buffers, err = ReadFromMultiReader(rawConn, mr, buffers)

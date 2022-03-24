@@ -351,6 +351,7 @@ func (cfb *ClassicFallback) SupportType() byte {
 	return cfb.supportedTypeMask
 }
 
+// GetFallback 使用给出的 ftype mask 和 对应参数 来试图匹配到 回落地址.
 // ss 必须按 FallBack_* 类型 从小到大顺序排列
 //
 func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr {
