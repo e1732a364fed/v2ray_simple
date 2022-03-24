@@ -1,7 +1,6 @@
 package netLayer
 
 import (
-	"flag"
 	"io"
 	"log"
 	"net"
@@ -13,13 +12,6 @@ import (
 )
 
 const SystemCanSplice = runtime.GOARCH != "wasm" && runtime.GOOS != "windows"
-
-var UseReadv bool
-
-func init() {
-	flag.BoolVar(&UseReadv, "readv", true, "toggle the use of 'readv' syscall")
-
-}
 
 //这里认为能 splice 或 sendfile的 都算，具体可参考go标准代码的实现, 总之就是tcp和uds可以
 func CanSplice(r interface{}) bool {
@@ -43,6 +35,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var buffers net.Buffers
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
+	var isWriteConnBasic bool
 
 	var readv_mem *readvMem
 
@@ -72,21 +65,17 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		log.Println("copying with readv")
 	}
 
-	if !IsBasicConn(writeConn) {
+	isWriteConnBasic = IsBasicConn(writeConn)
+
+	if !isWriteConnBasic {
 		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
 	}
 
-	//mr = utils.GetReadVReader()
-
 	readv_mem = get_readvMem()
+	defer put_readvMem(readv_mem)
 
 	buffers = readv_mem.buffers
 	mr = readv_mem.mr
-
-	defer put_readvMem(readv_mem)
-
-	//defer mr.Clear()
-	//defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
 
 	for {
 		buffers, err = ReadFromMultiReader(rawConn, mr, buffers)
@@ -106,7 +95,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			// 而我们为了缓存,是不能允许篡改的
 			// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
 
-			if IsBasicConn(writeConn) {
+			if isWriteConnBasic {
 				num, err2 = buffers.WriteTo(writeConn)
 			} else {
 
@@ -129,7 +118,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			return
 		}
 
-		buffers = utils.RecoverBuffers(buffers, 16, utils.StandardBytesLength)
+		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, utils.StandardBytesLength)
 
 	}
 classic:
@@ -169,7 +158,7 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 		log.Println("copying with readv")
 	}
 	defer mr.Clear()
-	defer utils.ReleaseBuffers(buffers, 16)
+	defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
 
 	buffers, err = ReadFromMultiReader(rawConn, mr, nil)
 	if err != nil {

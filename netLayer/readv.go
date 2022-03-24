@@ -1,18 +1,58 @@
 package netLayer
 
 import (
+	"flag"
 	"io"
-	"net"
 	"sync"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//v2ray里还使用了动态分配的方式，我们为了简便先啥也不做
+//v2ray里还使用了动态分配的方式，我们为了简便就固定长度. 另外v2ray单个缓存长度是是2k，我们单个是MTU.
 // 实测16个buf已经完全够用，平时也就偶尔遇到5个buf的情况, 极速测速时会占用更多；
 // 16个1500那就是 24000, 23.4375 KB, 不算小了;
+// 而且我们还使用了Pool来进行缓存,减轻了内存负担, 所以也没必要为了解决内存分配而频繁调整长度.
 const readv_buffer_allocLen = 16
+
+var (
+	// readv pool, 缓存 mr和buffers，进一步减轻内存分配负担
+	readvPool sync.Pool
+
+	UseReadv bool
+)
+
+func init() {
+	flag.BoolVar(&UseReadv, "readv", true, "toggle the use of 'readv' syscall")
+
+	readvPool = sync.Pool{
+		New: func() any {
+			mr := utils.GetReadVReader()
+			return &readvMem{
+				mr:      mr,
+				buffers: utils.AllocMTUBuffers(mr, readv_buffer_allocLen),
+			}
+		},
+	}
+}
+
+// 缓存 readvMem 以及对应分配的系统相关的 utils.MultiReader
+// 使用 readvMem的最大好处就是 buffers 和 mr 都是不需要 释放的
+//  因为不需释放mr, 所以也就节省了 mr.Init 的开销.
+// 该 readvMem 以及 readvPool 专门服务于 TryCopy 函数
+type readvMem struct {
+	buffers [][]byte
+	mr      utils.MultiReader
+}
+
+func get_readvMem() *readvMem {
+	return readvPool.Get().(*readvMem)
+}
+
+func put_readvMem(rm *readvMem) {
+	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, utils.StandardBytesLength)
+	readvPool.Put(rm)
+}
 
 /* ReadFromMultiReader 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
 
@@ -20,11 +60,11 @@ const readv_buffer_allocLen = 16
 
 返回错误时，依然会返回 原buffer 或者 在函数内部新分配的buffer. 本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
 
-小贴士：将该 net.Buffers 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
+小贴士：将该 [][]byte 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
 
 TryCopy函数使用到了本函数 来进行readv相关操作。
 */
-func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allocedBuffers net.Buffers) (net.Buffers, error) {
+func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allocedBuffers [][]byte) ([][]byte, error) {
 
 	if allocedBuffers == nil {
 		allocedBuffers = utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
@@ -57,35 +97,4 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allo
 	*/
 
 	return allocedBuffers[:nBuf], nil
-}
-
-var (
-	// readv pool, 缓存 mr和buffers，进一步减轻内存分配负担
-	readvPool sync.Pool
-)
-
-type readvMem struct {
-	buffers net.Buffers
-	mr      utils.MultiReader
-}
-
-func init() {
-	readvPool = sync.Pool{
-		New: func() any {
-			mr := utils.GetReadVReader()
-			return &readvMem{
-				mr:      mr,
-				buffers: utils.AllocMTUBuffers(mr, readv_buffer_allocLen),
-			}
-		},
-	}
-}
-
-func get_readvMem() *readvMem {
-	return readvPool.Get().(*readvMem)
-}
-
-func put_readvMem(rm *readvMem) {
-	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, utils.StandardBytesLength)
-	readvPool.Put(rm)
 }
