@@ -28,11 +28,13 @@ https://github.com/v2fly/v2ray-core/pull/757
 我直接把 GunService名称改成了 “Stream”，不影响的。反正我们自定义内部真实名称.
 
 不过，我改名后，发现不兼容; 那么我直接改动 stream.pb.go 里的 *_rawDesc 序列呢, 从v2ray复制过来
-发现改了依然不行
+发现改了依然不行; 也许protobuf用了什么反射机制，导致包名必须完全一样，那就没办法了。
+
+本作是不会主动更改自己的文件夹结构来匹配xray/v2ray的。
 */
 
 // ServerDesc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
-// 默认proto生成的 GunService_ServiceDesc 变量 的名称是固定的, 见 stream_grpc.pb.go 的最下方.
+// 默认proto生成的 Stream_ServiceDesc 变量 的名称是固定的, 见 stream_grpc.pb.go 的最下方.
 func ServerDesc_withName(name string) grpc.ServiceDesc {
 	return grpc.ServiceDesc{
 		ServiceName: name,

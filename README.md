@@ -33,13 +33,15 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 多种配置文件格式,包括自有的 toml标准格式
 
-默认回落，以及按path 回落
+默认回落，以及按 path/sni/alpn 回落
 
 按 geoip,ip,cidr,domain,inTag,network 分流，以及 按国别 顶级域名分流，用到了 mmdb
 
-支持utls伪装tls指纹
+支持utls伪装tls指纹，本作的 utls 与 webscoket和grpc均兼容
 
-支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，与现有xray/v2ray兼容
+支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，应该是与现有xray/v2ray兼容的
+
+支持grpc，不与 xray/v2ray兼容
 
 ### 关于vless v1
 
@@ -125,9 +127,9 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 ### ws/grpc
 
-目前最新代码已经支持了ws
+目前最新代码已经支持了ws和grpc
 
-以后会添加grpc的支持。并且对于ws/grpc，我设计的vless v1协议将会针对它们 有专门的udp优化。
+并且对于ws/grpc，我设计的vless v1协议将会针对它们 有专门的udp优化。
 ## 安装方式：
 
 ### 下载安装
