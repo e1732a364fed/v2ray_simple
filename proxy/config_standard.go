@@ -18,15 +18,16 @@ import (
 // CommonConf 是标准配置中 Listen和Dial 都有的部分
 //如果新协议有其他新项，可以放入 Extra.
 type CommonConf struct {
-	Tag      string `toml:"tag"`      //可选
-	Protocol string `toml:"protocol"` //约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
-	Uuid     string `toml:"uuid"`     //一个用户的唯一标识，建议使用uuid，但也不一定
-	Host     string `toml:"host"`     //ip 或域名. 若unix domain socket 则为文件路径
-	IP       string `toml:"ip"`       //给出Host后，该项可以省略; 既有Host又有ip的情况比较适合cdn
-	Port     int    `toml:"port"`     //若Network不为 unix , 则port项必填
-	Version  int    `toml:"ver"`      //可选
-	TLS      bool   `toml:"tls"`      //可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
-	Insecure bool   `toml:"insecure"` //tls 是否安全
+	Tag      string   `toml:"tag"`      //可选
+	Protocol string   `toml:"protocol"` //约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
+	Uuid     string   `toml:"uuid"`     //一个用户的唯一标识，建议使用uuid，但也不一定
+	Host     string   `toml:"host"`     //ip 或域名. 若unix domain socket 则为文件路径
+	IP       string   `toml:"ip"`       //给出Host后，该项可以省略; 既有Host又有ip的情况比较适合cdn
+	Port     int      `toml:"port"`     //若Network不为 unix , 则port项必填
+	Version  int      `toml:"ver"`      //可选
+	TLS      bool     `toml:"tls"`      //可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
+	Insecure bool     `toml:"insecure"` //tls 是否安全
+	Alpn     []string `toml:"alpn"`
 
 	Network string `toml:"network"` //默认使用tcp, network可选值为 tcp,udp, uds;
 

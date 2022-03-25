@@ -361,6 +361,10 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 			// 我们直接循环监听然后分别用 新goroutine发向 handshakeInserver_and_passToOutClient
 
+			if utils.CanLogDebug() {
+				log.Println("start upgrade grpc")
+			}
+
 			grpcs := inServer.GetGRPC_Server() //这个grpc server是在配置阶段初始化好的.
 
 			grpcs.StartHandle(wrappedConn)
@@ -370,6 +374,11 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 			for {
 				newGConn, ok := <-grpcs.NewConnChan
 				if !ok {
+					if utils.CanLogErr() {
+						log.Println("upgrade grpc not ok")
+
+					}
+
 					iics.baseLocalConn.Close()
 					return
 				}
@@ -445,6 +454,7 @@ startPass:
 
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
 func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
+	//log.Println("handshakeInserver_and_passToOutClient")
 
 	wrappedConn := iics.wrappedConn
 
@@ -462,6 +472,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	wlc, targetAddr, err = inServer.Handshake(wrappedConn)
 	if err == nil {
+		//log.Println("inServer handshake passed")
 		//无错误时直接进行下一步了
 		goto afterLocalServerHandshake
 	}
@@ -794,6 +805,8 @@ afterLocalServerHandshake:
 
 	//log.Println("dial real addr ok", realTargetAddr)
 
+	////////////////////////////// tls握手阶段 /////////////////////////////////////
+
 	if client.IsUseTLS() { //即客户端
 
 		if canLazyEncrypt(inServer) {
@@ -828,14 +841,21 @@ afterLocalServerHandshake:
 		clientConn = tlsConn
 
 	}
+
+	////////////////////////////// 高级层握手阶段 /////////////////////////////////////
+
 advLayerStep:
+
 	if adv := client.AdvancedLayer(); adv != "" {
 		switch adv {
 		case "grpc":
 			if grpcClientConn == nil {
 				grpcClientConn, err = grpc.ClientHandshake(clientConn, realTargetAddr)
 				if err != nil {
-					log.Println("grpc.ClientHandshake failed,", err)
+					if utils.CanLogErr() {
+						log.Println("grpc.ClientHandshake failed,", err)
+
+					}
 					iics.baseLocalConn.Close()
 					return
 				}
@@ -844,7 +864,10 @@ advLayerStep:
 
 			clientConn, err = grpc.DialNewSubConn(client.GetDialConf().Path, grpcClientConn, realTargetAddr)
 			if err != nil {
-				log.Println("grpc.DialNewSubConn failed,", err)
+				if utils.CanLogErr() {
+					log.Println("grpc.DialNewSubConn failed,", err)
+
+				}
 				iics.baseLocalConn.Close()
 				return
 			}
@@ -896,6 +919,8 @@ advLayerStep:
 		}
 	}
 
+	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
+
 	wrc, err := client.Handshake(clientConn, targetAddr)
 	if err != nil {
 		if utils.CanLogErr() {
@@ -906,9 +931,11 @@ advLayerStep:
 	}
 	//log.Println("all handshake finished")
 
+	////////////////////////////// 实际转发阶段 /////////////////////////////////////
+
 	if !routedToDirect && canLazyEncrypt(inServer) {
 
-		// 这里的错误是，我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
+		// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
 		if !isServerEnd {
 
 			if client.IsUseTLS() {

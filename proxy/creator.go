@@ -48,7 +48,6 @@ func NewClient(dc *DialConf) (Client, error) {
 		if dc.TLS {
 			c.SetUseTLS()
 			e = prepareTLS_forClient(c, dc)
-			configCommonForClient(c, dc)
 			return c, e
 		}
 
@@ -243,7 +242,7 @@ func configCommon(ser ProxyCommon, cc *CommonConf) {
 
 }
 
-//SetAddrStr, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon
+//SetAddrStr, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon(setAdvancedLayer)
 func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	cli.setNetwork(dc.Network)
 	cli.setIsDial(true)

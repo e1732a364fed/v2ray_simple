@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/hahahrfool/v2ray_simple/grpc"
+	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/ws"
@@ -114,9 +115,7 @@ type ProxyCommon interface {
 
 	initGRPC_server()
 
-	//这里认为 mux.cool 等 多路复用协议 也算高级层
-
-	IsMux() bool
+	IsMux() bool //如果是grpc则此方法返回true
 
 	/////////////////// 私有方法 ///////////////////
 
@@ -133,7 +132,20 @@ type ProxyCommon interface {
 
 //use dc.Host, dc.Insecure, dc.Utls
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
-	com.setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls))
+	alpnList := dc.Alpn
+	if com.AdvancedLayer() == "grpc" {
+		has_h2 := false
+		for _, a := range alpnList {
+			if a == httpLayer.H2_Str {
+				has_h2 = true
+				break
+			}
+		}
+		if !has_h2 {
+			alpnList = append([]string{httpLayer.H2_Str}, alpnList...)
+		}
+	}
+	com.setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList))
 	return nil
 }
 
@@ -161,7 +173,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	if isclient {
 		utlsStr := u.Query().Get("utls")
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
-		com.setTLS_Client(tlsLayer.NewClient(u.Host, insecure, useUtls))
+		com.setTLS_Client(tlsLayer.NewClient(u.Host, insecure, useUtls, nil))
 
 	} else {
 		certFile := u.Query().Get("cert")

@@ -14,22 +14,35 @@ import (
 //https://github.com/hahahrfool/v2ray_simple/discussions/7
 
 type Client struct {
-	tlsConfig *tls.Config
-	use_uTls  bool
+	tlsConfig  *tls.Config
+	uTlsConfig *utls.Config
+	use_uTls   bool
+	alpnList   []string
 }
 
-func NewClient(host string, insecure bool, use_uTls bool) *Client {
+func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Client {
 
 	c := &Client{
-		tlsConfig: &tls.Config{
-			InsecureSkipVerify: insecure,
-			ServerName:         host,
-		},
 		use_uTls: use_uTls,
 	}
 
-	if use_uTls && utils.CanLogInfo() {
-		log.Println("using utls and Chrome fingerprint for", host)
+	if use_uTls {
+
+		c.uTlsConfig = &utls.Config{
+			InsecureSkipVerify: insecure,
+			ServerName:         host,
+			NextProtos:         c.alpnList,
+		}
+		if utils.CanLogInfo() {
+			log.Println("using utls and Chrome fingerprint for", host)
+		}
+	} else {
+		c.tlsConfig = &tls.Config{
+			InsecureSkipVerify: insecure,
+			ServerName:         host,
+			NextProtos:         c.alpnList,
+		}
+
 	}
 
 	return c
@@ -38,11 +51,7 @@ func NewClient(host string, insecure bool, use_uTls bool) *Client {
 func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
 	if c.use_uTls {
-		utlsConn := utls.UClient(underlay, &utls.Config{
-			InsecureSkipVerify: c.tlsConfig.InsecureSkipVerify,
-			ServerName:         c.tlsConfig.ServerName,
-		}, utls.HelloChrome_Auto)
-
+		utlsConn := utls.UClient(underlay, c.uTlsConfig, utls.HelloChrome_Auto)
 		err = utlsConn.Handshake()
 		if err != nil {
 			return
@@ -56,7 +65,6 @@ func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 	} else {
 		officialConn := tls.Client(underlay, c.tlsConfig)
 		err = officialConn.Handshake()
-
 		if err != nil {
 			return
 		}

@@ -27,6 +27,8 @@ https://github.com/v2fly/v2ray-core/pull/757
 
 我直接把 GunService名称改成了 “Stream”，不影响的。反正我们自定义内部真实名称.
 
+不过，我改名后，发现不兼容; 那么我直接改动 stream.pb.go 里的 *_rawDesc 序列呢, 从v2ray复制过来
+发现改了依然不行
 */
 
 // ServerDesc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
