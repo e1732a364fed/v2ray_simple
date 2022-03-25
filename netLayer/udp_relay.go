@@ -282,7 +282,7 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 
 					mutex.Lock()
 					dialedUDPConnMap[raddr.String()] = thisconn
-					mutex.RUnlock()
+					mutex.Unlock()
 
 					err = extractor.WriteUDPResponse(raddr, bs[:n])
 					if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/ws"
+	"google.golang.org/grpc"
 )
 
 func PrintAllServerNames() {
@@ -27,8 +28,10 @@ func PrintAllClientNames() {
 	}
 }
 
-// Client 用于向 服务端 拨号. 服务端是一种 “泛目标”代理，所以我们Handshake要传入目标地址
-// 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据
+// Client 用于向 服务端 拨号.
+//服务端是一种 “泛目标”代理，所以我们客户端的 Handshake 要传入目标地址, 来告诉它 我们 想要到达的 目标地址.
+// 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
+// 一旦一个 Client 被完整定义，则它的数据的流向就被完整确定了.
 type Client interface {
 	ProxyCommon
 
@@ -39,14 +42,12 @@ type Client interface {
 
 // Server 用于监听 客户端 的连接.
 // 服务端是一种 “泛目标”代理，所以我们Handshake要返回 客户端请求的目标地址
-// 一个 Server 掌握从最底层的tcp等到最上层的 代理协议间的所有数据
+// 一个 Server 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
+// 一旦一个 Server 被完整定义，则它的数据的流向就被完整确定了.
 type Server interface {
 	ProxyCommon
 
 	Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error)
-	Stop()
-
-	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 }
 
 // FullName 可以完整表示 一个 代理的 VSI 层级.
@@ -59,10 +60,12 @@ func GetFullName(pc ProxyCommon) string {
 }
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
-// 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息
+// 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息;
 type ProxyCommon interface {
 	Name() string       //代理协议名称, 如vless
 	MiddleName() string //其它VSI层 所使用的协议，如 +tls+ws
+
+	Stop()
 
 	/////////////////// 网络层/传输层 ///////////////////
 
@@ -90,10 +93,12 @@ type ProxyCommon interface {
 	setTLS_Server(*tlsLayer.Server)
 	setTLS_Client(*tlsLayer.Client)
 
-	//http
+	/////////////////// http层 ///////////////////
 	//默认回落地址.
 	GetFallback() *netLayer.Addr
 	setFallback(*netLayer.Addr)
+
+	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 
 	/////////////////// 高级层 ///////////////////
 
@@ -104,6 +109,13 @@ type ProxyCommon interface {
 
 	initWS_client() //for outClient
 	initWS_server() //for inServer
+
+	GetGRPC_Server() *grpc.Server
+
+	//这里认为 mux.cool 等 多路复用协议 也算高级层
+
+	IsMux() bool
+	GetMuxNewConnChan() chan net.Conn
 
 	/////////////////// 私有方法 ///////////////////
 
@@ -188,9 +200,13 @@ type ProxyCommonStruct struct {
 
 	AdvancedL string
 
-	ws_c         *ws.Client
-	ws_s         *ws.Server
+	ws_c *ws.Client
+	ws_s *ws.Server
+
+	grpc_s       *grpc.Server
 	FallbackAddr *netLayer.Addr
+
+	muxNewConnChan chan net.Conn
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
@@ -252,6 +268,11 @@ func (pcs *ProxyCommonStruct) AdvancedLayer() string {
 func (s *ProxyCommonStruct) Stop() {
 }
 
+//return false. As a placeholder.
+func (s *ProxyCommonStruct) CanFallback() bool {
+	return false
+}
+
 // 从 url 初始化一些通用的配置，目前只有 u.Host
 func (pcs *ProxyCommonStruct) InitFromUrl(u *url.URL) {
 	pcs.Addr = u.Host
@@ -281,6 +302,15 @@ func (s *ProxyCommonStruct) SetAddrStr(a string) {
 func (s *ProxyCommonStruct) IsUseTLS() bool {
 	return s.TLS
 }
+
+func (s *ProxyCommonStruct) IsMux() bool {
+	return s.AdvancedL == "grpc"
+}
+
+func (s *ProxyCommonStruct) GetMuxNewConnChan() chan net.Conn {
+	return s.muxNewConnChan
+}
+
 func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
@@ -311,6 +341,10 @@ func (s *ProxyCommonStruct) GetWS_Client() *ws.Client {
 }
 func (s *ProxyCommonStruct) GetWS_Server() *ws.Server {
 	return s.ws_s
+}
+
+func (s *ProxyCommonStruct) GetGRPC_Server() *grpc.Server {
+	return s.grpc_s
 }
 
 //for outClient
