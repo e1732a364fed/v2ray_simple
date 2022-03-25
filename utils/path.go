@@ -27,7 +27,7 @@ func GetFilePath(fileName string) string {
 		return fileName
 	}
 
-	if len(fileName) > 3 && fb >= 'C' && fb <= 'Z' && fileName[1] == ':' && (fileName[2] == '/' || fileName[2] == '\\') {
+	if len(fileName) > 3 && (fb >= 'C' && fb <= 'Z' || fb >= 'c' && fb <= 'z') && fileName[1] == ':' && (fileName[2] == '/' || fileName[2] == '\\') {
 		return fileName
 	}
 

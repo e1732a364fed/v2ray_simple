@@ -32,6 +32,11 @@ type Addr struct {
 	Network string
 }
 
+type HashableAddr struct {
+	netip.AddrPort
+	Network, Name string
+}
+
 func RandPortStr() string {
 	return strconv.Itoa(rand.Intn(60000) + 4096)
 }
@@ -167,6 +172,14 @@ func NewAddrFromAny(thing any) (addr *Addr, err error) {
 		}
 	}
 
+	return
+}
+
+func (a *Addr) GetHashable() (ha HashableAddr) {
+	ip, _ := netip.AddrFromSlice(a.IP)
+	ha.AddrPort = netip.AddrPortFrom(ip, uint16(a.Port))
+	ha.Network = a.Network
+	ha.Name = a.Name
 	return
 }
 

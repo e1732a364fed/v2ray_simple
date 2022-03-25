@@ -54,8 +54,8 @@ var (
 	serversTagMap = make(map[string]proxy.Server)
 	clientsTagMap = make(map[string]proxy.Client)
 
-	listenURL string
-	dialURL   string
+	listenURL string //用于命令行模式
+	dialURL   string //用于命令行模式
 
 	tls_lazy_encrypt bool
 	tls_lazy_secure  bool
@@ -85,12 +85,10 @@ func init() {
 }
 
 func mayPrintSupportedProtocols() {
-
 	if !cmdPrintSupportedProtocols {
 		return
 	}
 	proxy.PrintAllServerNames()
-
 	proxy.PrintAllClientNames()
 }
 
@@ -119,7 +117,7 @@ func main() {
 	}
 
 	if cmdUseReadv == false && netLayer.UseReadv == true {
-		//配置文件配置了日志等级, 但是因为 命令行给出的值优先, 所以要设回
+		//配置文件配置了readv, 但是因为 命令行给出的值优先, 所以要设回
 
 		netLayer.UseReadv = false
 	}
@@ -267,16 +265,51 @@ func listenSer(listener net.Listener, inServer proxy.Server) {
 	}
 }
 
+type incomingInserverConnState struct {
+
+	//baseLocalConn 是来自客户端的原始网络层链接
+
+	//wrappedConn是层层握手后包装的链接;
+
+	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
+	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
+
+	//这里说的多路复用基本指的就是grpc; 如果是 vless内嵌 mux.cool 的话不属于这种情况.
+
+	// 要区分 多路复用的包装 是在vless等代理验证 的外部还是内部
+
+	baseLocalConn, wrappedConn net.Conn
+	cachedRemoteAddr           string
+	theRequestPath             string
+
+	inServerTlsConn            *tlsLayer.Conn
+	inServerTlsRawReadRecorder *tlsLayer.Recorder
+
+	inServer proxy.Server
+
+	shouldFallback bool
+
+	theFallbackFirstBuffer *bytes.Buffer
+}
+
+func canLazyEncrypt(inServer proxy.Server) bool {
+	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
+
+	return tls_lazy_encrypt && inServer.AdvancedLayer() == ""
+}
+
 func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstance net.Conn) {
 
-	baseLocalConn := thisLocalConnectionInstance
+	iics := incomingInserverConnState{
+		baseLocalConn: thisLocalConnectionInstance,
+		inServer:      inServer,
+	}
 
-	var cachedRemoteAddr string
+	wrappedConn := thisLocalConnectionInstance
 
 	if utils.CanLogInfo() {
-		cachedRemoteAddr = thisLocalConnectionInstance.RemoteAddr().String()
-		log.Println("New req from", cachedRemoteAddr)
-
+		iics.cachedRemoteAddr = wrappedConn.RemoteAddr().String()
+		log.Println("New Accepted Conn from", iics.cachedRemoteAddr)
 	}
 
 	//此时，baseLocalConn里面 正常情况下, 服务端看到的是 客户端的golang的tls 拨号发出的 tls数据
@@ -285,49 +318,38 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 	// 如果是服务端的话，那就是 inServer.IsUseTLS == true, 此时，我们正常握手，然后我们需要判断的是它承载的数据
 
 	// 每次tls试图从 原始连接 读取内容时，都会附带把原始数据写入到 这个 Recorder中
-	var inServerTlsRawReadRecorder *tlsLayer.Recorder
-
-	var inServerTlsConn *tlsLayer.Conn
 
 	if inServer.IsUseTLS() {
 
-		if tls_lazy_encrypt {
-			inServerTlsRawReadRecorder = tlsLayer.NewRecorder()
+		if canLazyEncrypt(inServer) {
+			iics.inServerTlsRawReadRecorder = tlsLayer.NewRecorder()
 
-			inServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
-			teeConn := tlsLayer.NewTeeConn(baseLocalConn, inServerTlsRawReadRecorder)
+			iics.inServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
+			teeConn := tlsLayer.NewTeeConn(wrappedConn, iics.inServerTlsRawReadRecorder)
 
-			thisLocalConnectionInstance = teeConn
+			wrappedConn = teeConn
 		}
 
-		tlsConn, err := inServer.GetTLS_Server().Handshake(thisLocalConnectionInstance)
+		tlsConn, err := inServer.GetTLS_Server().Handshake(wrappedConn)
 		if err != nil {
 
 			if utils.CanLogErr() {
 				log.Println("failed in inServer tls handshake ", inServer.AddrStr(), err)
 
 			}
-			thisLocalConnectionInstance.Close()
+			wrappedConn.Close()
 			return
 		}
 
-		if tls_lazy_encrypt {
+		if canLazyEncrypt(inServer) {
 			//此时已经握手完毕，可以记录了
-			inServerTlsRawReadRecorder.StartRecord()
+			iics.inServerTlsRawReadRecorder.StartRecord()
 		}
 
-		inServerTlsConn = tlsConn
-		thisLocalConnectionInstance = tlsConn
+		iics.inServerTlsConn = tlsConn
+		wrappedConn = tlsConn
 
 	}
-
-	var theFallbackFirstBuffer *bytes.Buffer
-
-	var theRequestPath string
-
-	var shouldFallback bool
-
-	//var defaultFallback httpLayer.Fallback
 
 	//log.Println("handshake passed tls")
 
@@ -335,10 +357,27 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 		switch adv {
 		case "grpc":
 			//grpc不太一样, 它是多路复用的
-			// 每一条建立好的 grpc 可以随时产生对新目标的请求
+			// 每一条建立好的 grpc 可以随时产生对新目标的请求,
+
+			// 我们直接循环监听然后分别用 新goroutine发向 handshakeInserver_and_passToOutClient
 
 			grpcs := inServer.GetGRPC_Server() //这个grpc server是在配置阶段初始化好的.
-			grpc.HandleRawConn(grpcs, "", thisLocalConnectionInstance)
+
+			grpcs.StartHandle(wrappedConn)
+
+			//start之后，客户端就会利用同一条tcp链接 来发送多个 请求,自此就不能直接用原来的链接了;
+			// 新的子请求被 grpc包 抽象成了 抽象的 conn
+			for {
+				newGConn, ok := <-grpcs.NewConnChan
+				if !ok {
+					iics.baseLocalConn.Close()
+					return
+				}
+
+				iics.wrappedConn = newGConn
+
+				go handshakeInserver_and_passToOutClient(iics)
+			}
 
 		case "ws":
 
@@ -347,7 +386,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 			// 否则的话，正常的http流量频繁地被用不到的 ws 过滤器处理,会损失很多性能,而且gobwas没办法简洁地保留初始buffer.
 
 			var rp httpLayer.RequestParser
-			re := rp.ReadAndParse(thisLocalConnectionInstance)
+			re := rp.ReadAndParse(wrappedConn)
 			if re != nil {
 				if re == httpLayer.ErrNotHTTP_Request {
 					if utils.CanLogErr() {
@@ -360,60 +399,68 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 					}
 				}
 
-				thisLocalConnectionInstance.Close()
+				wrappedConn.Close()
 				return
 			}
 
 			wss := inServer.GetWS_Server()
 
 			if rp.Method != "GET" || wss.Thepath != rp.Path {
-				theRequestPath = rp.Path
-				theFallbackFirstBuffer = rp.WholeRequestBuf
+				iics.theRequestPath = rp.Path
+				iics.theFallbackFirstBuffer = rp.WholeRequestBuf
 
 				if utils.CanLogDebug() {
 					log.Println("ws path not match", rp.Method, rp.Path, "should be:", wss.Thepath)
 
 				}
 
-				shouldFallback = true
+				iics.shouldFallback = true
 				goto startPass
 
 			}
 
 			//此时path和method都已经匹配了, 如果还不能通过那就说明后面的header等数据不满足ws的upgrade请求格式, 肯定是非法数据了,也不用再回落
-			wsConn, err := wss.Handshake(rp.WholeRequestBuf, thisLocalConnectionInstance)
+			wsConn, err := wss.Handshake(rp.WholeRequestBuf, wrappedConn)
 			if err != nil {
 				if utils.CanLogErr() {
 					log.Println("failed in inServer websocket handshake ", inServer.AddrStr(), err)
 
 				}
 
-				thisLocalConnectionInstance.Close()
+				wrappedConn.Close()
 				return
 
 			}
-			thisLocalConnectionInstance = wsConn
+			wrappedConn = wsConn
 		} // switch adv
 
 	} //if adv !=""
 
 startPass:
 
-	handshakeInserver_and_passToOutClient(baseLocalConn, thisLocalConnectionInstance, inServerTlsConn, inServer, shouldFallback, theFallbackFirstBuffer, theRequestPath, inServerTlsRawReadRecorder, cachedRemoteAddr)
+	iics.wrappedConn = wrappedConn
+
+	handshakeInserver_and_passToOutClient(iics)
 }
 
-func handshakeInserver_and_passToOutClient(baseLocalConn, thisLocalConnectionInstance net.Conn, inServerTlsConn *tlsLayer.Conn, inServer proxy.Server, shouldFallback bool, theFallbackFirstBuffer *bytes.Buffer, theRequestPath string, inServerTlsRawReadRecorder *tlsLayer.Recorder, cachedRemoteAddr string) {
+// iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
+func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
-	defaultFallbackAddr := inServer.GetFallback()
+	wrappedConn := iics.wrappedConn
+
+	inServer := iics.inServer
+
+	theFallbackFirstBuffer := iics.theFallbackFirstBuffer
+
 	var wlc io.ReadWriter
 	var targetAddr *netLayer.Addr
 	var err error
 
-	if shouldFallback {
+	if iics.shouldFallback {
 		goto checkFallback
 	}
 
-	wlc, targetAddr, err = inServer.Handshake(thisLocalConnectionInstance)
+	wlc, targetAddr, err = inServer.Handshake(wrappedConn)
 	if err == nil {
 		//无错误时直接进行下一步了
 		goto afterLocalServerHandshake
@@ -428,7 +475,7 @@ func handshakeInserver_and_passToOutClient(baseLocalConn, thisLocalConnectionIns
 	}
 
 	if !inServer.CanFallback() {
-		thisLocalConnectionInstance.Close()
+		wrappedConn.Close()
 		return
 	}
 
@@ -437,7 +484,7 @@ func handshakeInserver_and_passToOutClient(baseLocalConn, thisLocalConnectionIns
 		fe, ok := err.(*utils.ErrFirstBuffer)
 		if !ok {
 			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
-			thisLocalConnectionInstance.Close()
+			wrappedConn.Close()
 			return
 		}
 
@@ -462,6 +509,8 @@ checkFallback:
 
 		fallback_params := make([]string, 0, 4)
 
+		theRequestPath := iics.theRequestPath
+
 		if theFallbackFirstBuffer != nil && theRequestPath == "" {
 			var failreason int
 
@@ -478,7 +527,7 @@ checkFallback:
 			thisFallbackType |= httpLayer.Fallback_path
 		}
 
-		if inServerTlsConn != nil {
+		if inServerTlsConn := iics.inServerTlsConn; inServerTlsConn != nil {
 			//默认似乎默认tls不会给出alpn和sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
 			// 而alpn则也是正常的, 不设置肯定就是空值
 			// TODO: 配置中加一个 alpn选项.
@@ -504,7 +553,7 @@ checkFallback:
 		}
 		if fbAddr != nil {
 			targetAddr = fbAddr
-			wlc = thisLocalConnectionInstance
+			wlc = wrappedConn
 			goto afterLocalServerHandshake
 		}
 
@@ -512,10 +561,10 @@ checkFallback:
 
 	//默认回落
 
-	if defaultFallbackAddr != nil {
+	if defaultFallbackAddr := inServer.GetFallback(); defaultFallbackAddr != nil {
 
 		targetAddr = defaultFallbackAddr
-		wlc = thisLocalConnectionInstance
+		wlc = wrappedConn
 
 	}
 
@@ -526,9 +575,11 @@ afterLocalServerHandshake:
 		if utils.CanLogDebug() {
 			log.Println("invalid request and no matched fallback, hung up.")
 		}
-		thisLocalConnectionInstance.Close()
+		wrappedConn.Close()
 		return
 	}
+
+	////////////////////////////// 分流阶段 /////////////////////////////////////
 
 	var client proxy.Client = defaultOutClient
 
@@ -564,18 +615,20 @@ afterLocalServerHandshake:
 		}
 	}
 
+	////////////////////////////// 特殊处理阶段 /////////////////////////////////////
+
 	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个 就是要发送到 outClient 的信息，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5 对 tls 进行判断
 	//
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
 	// 所以总之都是要在 inServer 判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
 
-	if tls_lazy_encrypt && !(!isServerEnd && routedToDirect) {
+	if canLazyEncrypt(inServer) && !(!isServerEnd && routedToDirect) {
 
 		if tlsLayer.PDD {
 			log.Println("loading TLS SniffConn", !isServerEnd)
 		}
 
-		wlc = tlsLayer.NewSniffConn(baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
+		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
 	}
 
 	//如果目标是udp则要分情况讨论
@@ -587,17 +640,17 @@ afterLocalServerHandshake:
 		case "vless":
 
 			if targetAddr.Name == vless.CRUMFURS_Established_Str {
-				// 预留了 CRUMFURS 信道的话，就不要关闭 thisLocalConnectionInstance
+				// 预留了 CRUMFURS 信道的话，就不要关闭 wrappedConn
 				// 	而且也不在这里处理监听事件，client自己会在额外的 goroutine里处理
 				//	server也一样，会在特定的场合给 CRUMFURS 传值，这个机制是与main函数无关的
 
-				// 而且 thisLocalConnectionInstance 会被 inServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
+				// 而且 wrappedConn 会被 inServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
 
 				return
 
 			} else {
 				//如果不是CRUMFURS命令，那就是普通的针对某udp地址的连接，见下文 uniExtractor 的使用
-				defer thisLocalConnectionInstance.Close()
+				defer wrappedConn.Close()
 			}
 
 		case "socks5":
@@ -607,7 +660,7 @@ afterLocalServerHandshake:
 			// 因为socks5的 UDP Associate 办法是较为特殊的（不使用现有tcp而是新建立udp），所以要单独拿出来处理。
 			// 此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
 
-			defer thisLocalConnectionInstance.Close()
+			defer wrappedConn.Close()
 
 			// 此时socks5包已经帮我们dial好了一个udp连接，即wlc，但是还未读取到客户端想要访问的东西
 			udpConn := wlc.(*socks5.UDPConn)
@@ -630,18 +683,18 @@ afterLocalServerHandshake:
 			return
 
 		default:
-			defer thisLocalConnectionInstance.Close()
+			defer wrappedConn.Close()
 
 		}
 	} else {
-		if !tls_lazy_encrypt { //lazy_encrypt情况比较特殊
-			defer thisLocalConnectionInstance.Close()
+		if !canLazyEncrypt(inServer) { //lazy_encrypt情况比较特殊
+			defer wrappedConn.Close()
 
 		}
 
-		// 这里 因为 vless v1 的 CRUMFURS 信道 会对 thisLocalConnectionInstance 出现keep alive ，
+		// 这里 因为 vless v1 的 CRUMFURS 信道 会对 wrappedConn 出现keep alive ，
 		// 而且具体的传递信息的部分并不是在main函数中处理，而是自己的go routine，所以不能直接关闭 thisLocalConnectionInstance，
-		// 所以要分情况进行 defer thisLocalConnectionInstance.Close()。
+		// 所以要分情况进行 defer wrappedConn.Close()。
 	}
 
 	// 如果目标是udp 则我们单独处理。这里为了简便，不考虑多级串联的关系，直接只考虑 直接转发到direct
@@ -695,9 +748,11 @@ afterLocalServerHandshake:
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(client.Name(), cachedRemoteAddr, " want to dial ", proxy.GetFullName(client), targetAddr.UrlString())
+		log.Println(client.Name(), iics.cachedRemoteAddr, " want to dial ", proxy.GetFullName(client), targetAddr.UrlString())
 
 	}
+
+	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	if client.AddrStr() != "" {
 		//log.Println("will dial", client.AddrStr())
@@ -708,31 +763,40 @@ afterLocalServerHandshake:
 		}
 		realTargetAddr.Network = client.Network()
 	}
+	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
 
 	var clientConn net.Conn
 
+	var grpcClientConn grpc.ClientConn
+
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
+	// 我们要先试图从grpc中取出
 
 	if client.IsMux() {
+		if client.AdvancedLayer() == "grpc" {
+			grpcClientConn = grpc.GetEstablishedConnFor(realTargetAddr)
 
-	} else {
-		clientConn, err = realTargetAddr.Dial()
-		if err != nil {
-			if utils.CanLogErr() {
-				log.Println("failed in dial", realTargetAddr.String(), ", Reason: ", err)
-
+			if grpcClientConn != nil {
+				//如果有已经建立好的连接，则跳过拨号阶段
+				goto advLayerStep
 			}
-			return
 		}
+
+	}
+	clientConn, err = realTargetAddr.Dial()
+	if err != nil {
+		if utils.CanLogErr() {
+			log.Println("failed in dial", realTargetAddr.String(), ", Reason: ", err)
+
+		}
+		return
 	}
 
 	//log.Println("dial real addr ok", realTargetAddr)
 
-	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
-
 	if client.IsUseTLS() { //即客户端
 
-		if tls_lazy_encrypt {
+		if canLazyEncrypt(inServer) {
 
 			if tls_lazy_secure {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
@@ -764,11 +828,26 @@ afterLocalServerHandshake:
 		clientConn = tlsConn
 
 	}
-
+advLayerStep:
 	if adv := client.AdvancedLayer(); adv != "" {
 		switch adv {
 		case "grpc":
-			//grpc虽然是多路复用的, 但是这个已经在 grpc/client.go 里处理了, 我们无需担心, 正常操作即可
+			if grpcClientConn == nil {
+				grpcClientConn, err = grpc.ClientHandshake(clientConn, realTargetAddr)
+				if err != nil {
+					log.Println("grpc.ClientHandshake failed,", err)
+					iics.baseLocalConn.Close()
+					return
+				}
+
+			}
+
+			clientConn, err = grpc.DialNewSubConn(client.GetDialConf().Path, grpcClientConn, realTargetAddr)
+			if err != nil {
+				log.Println("grpc.DialNewSubConn failed,", err)
+				iics.baseLocalConn.Close()
+				return
+			}
 
 		case "ws":
 			wsClient := client.GetWS_Client()
@@ -827,7 +906,7 @@ afterLocalServerHandshake:
 	}
 	//log.Println("all handshake finished")
 
-	if !routedToDirect && tls_lazy_encrypt {
+	if !routedToDirect && canLazyEncrypt(inServer) {
 
 		// 这里的错误是，我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
 		if !isServerEnd {
@@ -835,7 +914,7 @@ afterLocalServerHandshake:
 			if client.IsUseTLS() {
 				//必须是 UserClient
 				if userClient := client.(proxy.UserClient); userClient != nil {
-					tryRawCopy(false, userClient, nil, nil, wrc, wlc, baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+					tryRawCopy(false, userClient, nil, nil, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
 					return
 				}
 			}
@@ -846,7 +925,7 @@ afterLocalServerHandshake:
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
 			if userServer, ok := inServer.(proxy.UserServer); ok {
-				tryRawCopy(false, nil, userServer, nil, wrc, wlc, baseLocalConn, false, inServerTlsRawReadRecorder)
+				tryRawCopy(false, nil, userServer, nil, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
 				return
 			}
 

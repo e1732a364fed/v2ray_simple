@@ -21,7 +21,7 @@ type StreamConn interface {
 type Conn struct {
 	stream      StreamConn
 	cacheReader io.Reader
-	over        context.CancelFunc
+	closeFunc   context.CancelFunc
 	local       net.Addr
 	remote      net.Addr
 }
@@ -52,8 +52,8 @@ func (c *Conn) Write(b []byte) (n int, err error) {
 }
 
 func (c *Conn) Close() error {
-	if c.over != nil {
-		c.over()
+	if c.closeFunc != nil {
+		c.closeFunc()
 	}
 	return nil
 }
@@ -73,12 +73,13 @@ func (*Conn) SetWriteDeadline(time.Time) error {
 	return nil
 }
 
-// NewConn creates GunConn which handles StreamConn
-func NewConn(service StreamConn, over context.CancelFunc) *Conn {
+// NewConn creates Conn which handles StreamConn.
+// 需要一个 cancelFunc 参数, 是因为 在 处理下一层连接的时候(如vless), 有可能出问题(如uuid不对), 并需要关闭整个 grpc连接. 我们只能通过 chan 的方式（即cancelFunc）来通知 上层进行关闭.
+func NewConn(service StreamConn, cancelFunc context.CancelFunc) *Conn {
 	conn := &Conn{
 		stream:      service,
 		cacheReader: nil,
-		over:        over,
+		closeFunc:   cancelFunc,
 	}
 
 	conn.local = &net.TCPAddr{

@@ -51,6 +51,10 @@ func ServerDesc_withName(name string) grpc.ServiceDesc {
 //比照 protoc生成的 stream_grpc.pb.go 中的 Tun方法
 // 我们加一个 Tun_withName 方法, 可以自定义服务名称
 func (c *streamClient) Tun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunClient, error) {
+	//这里ctx不能为nil，否则会报错
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	stream, err := c.cc.NewStream(ctx, &ServerDesc_withName(name).Streams[0], "/"+name+"/Tun", opts...)
 	if err != nil {
 		return nil, err

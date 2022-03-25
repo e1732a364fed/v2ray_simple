@@ -11,7 +11,20 @@ import (
 	"io"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
+
+	"net/http"
+	"net/http/httptest"
 )
+
+var Err404response = `HTTP/1.1 404 Not Found\r\nContent-Type: text/html
+Connection: keep-alive\r\n404 Not Found\r\n`
+
+const Err403response = `HTTP/1.1 403 Forbidden
+Connection: close
+Cache-Control: max-age=3600, public
+Content-Length: 0
+
+`
 
 const (
 	H11_Str = "http/1.1"
@@ -19,6 +32,20 @@ const (
 )
 
 var ErrNotHTTP_Request = errors.New("not http request")
+
+func init() {
+	//使用 httptest 包 来完美重现 golang的http包的 notfound, 可以随golang具体实现而变化
+
+	req := httptest.NewRequest("GET", "http://exam.com/", nil)
+	w := httptest.NewRecorder()
+	http.NotFound(w, req)
+
+	buf := &bytes.Buffer{}
+	w.Result().Write(buf)
+
+	Err404response = buf.String()
+
+}
 
 type RequestErr struct {
 	Path   string

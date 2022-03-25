@@ -209,6 +209,8 @@ verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:
 verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
 ```
 
+不细心的人要注意了，vlesss，要三个s，不然的话你就是裸奔状态,加了第三个s才表示套tls
+
 命令行模式 实际上就是把命令行的内容转化成极简模式的配置 然后再处理
 
 命令行模式 不支持 回落 和分流 等任何高级特性

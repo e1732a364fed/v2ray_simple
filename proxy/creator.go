@@ -270,8 +270,12 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 	ser.setCantRoute(lc.NoRoute)
 	configCommon(ser, &lc.CommonConf)
 
-	if lc.AdvancedLayer == "ws" {
+	switch lc.AdvancedLayer {
+	case "ws":
 		ser.initWS_server()
+
+	case "grpc":
+		ser.initGRPC_server()
 	}
 
 	fallbackThing := lc.Fallback

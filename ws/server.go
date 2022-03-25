@@ -3,10 +3,10 @@ package ws
 import (
 	"bytes"
 	"encoding/base64"
-	"errors"
 	"io"
 	"log"
 	"net"
+	"net/http"
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
@@ -60,7 +60,8 @@ func (s *Server) Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn)
 				theWrongPath = struri
 
 				//return utils.NewDataErr("ws path not match", nil, struri[:min])
-				//发现这个错误除了在程序里返回外，还会直接显示到 浏览器上！所以只能显示标准http错误
+				//发现这个错误除了在程序里返回外，还会直接显示到 浏览器上！这会被探测到的。
+				// 所以只能显示标准http错误, 然后通过闭包的方式 把path信息传递到外部.
 				if utils.CanLogWarn() {
 					min := len(s.Thepath)
 					if len(struri) < min {
@@ -68,7 +69,7 @@ func (s *Server) Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn)
 					}
 					log.Println("ws path not match", struri[:min])
 				}
-				return errors.New("404")
+				return ws.RejectConnectionError(ws.RejectionStatus(http.StatusBadRequest))
 			}
 			return nil
 		},

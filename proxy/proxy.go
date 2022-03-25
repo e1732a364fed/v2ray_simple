@@ -7,10 +7,10 @@ import (
 	"net"
 	"net/url"
 
+	"github.com/hahahrfool/v2ray_simple/grpc"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/ws"
-	"google.golang.org/grpc"
 )
 
 func PrintAllServerNames() {
@@ -112,10 +112,11 @@ type ProxyCommon interface {
 
 	GetGRPC_Server() *grpc.Server
 
+	initGRPC_server()
+
 	//这里认为 mux.cool 等 多路复用协议 也算高级层
 
 	IsMux() bool
-	GetMuxNewConnChan() chan net.Conn
 
 	/////////////////// 私有方法 ///////////////////
 
@@ -205,8 +206,6 @@ type ProxyCommonStruct struct {
 
 	grpc_s       *grpc.Server
 	FallbackAddr *netLayer.Addr
-
-	muxNewConnChan chan net.Conn
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
@@ -307,10 +306,6 @@ func (s *ProxyCommonStruct) IsMux() bool {
 	return s.AdvancedL == "grpc"
 }
 
-func (s *ProxyCommonStruct) GetMuxNewConnChan() chan net.Conn {
-	return s.muxNewConnChan
-}
-
 func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
@@ -396,4 +391,17 @@ func (s *ProxyCommonStruct) initWS_server() {
 	wss.UseEarlyData = useEarlyData
 
 	s.ws_s = wss
+}
+
+func (s *ProxyCommonStruct) initGRPC_server() {
+	if s.listenConf == nil {
+		log.Fatal("initGRPC_server failed when no listenConf assigned")
+	}
+
+	serviceName := s.listenConf.Path
+	if serviceName == "" { //不能为空
+		log.Fatal("initGRPC_server failed, path must be specified")
+	}
+
+	s.grpc_s = grpc.NewServer(serviceName)
 }
