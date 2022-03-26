@@ -147,6 +147,8 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 			return int64(allLen), nil
 		} else {
 			//如果是服务端，因为无需任何对数据的修改，我们就可以连续将分片的数据依次直接写入,达到加速效果
+			// 不过，如果是内网极限测试的话, 因为网速过快, 实际上分批写入是会减速的
+			// 但是我们也不必就因此而直接采用 mergebuffer的办法。用户如果遇到readv减速的情况，可以直接选择关闭readv
 			wsH := ws.Header{
 				Fin:    true,
 				OpCode: ws.OpBinary,

@@ -3,9 +3,9 @@
 
 
 ```sh
-wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.9/verysimple_linux_amd64_v1.0.9.tgz
+wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.1.0/verysimple_linux_amd64_v1.1.0.tgz
 
-tar -xzf verysimple_linux_amd64_v1.0.9.tgz
+tar -xzf verysimple_linux_amd64_v1.1.0.tgz
 sudo mkdir -p /usr/local/etc/verysimple
 sudo mv verysimple /usr/local/etc/verysimple/
 sudo cp examples/vlesss.server.toml /usr/local/etc/verysimple/server.toml
