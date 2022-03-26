@@ -1,5 +1,5 @@
 [[listen]]
-protocol = "vless"
+protocol = "vlesss"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "0.0.0.0"
 port = 4434

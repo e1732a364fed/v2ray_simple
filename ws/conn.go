@@ -146,6 +146,7 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 			}
 			return int64(allLen), nil
 		} else {
+			//如果是服务端，因为无需任何对数据的修改，我们就可以连续将分片的数据依次直接写入,达到加速效果
 			wsH := ws.Header{
 				Fin:    true,
 				OpCode: ws.OpBinary,
@@ -156,7 +157,7 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 			if e != nil {
 				return 0, e
 			}
-			return utils.BuffersWriteTo(buffers, c.Conn) // nb.WriteTo(c.Conn)
+			return utils.BuffersWriteTo(buffers, c.Conn)
 		}
 
 	} else {

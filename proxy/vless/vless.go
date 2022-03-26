@@ -73,15 +73,15 @@ func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 	if c.canDirectWrite() {
 
-		//底层连接可以是 ws，或者 tls，或者 基本连接; tls 咱不支持 utils.MultiWriter
+		//底层连接可以是 ws，或者 tls，或者 基本连接; tls 我们暂不支持 utils.MultiWriter
 		// 理论上tls是可以支持的，但是要我们魔改tls库
 
 		//本作的 ws.Conn 实现了 utils.MultiWriter
 
 		if c.underlayIsBasic {
-			//nb := net.Buffers(buffers)
-			//return nb.WriteTo(c.Conn)
-			return utils.BuffersWriteTo(buffers, c.Conn)
+			//如果是基本Conn，则不用担心 WriteTo篡改buffers的问题, 因为它会直接调用底层readv
+			nb := net.Buffers(buffers)
+			return nb.WriteTo(c.Conn)
 
 		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
 			return mr.WriteBuffers(buffers)

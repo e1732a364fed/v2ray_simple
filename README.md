@@ -365,6 +365,13 @@ https://github.com/librespeed/speedtest-go
 访问 https://自己ip/example-singleServer-full.html
 注意这个自己ip不能为 127.0.0.1，因为本地回环是永远不过代理的，要配置成自己的局域网ip。
 
+### 关于readv与测速
+
+如果你是按上面指导内网进行测速的话，实际上readv会造成减速效果，具体可参考
+https://github.com/hahahrfool/v2ray_simple/issues/14
+
+此时要关闭readv
+
 ### 结果
 
 左侧下载，右侧上传，单位Mbps。我的虚拟机性能太差，所以就算内网连接速度也很低。
