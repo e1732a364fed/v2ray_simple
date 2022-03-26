@@ -135,8 +135,6 @@ func tryDownloadMMDB() {
 
 }
 func main() {
-	log.Println(os.Executable())
-
 	printVersion()
 
 	flag.Parse()

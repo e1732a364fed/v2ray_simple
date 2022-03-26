@@ -30,7 +30,7 @@ func loadConfig() {
 
 		ext := filepath.Ext(fpath)
 		if ext == ".toml" {
-			standardConf, err = proxy.LoadTomlConfFile(configFileName)
+			standardConf, err = proxy.LoadTomlConfFile(fpath)
 			if err != nil {
 
 				log.Fatalln("can not load standard config file: ", err)
@@ -53,7 +53,7 @@ func loadConfig() {
 			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法
 			// 默认所有json格式的文件都为 极简模式
 
-			simpleConf, err = proxy.LoadSimpleConfigFile(configFileName)
+			simpleConf, err = proxy.LoadSimpleConfigFile(fpath)
 			if err != nil {
 
 				log.Fatalln("can not load simple config file: ", err)

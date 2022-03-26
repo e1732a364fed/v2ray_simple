@@ -14,7 +14,7 @@ type Server struct {
 
 func NewServer(host, certFile, keyFile string, isInsecure bool, alpnList []string) (*Server, error) {
 
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))
 	if err != nil {
 		return nil, err
 	}
