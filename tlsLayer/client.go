@@ -53,7 +53,8 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
 	if c.use_uTls {
-		configCopy := c.uTlsConfig //发现uTlsConfig竟然没发使用指针，握手一次后就会被污染，只能拷贝
+		configCopy := c.uTlsConfig //发现uTlsConfig竟然没法使用指针，握手一次后配置文件就会被污染，只能拷贝
+		//否则的话接下来的握手客户端会报错： tls: CurvePreferences includes unsupported curve
 
 		utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
 		err = utlsConn.Handshake()

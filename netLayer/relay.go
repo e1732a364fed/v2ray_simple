@@ -99,15 +99,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 				num, err2 = buffers.WriteTo(writeConn)
 			} else {
 
-				for _, b := range buffers {
-					nb, err := writeConn.Write(b)
-					num += int64(nb)
-					if err != nil {
-
-						err2 = err
-						break
-					}
-				}
+				num, err2 = utils.BuffersWriteTo(buffers, writeConn)
 
 			}
 		}

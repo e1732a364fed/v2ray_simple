@@ -124,7 +124,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 // 若底层是tls，那我们也合并再发出，这样能少些很多头部,也能减少Write次数
 func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 
-	nb := net.Buffers(buffers)
+	//nb := net.Buffers(buffers)
 	if c.underlayIsBasic {
 		allLen := utils.BuffersLen(buffers)
 
@@ -156,7 +156,7 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 			if e != nil {
 				return 0, e
 			}
-			return nb.WriteTo(c.Conn)
+			return utils.BuffersWriteTo(buffers, c.Conn) // nb.WriteTo(c.Conn)
 		}
 
 	} else {
