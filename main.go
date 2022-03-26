@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/grpc"
@@ -36,8 +35,6 @@ const (
 )
 
 const (
-	tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
-
 	mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
 )
 
@@ -71,12 +68,10 @@ var (
 
 	isServerEnd bool //这个是代码里推断的，不一定准确；不过目前仅被用于tls lazy encrypt，所以不是很重要
 
-	cmdPrintSupportedProtocols bool
 )
 
 func init() {
 	directClient, _ = proxy.ClientFromURL("direct://")
-	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -88,14 +83,6 @@ func init() {
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
 
-}
-
-func mayPrintSupportedProtocols() {
-	if !cmdPrintSupportedProtocols {
-		return
-	}
-	proxy.PrintAllServerNames()
-	proxy.PrintAllClientNames()
 }
 
 func tryDownloadMMDB() {

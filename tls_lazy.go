@@ -13,6 +13,8 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
+
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
