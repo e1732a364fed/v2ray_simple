@@ -906,7 +906,7 @@ advLayerStep:
 
 			}
 
-			clientConn, err = grpc.DialNewSubConn(client.GetDialConf().Path, grpcClientConn, realTargetAddr)
+			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, realTargetAddr)
 			if err != nil {
 				if utils.CanLogErr() {
 					log.Println("grpc.DialNewSubConn failed,", err)

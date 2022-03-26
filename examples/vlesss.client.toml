@@ -52,9 +52,9 @@ version = 0     # 协议版本, 可省略, 省略则默认为最老版本
 insecure = true # 我们示例使用自签名证书，所以要开启 insecure. 实际场合请使用真证书并关闭 insecure
 utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
-# alpn=["http/1.1"] 
+# alpn=["http/1.1"]     # 在开启tls时有效，如果服务端和客户端都配置了alpn，则 服务端和客户端 必须都有相同的alpn项才能建立tls连接
 
-# 如果要使用websocket层，则 客户端和服务端 都要配置 advancedLayer 和 path
+# 如果要使用 websocket/grpc ，则 客户端和服务端 都要配置 advancedLayer 和 path
 
 # advancedLayer = "ws"  # 也可为grpc
 # path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好

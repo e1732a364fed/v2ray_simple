@@ -47,7 +47,7 @@ func GetEstablishedConnFor(addr *netLayer.Addr) ClientConn {
 	return nil
 }
 
-// ClientHandshake 将一个普通连接升级为 grpc连接
+// ClientHandshake 在客户端被调用, 将一个普通连接升级为 grpc连接
 //该 underlay一般为 tls连接。 addr为实际的远程地址，我们不从 underlay里获取addr,避免转换.
 func ClientHandshake(underlay net.Conn, addr *netLayer.Addr) (ClientConn, error) {
 

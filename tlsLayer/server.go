@@ -12,7 +12,7 @@ type Server struct {
 	tlsConfig *tls.Config
 }
 
-func NewServer(host, certFile, keyFile string, isInsecure bool) (*Server, error) {
+func NewServer(host, certFile, keyFile string, isInsecure bool, alpnList []string) (*Server, error) {
 
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
@@ -23,6 +23,7 @@ func NewServer(host, certFile, keyFile string, isInsecure bool) (*Server, error)
 			InsecureSkipVerify: isInsecure,
 			ServerName:         host,
 			Certificates:       []tls.Certificate{cert},
+			NextProtos:         alpnList,
 		},
 	}
 

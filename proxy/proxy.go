@@ -101,6 +101,8 @@ type ProxyCommon interface {
 
 	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 
+	Path() string
+
 	/////////////////// 高级层 ///////////////////
 
 	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
@@ -115,7 +117,7 @@ type ProxyCommon interface {
 
 	initGRPC_server()
 
-	IsMux() bool //如果是grpc则此方法返回true
+	IsMux() bool //如果用了grpc则此方法返回true
 
 	/////////////////// 私有方法 ///////////////////
 
@@ -128,6 +130,7 @@ type ProxyCommon interface {
 	setListenConf(*ListenConf) //for inServer
 	setDialConf(*DialConf)     //for outClient
 
+	setPath(string)
 }
 
 //use dc.Host, dc.Insecure, dc.Utls
@@ -153,7 +156,22 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
 	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径
-	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure)
+
+	alpnList := lc.Alpn
+	if com.AdvancedLayer() == "grpc" {
+		has_h2 := false
+		for _, a := range alpnList {
+			if a == httpLayer.H2_Str {
+				has_h2 = true
+				break
+			}
+		}
+		if !has_h2 {
+			alpnList = append([]string{httpLayer.H2_Str}, alpnList...)
+		}
+	}
+
+	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, alpnList)
 	if err == nil {
 		com.setTLS_Server(tlsserver)
 	} else {
@@ -182,7 +200,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 		hostAndPort := u.Host
 		sni, _, _ := net.SplitHostPort(hostAndPort)
 
-		tlsserver, err := tlsLayer.NewServer(sni, certFile, keyFile, insecure)
+		tlsserver, err := tlsLayer.NewServer(sni, certFile, keyFile, insecure, nil)
 		if err == nil {
 			com.setTLS_Server(tlsserver)
 		} else {
@@ -201,6 +219,8 @@ type ProxyCommonStruct struct {
 	TLS     bool
 	Tag     string //可用于路由, 见 netLayer.route.go
 	network string
+
+	PATH string
 
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
@@ -222,6 +242,13 @@ type ProxyCommonStruct struct {
 
 func (pcs *ProxyCommonStruct) Network() string {
 	return pcs.network
+}
+
+func (pcs *ProxyCommonStruct) Path() string {
+	return pcs.PATH
+}
+func (pcs *ProxyCommonStruct) setPath(a string) {
+	pcs.PATH = a
 }
 
 func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {

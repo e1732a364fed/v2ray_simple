@@ -3,16 +3,15 @@
 
 
 ```sh
-wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.8/verysimple_linux_amd64_v1.0.8.tgz
+wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.0.9/verysimple_linux_amd64_v1.0.9.tgz
 
-tar -xzf verysimple_linux_amd64_v1.0.8.tgz
+tar -xzf verysimple_linux_amd64_v1.0.9.tgz
 sudo mkdir -p /usr/local/etc/verysimple
 sudo mv verysimple /usr/local/etc/verysimple/
 sudo mv vlesss.server.toml /usr/local/etc/verysimple/server.toml
 
 ```
 
-v1.0.5的tgz打包文件中，没有包含toml示例文件，需要你再 wget 下载一下 示例文件。
 
 然后修改 `/usr/local/etc/verysimple/server.toml` ,使配置达到你想要的效果
 

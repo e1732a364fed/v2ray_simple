@@ -1,6 +1,9 @@
 # 本示例文件之所以 以 z_ 开头，是为了确保 “所有示例文件” 的开头字母都是 v 及v以后的字母
 # 这样可以保证示例文件 尽量被 放在文件夹列表的末尾
 
+
+# 注意，本作示例文件的dial的目标地址均为 127.0.0.1，是可以直接进行内网测试的; 如果你要用于其它用途，自行修改地址。
+
 [app]
 loglevel = 1
 
@@ -13,6 +16,14 @@ default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 protocol = "socks5"
 host = "127.0.0.1"
 port = 10800
+
+[[listen]]
+
+# 这个dokodemo 协议专门用于监听dns请求, 会通过我们的dial 来转发到 target
+protocol = "dokodemo"
+host = "127.0.0.1"
+port = 20053
+target = "1.1.1.1"
 
 [[dial]]
 tag = "my_vless1"  
@@ -37,8 +48,13 @@ path = "/ohmygod_verysimple_is_very_simple"
 # route就是分流规则，分流规则从上到下匹配，匹配到哪一个就用哪一个. 
 
 [[route]]
+
+# 意思就是所有向CN国家的ip请求的数据通通 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
+# direct并不需要 在dial中实际给出。 "proxy" 代表首个dial，也不需要实际赋值该tag
+
 dialTag = "my_ws1"
-country = ["CN"]
+country = ["CN"]    
+
 
 [[route]]
 dialTag = "my_vless1"

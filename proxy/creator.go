@@ -60,10 +60,10 @@ func NewClient(dc *DialConf) (Client, error) {
 			if err != nil {
 				return c, err
 			}
+			configCommonForClient(c, dc)
 
 			c.SetUseTLS()
 			err = prepareTLS_forClient(c, dc)
-			configCommonForClient(c, dc)
 			return c, err
 
 		}
@@ -132,7 +132,6 @@ func NewServer(lc *ListenConf) (Server, error) {
 			if err != nil {
 				log.Fatalln("prepareTLS error", err)
 			}
-			configCommonForServer(ser, lc)
 			return ser, nil
 		}
 
@@ -145,13 +144,13 @@ func NewServer(lc *ListenConf) (Server, error) {
 			if err != nil {
 				return nil, err
 			}
+			configCommonForServer(ser, lc)
 
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
 				log.Fatalln("prepareTLS error", err)
 			}
-			configCommonForServer(ser, lc)
 			return ser, nil
 
 		}
@@ -233,12 +232,24 @@ func configCommonByURL(ser ProxyCommon, u *url.URL) {
 	if wsStr != "" && wsStr != "0" && wsStr != "false" {
 		ser.setAdvancedLayer("ws")
 	}
+	grpcStr := q.Get("grpc")
+	if grpcStr != "" && grpcStr != "0" && grpcStr != "false" {
+		pathStr := q.Get("path")
+		if pathStr != "" && pathStr != "0" && pathStr != "false" {
 
+			ser.setAdvancedLayer("grpc")
+			ser.setPath(pathStr)
+		}
+
+	}
 }
 
 //setAdvancedLayer
 func configCommon(ser ProxyCommon, cc *CommonConf) {
 	ser.setAdvancedLayer(cc.AdvancedLayer)
+	if cc.Path != "" {
+		ser.setPath(cc.Path)
+	}
 
 }
 
