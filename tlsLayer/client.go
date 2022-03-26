@@ -15,7 +15,7 @@ import (
 
 type Client struct {
 	tlsConfig  *tls.Config
-	uTlsConfig *utls.Config
+	uTlsConfig utls.Config
 	use_uTls   bool
 	alpnList   []string
 }
@@ -26,13 +26,15 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 		use_uTls: use_uTls,
 	}
 
-	if use_uTls {
+	c.alpnList = alpnList
 
-		c.uTlsConfig = &utls.Config{
+	if use_uTls {
+		c.uTlsConfig = utls.Config{
 			InsecureSkipVerify: insecure,
 			ServerName:         host,
-			NextProtos:         c.alpnList,
+			NextProtos:         alpnList,
 		}
+
 		if utils.CanLogInfo() {
 			log.Println("using utls and Chrome fingerprint for", host)
 		}
@@ -40,7 +42,7 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 		c.tlsConfig = &tls.Config{
 			InsecureSkipVerify: insecure,
 			ServerName:         host,
-			NextProtos:         c.alpnList,
+			NextProtos:         alpnList,
 		}
 
 	}
@@ -51,7 +53,9 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 func (c *Client) Handshake(underlay net.Conn) (tlsConn *Conn, err error) {
 
 	if c.use_uTls {
-		utlsConn := utls.UClient(underlay, c.uTlsConfig, utls.HelloChrome_Auto)
+		configCopy := c.uTlsConfig //发现uTlsConfig竟然没发使用指针，握手一次后就会被污染，只能拷贝
+
+		utlsConn := utls.UClient(underlay, &configCopy, utls.HelloChrome_Auto)
 		err = utlsConn.Handshake()
 		if err != nil {
 			return
