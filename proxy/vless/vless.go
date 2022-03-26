@@ -79,8 +79,9 @@ func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 		//本作的 ws.Conn 实现了 utils.MultiWriter
 
 		if c.underlayIsBasic {
-			nb := net.Buffers(buffers)
-			return nb.WriteTo(c.Conn)
+			//nb := net.Buffers(buffers)
+			//return nb.WriteTo(c.Conn)
+			return utils.BuffersWriteTo(buffers, c.Conn)
 
 		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
 			return mr.WriteBuffers(buffers)

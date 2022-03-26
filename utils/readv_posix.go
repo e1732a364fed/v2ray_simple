@@ -16,7 +16,7 @@ type posixReader struct {
 	iovecs []syscall.Iovec
 }
 
-func (r *posixReader) Init(bs [][]byte) {
+func (r *posixReader) Init(bs [][]byte, singleBufLen int) {
 	iovecs := r.iovecs
 	if iovecs == nil {
 		iovecs = make([]syscall.Iovec, 0, len(bs))
@@ -25,7 +25,7 @@ func (r *posixReader) Init(bs [][]byte) {
 		iovecs = append(iovecs, syscall.Iovec{
 			Base: &(b[0]),
 		})
-		iovecs[idx].SetLen(int(StandardBytesLength))
+		iovecs[idx].SetLen(singleBufLen)
 	}
 	r.iovecs = iovecs
 }

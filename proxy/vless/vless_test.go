@@ -194,7 +194,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				return
 			}
 			//break
-			t.Log(" udp for! ", count, readNum)
+			//t.Log(" udp for! ", count, readNum)
 			count++
 		}
 

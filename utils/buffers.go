@@ -16,9 +16,9 @@ type RW struct {
 // 该 MultiReader 的用例请参照 netLayer.ReadFromMultiReader , 在 netLayer/readv.go中
 //具体实现见 readv_*.go; 用 GetReadVReader() 函数来获取本平台的对应实现。
 type MultiReader interface {
-	Init([][]byte)                   //将 给出的buffer 放入内部实际数据中
-	Read(fd uintptr) (uint32, error) //读取一次文件，并放入 buffer中
-	Clear()                          //清理内部buffer
+	Init(bs [][]byte, singleBufLen int) //将 给出的buffer 放入内部实际数据中
+	Read(fd uintptr) (uint32, error)    //读取一次文件，并放入 buffer中
+	Clear()                             //清理内部buffer
 }
 
 // 因为 net.Buffers 的 WriteTo方法只会查看其是否实现了net包私有的 writeBuffers 接口
@@ -76,7 +76,7 @@ func AllocMTUBuffers(mr MultiReader, len int) [][]byte {
 	for i := range bs {
 		bs[i] = GetMTU()
 	}
-	mr.Init(bs)
+	mr.Init(bs, StandardBytesLength)
 	return bs
 }
 
@@ -92,15 +92,15 @@ func ReleaseBuffers(mb [][]byte, oldLen int) {
 }
 
 //削减buffer内部的子[]byte 到合适的长度;返回削减后 bs应有的长度.
-func ShrinkBuffers(bs [][]byte, all_len int) int {
+func ShrinkBuffers(bs [][]byte, all_len int, SingleBufLen int) int {
 	curIndex := 0
 	for curIndex < len(bs) {
 		if all_len <= 0 {
 			break
 		}
 		end := all_len
-		if end > StandardBytesLength {
-			end = StandardBytesLength
+		if end > SingleBufLen {
+			end = SingleBufLen
 		}
 		bs[curIndex] = bs[curIndex][:end]
 		all_len -= end

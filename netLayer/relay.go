@@ -96,6 +96,9 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
 
 			if isWriteConnBasic {
+				//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
+				// 而writev时是不会篡改 buffers的
+
 				num, err2 = buffers.WriteTo(writeConn)
 			} else {
 
@@ -110,7 +113,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			return
 		}
 
-		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, utils.StandardBytesLength)
+		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
 
 	}
 classic:

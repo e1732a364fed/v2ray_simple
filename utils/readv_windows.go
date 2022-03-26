@@ -12,12 +12,12 @@ type windowsReader struct {
 	bufs []syscall.WSABuf
 }
 
-func (r *windowsReader) Init(bs [][]byte) {
+func (r *windowsReader) Init(bs [][]byte, singleBufLen int) {
 	if r.bufs == nil {
 		r.bufs = make([]syscall.WSABuf, 0, len(bs))
 	}
 	for _, b := range bs {
-		r.bufs = append(r.bufs, syscall.WSABuf{Len: uint32(StandardBytesLength), Buf: &b[0]})
+		r.bufs = append(r.bufs, syscall.WSABuf{Len: uint32(singleBufLen), Buf: &b[0]})
 	}
 }
 

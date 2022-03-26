@@ -13,7 +13,13 @@ import (
 // 实测16个buf已经完全够用，平时也就偶尔遇到5个buf的情况, 极速测速时会占用更多；
 // 16个1500那就是 24000, 23.4375 KB, 不算小了;
 // 而且我们还使用了Pool来进行缓存,减轻了内存负担, 所以也没必要为了解决内存分配而频繁调整长度.
-const readv_buffer_allocLen = 16
+
+//经过测试，网速越快、延迟越小，越不需要readv, 此时首包buf越大越好, 因为一次系统底层读取就会读到一大块数据, 此时再用readv分散写入 实际上就是反效果; readv的数量则不需要太多
+
+//在内网单机自己连自己测速时,readv会导致降速.
+
+const readv_buffer_allocLen = 8
+const ReadvSingleBufLen = 4096
 
 var (
 	// readv pool, 缓存 mr和buffers，进一步减轻内存分配负担
@@ -26,14 +32,13 @@ func init() {
 	flag.BoolVar(&UseReadv, "readv", true, "toggle the use of 'readv' syscall")
 
 	readvPool = sync.Pool{
-		New: func() any {
-			mr := utils.GetReadVReader()
-			return &readvMem{
-				mr:      mr,
-				buffers: utils.AllocMTUBuffers(mr, readv_buffer_allocLen),
-			}
-		},
+		New: newReadvMem,
 	}
+
+	//预先放进去两个
+
+	readvPool.Put(newReadvMem())
+	readvPool.Put(newReadvMem())
 }
 
 // 缓存 readvMem 以及对应分配的系统相关的 utils.MultiReader
@@ -45,12 +50,31 @@ type readvMem struct {
 	mr      utils.MultiReader
 }
 
+func AllocReadvBuffers(mr utils.MultiReader, len int) [][]byte {
+	bs := make([][]byte, len)
+
+	for i := range bs {
+		// 这里单独make，而不是从 其它pool中获取, 这样可以做到专用
+		bs[i] = make([]byte, ReadvSingleBufLen)
+	}
+	mr.Init(bs, ReadvSingleBufLen)
+	return bs
+}
+
+func newReadvMem() any {
+	mr := utils.GetReadVReader()
+	return &readvMem{
+		mr:      mr,
+		buffers: AllocReadvBuffers(mr, readv_buffer_allocLen),
+	}
+}
+
 func get_readvMem() *readvMem {
 	return readvPool.Get().(*readvMem)
 }
 
 func put_readvMem(rm *readvMem) {
-	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, utils.StandardBytesLength)
+	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, ReadvSingleBufLen)
 	readvPool.Put(rm)
 }
 
@@ -67,7 +91,7 @@ TryCopy函数使用到了本函数 来进行readv相关操作。
 func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allocedBuffers [][]byte) ([][]byte, error) {
 
 	if allocedBuffers == nil {
-		allocedBuffers = utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
+		allocedBuffers = AllocReadvBuffers(mr, readv_buffer_allocLen) //utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
 	}
 
 	var nBytes uint32
@@ -88,7 +112,7 @@ func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allo
 		return allocedBuffers, io.EOF
 	}
 
-	nBuf := utils.ShrinkBuffers(allocedBuffers, int(nBytes))
+	nBuf := utils.ShrinkBuffers(allocedBuffers, int(nBytes), ReadvSingleBufLen)
 	/*
 		if utils.CanLogDebug() {
 			// 可用于查看到底用了几个buf, 便于我们调整buf最大长度
