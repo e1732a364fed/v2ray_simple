@@ -40,9 +40,10 @@ func CanSpliceEventually(r any) bool {
 }
 
 //从r读取数据，写入 maySpliceConn 或者 classicWriter, 在条件合适时会使用splice进行加速。
+// 本函数主要应用于裸奔时，一端是socks5/直连,另一端是vless/vless+ws的情况, 因为vless等协议就算裸奔也是要处理一下数据头等情况的, 所以需要进行处理才可裸奔.
 //
 // 注意，splice只有在 maySpliceConn【本身是】或者【变成】 basicConn， 且 r 也是 basicConn时，才会发生。
-// 如果r本身就不是 basicConn，则调用本函数没有意义。
+// 如果r本身就不是 basicConn，则调用本函数没有意义, 因为既然拿不到basicConn那就不是裸奔，也就不可能splice。
 func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r io.Reader, canDirectFunc func() bool) (written int64, err error) {
 	//log.Println("TryReadFrom_withSplice called")
 

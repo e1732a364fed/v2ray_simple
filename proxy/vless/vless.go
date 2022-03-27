@@ -71,6 +71,9 @@ func (c *UserConn) CanDirectWrite() bool {
 }
 
 func (c *UserConn) EverPossibleToSplice() bool {
+	if c.isUDP {
+		return false //udp 在底层就是无法splice的，没办法
+	}
 	if netLayer.IsBasicConn(c.Conn) {
 		return true
 	}
@@ -81,6 +84,10 @@ func (c *UserConn) EverPossibleToSplice() bool {
 }
 
 func (c *UserConn) CanSplice() (r bool, conn net.Conn) {
+
+	if c.isUDP {
+		return
+	}
 
 	if !c.CanDirectWrite() {
 		return
@@ -127,6 +134,9 @@ func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 }
 
 func (uc *UserConn) ReadFrom(r io.Reader) (written int64, err error) {
+	if uc.isUDP {
+		return netLayer.ClassicReadFrom(uc, r)
+	}
 	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, func() bool {
 		return uc.CanDirectWrite()
 	})
