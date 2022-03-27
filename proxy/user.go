@@ -1,10 +1,9 @@
 package proxy
 
 import (
-	"encoding/hex"
-	"errors"
 	"io"
-	"strings"
+
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 type User interface {
@@ -48,7 +47,7 @@ type UserConn interface {
 type V2rayUser [16]byte
 
 func (u V2rayUser) GetIdentityStr() string {
-	return UUIDToStr(u)
+	return utils.UUIDToStr(u)
 }
 
 func (u V2rayUser) GetIdentityBytes() []byte {
@@ -56,35 +55,12 @@ func (u V2rayUser) GetIdentityBytes() []byte {
 }
 
 func NewV2rayUser(s string) (*V2rayUser, error) {
-	uuid, err := StrToUUID(s)
+	uuid, err := utils.StrToUUID(s)
 	if err != nil {
 		return nil, err
 	}
 
 	return (*V2rayUser)(&uuid), nil
-}
-
-func StrToUUID(s string) (uuid [16]byte, err error) {
-	b := []byte(strings.Replace(s, "-", "", -1))
-	if len(b) != 32 {
-		return uuid, errors.New("invalid UUID: " + s)
-	}
-	_, err = hex.Decode(uuid[:], b)
-	return
-}
-
-func UUIDToStr(u [16]byte) string {
-	buf := make([]byte, 36)
-	hex.Encode(buf[0:8], u[0:4])
-	buf[8] = '-'
-	hex.Encode(buf[9:13], u[4:6])
-	buf[13] = '-'
-	hex.Encode(buf[14:18], u[6:8])
-	buf[18] = '-'
-	hex.Encode(buf[19:23], u[8:10])
-	buf[23] = '-'
-	hex.Encode(buf[24:], u[10:])
-	return string(buf)
 }
 
 /*

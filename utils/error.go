@@ -10,6 +10,11 @@ type ErrFirstBuffer struct {
 	First *bytes.Buffer
 }
 
+func (ef *ErrFirstBuffer) Unwarp() error {
+
+	return ef.Err
+}
+
 func (ef *ErrFirstBuffer) Error() string {
 
 	return ef.Err.Error()
@@ -34,13 +39,18 @@ func NewDataErr(desc string, e error, data interface{}) *ErrInErr {
 type ErrInErr struct {
 	ErrDesc   string
 	ErrDetail error
-	Data      interface{}
+	Data      any
 
 	cachedStr string
 }
 
 func (e *ErrInErr) Error() string {
 	return e.String()
+}
+
+func (e *ErrInErr) Unwarp() error {
+
+	return e.ErrDetail
 }
 
 func (e *ErrInErr) String() string {

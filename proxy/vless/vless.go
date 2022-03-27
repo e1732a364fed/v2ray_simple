@@ -8,7 +8,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -59,19 +59,47 @@ func (uc *UserConn) GetProtocolVersion() int {
 }
 func (uc *UserConn) GetIdentityStr() string {
 	if uc.convertedUUIDStr == "" {
-		uc.convertedUUIDStr = proxy.UUIDToStr(uc.uuid)
+		uc.convertedUUIDStr = utils.UUIDToStr(uc.uuid)
 	}
 
 	return uc.convertedUUIDStr
 }
 
-func (c *UserConn) canDirectWrite() bool {
+//当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
+func (c *UserConn) CanDirectWrite() bool {
 	return c.version == 1 && !c.isUDP || c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket)
+}
+
+func (c *UserConn) EverPossibleToSplice() bool {
+	if netLayer.IsBasicConn(c.Conn) {
+		return true
+	}
+	if s, ok := c.Conn.(netLayer.Splicer); ok {
+		return s.EverPossibleToSplice()
+	}
+	return false
+}
+
+func (c *UserConn) CanSplice() (r bool, conn net.Conn) {
+
+	if !c.CanDirectWrite() {
+		return
+	}
+
+	if netLayer.IsBasicConn(c.Conn) {
+		r = true
+		conn = c.Conn
+
+	} else if s, ok := c.Conn.(netLayer.Splicer); ok {
+		r, conn = s.CanSplice()
+	}
+
+	return
 }
 
 func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
-	if c.canDirectWrite() {
+	if c.CanDirectWrite() {
 
 		//底层连接可以是 ws，或者 tls，或者 基本连接; tls 我们暂不支持 utils.MultiWriter
 		// 理论上tls是可以支持的，但是要我们魔改tls库
@@ -79,9 +107,10 @@ func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 		//本作的 ws.Conn 实现了 utils.MultiWriter
 
 		if c.underlayIsBasic {
-			//如果是基本Conn，则不用担心 WriteTo篡改buffers的问题, 因为它会直接调用底层readv
-			nb := net.Buffers(buffers)
-			return nb.WriteTo(c.Conn)
+			//如果是基本Conn，则不用担心 WriteTo篡改buffers的问题, 因为它会直接调用底层 writev
+			//nb := net.Buffers(buffers)
+			//return nb.WriteTo(c.Conn)	//发现它还是会篡改？？什么鬼
+			return utils.BuffersWriteTo(buffers, c.Conn)
 
 		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
 			return mr.WriteBuffers(buffers)
@@ -95,6 +124,12 @@ func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 	}
 	return int64(n), e
 
+}
+
+func (uc *UserConn) ReadFrom(r io.Reader) (written int64, err error) {
+	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, func() bool {
+		return uc.CanDirectWrite()
+	})
 }
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。

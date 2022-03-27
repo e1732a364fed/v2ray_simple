@@ -127,7 +127,7 @@ func (s *Server) UserBytesLen() int {
 }
 
 func (s *Server) GetUserByStr(str string) proxy.User {
-	u, e := proxy.StrToUUID(str)
+	u, e := utils.StrToUUID(str)
 	if e != nil {
 		return nil
 	}
@@ -146,7 +146,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 
 	//这里我们本 不用再创建一个buffer来缓存数据，因为tls包本身就是有缓存的，所以一点一点读就行，tcp本身系统也是有缓存的
 	// 因此v1.0.3以及更老版本都是直接一段一段read的。
-	//但是，因为需要支持fallback技术，所以还是要 进行缓存, 然后返回的UserConn要使用MultiReader，重用之前读过的部分，没办法。
+	//但是，因为需要支持fallback技术，所以还是要 进行缓存
 
 	readbs := utils.GetBytes(utils.StandardBytesLength)
 
@@ -367,7 +367,7 @@ realPart:
 }
 
 func (s *Server) Get_CRUMFURS(id string) *CRUMFURS {
-	bs, err := proxy.StrToUUID(id)
+	bs, err := utils.StrToUUID(id)
 	if err != nil {
 		return nil
 	}

@@ -8,7 +8,7 @@ import (
 	"unsafe"
 )
 
-func GetReadVReader() MultiReader {
+func GetReadVReader() SystemReadver {
 	return &posixReader{}
 }
 

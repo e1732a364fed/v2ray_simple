@@ -5,34 +5,16 @@ import (
 	"log"
 	"net"
 	"reflect"
-	"runtime"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-const SystemCanSplice = runtime.GOARCH != "wasm" && runtime.GOOS != "windows"
-
-//这里认为能 splice 或 sendfile的 都算，具体可参考go标准代码的实现, 总之就是tcp和uds可以
-func CanSplice(r interface{}) bool {
-
-	if _, ok := r.(*net.TCPConn); ok {
-		return true
-	} else if _, ok := r.(*net.UnixConn); ok {
-
-		return true
-	}
-	return false
-
-}
-
 // TryCopy 尝试 循环 从 readConn 读取数据并写入 writeConn, 直到错误发生。
 //会接连尝试 splice、循环readv 以及 原始Copy方法
 func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
-	var mr utils.MultiReader
 	var multiWriter utils.MultiWriter
 
-	var buffers net.Buffers
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
 	var isWriteConnBasic bool
@@ -43,11 +25,30 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 	}
 
-	if SystemCanSplice && CanSplice(readConn) && CanSplice(writeConn) {
-		if utils.CanLogDebug() {
-			log.Println("copying with splice")
+	if SystemCanSplice {
+
+		rCanSplice := CanSpliceDirectly(readConn)
+
+		if rCanSplice {
+			var wCanSplice bool
+			wCanSpliceDirectly := CanSpliceDirectly(writeConn)
+			if wCanSpliceDirectly {
+				wCanSplice = true
+			} else {
+				if CanSpliceEventually(writeConn) {
+					wCanSplice = true
+				}
+			}
+
+			if rCanSplice && wCanSplice {
+				if utils.CanLogDebug() {
+					log.Println("copying with splice")
+				}
+
+				goto copy
+			}
 		}
-		goto copy
+
 	}
 	// 不全 支持splice的话，我们就考虑 read端 可 readv 的情况
 	// 连readv都不让 那就直接 经典拷贝
@@ -74,24 +75,21 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	readv_mem = get_readvMem()
 	defer put_readvMem(readv_mem)
 
-	buffers = readv_mem.buffers
-	mr = readv_mem.mr
-
 	for {
-		buffers, err = ReadFromMultiReader(rawConn, mr, buffers)
+		var buffers net.Buffers
+		buffers, err = readvFrom(rawConn, readv_mem)
 		if err != nil {
-			return 0, err
+			return
 		}
-		var num int64
-		var err2 error
+		var thisWriteNum int64
+		var writeErr error
 
 		// vless.UserConn 和 ws.Conn 实现了 utils.MultiWriter
 		if isWriteConn_a_MultiWriter {
-			num, err2 = multiWriter.WriteBuffers(buffers)
+			thisWriteNum, writeErr = multiWriter.WriteBuffers(buffers)
 
 		} else {
-			//num, err2 = buffers.WriteTo(writeConn)
-			// 实测发现这里不能直接使用 buffers.WriteTo, 因为它会修改buffer本身
+			// 这里不能直接使用 buffers.WriteTo, 因为它会修改buffer本身
 			// 而我们为了缓存,是不能允许篡改的
 			// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
 
@@ -99,17 +97,17 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 				//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
 				// 而writev时是不会篡改 buffers的
 
-				num, err2 = buffers.WriteTo(writeConn)
+				thisWriteNum, writeErr = buffers.WriteTo(writeConn)
 			} else {
 
-				num, err2 = utils.BuffersWriteTo(buffers, writeConn)
+				thisWriteNum, writeErr = utils.BuffersWriteTo(buffers, writeConn)
 
 			}
 		}
 
-		allnum += num
-		if err2 != nil {
-			err = err2
+		allnum += thisWriteNum
+		if writeErr != nil {
+			err = writeErr
 			return
 		}
 
@@ -123,14 +121,16 @@ classic:
 copy:
 
 	//Copy内部实现 会自动进行splice, 若无splice实现则直接使用原始方法 “循环读取 并 写入”
+	// 我们的 vless和 ws 的Conn均实现了ReadFrom方法，可以最终splice
 	return io.Copy(writeConn, readConn)
 }
 
 // 类似TryCopy，但是只会读写一次; 因为只读写一次，所以没办法splice
 func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
-	var mr utils.MultiReader
 	var buffers net.Buffers
 	var rawConn syscall.RawConn
+
+	var rm *readvMem
 
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
@@ -148,14 +148,14 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 		goto classic
 	}
 
-	mr = utils.GetReadVReader()
 	if utils.CanLogDebug() {
 		log.Println("copying with readv")
 	}
-	defer mr.Clear()
-	defer utils.ReleaseBuffers(buffers, readv_buffer_allocLen)
 
-	buffers, err = ReadFromMultiReader(rawConn, mr, nil)
+	rm = get_readvMem()
+	defer put_readvMem(rm)
+
+	buffers, err = readvFrom(rawConn, rm)
 	if err != nil {
 		return 0, err
 	}

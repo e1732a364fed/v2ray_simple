@@ -4,7 +4,7 @@ import (
 	"syscall"
 )
 
-func GetReadVReader() MultiReader {
+func GetReadVReader() SystemReadver {
 	return new(windowsReader)
 }
 

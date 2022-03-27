@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -85,48 +84,10 @@ func init() {
 
 }
 
-func tryDownloadMMDB() {
-
-	if utils.FileExist(utils.GetFilePath(netLayer.GeoipFileName)) {
-		return
-	}
-	log.Println("No GeoLite2-Country.mmdb found,start downloading from " + mmdbDownloadLink)
-
-	resp, err := http.Get(mmdbDownloadLink)
-
-	if err != nil {
-		log.Println("Download mmdb failed", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	out, err := os.Create(netLayer.GeoipFileName)
-	if err != nil {
-		log.Println("Download mmdb, Can't CreateFile,", err)
-		return
-	}
-	defer out.Close()
-	// Check server response
-	if resp.StatusCode != http.StatusOK {
-		log.Println("Download mmdb bad status:", resp.Status)
-		return
-	}
-
-	// Writer the body to file
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		log.Println("Write downloaded mmdb to file err:", err)
-		return
-	}
-	log.Println("Download mmdb success!")
-
-}
 func main() {
 	printVersion()
 
 	flag.Parse()
-
-	mayPrintSupportedProtocols()
 
 	cmdLL := utils.LogLevel
 	cmdUseReadv := netLayer.UseReadv
@@ -153,7 +114,7 @@ func main() {
 	fmt.Println("Log Level:", utils.LogLevel)
 	fmt.Println("UseReadv:", netLayer.UseReadv)
 
-	tryDownloadMMDB()
+	runPreCommands()
 
 	var err error
 
@@ -322,10 +283,16 @@ type incomingInserverConnState struct {
 	theFallbackFirstBuffer *bytes.Buffer
 }
 
-func canLazyEncrypt(inServer proxy.Server) bool {
+func canLazyEncryptServer(inServer proxy.Server) bool {
 	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
 
-	return tls_lazy_encrypt && inServer.AdvancedLayer() == ""
+	return inServer.IsUseTLS() && inServer.AdvancedLayer() == ""
+}
+
+func canLazyEncryptClient(outClient proxy.Client) bool {
+	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
+
+	return outClient.IsUseTLS() && outClient.AdvancedLayer() == ""
 }
 
 func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstance net.Conn) {
@@ -351,7 +318,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 	if inServer.IsUseTLS() {
 
-		if canLazyEncrypt(inServer) {
+		if tls_lazy_encrypt && canLazyEncryptServer(inServer) {
 			iics.inServerTlsRawReadRecorder = tlsLayer.NewRecorder()
 
 			iics.inServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
@@ -371,7 +338,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 			return
 		}
 
-		if canLazyEncrypt(inServer) {
+		if tls_lazy_encrypt && canLazyEncryptServer(inServer) {
 			//此时已经握手完毕，可以记录了
 			iics.inServerTlsRawReadRecorder.StartRecord()
 		}
@@ -663,13 +630,16 @@ afterLocalServerHandshake:
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
 	// 所以总之都是要在 inServer 判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
 
-	if canLazyEncrypt(inServer) && !(!isServerEnd && routedToDirect) {
+	if tls_lazy_encrypt && !(!isServerEnd && routedToDirect) {
 
-		if tlsLayer.PDD {
-			log.Println("loading TLS SniffConn", !isServerEnd)
+		if (!isServerEnd && canLazyEncryptClient(client)) || (isServerEnd && canLazyEncryptServer(inServer)) {
+			if tlsLayer.PDD {
+				log.Println("loading TLS SniffConn", !isServerEnd)
+			}
+
+			wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
 		}
 
-		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
 	}
 
 	//如果目标是udp则要分情况讨论
@@ -728,7 +698,7 @@ afterLocalServerHandshake:
 
 		}
 	} else {
-		if !canLazyEncrypt(inServer) { //lazy_encrypt情况比较特殊
+		if !(tls_lazy_encrypt && canLazyEncryptServer(inServer)) { //lazy_encrypt情况比较特殊
 			defer wrappedConn.Close()
 
 		}
@@ -839,7 +809,7 @@ afterLocalServerHandshake:
 
 	if client.IsUseTLS() { //即客户端
 
-		if canLazyEncrypt(inServer) {
+		if tls_lazy_encrypt && canLazyEncryptClient(client) {
 
 			if tls_lazy_secure {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
@@ -963,10 +933,10 @@ advLayerStep:
 
 	////////////////////////////// 实际转发阶段 /////////////////////////////////////
 
-	if !routedToDirect && canLazyEncrypt(inServer) {
+	if !routedToDirect && tls_lazy_encrypt {
 
 		// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
-		if !isServerEnd {
+		if !isServerEnd && canLazyEncryptClient(client) {
 
 			if client.IsUseTLS() {
 				//必须是 UserClient
@@ -976,7 +946,7 @@ advLayerStep:
 				}
 			}
 
-		} else {
+		} else if canLazyEncryptServer(inServer) {
 
 			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;

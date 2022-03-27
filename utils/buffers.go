@@ -12,10 +12,10 @@ type RW struct {
 	io.Writer
 }
 
-// MultiReader 是平台相关的 用于 调用readv的 工具.
-// 该 MultiReader 的用例请参照 netLayer.ReadFromMultiReader , 在 netLayer/readv.go中
-//具体实现见 readv_*.go; 用 GetReadVReader() 函数来获取本平台的对应实现。
-type MultiReader interface {
+// SystemReadver 是平台相关的 用于 调用readv的 工具.
+// 该 SystemReadver 的用例请参照 netLayer.readvFrom , 在 netLayer/readv.go中;
+// SystemReadver的具体平台相关的实现见 readv_*.go; 用 GetReadVReader() 函数来获取本平台的对应实现。
+type SystemReadver interface {
 	Init(bs [][]byte, singleBufLen int) //将 给出的buffer 放入内部实际数据中
 	Read(fd uintptr) (uint32, error)    //读取一次文件，并放入 buffer中
 	Clear()                             //清理内部buffer
@@ -65,29 +65,6 @@ func BuffersLen(bs [][]byte) (allnum int) {
 func PrintBuffers(bs [][]byte) {
 	for i, b := range bs {
 		log.Println(i, b)
-	}
-}
-
-// AllocMTUBuffers 获取指定 子[]byte 数量的 [][]byte, 并用 mr.Init 给mr里的缓存指针赋值.
-// 每个子[]byte 长度固定为 StandardBytesLenth
-func AllocMTUBuffers(mr MultiReader, len int) [][]byte {
-	bs := make([][]byte, len)
-
-	for i := range bs {
-		bs[i] = GetMTU()
-	}
-	mr.Init(bs, StandardBytesLength)
-	return bs
-}
-
-//将mb恢复原先长度后，将mb的所有子[]byte  放回Pool中
-func ReleaseBuffers(mb [][]byte, oldLen int) {
-	if mb == nil {
-		return
-	}
-	mb = mb[:oldLen]
-	for i := range mb {
-		PutBytes(mb[i])
 	}
 }
 

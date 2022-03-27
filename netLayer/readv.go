@@ -41,16 +41,16 @@ func init() {
 	readvPool.Put(newReadvMem())
 }
 
-// 缓存 readvMem 以及对应分配的系统相关的 utils.MultiReader
-// 使用 readvMem的最大好处就是 buffers 和 mr 都是不需要 释放的
-//  因为不需释放mr, 所以也就节省了 mr.Init 的开销.
-// 该 readvMem 以及 readvPool 专门服务于 TryCopy 函数
+// 缓存 readvMem 以及对应分配的系统相关的 utils.SystemReadver.
+// 使用 readvMem的最大好处就是 buffers 和 mr 都是不需要 释放的.
+//  因为不需释放mr, 所以也就节省了多次 mr.Init 的开销.
+// 该 readvMem 以及 readvPool 专门服务于 TryCopy 函数.
 type readvMem struct {
 	buffers [][]byte
-	mr      utils.MultiReader
+	mr      utils.SystemReadver
 }
 
-func AllocReadvBuffers(mr utils.MultiReader, len int) [][]byte {
+func allocReadvBuffers(mr utils.SystemReadver, len int) [][]byte {
 	bs := make([][]byte, len)
 
 	for i := range bs {
@@ -65,7 +65,7 @@ func newReadvMem() any {
 	mr := utils.GetReadVReader()
 	return &readvMem{
 		mr:      mr,
-		buffers: AllocReadvBuffers(mr, readv_buffer_allocLen),
+		buffers: allocReadvBuffers(mr, readv_buffer_allocLen),
 	}
 }
 
@@ -73,12 +73,22 @@ func get_readvMem() *readvMem {
 	return readvPool.Get().(*readvMem)
 }
 
+//将创建好的rm放回 readvPool
 func put_readvMem(rm *readvMem) {
 	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, ReadvSingleBufLen)
 	readvPool.Put(rm)
 }
 
-/* ReadFromMultiReader 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
+/*
+//目前我们使用内存池，所以暂时不需要手动释放内存，
+//如果真需要手动申请、释放，可参考  https://studygolang.com/articles/9721
+func (rm *readvMem) destroy() {
+	rm.mr.Clear()
+	rm.mr = nil
+	rm.buffers = nil
+}*/
+
+/* readvFrom 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
 
 若allocedBuffers未给出，会使用 utils.AllocMTUBuffers 来初始化 缓存。
 
@@ -88,15 +98,17 @@ func put_readvMem(rm *readvMem) {
 
 TryCopy函数使用到了本函数 来进行readv相关操作。
 */
-func ReadFromMultiReader(rawReadConn syscall.RawConn, mr utils.MultiReader, allocedBuffers [][]byte) ([][]byte, error) {
+func readvFrom(rawReadConn syscall.RawConn, rm *readvMem) ([][]byte, error) {
 
-	if allocedBuffers == nil {
-		allocedBuffers = AllocReadvBuffers(mr, readv_buffer_allocLen) //utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
+	if rm == nil {
+		rm = get_readvMem() //utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
 	}
+
+	allocedBuffers := rm.buffers
 
 	var nBytes uint32
 	err := rawReadConn.Read(func(fd uintptr) bool {
-		n, e := mr.Read(fd)
+		n, e := rm.mr.Read(fd)
 		if e != nil {
 			return false
 		}

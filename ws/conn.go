@@ -6,6 +6,7 @@ import (
 
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -27,6 +28,8 @@ type Conn struct {
 	serverEndGotEarlyData []byte
 
 	underlayIsBasic bool
+
+	bigHeaderEverUsed bool
 }
 
 //Read websocket binary frames
@@ -117,6 +120,64 @@ func (c *Conn) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+func (c *Conn) EverPossibleToSplice() bool {
+	return c.underlayIsBasic && c.state == ws.StateServerSide
+}
+
+//采用 “超长包” 的办法 试图进行splice
+func (c *Conn) tryWriteBigHeader() (e error) {
+	if c.bigHeaderEverUsed {
+		return
+
+	}
+
+	c.bigHeaderEverUsed = true
+	wsH := ws.Header{
+		Fin:    true,
+		OpCode: ws.OpBinary,
+		Length: 1 << 62,
+	}
+
+	e = ws.WriteHeader(c.Conn, wsH)
+	return
+}
+
+func (c *Conn) CanSplice() (r bool, conn net.Conn) {
+	if !c.EverPossibleToSplice() {
+		return
+	}
+
+	if c.tryWriteBigHeader() != nil {
+		return
+	}
+	return true, c.Conn
+
+}
+
+func (c *Conn) ReadFrom(r io.Reader) (written int64, err error) {
+	if c.state == ws.StateClientSide {
+		return netLayer.ClassicReadFrom(c, r)
+	}
+
+	//采用 “超长包” 的办法 试图进行splice
+
+	e := c.tryWriteBigHeader()
+	if e != nil {
+		return 0, e
+	}
+	if c.underlayIsBasic {
+		if rt, ok := c.Conn.(io.ReaderFrom); ok {
+			return rt.ReadFrom(r)
+		} else {
+			panic("uc.underlayIsBasic, but can't cast to ReadFrom")
+		}
+	}
+
+	return netLayer.TryReadFrom_withSplice(c, c.Conn, r, func() bool {
+		return true
+	})
+}
+
 //实现 utils.MultiWriter
 // 主要是针对一串数据的情况，如果底层连接可以用writev， 此时我们不要每一小段都包包头 然后写N次，
 // 而是只在最前面包数据头，然后即可用writev 一次发送出去
@@ -147,8 +208,7 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 			return int64(allLen), nil
 		} else {
 			//如果是服务端，因为无需任何对数据的修改，我们就可以连续将分片的数据依次直接写入,达到加速效果
-			// 不过，如果是内网极限测试的话, 因为网速过快, 实际上分批写入是会减速的
-			// 但是我们也不必就因此而直接采用 mergebuffer的办法。用户如果遇到readv减速的情况，可以直接选择关闭readv
+
 			wsH := ws.Header{
 				Fin:    true,
 				OpCode: ws.OpBinary,
@@ -160,6 +220,25 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 				return 0, e
 			}
 			return utils.BuffersWriteTo(buffers, c.Conn)
+			//return ((*net.Buffers)(&buffers)).WriteTo(c.Conn)
+
+			/*
+				实测使用writev并没有太大速度提升，反到速度不稳定, 而我们自己的函数是非常稳定的
+				net.Buffers.WriteTo  (writev)
+					2667 2226
+					2689 2424
+					2677 2412
+					2924 2409
+					2876 2413
+					2398 2393
+
+				utils.BuffersWriteTo
+					2747 2378
+					2831 2419
+					2800 2413
+					2802 2404
+
+			*/
 		}
 
 	} else {
