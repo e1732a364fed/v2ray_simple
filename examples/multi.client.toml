@@ -14,13 +14,16 @@ host = "127.0.0.1"
 port = 10800
 
 [[listen]]
-
-# 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(1.1.1.1，即cloudflare的dns服务器)
 protocol = "dokodemo"
 host = "127.0.0.1"
 port = 20053
-target = "1.1.1.1"
+target = "udp://1.1.1.1:53"     #必须写这种url格式，前面是udp或者tcp，后面要加端口
 network = "udp"
+
+# 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(1.1.1.1，即cloudflare的dns服务器)
+
+# 我们电脑只要配置好dns服务器指向127.0.0.1:20053，就可以通过我们的节点去申请实际的udp的dns请求
+# 只要是定向的流量，如果某客户端可以自己指定地址，那么我们就可以用dokodemo进行转发
 
 [[dial]]
 tag = "my_vless1"  

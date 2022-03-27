@@ -792,7 +792,7 @@ afterLocalServerHandshake:
 	var grpcClientConn grpc.ClientConn
 
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
-	// 我们要先试图从grpc中取出已经拨号好了的 grpc链接
+	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接
 
 	if client.IsMux() {
 		if client.AdvancedLayer() == "grpc" {
