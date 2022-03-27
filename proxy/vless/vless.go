@@ -30,7 +30,7 @@ const (
 
 )
 
-//实现 net.Conn 以及 utils.MultiWriter
+//实现 net.Conn, io.ReaderFrom, utils.MultiWriter, netLayer.Splicer
 type UserConn struct {
 	net.Conn
 	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
@@ -66,7 +66,7 @@ func (uc *UserConn) GetIdentityStr() string {
 }
 
 //当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
-func (c *UserConn) CanDirectWrite() bool {
+func (c *UserConn) canDirectWrite() bool {
 	return c.version == 1 && !c.isUDP || c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket)
 }
 
@@ -89,7 +89,7 @@ func (c *UserConn) CanSplice() (r bool, conn net.Conn) {
 		return
 	}
 
-	if !c.CanDirectWrite() {
+	if !c.canDirectWrite() {
 		return
 	}
 
@@ -106,7 +106,7 @@ func (c *UserConn) CanSplice() (r bool, conn net.Conn) {
 
 func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
-	if c.CanDirectWrite() {
+	if c.canDirectWrite() {
 
 		//底层连接可以是 ws，或者 tls，或者 基本连接; tls 我们暂不支持 utils.MultiWriter
 		// 理论上tls是可以支持的，但是要我们魔改tls库
@@ -138,7 +138,7 @@ func (uc *UserConn) ReadFrom(r io.Reader) (written int64, err error) {
 		return netLayer.ClassicReadFrom(uc, r)
 	}
 	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, func() bool {
-		return uc.CanDirectWrite()
+		return uc.canDirectWrite()
 	})
 }
 

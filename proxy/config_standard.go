@@ -84,7 +84,7 @@ type ListenConf struct {
 	TLSKey   string `toml:"key"`
 
 	//noroute 意味着 传入的数据 不会被分流，一定会被转发到默认的 dial
-	// 这一项是针对 mycountry 分流功能的. 如果不设noroute, 且给定了 route.mycountry, 则所有listener 得到的流量都会被 试图 进行国别分流
+	// 这一项是针对 mycountry 分流功能的. 如果不设noroute, 且给定了 app.mycountry, 则所有listener 得到的流量都会被 试图 进行国别分流
 	NoRoute bool `toml:"noroute"`
 
 	TargetAddr string `toml:"target"` //若使用dokodemo协议，则这一项会给出. 格式 tcp://127.0.0.1:443 , 必须带scheme，以及端口。只能为tcp或udp

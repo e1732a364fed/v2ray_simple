@@ -10,7 +10,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-// 实现 net.Conn 以及 utils.MultiWriter
+// 实现 net.Conn, io.ReaderFrom, utils.MultiWriter, netLayer.Splicer
 // 因为 gobwas/ws 不包装conn，在写入和读取二进制时需要使用 较为底层的函数才行，并未被提供标准的Read和Write
 // 因此我们包装一下，统一使用Read和Write函数 来读写 二进制数据。因为我们这里是代理，
 // 所以我们默认 抛弃 websocket的 数据帧 长度。

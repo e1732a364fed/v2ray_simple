@@ -73,7 +73,13 @@ func (sg *RouteSet) IsTransportProtocolAllowed(p uint16) bool {
 }
 
 func (sg *RouteSet) IsAddrNetworkAllowed(a *Addr) bool {
+
+	if a.Network == "" {
+		return sg.IsTransportProtocolAllowed(TCP)
+	}
+
 	p := StrToTransportProtocol(a.Network)
+
 	return sg.IsTransportProtocolAllowed(p)
 }
 
@@ -95,6 +101,7 @@ func (sg *RouteSet) IsAddrIn(a *Addr) bool {
 		//如果仅限制了一个传输层协议，且本集合里没有任何其它内容，那就直接通过
 		return true
 	}
+
 	//开始网络层判断
 	if len(a.IP) > 0 {
 		if sg.NetRanger != nil {
@@ -117,6 +124,7 @@ func (sg *RouteSet) IsAddrIn(a *Addr) bool {
 			}
 		}
 	}
+
 	if a.Name != "" {
 		if sg.Domains != nil {
 

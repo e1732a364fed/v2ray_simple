@@ -11,7 +11,7 @@ loglevel = 1
 
 # default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
-# mycountry = "CN" 全局级的 国别分流配置, 见下面route的注释
+#mycountry = "CN" #全局级的 国别分流配置, 见下面route的注释
 
 # noreadv = true    
 
@@ -69,3 +69,4 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 [[route]]
 country = ["CN"]
+dialTag = "direct"

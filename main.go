@@ -299,8 +299,10 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 	wrappedConn := thisLocalConnectionInstance
 
 	if utils.CanLogInfo() {
-		iics.cachedRemoteAddr = wrappedConn.RemoteAddr().String()
-		log.Println("New Accepted Conn from", iics.cachedRemoteAddr)
+		str := wrappedConn.RemoteAddr().String()
+		log.Println("New Accepted Conn from", str, ", handling by "+proxy.GetVSI_url(inServer))
+
+		iics.cachedRemoteAddr = str
 	}
 
 	//此时，baseLocalConn里面 正常情况下, 服务端看到的是 客户端的golang的tls 拨号发出的 tls数据
@@ -590,14 +592,17 @@ afterLocalServerHandshake:
 	//尝试分流
 	if !inServer.CantRoute() && routePolicy != nil {
 
-		if utils.CanLogDebug() {
-			log.Println("try routing")
-		}
-
-		outtag := routePolicy.GetOutTag(&netLayer.TargetDescription{
+		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,
 			Tag:  inServer.GetTag(),
-		})
+		}
+
+		if utils.CanLogDebug() {
+			log.Println("try routing", desc)
+		}
+
+		outtag := routePolicy.GetOutTag(desc)
+
 		if outtag == "direct" {
 			client = directClient
 			routedToDirect = true
@@ -753,7 +758,7 @@ afterLocalServerHandshake:
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(client.Name(), iics.cachedRemoteAddr, " request ", targetAddr.UrlString(), "through", proxy.GetVSI_url(client))
+		log.Println(iics.cachedRemoteAddr, " request ", targetAddr.UrlString(), "through", proxy.GetVSI_url(client))
 
 	}
 
