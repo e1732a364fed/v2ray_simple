@@ -359,7 +359,7 @@ realPart:
 		remainFirstBufLen: readbuf.Len(),
 		uuid:              thisUUIDBytes,
 		version:           int(version),
-		isUDP:             addr.Network == "udp",
+		isUDP:             addr.IsUDP(),
 		underlayIsBasic:   netLayer.IsBasicConn(underlay),
 		isServerEnd:       true,
 	}, addr, nil

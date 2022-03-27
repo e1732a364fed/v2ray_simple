@@ -55,8 +55,13 @@ type Server interface {
 // 这里认为, tcp/udp/kcp/raw_socket 是FirstName，具体的协议名称是 LastName, 中间层是 MiddleName
 // An Example of a full name:  tcp+tls+ws+vless
 func GetFullName(pc ProxyCommon) string {
-
 	return pc.Network() + pc.MiddleName() + pc.Name()
+}
+
+// return GetFullName(pc) + "://" + pc.AddrStr()
+func GetVSI_url(pc ProxyCommon) string {
+
+	return GetFullName(pc) + "://" + pc.AddrStr()
 
 }
 
@@ -64,7 +69,7 @@ func GetFullName(pc ProxyCommon) string {
 // 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息;
 type ProxyCommon interface {
 	Name() string       //代理协议名称, 如vless
-	MiddleName() string //其它VSI层 所使用的协议，如 +tls+ws
+	MiddleName() string //其它VSI层 所使用的协议，前后被加了加号，如 +tls+ws+
 
 	Stop()
 

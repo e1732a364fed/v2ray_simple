@@ -15,6 +15,26 @@ import (
 
 const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 
+func canLazyEncryptServer(inServer proxy.Server) bool {
+	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
+
+	return inServer.IsUseTLS() && inServer.AdvancedLayer() == ""
+}
+
+func canLazyEncryptClient(outClient proxy.Client) bool {
+	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
+
+	return outClient.IsUseTLS() && outClient.AdvancedLayer() == ""
+}
+
+func canTargetAddr_tlsLazy(addr *netLayer.Addr) bool {
+	switch addr.Network {
+	case "tcp", "tcp4", "tcp6", "unix":
+		return true
+	}
+	return false
+}
+
 // tryRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝

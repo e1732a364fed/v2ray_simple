@@ -63,9 +63,9 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 
 	/*
 		分多钟情况，
-		1. underlay直接是基础连接（underlay_canSpliceDirectly），且现在直接 CanDirectWrite 就是true, 此时直接 splice
-		2. underlay直接是基础连接（underlay_canSpliceDirectly），但现在的连接阶段还不能直接直连，此时要读写一次然后判断一次，直到 CanDirectWrite 变成 true
-		3. underlay 不是基础连接，但是 是 Splicer（underlay_canSpliceEventually），且此时我们先等待 underlay已经处于 可直连状态，然后再确保 CanDirectWrite 返回true
+		1. underlay直接是基础连接（underlay_canSpliceDirectly），且现在直接 canDirectFunc 就是true, 此时直接 splice
+		2. underlay直接是基础连接（underlay_canSpliceDirectly），但现在的连接阶段还不能直接直连，此时要读写一次然后判断一次，直到 canDirectFunc 变成 true
+		3. underlay 不是基础连接，但是 是 Splicer（underlay_canSpliceEventually），且此时我们先等待 underlay已经处于 可直连状态, 即 splicer.CanSplice()变成 true，然后再确保 canDirectFunc 返回true
 		4. underlay啥也不是，直接经典拷贝。
 	*/
 
@@ -77,7 +77,7 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 				panic("uc.underlayIsBasic, but can't cast to ReadFrom")
 			}
 		} else {
-			//循环读写，直到 uc.CanDirectWrite() 和 underlay_canSpliceEventually 变为true
+			//循环读写，直到 canDirectFunc 和 splicer.CanSplice() 都为true
 
 			buf := utils.GetPacket()
 			defer utils.PutPacket(buf)

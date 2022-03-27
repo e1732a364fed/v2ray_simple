@@ -75,9 +75,16 @@ vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 
 另外上面说的是承载数据支持udp；我们协议的底层传输方式也是全面支持udp的。也就是说可以用udp传输vless数据，然后vless里面还可以传输 udp的承载数据。
 
+底层用udp传输的话，可以理解为 比 v2ray的mkcp传输方式 更低级的模式，直接用udp传输, 不加任何控制。所以可能丢包，不过肯定是更快的。
+
 ### tls lazy encrypt (splice) 
 
-在最新代码里，还实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
+**注意，因为技术实现不同，该功能不兼容xtls。**, 因为为了能够在tls包外进行过滤，我们需要做很多工作，所以技术实现与xtls是不一样的。
+
+**lazy功能是对标xtls的，但是不兼容xtls，你用lazy的话，两端必须全用verysimple**
+
+
+在最新代码里，实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
 
 tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户端都要打开），然后可以用 -pdd 参数 打印 tls 探测输出
 
@@ -107,7 +114,7 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 关于splice的一个现有“降速”问题也要看看，（linux 的 forward配置问题），我们这里也是会存在的 https://github.com/XTLS/Xray-core/discussions/59
 
-**注意，因为技术实现不同，该功能不兼容xtls。**, 因为为了能够在tls包外进行过滤，我们需要做很多工作，所以技术实现与xtls是不一样的。
+
 
 #### 总结 tls lazy encrypt 技术优点
 

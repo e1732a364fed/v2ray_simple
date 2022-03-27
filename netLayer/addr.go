@@ -199,9 +199,14 @@ func (a *Addr) String() string {
 
 //返回以url表示的 地址. unix的话文件名若带斜杠则会被转义
 func (a *Addr) UrlString() string {
-	str := a.String()
+	if a.Network != "" {
+		return a.Network + "://" + url.PathEscape(a.String())
 
-	return a.Network + "://" + url.PathEscape(str)
+	} else {
+		return "tcp://" + a.String()
+
+	}
+
 }
 
 func (a *Addr) GetNetIPAddr() (na netip.Addr) {
@@ -214,11 +219,12 @@ func (a *Addr) GetNetIPAddr() (na netip.Addr) {
 	return
 }
 
-func (a *Addr) ToUDPAddr() *net.UDPAddr {
-	switch a.Network {
-	case "udp", "udp4", "udp6":
+func (a *Addr) IsUDP() bool {
+	return IsStrUDP_network(a.Network)
+}
 
-	default:
+func (a *Addr) ToUDPAddr() *net.UDPAddr {
+	if !a.IsUDP() {
 		return nil
 	}
 
@@ -342,4 +348,12 @@ func UDPAddr_v4_to_Bytes(addr *net.UDPAddr) [6]byte {
 func UDPAddr2AddrPort(ua *net.UDPAddr) netip.AddrPort {
 	a, _ := netip.AddrFromSlice(ua.IP)
 	return netip.AddrPortFrom(a, uint16(ua.Port))
+}
+
+func IsStrUDP_network(s string) bool {
+	switch s {
+	case "udp", "udp4", "udp6":
+		return true
+	}
+	return false
 }

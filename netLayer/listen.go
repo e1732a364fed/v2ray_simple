@@ -39,6 +39,7 @@ func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
 }
 
 // ListenAndAccept 试图监听 所有类型的网络，包括tcp, udp 和 unix domain socket.
+//
 // 非阻塞，在自己的goroutine中监听.
 func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 	switch network {

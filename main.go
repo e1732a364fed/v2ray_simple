@@ -267,7 +267,7 @@ type incomingInserverConnState struct {
 
 	//这里说的多路复用基本指的就是grpc; 如果是 vless内嵌 mux.cool 的话不属于这种情况.
 
-	// 要区分 多路复用的包装 是在vless等代理验证 的外部还是内部
+	// 要区分 多路复用的包装 是在 vless等代理的握手验证 的外部 还是 内部
 
 	baseLocalConn, wrappedConn net.Conn
 	cachedRemoteAddr           string
@@ -281,26 +281,20 @@ type incomingInserverConnState struct {
 	shouldFallback bool
 
 	theFallbackFirstBuffer *bytes.Buffer
+
+	isTlsLazyServerEnd bool
 }
 
-func canLazyEncryptServer(inServer proxy.Server) bool {
-	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
-
-	return inServer.IsUseTLS() && inServer.AdvancedLayer() == ""
-}
-
-func canLazyEncryptClient(outClient proxy.Client) bool {
-	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
-
-	return outClient.IsUseTLS() && outClient.AdvancedLayer() == ""
-}
-
+// handleNewIncomeConnection 会处理 网络层至高级层的数据，
+// 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
 func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstance net.Conn) {
 
 	iics := incomingInserverConnState{
 		baseLocalConn: thisLocalConnectionInstance,
 		inServer:      inServer,
 	}
+
+	iics.isTlsLazyServerEnd = tls_lazy_encrypt && canLazyEncryptServer(inServer)
 
 	wrappedConn := thisLocalConnectionInstance
 
@@ -318,7 +312,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 	if inServer.IsUseTLS() {
 
-		if tls_lazy_encrypt && canLazyEncryptServer(inServer) {
+		if iics.isTlsLazyServerEnd {
 			iics.inServerTlsRawReadRecorder = tlsLayer.NewRecorder()
 
 			iics.inServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
@@ -338,7 +332,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 			return
 		}
 
-		if tls_lazy_encrypt && canLazyEncryptServer(inServer) {
+		if iics.isTlsLazyServerEnd {
 			//此时已经握手完毕，可以记录了
 			iics.inServerTlsRawReadRecorder.StartRecord()
 		}
@@ -630,15 +624,15 @@ afterLocalServerHandshake:
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
 	// 所以总之都是要在 inServer 判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
 
-	if tls_lazy_encrypt && !(!isServerEnd && routedToDirect) {
+	isTlsLazy_clientEnd := tls_lazy_encrypt && canLazyEncryptClient(client)
 
-		if (!isServerEnd && canLazyEncryptClient(client)) || (isServerEnd && canLazyEncryptServer(inServer)) {
-			if tlsLayer.PDD {
-				log.Println("loading TLS SniffConn", !isServerEnd)
-			}
+	if isTlsLazy_clientEnd || iics.isTlsLazyServerEnd {
 
-			wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, !isServerEnd, tls_lazy_secure)
+		if tlsLayer.PDD {
+			log.Println("loading TLS SniffConn", isTlsLazy_clientEnd, iics.isTlsLazyServerEnd)
 		}
+
+		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, tls_lazy_secure)
 
 	}
 
@@ -698,7 +692,7 @@ afterLocalServerHandshake:
 
 		}
 	} else {
-		if !(tls_lazy_encrypt && canLazyEncryptServer(inServer)) { //lazy_encrypt情况比较特殊
+		if !(iics.isTlsLazyServerEnd) { //lazy_encrypt情况比较特殊
 			defer wrappedConn.Close()
 
 		}
@@ -759,7 +753,7 @@ afterLocalServerHandshake:
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(client.Name(), iics.cachedRemoteAddr, " want to dial ", proxy.GetFullName(client), targetAddr.UrlString())
+		log.Println(client.Name(), iics.cachedRemoteAddr, " request ", targetAddr.UrlString(), "through", proxy.GetVSI_url(client))
 
 	}
 
@@ -809,7 +803,7 @@ afterLocalServerHandshake:
 
 	if client.IsUseTLS() { //即客户端
 
-		if tls_lazy_encrypt && canLazyEncryptClient(client) {
+		if isTlsLazy_clientEnd {
 
 			if tls_lazy_secure {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
@@ -936,7 +930,7 @@ advLayerStep:
 	if !routedToDirect && tls_lazy_encrypt {
 
 		// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
-		if !isServerEnd && canLazyEncryptClient(client) {
+		if isTlsLazy_clientEnd {
 
 			if client.IsUseTLS() {
 				//必须是 UserClient
@@ -946,7 +940,7 @@ advLayerStep:
 				}
 			}
 
-		} else if canLazyEncryptServer(inServer) {
+		} else if iics.isTlsLazyServerEnd {
 
 			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
