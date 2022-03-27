@@ -29,7 +29,7 @@ func canLazyEncryptClient(outClient proxy.Client) bool {
 
 func canTargetAddr_tlsLazy(addr *netLayer.Addr) bool {
 	switch addr.Network {
-	case "tcp", "tcp4", "tcp6", "unix":
+	case "", "tcp", "tcp4", "tcp6", "unix":
 		return true
 	}
 	return false

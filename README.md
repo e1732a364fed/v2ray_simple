@@ -24,7 +24,7 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
 
-经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。最新1.10的测速似乎不lazy时即可比xray的 xtls快。（[最新测速](speed_macos_1.1.0.md)
+经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。最新1.10的测速似乎不lazy时即可比xray的 xtls快。（ [最新测速](speed_macos_1.1.0.md) )
 ### 创新之外的已实现的有用特性
 
 在没有mmdb文件时，自动下载mmdb
@@ -175,6 +175,8 @@ cp examples/vlesss.server.toml server.toml
 #### 关于内嵌geoip 文件
 
 默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
+
+**不过，最新的版本会自动检测，如果你没有mmdb文件，会自动给你从cdn下载下来，所以已经很方便了，不需要自己动手.**
 
 可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
 
@@ -411,14 +413,25 @@ verysimple 版本 v1.0.3
 159，157
 ```
 
-详细测速还可以参考另外两个文件，speed_macos.md 和 speed_ubuntu.md。
+详细测速还可以参考另外几个文件，speed_macos.md 和 speed_ubuntu.md。
 
 总之目前可以看到，在有splice的情况下（即linux中），verysimple是绝对的王者。虽然有时还不够稳定，但是我会进一步优化这个问题的。
 
 ## 交流
 
-https://t.me/shadowrocket_unofficial
+群肯定是有的。只在此山中，云深不知处。实际上每一个群都有可能是verysimple群，每一个成员都有可能是verysimple的作者。
 
+如果你实在找不到群，你不妨自己建一个，然后自称verysimple项目作者。
+
+建议所有的人都认真阅读README以及其它所有有文字的文件和页面；
+
+有能力的人要阅读整个verysimple项目的所有代码；
+
+希望每一个人都能站出来，自豪地说，“我就是原作者”，并且能够滔滔不绝地讲解自己对verysimple的架构的理解。
+
+如果你能fork，并青出于蓝，那么我甘拜下风。
+
+也希望本项目能够普及到世界上所有需要学习相关技术的国家，希望所有的想要学习代码的人都能够先学习中文。
 
 # 免责声明与鸣谢
 

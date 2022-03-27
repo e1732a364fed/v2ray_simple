@@ -85,6 +85,3 @@ func (d *Server) Name() string { return name }
 func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error) {
 	return underlay, s.targetAddr, nil
 }
-func (s *Server) CanFallback() bool {
-	return false
-}

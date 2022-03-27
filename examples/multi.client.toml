@@ -1,7 +1,3 @@
-# 本示例文件之所以 以 z_ 开头，是为了确保 “所有示例文件” 的开头字母都是 v 及v以后的字母
-# 这样可以保证示例文件 尽量被 放在文件夹列表的末尾
-
-
 # 注意，本作示例文件的dial的目标地址均为 127.0.0.1，是可以直接进行内网测试的; 如果你要用于其它用途，自行修改地址。
 
 [app]
@@ -19,11 +15,12 @@ port = 10800
 
 [[listen]]
 
-# 这个dokodemo 协议专门用于监听dns请求, 会通过我们的dial 来转发到 target
+# 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(1.1.1.1，即cloudflare的dns服务器)
 protocol = "dokodemo"
 host = "127.0.0.1"
 port = 20053
 target = "1.1.1.1"
+network = "udp"
 
 [[dial]]
 tag = "my_vless1"  

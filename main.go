@@ -364,6 +364,7 @@ func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstanc
 
 			//start之后，客户端就会利用同一条tcp链接 来发送多个 请求,自此就不能直接用原来的链接了;
 			// 新的子请求被 grpc包 抽象成了 抽象的 conn
+			//遇到chan被关闭的情况后，就会自动关闭底层连接并退出整个函数。
 			for {
 				newGConn, ok := <-grpcs.NewConnChan
 				if !ok {
@@ -445,6 +446,7 @@ startPass:
 	handshakeInserver_and_passToOutClient(iics)
 }
 
+// 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
 func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	//log.Println("handshakeInserver_and_passToOutClient")
@@ -466,9 +468,11 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	wlc, targetAddr, err = inServer.Handshake(wrappedConn)
 	if err == nil {
 		//log.Println("inServer handshake passed")
-		//无错误时直接进行下一步了
+		//无错误时直接跳过回落
 		goto afterLocalServerHandshake
 	}
+
+	////////////////////////////// 回落阶段 /////////////////////////////////////
 
 	//下面代码查看是否支持fallback; wlc先设为nil, 当所有fallback都不满足时,可以判断nil然后关闭连接
 
@@ -575,7 +579,7 @@ checkFallback:
 afterLocalServerHandshake:
 
 	if wlc == nil {
-		//回落也失败, 直接return
+		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接return
 		if utils.CanLogDebug() {
 			log.Println("invalid request and no matched fallback, hung up.")
 		}
@@ -590,7 +594,7 @@ afterLocalServerHandshake:
 	var routedToDirect bool
 
 	//尝试分流
-	if !inServer.CantRoute() && routePolicy != nil {
+	if routePolicy != nil && !inServer.CantRoute() {
 
 		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,
@@ -641,6 +645,7 @@ afterLocalServerHandshake:
 
 	}
 
+	//这一段代码是去判断是否要在转发结束后自动关闭连接
 	//如果目标是udp则要分情况讨论
 	if targetAddr.Network == "udp" {
 
@@ -697,7 +702,10 @@ afterLocalServerHandshake:
 
 		}
 	} else {
-		if !(iics.isTlsLazyServerEnd) { //lazy_encrypt情况比较特殊
+		if !(iics.isTlsLazyServerEnd) {
+
+			//lazy_encrypt情况比较特殊
+			// 如果不是lazy的情况的话，转发结束后，要自动关闭
 			defer wrappedConn.Close()
 
 		}
@@ -707,7 +715,9 @@ afterLocalServerHandshake:
 		// 所以要分情况进行 defer wrappedConn.Close()。
 	}
 
-	// 如果目标是udp 则我们单独处理。这里为了简便，不考虑多级串联的关系，直接只考虑 直接转发到direct
+	// 下面一段代码 单独处理 udp承载数据的转发。
+	//
+	// 这里为了简便，不考虑多级串联的关系，直接只考虑 直接转发到direct
 	// 根据 vless_v1的讨论，vless_v1 的udp转发的 通信方式 也是与tcp连接类似的分离信道方式
 	//	上面已经把 CRUMFURS 的情况过滤掉了，所以现在这里就是普通的udp请求
 	//
@@ -747,6 +757,10 @@ afterLocalServerHandshake:
 		return
 	}
 
+	////////////////////////////// 拨号阶段 /////////////////////////////////////
+
+	//先确认拨号地址
+
 	var realTargetAddr *netLayer.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
 
 	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
@@ -761,8 +775,6 @@ afterLocalServerHandshake:
 		log.Println(iics.cachedRemoteAddr, " request ", targetAddr.UrlString(), "through", proxy.GetVSI_url(client))
 
 	}
-
-	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	if client.AddrStr() != "" {
 		//log.Println("will dial", client.AddrStr())
@@ -780,7 +792,7 @@ afterLocalServerHandshake:
 	var grpcClientConn grpc.ClientConn
 
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
-	// 我们要先试图从grpc中取出
+	// 我们要先试图从grpc中取出已经拨号好了的 grpc链接
 
 	if client.IsMux() {
 		if client.AdvancedLayer() == "grpc" {
