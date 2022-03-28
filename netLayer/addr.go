@@ -36,8 +36,12 @@ type HashableAddr struct {
 	netip.AddrPort
 }
 
+func RandPort() int {
+	return rand.Intn(60000) + 4096
+}
+
 func RandPortStr() string {
-	return strconv.Itoa(rand.Intn(60000) + 4096)
+	return strconv.Itoa(RandPort())
 }
 
 func GetRandLocalAddr() string {

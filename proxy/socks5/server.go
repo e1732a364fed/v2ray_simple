@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"net"
 	"net/url"
 	"time"
@@ -21,6 +20,7 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
+// TODO: Support Auth
 type Server struct {
 	proxy.ProxyCommonStruct
 	//user string
@@ -30,25 +30,12 @@ type Server struct {
 type ServerCreator struct{}
 
 func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	return NewServer(u)
-}
-
-func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
-
 	s := &Server{}
 	return s, nil
 }
 
-//只有地址和port需要配置，非常简单
-func NewServer(url *url.URL) (proxy.Server, error) {
-	addr := url.Host //若不给出port，那就只有host名，这样不好，我们默认配置里肯定给了port
-
-	// TODO: Support Auth
-
-	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: addr},
-	}
-	s.ProxyCommonStruct.InitFromUrl(url)
+func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
+	s := &Server{}
 	return s, nil
 }
 
@@ -101,11 +88,8 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 	//  比如百度就是  [5 1 0 3 13 119 119 119 46 98]
 
 	cmd := buf[1]
-	switch cmd {
-	case CmdBind:
+	if cmd == CmdBind {
 		return nil, nil, fmt.Errorf("unsuppoted command %v", cmd)
-	case CmdUDPAssociate:
-
 	}
 
 	l := 2
@@ -144,28 +128,27 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 	//然后服务器会传回专门适用于客户端的 一个 服务器的 udp的ip和地址；然后之后客户端再专门 向udp地址发送连接，此tcp连接就已经没用。
 	//总之，UDP Associate方法并不是 UDP over TCP，完全不同，而且过程中握手用tcp，传输用udp，使用到了两个连接。
 
+	//不过一般作为NAT内网中的客户端是无法知道自己实际呈现给服务端的udp地址的, 所以没什么太大用
+	// 但是, 如果不指定的话，udp associate 就会认为未来一切发往我们新生成的端口的连接都是属于该客户端, 显然有风险
+	// 更不用说这样 的 udp associate 会重复使用很多 随机udp端口，特征很明显。
+	// 总之 udp associate 只能用于内网环境。
+
 	if cmd == CmdUDPAssociate {
 		clientFutureAddr := &netLayer.Addr{
-			IP:   theIP,
-			Name: theName,
-			Port: thePort,
-			//IsUDP: true,
+			IP:      theIP,
+			Name:    theName,
+			Port:    thePort,
 			Network: "udp",
 		}
 
-		serverAtyp, serverAddr, _, err := netLayer.ParseStrToAddr(s.Addr)
-		if serverAtyp != netLayer.AtypIP4 { //暂时先只支持ipv4，为了简单起见
-			if err != nil {
-				return nil, nil, errors.New("UDPAssociate: can't listen an domain, must be ip")
-			}
-		}
+		//这里我们serverAddr直接返回0.0.0.0即可，也实在想不到谁会返回一个另一个ip地址出来。
 
 		//随机生成一个端口专门用于处理该客户端。这是我的想法。
 
-		bindPort := 1024 + rand.Intn(50000)
+		bindPort := netLayer.RandPort()
 
 		udpPreparedAddr := &net.UDPAddr{
-			IP:   serverAddr,
+			IP:   []byte{0, 0, 0, 0},
 			Port: bindPort,
 		}
 
@@ -175,7 +158,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 		}
 
 		//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR(4字节的ipv4) , BND.PORT(2字节)
-		reply := []byte{Version5, 0x00, 0x00, 0x01, serverAddr[0], serverAddr[1], serverAddr[2], serverAddr[3], byte(int16(bindPort) >> 8), byte(int16(bindPort) << 8 >> 8)}
+		reply := []byte{Version5, 0x00, 0x00, 0x01, 0, 0, 0, 0, byte(int16(bindPort) >> 8), byte(int16(bindPort) << 8 >> 8)}
 
 		// Write command response
 		_, err = underlay.Write(reply)

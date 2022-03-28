@@ -53,19 +53,15 @@ func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 }
 func NewServer(url *url.URL) (proxy.Server, error) {
 
-	addr := url.Host
 	uuidStr := url.User.Username()
 	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
 	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: addr},
-		userHashes:        make(map[[16]byte]*proxy.V2rayUser),
-		userCRUMFURS:      make(map[[16]byte]*CRUMFURS),
+		userHashes:   make(map[[16]byte]*proxy.V2rayUser),
+		userCRUMFURS: make(map[[16]byte]*CRUMFURS),
 	}
-
-	s.ProxyCommonStruct.InitFromUrl(url)
 
 	s.addV2User(id)
 

@@ -225,8 +225,12 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 	}
 }
 
-//setAdvancedLayer
+//SetAddrStr,setAdvancedLayer
 func configCommonByURL(ser ProxyCommon, u *url.URL) {
+	if u.Scheme != "direct" {
+		ser.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们“默认”, 配置里肯定给了port
+
+	}
 	q := u.Query()
 	wsStr := q.Get("ws")
 	if wsStr != "" && wsStr != "0" && wsStr != "false" {

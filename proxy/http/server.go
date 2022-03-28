@@ -23,14 +23,10 @@ type ServerCreator struct{}
 
 //只有地址和port需要配置，非常简单
 func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	addr := u.Host //若不给出port，那就只有host名，这样不好，我们“默认”, 配置里肯定给了port
 
 	// TODO: Support Basic Auth
 
-	s := &Server{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: addr},
-	}
-	s.ProxyCommonStruct.InitFromUrl(u)
+	s := &Server{}
 	return s, nil
 }
 
@@ -53,7 +49,7 @@ func (_ Server) Name() string {
 }
 
 func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriter, targetAddr *netLayer.Addr, err error) {
-	var b = utils.GetBytes(300) //一般要获取请求信息，不需要那么长; 就算是http，加了path，path也不会上千字节吧
+	var b = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
 
 	newconn = underlay
 

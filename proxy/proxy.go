@@ -88,6 +88,13 @@ type ProxyCommon interface {
 	GetListenConf() *ListenConf
 	GetDialConf() *DialConf
 
+	//如果 IsHandleInitialLayers 方法返回true, 则监听/拨号从传输层一直到高级层的过程直接由inServer/outClient自己处理, 而我们主过程直接处理它 处理完毕的剩下的 代理层。
+	//
+	// quic就属于这种接管底层协议的“超级协议”, 可称之为 SuperProxy。
+	IsHandleInitialLayers() bool
+
+	StarthandleInitialLayers() (newConnChan chan net.Conn, baseConn net.Conn)
+
 	/////////////////// TLS层 ///////////////////
 
 	SetUseTLS()
@@ -316,9 +323,14 @@ func (s *ProxyCommonStruct) CanFallback() bool {
 	return false
 }
 
-// 从 url 初始化一些通用的配置，目前只有 u.Host
-func (pcs *ProxyCommonStruct) InitFromUrl(u *url.URL) {
-	pcs.Addr = u.Host
+//return false. As a placeholder.
+func (s *ProxyCommonStruct) IsHandleInitialLayers() bool {
+	return false
+}
+
+//return nil. As a placeholder.
+func (s *ProxyCommonStruct) StarthandleInitialLayers() (newConnChan chan net.Conn, baseConn net.Conn) {
+	return nil, nil
 }
 
 func (pcs *ProxyCommonStruct) setTLS_Server(s *tlsLayer.Server) {

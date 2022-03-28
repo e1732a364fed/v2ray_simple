@@ -15,14 +15,14 @@ port = 10800
 
 [[listen]]
 protocol = "dokodemo"
+network = "udp"                 # 本监听为了监听dns请求，所以必须要指明监听的传输层为 udp
 host = "127.0.0.1"
 port = 20053
-target = "udp://1.1.1.1:53"     #必须写这种url格式，前面是udp或者tcp，后面要加端口
-network = "udp"
+target = "udp://1.1.1.1:53"     #必须写这种url格式，前面是udp或者tcp，后面要加端口, 我们要转发到udp地址，所以用udp。
 
 # 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(1.1.1.1，即cloudflare的dns服务器)
 
-# 我们电脑只要配置好dns服务器指向127.0.0.1:20053，就可以通过我们的节点去申请实际的udp的dns请求
+# 我们电脑只要配置好dns服务器指向127.0.0.1:20053，就可以通过我们的节点去申请实际的udp的dns请求，这里就是通过我们的 my_vless1 这个节点转发。
 # 只要是定向的流量，如果某客户端可以自己指定地址，那么我们就可以用dokodemo进行转发
 
 [[dial]]
@@ -59,7 +59,7 @@ country = ["CN"]
 [[route]]
 dialTag = "my_vless1"
 
-# 这个最后一个route中，我们只给了tag, 没给其它限定条件，也就是说 如果程序执行到这里, 肯定会匹配到这一条 规则。
+# 这个最后一个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
 
 # 如果所有route均不匹配，则数据会流向 "proxy" 这个tag 的 dial，如果 没有任何dial具有 "proxy" 这个标签名，则流向第一个dial
 

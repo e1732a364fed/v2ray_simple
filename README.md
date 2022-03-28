@@ -464,7 +464,7 @@ github.com/BurntSushi/toml v1.0.0
 github.com/gobwas/ws v1.1.0
 gonum.org/v1/gonum v0.11.0
 google.golang.org/grpc v1.45.0
-
+github.com/miekg/dns v1.1.47
 ```
 
 可能不全，详情可见 go.mod 文件

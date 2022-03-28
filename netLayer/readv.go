@@ -90,18 +90,21 @@ func (rm *readvMem) destroy() {
 
 /* readvFrom 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
 
-若allocedBuffers未给出，会使用 utils.AllocMTUBuffers 来初始化 缓存。
+若 rm 未给出，会使用 get_readvMem 来初始化 缓存。
 
-返回错误时，依然会返回 原buffer 或者 在函数内部新分配的buffer. 本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
+返回错误时，依然会返回 原buffer 或者 在函数内部新分配的buffer.
 
-小贴士：将该 [][]byte 写入io.Writer的话，只需使用 其WriteTo方法, 即可自动适配writev。
+本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
+
+小贴士：将该 [][]byte 写入io.Writer的话，只需使用 net.Buffers.WriteTo方法, 即可自动适配writev。
+不过实测writev没什么太大效果，还会造成不稳定。
 
 TryCopy函数使用到了本函数 来进行readv相关操作。
 */
 func readvFrom(rawReadConn syscall.RawConn, rm *readvMem) ([][]byte, error) {
 
 	if rm == nil {
-		rm = get_readvMem() //utils.AllocMTUBuffers(mr, readv_buffer_allocLen)
+		rm = get_readvMem()
 	}
 
 	allocedBuffers := rm.buffers

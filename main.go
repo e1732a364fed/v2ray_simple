@@ -42,13 +42,11 @@ var (
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
-	confMode         int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	simpleConf       *proxy.Simple
-	standardConf     *proxy.Standard
-	directClient     proxy.Client
-	defaultOutClient proxy.Client
-	defaultInServer  proxy.Server
-	default_uuid     string
+	confMode        int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
+	simpleConf      *proxy.Simple
+	standardConf    *proxy.Standard
+	directClient, _ = proxy.ClientFromURL("direct://")
+	default_uuid    string
 
 	allServers = make([]proxy.Server, 0, 8)
 	allClients = make([]proxy.Client, 0, 8)
@@ -65,12 +63,11 @@ var (
 	routePolicy  *netLayer.RoutePolicy
 	mainFallback *httpLayer.ClassicFallback
 
-	isServerEnd bool //这个是代码里推断的，不一定准确；不过目前仅被用于tls lazy encrypt，所以不是很重要
+	//isServerEnd bool //这个是代码里推断的，不一定准确；不过目前仅被用于tls lazy encrypt，所以不是很重要
 
 )
 
 func init() {
-	directClient, _ = proxy.ClientFromURL("direct://")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -117,6 +114,8 @@ func main() {
 	runPreCommands()
 
 	var err error
+
+	var defaultInServer proxy.Server
 
 	//load server and routePolicy
 	switch confMode {
@@ -180,6 +179,8 @@ func main() {
 
 	}
 
+	var defaultOutClient proxy.Client
+
 	// load client
 	switch confMode {
 	case simpleMode:
@@ -212,16 +213,16 @@ func main() {
 		defaultOutClient = allClients[0]
 	}
 
-	isServerEnd = defaultOutClient.Name() == "direct"
+	//isServerEnd = defaultOutClient.Name() == "direct"
 
 	// 后台运行主代码，而main函数只监听中断信号
 	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用;
 	//  或可用于交互生成自己想要的配置
 	if confMode == simpleMode {
-		listenSer(nil, defaultInServer)
+		listenSer(defaultInServer, defaultOutClient)
 	} else {
 		for _, inServer := range allServers {
-			listenSer(nil, inServer)
+			listenSer(inServer, defaultOutClient)
 		}
 	}
 
@@ -233,10 +234,43 @@ func main() {
 }
 
 //非阻塞
-func listenSer(listener net.Listener, inServer proxy.Server) {
+func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
+
+	//quic
+	if inServer.IsHandleInitialLayers() {
+		newConnChan, baseConn := inServer.StarthandleInitialLayers()
+		if newConnChan == nil || baseConn == nil {
+			if utils.CanLogErr() {
+				log.Println("StarthandleInitialLayers can't extablish baseConn")
+			}
+			return
+		}
+
+		for {
+			newConn, ok := <-newConnChan
+			if !ok {
+				if utils.CanLogErr() {
+					log.Println("read from SuperProxy not ok")
+
+				}
+
+				baseConn.Close()
+				return
+			}
+
+			iics := incomingInserverConnState{
+				wrappedConn:   newConn,
+				baseLocalConn: baseConn,
+				inServer:      inServer,
+			}
+
+			go handshakeInserver_and_passToOutClient(iics)
+		}
+
+	}
 
 	handleFunc := func(conn net.Conn) {
-		handleNewIncomeConnection(inServer, conn)
+		handleNewIncomeConnection(inServer, defaultOutClientForThis, conn)
 	}
 
 	network := inServer.Network()
@@ -270,13 +304,14 @@ type incomingInserverConnState struct {
 	// 要区分 多路复用的包装 是在 vless等代理的握手验证 的外部 还是 内部
 
 	baseLocalConn, wrappedConn net.Conn
-	cachedRemoteAddr           string
-	theRequestPath             string
+	inServer                   proxy.Server
+	defaultClient              proxy.Client
+
+	cachedRemoteAddr string
+	theRequestPath   string
 
 	inServerTlsConn            *tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
-
-	inServer proxy.Server
 
 	shouldFallback bool
 
@@ -287,11 +322,12 @@ type incomingInserverConnState struct {
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
-func handleNewIncomeConnection(inServer proxy.Server, thisLocalConnectionInstance net.Conn) {
+func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn) {
 
 	iics := incomingInserverConnState{
 		baseLocalConn: thisLocalConnectionInstance,
 		inServer:      inServer,
+		defaultClient: defaultClientForThis,
 	}
 
 	iics.isTlsLazyServerEnd = tls_lazy_encrypt && canLazyEncryptServer(inServer)
@@ -468,7 +504,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	wlc, targetAddr, err = inServer.Handshake(wrappedConn)
 	if err == nil {
 		//log.Println("inServer handshake passed")
-		//无错误时直接跳过回落
+		//无错误时直接跳过回落, 直接执行下一个步骤
 		goto afterLocalServerHandshake
 	}
 
@@ -589,7 +625,7 @@ afterLocalServerHandshake:
 
 	////////////////////////////// 分流阶段 /////////////////////////////////////
 
-	var client proxy.Client = defaultOutClient
+	var client proxy.Client = iics.defaultClient
 
 	var routedToDirect bool
 
@@ -660,11 +696,14 @@ afterLocalServerHandshake:
 
 	//这一段代码是去判断是否要在转发结束后自动关闭连接
 	//如果目标是udp则要分情况讨论
+	//
+	// 这里 因为 vless v1 的 CRUMFURS 信道 会对 wrappedConn 出现keep alive ，
+	// 而且具体的传递信息的部分并不是在main函数中处理，而是自己的go routine，所以不能直接关闭 wrappedConn
+	// 所以要分情况进行 defer wrappedConn.Close()。
+
 	if targetAddr.IsUDP() {
 
 		switch inServer.Name() {
-		//case "vlesss":	//目前实际上就算配置里是vlesss,我们实际生成的也是Name()为vless的，
-		//	fallthrough
 		case "vless":
 
 			if targetAddr.Name == vless.CRUMFURS_Established_Str {
@@ -675,7 +714,6 @@ afterLocalServerHandshake:
 				// 而且 wrappedConn 会被 inServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
 
 				return
-
 			} else {
 				//如果不是CRUMFURS命令，那就是普通的针对某udp地址的连接，见下文 uniExtractor 的使用
 				defer wrappedConn.Close()
@@ -685,30 +723,11 @@ afterLocalServerHandshake:
 
 			// UDP Associate：
 			//
-			// 因为socks5的 UDP Associate 办法是较为特殊的（不使用现有tcp而是新建立udp），所以要单独拿出来处理。
-			// 此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
+			// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
+			// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
 
-			defer wrappedConn.Close()
-
-			// 此时socks5包已经帮我们dial好了一个udp连接，即wlc，但是还未读取到客户端想要访问的东西
-			udpConn := wlc.(*socks5.UDPConn)
-
-			// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
-			// direct 也实现了 UDP_Putter (通过 UDP_Pipe和 RelayUDP_to_Direct函数), 所以目前 socks5直接转发udp到direct 的功能 已经实现。
-
-			// 我在 vless v1 的client 的 UserConn 中实现了 UDP_Putter, vless 的 client的 新连接的Handshake过程会在 UDP_Putter.WriteUDPRequest 被调用 时发生
-
-			if putter := client.(netLayer.UDP_Putter); putter != nil {
-
-				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
-
-				//因为UDP Associate后，就会保证以后的向 wlc 的 所有请求数据都是udp请求，所以可以在这里直接循环转发了。
-
-				go udpConn.StartPushResponse(putter)
-				udpConn.StartReadRequest(putter)
-
-			}
-			return
+			//defer wrappedConn.Close()
+			wrappedConn.Close()
 
 		default:
 			defer wrappedConn.Close()
@@ -723,58 +742,91 @@ afterLocalServerHandshake:
 
 		}
 
-		// 这里 因为 vless v1 的 CRUMFURS 信道 会对 wrappedConn 出现keep alive ，
-		// 而且具体的传递信息的部分并不是在main函数中处理，而是自己的go routine，所以不能直接关闭 thisLocalConnectionInstance，
-		// 所以要分情况进行 defer wrappedConn.Close()。
 	}
 
-	// 下面一段代码 单独处理 udp承载数据的转发。
+	// 下面一段代码 单独处理 udp承载数据的特殊转发。
 	//
-	// 这里为了简便，不考虑多级串联的关系，直接只考虑 直接转发到direct
-	// 根据 vless_v1的讨论，vless_v1 的udp转发的 通信方式 也是与tcp连接类似的分离信道方式
-	//	上面已经把 CRUMFURS 的情况过滤掉了，所以现在这里就是普通的udp请求
-	//
-	// 因为direct使用 proxy.RelayUDP_to_Direct 函数 直接实现了fullcone
-	// 那么我们只需要传入一个  UDP_Extractor 即可
-
+	// 这里只处理 vless v1 的CRUMFURS 以及 socks5 的udp associate 转发到direct的情况;
+	// 如果条件不符合则会跳过而进入下一阶段
 	if targetAddr.IsUDP() {
 
-		var unknownRemoteAddrMsgWriter netLayer.UDPResponseWriter
-
 		switch inServer.Name() {
-		//case "vlesss":	//目前实际上就算配置里是vlesss,我们实际生成的也是Name()为vless的，
-		//	fallthrough
 		case "vless":
 
-			uc := wlc.(*vless.UserConn)
+			if client.Name() == "direct" {
 
-			if uc.GetProtocolVersion() < 1 {
-				break
+				uc := wlc.(*vless.UserConn)
+
+				if uc.GetProtocolVersion() < 1 {
+					break
+				}
+
+				// 根据 vless_v1的讨论，vless_v1 的udp转发的 通信方式 也是与tcp连接类似的分离信道方式
+				//	上面已经把 CRUMFURS 的情况过滤掉了，所以现在这里就是普通的udp请求
+				//
+				// 因为direct使用 proxy.RelayUDP_to_Direct 函数 直接实现了fullcone
+				// 那么我们只需要传入一个  UDP_Extractor 即可
+
+				//unknownRemoteAddrMsgWriter 在 vless v1中的实现就是 theCRUMFURS （vless v0就是mux）
+
+				id := uc.GetIdentityStr()
+
+				vlessServer := inServer.(*vless.Server)
+
+				theCRUMFURS := vlessServer.Get_CRUMFURS(id)
+				var unknownRemoteAddrMsgWriter netLayer.UDPResponseWriter
+
+				unknownRemoteAddrMsgWriter = theCRUMFURS
+
+				uniExtractor := netLayer.NewUniUDP_Extractor(targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
+
+				netLayer.RelayUDP_to_Direct(uniExtractor) //阻塞
+
+				return
 			}
 
-			//unknownRemoteAddrMsgWriter 在 vless v1中的实现就是 theCRUMFURS （vless v0就是mux）
+		case "socks5":
+			// 此时socks5包已经帮我们dial好了一个udp连接，即wlc，但是还未读取到客户端想要访问的东西
+			udpConn := wlc.(*socks5.UDPConn)
 
-			id := uc.GetIdentityStr()
+			if client.Name() == "vless" {
+				vc := client.(*vless.Client)
+				switch vc.Version() {
+				case 0:
 
-			vlessServer := inServer.(*vless.Server)
+				case 1:
 
-			theCRUMFURS := vlessServer.Get_CRUMFURS(id)
+					// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
+					// direct 也实现了 UDP_Putter (通过 UDP_Pipe和 RelayUDP_to_Direct函数), 所以目前 socks5直接转发udp到direct 的功能 已经实现。
 
-			unknownRemoteAddrMsgWriter = theCRUMFURS
+					// 我在 vless v1 的client 的 UserConn 中实现了 UDP_Putter, vless 的 client的 新连接的Handshake过程会在 UDP_Putter.WriteUDPRequest 被调用 时发生
+
+					if putter := client.(netLayer.UDP_Putter); putter != nil {
+
+						//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
+
+						//因为UDP Associate后，就会保证以后的向 wlc 的 所有请求数据都是udp请求，所以可以在这里直接循环转发了。
+
+						go udpConn.StartPushResponse(putter)
+						udpConn.StartReadRequest(putter)
+
+					}
+					return
+				}
+
+			}
+
 		}
 
-		uniExtractor := netLayer.NewUniUDP_Extractor(targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
-
-		netLayer.RelayUDP_to_Direct(uniExtractor) //阻塞
-
-		return
 	}
 
 	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	//先确认拨号地址
 
-	var realTargetAddr *netLayer.Addr = targetAddr //direct的话自己是没有目的地址的，直接使用 请求的地址
+	//direct的话自己是没有目的地址的，直接使用 请求的地址
+	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
+	var realTargetAddr *netLayer.Addr = targetAddr
 
 	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
 		if utils.CanLogDebug() {

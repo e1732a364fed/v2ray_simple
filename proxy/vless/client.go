@@ -70,7 +70,6 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 }
 
 func NewClientByURL(url *url.URL) (proxy.Client, error) {
-	addr := url.Host
 	uuidStr := url.User.Username()
 	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {
@@ -78,10 +77,8 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	}
 
 	c := &Client{
-		ProxyCommonStruct: proxy.ProxyCommonStruct{Addr: addr},
-		user:              id,
+		user: id,
 	}
-	c.ProxyCommonStruct.InitFromUrl(url)
 
 	vStr := url.Query().Get("version")
 	if vStr != "" {
@@ -179,11 +176,13 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	}, err
 }
 
+// 注意调用此方法前要判断是否是v1
 func (c *Client) GetNewUDPResponse() (*net.UDPAddr, []byte, error) {
 	x := <-c.udpResponseChan //由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充
 	return x.Addr, x.Data, nil
 }
 
+// 注意调用此方法前要判断是否是v1
 func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 
 	astr := a.String()
@@ -194,6 +193,9 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 
 	if knownConn == nil {
 
+		//这里调用 c.Handshake，会自动帮我们拨号代理节点CmdUDP
+		// 但是似乎有问题，因为不应该由client自己拨号vless，因为我们还有上层的tls;
+		// 自己拨号的话，那就是裸奔状态
 		knownConn, err = c.Handshake(nil, netLayer.NewAddrFromUDPAddr(a))
 		if err != nil {
 			return err
