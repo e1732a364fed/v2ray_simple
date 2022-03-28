@@ -14,11 +14,11 @@ BUILD_VERSION   := v1.1.0.2
 
 prefix          :=verysimple
 
-linuxAmd        :=_linux_amd64_
-linuxArm        :=_linux_arm64_
-macosAmd        :=_macos_
-macosArm        :=_macm1_
-windows         :=_win10_
+linuxAmd        :=_linux_amd64
+linuxArm        :=_linux_arm64
+macosAmd        :=_macos
+macosArm        :=_macm1
+windows         :=_win10
 
 #这些Fn变量是用于发布包压缩包的名称，不是可执行文件名称，可执行文件统一叫 verysimple
 
