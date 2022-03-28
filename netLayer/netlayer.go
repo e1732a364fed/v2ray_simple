@@ -1,9 +1,9 @@
 /*
 Package netLayer contains definitions in network layer AND transport layer.
 
-本包有 geoip, readv copy, route, udp 等相关功能。
+本包有 geoip, readv, relay, route, udp, splice 等相关功能。
 
-以后如果要添加 domain socket, kcp 或 raw socket 等底层协议时，或者要控制tcp/udp拨号的细节时，也要在此包里实现.
+以后如果要添加 kcp 或 raw socket 等底层协议时，或者要控制tcp/udp拨号的细节时，也要在此包里实现.
 
 */
 package netLayer
@@ -39,4 +39,12 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 	}
 
 	return nil
+}
+
+func IsStrUDP_network(s string) bool {
+	switch s {
+	case "udp", "udp4", "udp6":
+		return true
+	}
+	return false
 }

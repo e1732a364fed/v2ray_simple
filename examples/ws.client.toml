@@ -11,7 +11,7 @@ host = "127.0.0.1"
 port = 4434
 version = 0
 insecure = true
-utls = true
+#utls = true    # 如果你要用v2ray或者xray做服务端，则要关闭utls,它们不够强大所以不行；如果你用verysimple做服务端，则可以打开utls，享受chrome指纹伪装。
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好
-extra = { ws_earlydata = true }
+#extra = { ws_earlydata = true }    # 是否开启early data

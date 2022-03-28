@@ -27,10 +27,7 @@ https://github.com/v2fly/v2ray-core/pull/757
 
 我直接把 GunService名称改成了 “Stream”，不影响的。反正我们自定义内部真实名称.
 
-不过，我改名后，发现不兼容; 那么我直接改动 stream.pb.go 里的 *_rawDesc 序列呢, 从v2ray复制过来
-发现改了依然不行; 也许protobuf用了什么反射机制，导致包名必须完全一样，那就没办法了。
-
-本作是不会主动更改自己的文件夹结构来匹配xray/v2ray的。
+实测名称是不影响的， 一样兼容xray/v2ray的 grpc。因为 我们自定义实际的 ServiceDesc
 */
 
 // ServerDesc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
