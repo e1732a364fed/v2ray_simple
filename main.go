@@ -318,6 +318,10 @@ type incomingInserverConnState struct {
 	theFallbackFirstBuffer *bytes.Buffer
 
 	isTlsLazyServerEnd bool
+
+	shouldCloseBaseConnWhenComplete bool
+
+	routedToDirect bool
 }
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
@@ -336,7 +340,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 	if utils.CanLogInfo() {
 		str := wrappedConn.RemoteAddr().String()
-		log.Println("New Accepted Conn from", str, ", handling by "+proxy.GetVSI_url(inServer))
+		log.Println("New Accepted Conn from", str, ", being handled by "+proxy.GetVSI_url(inServer))
 
 		iics.cachedRemoteAddr = str
 	}
@@ -491,8 +495,6 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	inServer := iics.inServer
 
-	theFallbackFirstBuffer := iics.theFallbackFirstBuffer
-
 	var wlc io.ReadWriter
 	var targetAddr *netLayer.Addr
 	var err error
@@ -532,8 +534,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 			return
 		}
 
-		theFallbackFirstBuffer = fe.First
-		if theFallbackFirstBuffer == nil {
+		iics.theFallbackFirstBuffer = fe.First
+		if iics.theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
 			log.Fatal("No FirstBuffer")
 		}
@@ -555,10 +557,10 @@ checkFallback:
 
 		theRequestPath := iics.theRequestPath
 
-		if theFallbackFirstBuffer != nil && theRequestPath == "" {
+		if iics.theFallbackFirstBuffer != nil && theRequestPath == "" {
 			var failreason int
 
-			_, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(theFallbackFirstBuffer.Bytes(), false)
+			_, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
 
 			if failreason != 0 {
 				theRequestPath = ""
@@ -627,8 +629,6 @@ afterLocalServerHandshake:
 
 	var client proxy.Client = iics.defaultClient
 
-	var routedToDirect bool
-
 	//尝试分流, 获取到真正要发向 的 outClient
 	if routePolicy != nil && !inServer.CantRoute() {
 
@@ -645,7 +645,7 @@ afterLocalServerHandshake:
 
 		if outtag == "direct" {
 			client = directClient
-			routedToDirect = true
+			iics.routedToDirect = true
 
 			if utils.CanLogInfo() {
 				log.Println("routed to direct", targetAddr.UrlString())
@@ -663,6 +663,8 @@ afterLocalServerHandshake:
 	}
 
 	////////////////////////////// 特殊处理阶段 /////////////////////////////////////
+
+	// 下面几段用于处理 tls lazy
 
 	var isTlsLazy_clientEnd bool
 
@@ -716,7 +718,8 @@ afterLocalServerHandshake:
 				return
 			} else {
 				//如果不是CRUMFURS命令，那就是普通的针对某udp地址的连接，见下文 uniExtractor 的使用
-				defer wrappedConn.Close()
+				//defer wrappedConn.Close()
+				iics.shouldCloseBaseConnWhenComplete = true
 			}
 
 		case "socks5":
@@ -730,7 +733,8 @@ afterLocalServerHandshake:
 			wrappedConn.Close()
 
 		default:
-			defer wrappedConn.Close()
+			//defer wrappedConn.Close()
+			iics.shouldCloseBaseConnWhenComplete = true
 
 		}
 	} else {
@@ -738,7 +742,8 @@ afterLocalServerHandshake:
 
 			//lazy_encrypt情况比较特殊
 			// 如果不是lazy的情况的话，转发结束后，要自动关闭
-			defer wrappedConn.Close()
+			//defer wrappedConn.Close()
+			iics.shouldCloseBaseConnWhenComplete = true
 
 		}
 
@@ -746,7 +751,7 @@ afterLocalServerHandshake:
 
 	// 下面一段代码 单独处理 udp承载数据的特殊转发。
 	//
-	// 这里只处理 vless v1 的CRUMFURS 以及 socks5 的udp associate 转发到direct的情况;
+	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发到vless v1的情况;
 	// 如果条件不符合则会跳过而进入下一阶段
 	if targetAddr.IsUDP() {
 
@@ -793,6 +798,7 @@ afterLocalServerHandshake:
 				vc := client.(*vless.Client)
 				switch vc.Version() {
 				case 0:
+					//基本情况与v1类似，但是不能用分离信道，只能接到一个udp请求就拨一个号
 
 				case 1:
 
@@ -820,6 +826,16 @@ afterLocalServerHandshake:
 
 	}
 
+	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc)
+}
+
+func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriter) {
+
+	if iics.shouldCloseBaseConnWhenComplete {
+		defer iics.wrappedConn.Close()
+	}
+
+	var err error
 	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	//先确认拨号地址
@@ -1009,7 +1025,7 @@ advLayerStep:
 
 	////////////////////////////// 实际转发阶段 /////////////////////////////////////
 
-	if !routedToDirect && tls_lazy_encrypt {
+	if !iics.routedToDirect && tls_lazy_encrypt {
 
 		// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
 		if isTlsLazy_clientEnd {
@@ -1027,7 +1043,7 @@ advLayerStep:
 			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
-			if userServer, ok := inServer.(proxy.UserServer); ok {
+			if userServer, ok := iics.inServer.(proxy.UserServer); ok {
 				tryRawCopy(false, nil, userServer, nil, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
 				return
 			}
@@ -1036,10 +1052,10 @@ advLayerStep:
 
 	}
 
-	if theFallbackFirstBuffer != nil {
+	if iics.theFallbackFirstBuffer != nil {
 		//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-		wrc.Write(theFallbackFirstBuffer.Bytes())
-		utils.PutBytes(theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
+		wrc.Write(iics.theFallbackFirstBuffer.Bytes())
+		utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
 	if utils.CanLogDebug() {
