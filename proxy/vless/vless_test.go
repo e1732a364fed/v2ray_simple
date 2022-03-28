@@ -193,7 +193,6 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				t.Fail()
 				return
 			}
-			//break
 			//t.Log(" udp for! ", count, readNum)
 			count++
 		}
@@ -320,7 +319,12 @@ func testVLessUDP(version int, port string, t *testing.T) {
 	//再试图发送长信息，确保 vless v0 的实现没有问题
 
 	for i := 0; i < 10; i++ {
-		longbs := make([]byte, 9*1024) //目前实测，9*1024是好使的，但是9*1025 以上就会出问题？？
+		longbs := make([]byte, 9*1024)
+
+		//目前实测，9*1024是好使的，但是9*1025 以上就会出问题？？一旦增加，测试就会卡住
+		// 可能是udp传输时卡住了, 因为长度太大导致丢包, 服务端没有收到此包，我们就收不到服务端发来的回应，就会卡住.
+		// 总之这个和udp性质有关。我们传输udp时不要发过大的包，或者不要过快发送即可。否则就要有防丢包措施；
+		// 不能期待服务器一定会收到udp消息 而陷入 对服务器回应的无限等待中
 
 		rand.Reader.Read(longbs)
 

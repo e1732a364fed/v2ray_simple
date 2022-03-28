@@ -17,16 +17,16 @@ prefix          :=verysimple
 linuxAmd        :=_linux_amd64_
 linuxArm        :=_linux_arm64_
 macosAmd        :=_macos_
-macosArm        :=_macos_m1_
+macosArm        :=_macm1_
 windows         :=_win10_
 
+#这些Fn变量是用于发布包压缩包的名称，不是可执行文件名称，可执行文件统一叫 verysimple
 
-
-linuxAmdFn:=${prefix}${linuxAmd}${BUILD_VERSION}
-linuxArmFn:=${prefix}${linuxArm}${BUILD_VERSION}
-macFn     :=${prefix}${macosAmd}${BUILD_VERSION}
-macM1Fn   :=${prefix}${macosArm}${BUILD_VERSION}
-winFn     :=${prefix}${windows}${BUILD_VERSION}
+linuxAmdFn:=${prefix}${linuxAmd}
+linuxArmFn:=${prefix}${linuxArm}
+macFn     :=${prefix}${macosAmd}
+macM1Fn   :=${prefix}${macosArm}
+winFn     :=${prefix}${windows}
 
 
 cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o

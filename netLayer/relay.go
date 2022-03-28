@@ -159,7 +159,7 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	if err != nil {
 		return 0, err
 	}
-	allnum, err = buffers.WriteTo(writeConn)
+	allnum, err = utils.BuffersWriteTo(buffers, writeConn) //buffers.WriteTo(writeConn)
 
 	return
 

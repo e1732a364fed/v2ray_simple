@@ -567,7 +567,7 @@ checkFallback:
 
 	}
 
-	//默认回落
+	//默认回落, 每个listen配置 都可 有一个自己独享的默认回落
 
 	if defaultFallbackAddr := inServer.GetFallback(); defaultFallbackAddr != nil {
 
@@ -593,7 +593,7 @@ afterLocalServerHandshake:
 
 	var routedToDirect bool
 
-	//尝试分流
+	//尝试分流, 获取到真正要发向 的 outClient
 	if routePolicy != nil && !inServer.CantRoute() {
 
 		desc := &netLayer.TargetDescription{
@@ -628,12 +628,25 @@ afterLocalServerHandshake:
 
 	////////////////////////////// 特殊处理阶段 /////////////////////////////////////
 
+	var isTlsLazy_clientEnd bool
+
+	if targetAddr.IsUDP() {
+		//udp数据是无法splice的，因为不是入口处是真udp就是出口处是真udp; 同样暂不考虑级连情况.
+		if iics.isTlsLazyServerEnd {
+			iics.isTlsLazyServerEnd = false
+			//此时 inServer的tls还被包了一个Recorder，所以我们赶紧关闭记录省着产生额外开销
+
+			iics.inServerTlsRawReadRecorder.StopRecord()
+		}
+	} else {
+		isTlsLazy_clientEnd = tls_lazy_encrypt && canLazyEncryptClient(client)
+
+	}
+
 	// 我们在客户端 lazy_encrypt 探测时，读取socks5 传来的信息，因为这个 就是要发送到 outClient 的信息，所以就不需要等包上vless、tls后再判断了, 直接解包 socks5 对 tls 进行判断
 	//
 	//  而在服务端探测时，因为 客户端传来的连接 包了 tls，所以要在tls解包后, vless 解包后，再进行判断；
 	// 所以总之都是要在 inServer 判断 wlc; 总之，含义就是，去检索“用户承载数据”的来源
-
-	isTlsLazy_clientEnd := tls_lazy_encrypt && canLazyEncryptClient(client)
 
 	if isTlsLazy_clientEnd || iics.isTlsLazyServerEnd {
 
@@ -647,11 +660,11 @@ afterLocalServerHandshake:
 
 	//这一段代码是去判断是否要在转发结束后自动关闭连接
 	//如果目标是udp则要分情况讨论
-	if targetAddr.Network == "udp" {
+	if targetAddr.IsUDP() {
 
 		switch inServer.Name() {
-		case "vlesss":
-			fallthrough
+		//case "vlesss":	//目前实际上就算配置里是vlesss,我们实际生成的也是Name()为vless的，
+		//	fallthrough
 		case "vless":
 
 			if targetAddr.Name == vless.CRUMFURS_Established_Str {
@@ -724,13 +737,13 @@ afterLocalServerHandshake:
 	// 因为direct使用 proxy.RelayUDP_to_Direct 函数 直接实现了fullcone
 	// 那么我们只需要传入一个  UDP_Extractor 即可
 
-	if targetAddr.Network == "udp" {
+	if targetAddr.IsUDP() {
 
 		var unknownRemoteAddrMsgWriter netLayer.UDPResponseWriter
 
 		switch inServer.Name() {
-		case "vlesss":
-			fallthrough
+		//case "vlesss":	//目前实际上就算配置里是vlesss,我们实际生成的也是Name()为vless的，
+		//	fallthrough
 		case "vless":
 
 			uc := wlc.(*vless.UserConn)
