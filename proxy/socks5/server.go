@@ -131,12 +131,6 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 	// 总之 udp associate 只能用于内网环境。
 
 	if cmd == CmdUDPAssociate {
-		clientFutureAddr := &netLayer.Addr{
-			IP:      theIP,
-			Name:    theName,
-			Port:    thePort,
-			Network: "udp",
-		}
 
 		//这里我们serverAddr直接返回0.0.0.0即可，也实在想不到谁会返回一个另一个ip地址出来。
 
@@ -163,8 +157,16 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 			return nil, nil, fmt.Errorf("failed to write command response: %w", err)
 		}
 
+		clientFutureAddr := &netLayer.Addr{
+			IP:      theIP,
+			Name:    theName,
+			Port:    thePort,
+			Network: "udp",
+		}
+
+		//这里为了解析域名, 就是用了用 netLayer.Addr 作为中介的方式
 		uc := &UDPConn{
-			clientSupposedAddr: clientFutureAddr,
+			clientSupposedAddr: clientFutureAddr.ToUDPAddr(),
 			UDPConn:            udpRC,
 		}
 		return uc, clientFutureAddr, nil
@@ -194,9 +196,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 
 type UDPConn struct {
 	*net.UDPConn
-	clientSupposedAddr *netLayer.Addr //客户端指定的客户端自己未来将使用的公网UDP的Addr
-
-	//clientSupposedAddrIsNothing bool
+	clientSupposedAddr *net.UDPAddr //客户端指定的客户端自己未来将使用的公网UDP的Addr
 }
 
 // 阻塞
@@ -225,17 +225,16 @@ func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 		buf.WriteByte(byte(int16(raddr.Port) << 8 >> 8))
 		buf.Write(bs)
 
-		//log.Println("StartPushResponse, start write", u.clientSupposedAddr.ToUDPAddr())
-
-		//_, err = u.UDPConn.Write(buf.Bytes())	//必须要指明raddr
-		_, err = u.UDPConn.WriteToUDP(buf.Bytes(), u.clientSupposedAddr.ToUDPAddr())
+		//必须要指明raddr
+		_, err = u.UDPConn.WriteToUDP(buf.Bytes(), u.clientSupposedAddr)
 
 		if err != nil {
-			//log.Println("StartPushResponse, write err ", err)
+			if utils.CanLogErr() {
+				log.Println("socks5, StartPushResponse, write err ", err)
+
+			}
 			break
 		}
-
-		//log.Println("StartPushResponse, written")
 
 	}
 }
@@ -332,7 +331,7 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 
 		if clientSupposedAddrIsNothing {
 			clientSupposedAddrIsNothing = false
-			u.clientSupposedAddr = netLayer.NewAddrFromUDPAddr(addr)
+			u.clientSupposedAddr = addr
 		}
 
 		//log.Println("socks5 server,StartReadRequest, got msg", thisaddr, string(bs[newStart:n]))

@@ -226,6 +226,7 @@ func (a *Addr) IsUDP() bool {
 	return IsStrUDP_network(a.Network)
 }
 
+//如果a里只含有域名，则会自动解析域名为IP。
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
 	ua, err := net.ResolveUDPAddr("udp", a.String())
 	if err != nil {
