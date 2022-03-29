@@ -41,15 +41,12 @@ func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 
 func (s *Server) Name() string { return Name }
 
-func (s *Server) CanFallback() bool {
-	return false
-}
-
 //English: https://www.ietf.org/rfc/rfc1928.txt
 
 //中文： https://aber.sh/articles/Socks5/
 // 参考 https://studygolang.com/articles/31404
 
+// 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn.StartReadRequest 处理
 func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
@@ -199,15 +196,16 @@ type UDPConn struct {
 	*net.UDPConn
 	clientSupposedAddr *netLayer.Addr //客户端指定的客户端自己未来将使用的公网UDP的Addr
 
-	clientSupposedAddrIsNothing bool
+	//clientSupposedAddrIsNothing bool
 }
 
 // 阻塞
-// 从 udpPutter.GetNewUDPResponse 循环阅读 所有需要发送给客户端的 数据，然后发送给客户端
-//  这些响应数据是 由其它设施 写入 udpProxy的
+// 从 udpPutter.GetNewUDPResponse 循环阅读 所有需要发送给客户端的 数据，然后通过 u.UDPConn.Write 发送给客户端
+//  这些响应数据是 在其它地方 写入 udpPutter 的, 本 u 是不管 谁、如何 把这个信息 放进去的。
 func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 	for {
 		raddr, bs, err := udpPutter.GetNewUDPResponse()
+		//log.Println("StartPushResponse got new response", raddr, string(bs), err)
 		if err != nil {
 			break
 		}
@@ -227,20 +225,30 @@ func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 		buf.WriteByte(byte(int16(raddr.Port) << 8 >> 8))
 		buf.Write(bs)
 
-		_, err = u.UDPConn.Write(buf.Bytes())
+		//log.Println("StartPushResponse, start write", u.clientSupposedAddr.ToUDPAddr())
+
+		//_, err = u.UDPConn.Write(buf.Bytes())	//必须要指明raddr
+		_, err = u.UDPConn.WriteToUDP(buf.Bytes(), u.clientSupposedAddr.ToUDPAddr())
+
 		if err != nil {
+			//log.Println("StartPushResponse, write err ", err)
 			break
 		}
+
+		//log.Println("StartPushResponse, written")
+
 	}
 }
 
 // 阻塞
-// 监听 与客户端的udp连接；循环查看客户端发来的请求信息; 然后将该请求 用 udpPutter.WriteUDPRequest 发送给 udpPutter
+// 监听 与客户端的udp连接 (u.UDPConn)；循环查看客户端发来的请求信息;
+// 然后将该请求 用 udpPutter.WriteUDPRequest 发送给 udpPutter
 //	至于fullcone与否它是不管的。
-func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter) {
+func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(targetAddr *netLayer.Addr) (io.ReadWriter, error)) {
 
+	var clientSupposedAddrIsNothing bool
 	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
-		u.clientSupposedAddrIsNothing = true
+		clientSupposedAddrIsNothing = true
 	}
 
 	bs := make([]byte, netLayer.MaxUDP_packetLen)
@@ -253,6 +261,7 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter) {
 			}
 			continue
 		}
+
 		if n < 6 {
 			if utils.CanLogWarn() {
 
@@ -261,7 +270,7 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter) {
 			continue
 		}
 
-		if !u.clientSupposedAddrIsNothing && !addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port {
+		if !clientSupposedAddrIsNothing && (!addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port) {
 
 			//just random attack message.
 			continue
@@ -321,7 +330,14 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter) {
 			Network: "udp",
 		}
 
-		udpPutter.WriteUDPRequest(thisaddr.ToUDPAddr(), bs[newStart:n-newStart])
+		if clientSupposedAddrIsNothing {
+			clientSupposedAddrIsNothing = false
+			u.clientSupposedAddr = netLayer.NewAddrFromUDPAddr(addr)
+		}
+
+		//log.Println("socks5 server,StartReadRequest, got msg", thisaddr, string(bs[newStart:n]))
+
+		udpPutter.WriteUDPRequest(thisaddr.ToUDPAddr(), bs[newStart:n], dialFunc)
 
 	}
 }

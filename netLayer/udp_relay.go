@@ -13,7 +13,7 @@ const (
 //本文件内含 一些 转发 udp 数据的 接口与方法
 
 // 阻塞.
-func RelayUDP(putter UDP_Putter, extractor UDP_Extractor) {
+func RelayUDP(putter UDP_Putter, extractor UDP_Extractor, dialFunc func(targetAddr *Addr) (io.ReadWriter, error)) {
 
 	go func() {
 		for {
@@ -21,7 +21,7 @@ func RelayUDP(putter UDP_Putter, extractor UDP_Extractor) {
 			if err != nil {
 				break
 			}
-			err = putter.WriteUDPRequest(raddr, bs)
+			err = putter.WriteUDPRequest(raddr, bs, dialFunc)
 			if err != nil {
 				break
 			}
@@ -58,9 +58,10 @@ type UDP_Extractor interface {
 	UDPResponseWriter
 }
 
-// 写入一个UDP请求
+// 写入一个UDP请求; 可以包裹成任意协议。
+// 因为有时该地址从来没申请过，所以此时就要用dialFunc创建一个新连接
 type UDPRequestWriter interface {
-	WriteUDPRequest(*net.UDPAddr, []byte) error
+	WriteUDPRequest(target *net.UDPAddr, request []byte, dialFunc func(targetAddr *Addr) (io.ReadWriter, error)) error
 }
 
 //拉取一个新的 UDP 响应
@@ -70,7 +71,7 @@ type UDPResponseReader interface {
 
 // UDP_Putter, 用于把 udp请求转换成 虚拟的协议
 //
-// 向一个特定的协议 写入 UDP请求，然后试图读取 该请求的回应
+// 向一个特定的协议 写入 UDP请求，然后试图读取 该请求的回应. 比如vless.Client就实现了它
 type UDP_Putter interface {
 	UDPRequestWriter
 	UDPResponseReader
@@ -100,7 +101,7 @@ func (e *UniUDP_Putter) GetNewUDPResponse() (*net.UDPAddr, []byte, error) {
 	return e.targetAddr, bs[:n], nil
 }
 
-func (e *UniUDP_Putter) WriteUDPRequest(addr *net.UDPAddr, bs []byte) (err error) {
+func (e *UniUDP_Putter) WriteUDPRequest(addr *net.UDPAddr, bs []byte, dialFunc func(targetAddr *Addr) (io.ReadWriter, error)) (err error) {
 
 	if addr.String() == e.targetAddr.String() {
 		_, err = e.ReadWriter.Write(bs)
@@ -110,8 +111,9 @@ func (e *UniUDP_Putter) WriteUDPRequest(addr *net.UDPAddr, bs []byte) (err error
 		if e.unknownRemoteAddrMsgWriter == nil {
 			return
 		}
+		// 普通的 WriteUDPRequest需要调用 dialFunc来拨号新链接，而我们这里 直接就传递给 unknownRemoteAddrMsgWriter 了
 
-		return e.unknownRemoteAddrMsgWriter.WriteUDPRequest(addr, bs)
+		return e.unknownRemoteAddrMsgWriter.WriteUDPRequest(addr, bs, dialFunc)
 	}
 
 }
@@ -206,7 +208,7 @@ func (u *UDP_Pipe) WriteUDPResponse(addr *net.UDPAddr, bs []byte) error {
 }
 
 // 会保存bs的副本，不必担心数据被改变的问题。
-func (u *UDP_Pipe) WriteUDPRequest(addr *net.UDPAddr, bs []byte) error {
+func (u *UDP_Pipe) WriteUDPRequest(addr *net.UDPAddr, bs []byte, dialFunc func(targetAddr *Addr) (io.ReadWriter, error)) error {
 	bsCopy := make([]byte, len(bs))
 	copy(bsCopy, bs)
 
@@ -270,6 +272,7 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 			go func(thisconn *net.UDPConn, supposedRemoteAddr *net.UDPAddr) {
 				bs := make([]byte, MaxUDP_packetLen)
 				for {
+					//log.Println("redirect udp, start read", supposedRemoteAddr)
 					n, raddr, err := thisconn.ReadFromUDP(bs)
 					if err != nil {
 						break
@@ -283,6 +286,8 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 					mutex.Lock()
 					dialedUDPConnMap[raddr.String()] = thisconn
 					mutex.Unlock()
+
+					//log.Println("redirect udp, will write to extractor", string(bs[:n]))
 
 					err = extractor.WriteUDPResponse(raddr, bs[:n])
 					if err != nil {

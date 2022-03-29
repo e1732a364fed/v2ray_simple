@@ -29,7 +29,7 @@ type CommonConf struct {
 	Insecure bool     `toml:"insecure"` //tls 是否安全
 	Alpn     []string `toml:"alpn"`
 
-	Network string `toml:"network"` //默认使用tcp, network可选值为 tcp,udp, uds;
+	Network string `toml:"network"` //默认使用tcp, network可选值为 tcp, udp, unix;
 
 	AdvancedLayer string `toml:"advancedLayer"` //可不填，或者为ws，或者为grpc
 

@@ -90,25 +90,25 @@ key = "cert.key"
 		t.FailNow()
 	}
 
-	//先建立服务端监听，再建立客户端监听，最后自定义dns查询 并导向 客户端的 dokodemo监听端口
+	//先建立服务端监听和客户端监听，最后自定义dns查询 并导向 客户端的 dokodemo监听端口
 
-	//vless
+	//vless in
 	serverEndInServer, err := proxy.NewServer(serverConf.Listen[0])
 	if err != nil {
 		log.Fatalln("can not create local server: ", err)
 	}
-	// direct
+	// direct out
 	serverEndOutClient, err := proxy.NewClient(serverConf.Dial[0])
 	if err != nil {
 		log.Fatalln("can not create local server: ", err)
 	}
 
-	//domodemo
+	//domodemo in
 	clientEndInServer, err := proxy.NewServer(clientConf.Listen[0])
 	if err != nil {
 		log.Fatalln("can not create local server: ", err)
 	}
-	// vless
+	// vless out
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
 		log.Fatalln("can not create local server: ", err)

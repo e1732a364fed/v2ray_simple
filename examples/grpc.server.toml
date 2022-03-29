@@ -12,6 +12,7 @@ advancedLayer = "grpc"
 path = "ohmygod_verysimple_is_very_simple"  #正常来说不宜前面再加斜杠,不过我也没试过，也许加了也能用(两端都加的情况下)
 
 # 如需使用 Nginx、Caddy 等软件进行分流，设置的分流路径应为 /${path}/Tun
+#   比如当前示例的情况下，Nginx的配置就是 /ohmygod_verysimple_is_very_simple/Tun
 
 [[dial]]
 protocol = "direct"

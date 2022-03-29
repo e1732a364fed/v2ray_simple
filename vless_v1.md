@@ -3,9 +3,9 @@
 目前v1仍然处于研发当中。建议先用v0，等v1完全出炉了再说，本文只是理论探索，实际代码暂未完整实现所有的设计.
 ## 握手协议格式
 
-具体我的探讨还可以查看 https://github.com/v2fly/v2ray-core/discussions/1655
+具体我的探讨的一部分还可以查看 https://github.com/v2fly/v2ray-core/discussions/1655
 
-总的来说 vless v1 简化了一些流程, 约定永远使用tls（与trojan相同）,并重点考虑  非多路复用的 udp over tcp的  fullcone实现。
+总的来说 vless v1 简化了一些流程, 并重点考虑  非多路复用的 udp over tcp的  fullcone实现。
 
 除了fullcone，我还想到了关于 内层加密， 连接池，以及 自动dns的 对协议的改进，请阅读全文了解详情。
 
@@ -31,7 +31,7 @@ https://www.zhihu.com/question/29916578
 
 所以，我规定 vless v1 的udp实现中，会判断连接本身，如果连接 使用的是websocket或者类似的本身就加了数据长度头的，则udp包无需再加长度。
 
-也就是说，v1不再是一个与底层连接无关的协议，它首先强制tls（只是口头强制，唯一区别就是v2ray官方配置文件中不用再写 security: "none" 了，因为注明了v1的话就已经默认了），然后还要判断是否有ws或者grpc这种高级协议的存在，对于这些进行判断，就可以进行优化。
+也就是说，v1不再是一个与底层连接无关的协议，判断是否有ws或者grpc这种高级协议的存在，对于这些进行判断，就可以进行优化。
 
 虽然udp加长度只是加了两字节，但这只是write部分，read部分的话，为了防止粘包，就加了buffer，确实是多了一层内存读写操作，所以能精简就要精简，毕竟视频直播视频聊天等这种使用udp的部分都是 流量大户。总之这种优化能视udp的使用用途有不同程度的性能提升
 
@@ -50,13 +50,13 @@ v1主要还是 隔离信道的 udp over tcp 的  fullcone 的实现属于重要�
 
 总之，还是要通过升级vless到1版本来实现。
 
-具体的话，也不需要新cmd，直接在 CmdUDP时，使用不同的数据包格式即可，可以参考socks5和trojan的格式标准
+具体的话，也不一定需要新cmd，直接在 CmdUDP时，使用不同的数据包格式即可，可以参考socks5和trojan的格式标准
 
 比如trojan的： https://trojan-gfw.github.io/trojan/protocol
 
 ## udp fullcone的信息传输过程
 
-tcp代理是不需要fullcone的（也不可能实现），而因为udp的特殊性质，可能需要fullcone
+tcp代理是不需要fullcone的，也不可能实现；而因为udp的特殊性质，可能需要fullcone
 
 先观察正常的tcp代理请求，发送一个tcp请求链接到代理服务器，然后直接就会使用这个连接传输双向的数据，这是因为目标是单一的。
 
@@ -73,7 +73,7 @@ tcp代理是不需要fullcone的（也不可能实现），而因为udp的特殊
 
 所以，我们在vless v1版本中，除了并发的udp fullcone实现，也是要实现多路复用的，这样兼顾游戏与视频；
 
-为了避免抄袭嫌疑，我当然不会重新使用mux协议来实现多路复用，而是自己设计一个传输协议。
+为了避免抄袭嫌疑，我当然不会重新使用mux协议来实现多路复用，而是自己设计一个传输协议。不过为了兼容现有客户端，我早晚还是要添加mux的支持，再说。
 
 
 实际上，我还在思索，为什么vless一定要放到tcp上呢，为什么一定要udp over tcp呢？不能仿照socks5，直接在udp上传呢？也许是为了防探测吧，毕竟正常网页浏览的流量都是tcp的。但是实际上，完全可以伪装成 迅雷下载或者微信视频流这种。也有人说可能是怕udp限流、QOS等，所以才出现的hysteria吧。
@@ -110,7 +110,7 @@ xray的 vless的mux的fullcone的办法是，在vless里包一个mux协议，然
 
 那个单独的用于向客户端发送 “新远程地址链接” 的信道，是提前由 客户端主动向代理服务端建立好的一条信道。
 
-暂且称为 “未知udp地址的信息的接收信道” "a channel that receives udp messages from unknown remote source"
+暂且称为 “未知udp地址的信息的接收信道”, "a channel that receives udp messages from unknown remote source"
 
 我这里简称 "CRUMFURS"（信道）. 该特殊信息称为 "UMFURS" （信息） 
 

@@ -20,7 +20,7 @@ func init() {
 	proxy.RegisterClient(Name, &ClientCreator{})
 }
 
-//实现 proxy.UserClient
+//实现 proxy.UserClient，以及 netLayer.UDP_Putter
 type Client struct {
 	proxy.ProxyCommonStruct
 
@@ -55,13 +55,15 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	c := &Client{
 		user: id,
 	}
+
+	c.knownUDPDestinations = make(map[string]io.ReadWriter)
+	c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
+
 	v := dc.Version
 	if v >= 0 {
 
 		if v == 1 {
 			c.version = 1
-			c.knownUDPDestinations = make(map[string]io.ReadWriter)
-			c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
 		}
 
 	}
@@ -79,6 +81,8 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	c := &Client{
 		user: id,
 	}
+	c.knownUDPDestinations = make(map[string]io.ReadWriter)
+	c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
 
 	vStr := url.Query().Get("version")
 	if vStr != "" {
@@ -86,8 +90,6 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 		if err == nil {
 			if v == 1 {
 				c.version = 1
-				c.knownUDPDestinations = make(map[string]io.ReadWriter)
-				c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
 			}
 		}
 	}
@@ -105,7 +107,7 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	var err error
 
 	if underlay == nil {
-		underlay, err = target.Dial()
+		underlay, err = target.Dial() //不建议传入underlay为nil，因为这里dial处于裸奔状态
 		if err != nil {
 			return nil, err
 		}
@@ -176,14 +178,13 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	}, err
 }
 
-// 注意调用此方法前要判断是否是v1
 func (c *Client) GetNewUDPResponse() (*net.UDPAddr, []byte, error) {
-	x := <-c.udpResponseChan //由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充
+	x := <-c.udpResponseChan //v1的话，由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充；v0的话，由 WriteUDPRequest 填充
 	return x.Addr, x.Data, nil
 }
 
-// 注意调用此方法前要判断是否是v1
-func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
+//一般由socks5或者透明代理等地方 获取到 udp请求后，被传入这里
+func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte, dialFunc func(targetAddr *netLayer.Addr) (io.ReadWriter, error)) (err error) {
 
 	astr := a.String()
 
@@ -193,13 +194,15 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte) (err error) {
 
 	if knownConn == nil {
 
-		//这里调用 c.Handshake，会自动帮我们拨号代理节点CmdUDP
+		knownConn, err = dialFunc(netLayer.NewAddrFromUDPAddr(a))
+		if err != nil || knownConn == nil {
+			return utils.NewErr("vless WriteUDPRequest, err when creating an underlay", err)
+		}
+		//这里原来的代码是调用 c.Handshake，会自动帮我们拨号代理节点CmdUDP
 		// 但是似乎有问题，因为不应该由client自己拨号vless，因为我们还有上层的tls;
 		// 自己拨号的话，那就是裸奔状态
-		knownConn, err = c.Handshake(nil, netLayer.NewAddrFromUDPAddr(a))
-		if err != nil {
-			return err
-		}
+		// 最新代码采用dialFunc的方式解决
+		//knownConn, err = c.Handshake(newUnderlay, netLayer.NewAddrFromUDPAddr(a))
 
 		c.mutex.Lock()
 		c.knownUDPDestinations[astr] = knownConn

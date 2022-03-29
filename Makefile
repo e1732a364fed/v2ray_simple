@@ -70,11 +70,8 @@ win10:
 
 
 clean:
-	rm -f $(linuxAmdFn)
-	rm -f $(linuxArmFn)
-	rm -f ${winFn}.exe
-	rm -f $(macFn)
-	rm -f $(macM1Fn)
+	rm -f verysimple
+	rm -f verysimple.exe
 	rm -f $(linuxAmdFn).tgz
 	rm -f $(linuxArmFn).tgz
 	rm -f ${winFn}.tgz

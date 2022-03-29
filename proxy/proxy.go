@@ -75,7 +75,7 @@ type ProxyCommon interface {
 
 	/////////////////// 网络层/传输层 ///////////////////
 
-	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是uds则是文件路径 ，
+	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是 unix domain socket 则是文件路径 ，
 	// 在server就是监听地址，在client就是拨号地址
 	AddrStr() string
 	SetAddrStr(string)

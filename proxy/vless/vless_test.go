@@ -1,4 +1,4 @@
-package vless
+package vless_test
 
 import (
 	"bytes"
@@ -52,7 +52,7 @@ func testVLess(version int, port string, t *testing.T) {
 				t.Logf("failed in accept: %v", err)
 				t.Fail()
 			}
-			t.Log("vless sever got new conn")
+			t.Log("vless server got new conn")
 			go func() {
 				defer lc.Close()
 				wlc, targetAddr, err := server.Handshake(lc)
@@ -139,7 +139,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 		t.FailNow()
 	}
 
-	thePort := 30002
+	thePort := netLayer.RandPort()
 
 	fakeRealUDPServerListener, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),

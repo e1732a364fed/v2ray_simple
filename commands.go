@@ -12,6 +12,10 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+const (
+	mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
+)
+
 var (
 	cmdPrintSupportedProtocols bool
 	cmdGenerateUUID            bool

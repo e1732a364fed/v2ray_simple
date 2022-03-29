@@ -3,8 +3,21 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 )
 
+//没啥特殊的
+type NumErr struct {
+	N      int
+	Prefix string
+}
+
+func (ne *NumErr) Error() string {
+
+	return ne.Prefix + strconv.Itoa(ne.N)
+}
+
+//就是带个buffer的普通ErrInErr，没啥特殊的
 type ErrFirstBuffer struct {
 	Err   error
 	First *bytes.Buffer

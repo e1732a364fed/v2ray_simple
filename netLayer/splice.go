@@ -18,7 +18,7 @@ type Splicer interface {
 	CanSplice() (bool, net.Conn) //当前状态是否可以splice
 }
 
-//这里认为能 splice 或 sendfile的 都算，具体可参考go标准代码的实现, 总之就是tcp和uds可以.
+//这里认为能 splice 或 sendfile的 都算，具体可参考go标准代码的实现, 总之就是tcp和 unix domain socket 可以.
 // 若不是基本Conn，则会试图转换为Splicer并获取底层Conn
 func CanSpliceDirectly(r any) bool {
 

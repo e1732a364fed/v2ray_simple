@@ -120,10 +120,10 @@ func NewAddrByURL(addrStr string) (*Addr, error) {
 	return a, nil
 }
 
-//会根据thing的类型 生成实际addr； 可以为数字端口，或者带冒号的字符串，或者一个 文件路径(uds)
+//会根据thing的类型 生成实际addr； 可以为数字端口，或者带冒号的字符串，或者一个 文件路径(unix domain socket)
 func NewAddrFromAny(thing any) (addr *Addr, err error) {
 	var integer int
-	var dest_type byte = 0 //0: port, 1: ip:port, 2: uds
+	var dest_type byte = 0 //0: port, 1: ip:port, 2: unix domain socket
 	var dest_string string
 
 	switch value := thing.(type) {
@@ -227,10 +227,6 @@ func (a *Addr) IsUDP() bool {
 }
 
 func (a *Addr) ToUDPAddr() *net.UDPAddr {
-	if !a.IsUDP() {
-		return nil
-	}
-
 	ua, err := net.ResolveUDPAddr("udp", a.String())
 	if err != nil {
 		return nil
@@ -264,6 +260,7 @@ func (addr *Addr) Dial() (net.Conn, error) {
 }
 
 // Returned address bytes and type
+// 如果atyp类型是 域名，则 第一字节为该域名的总长度, 其余字节为域名内容。
 func (a *Addr) AddressBytes() ([]byte, byte) {
 	var addr []byte
 	var atyp byte
@@ -293,7 +290,7 @@ func (a *Addr) AddressBytes() ([]byte, byte) {
 
 // ParseAddr 分析字符串，并按照特定方式返回 地址类型 atyp,地址数据 addr []byte,以及端口号,
 //   如果解析出的地址是ip，则 addr返回 net.IP;
-//  如果解析出的地址是 域名，则第一字节为AtypDomain, 剩余字节为域名内容
+//  如果解析出的地址是 域名，则第一字节为域名总长度, 剩余字节为域名内容
 func ParseStrToAddr(s string) (atyp byte, addr []byte, port_uint16 uint16, err error) {
 
 	var host string
