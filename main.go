@@ -831,15 +831,6 @@ afterLocalServerHandshake:
 func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriter, noCopy bool) (io.ReadWriter, error) {
 
 	if iics.shouldCloseBaseConnAfterCopyComplete && !noCopy {
-
-		/*
-			log.Println("iics.wrappedConn will close after", reflect.TypeOf(iics.wrappedConn))
-			defer func() {
-				log.Println("iics.wrappedConn called")
-				iics.wrappedConn.Close()
-				log.Println("iics.wrappedConn closed")
-			}()
-		*/
 		defer iics.wrappedConn.Close()
 	}
 

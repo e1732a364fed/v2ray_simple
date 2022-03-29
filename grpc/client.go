@@ -103,3 +103,25 @@ func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr) (ne
 	return newConn(stream_TunClient, nil), nil
 
 }
+
+// 即 可自定义服务名的 StreamClient
+type streamClient_withName interface {
+	StreamClient
+
+	tun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunClient, error)
+}
+
+//比照 protoc生成的 stream_grpc.pb.go 中的 Tun方法
+// 我们加一个 tun_withName 方法, 可以自定义服务名称, 该方法让 streamClient实现 streamClient_withName 接口
+func (c *streamClient) tun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunClient, error) {
+	//这里ctx不能为nil，否则会报错
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	stream, err := c.cc.NewStream(ctx, &ServerDesc_withName(name).Streams[0], "/"+name+"/Tun", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &streamTunClient{stream}
+	return x, nil
+}

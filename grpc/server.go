@@ -77,3 +77,27 @@ func NewServer(serviceName string) *Server {
 
 	return s
 }
+
+// ServerDesc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
+// 默认proto生成的 Stream_ServiceDesc 变量 的名称是固定的, 见 stream_grpc.pb.go 的最下方.
+func ServerDesc_withName(name string) grpc.ServiceDesc {
+	return grpc.ServiceDesc{
+		ServiceName: name,
+		HandlerType: (*StreamServer)(nil),
+		Methods:     []grpc.MethodDesc{},
+		Streams: []grpc.StreamDesc{
+			{
+				StreamName:    "Tun",
+				Handler:       _Stream_Tun_Handler,
+				ServerStreams: true,
+				ClientStreams: true,
+			},
+		},
+		Metadata: "gun.proto",
+	}
+}
+
+func registerStreamServer_withName(s *grpc.Server, srv StreamServer, name string) {
+	desc := ServerDesc_withName(name)
+	s.RegisterService(&desc, srv)
+}
