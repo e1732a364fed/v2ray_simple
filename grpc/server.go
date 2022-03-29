@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// google.golang.org/grpc.(*Server).handleRawConn
+// 我们通过特殊方式将 grpc的私有函数映射出来, 这样方便我们使用.
 //go:linkname handle_grpcRawConn google.golang.org/grpc.(*Server).handleRawConn
 func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 
@@ -48,7 +48,7 @@ func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 	}
 
 	tunCtx, cancel := context.WithCancel(s.ctx)
-	s.NewConnChan <- NewConn(stream_TunServer, cancel)
+	s.NewConnChan <- newConn(stream_TunServer, cancel)
 	<-tunCtx.Done()
 
 	// 这里需要一个 <-tunCtx.Done() 进行阻塞；只有当 子连接被Close的时候, Done 才能通过, 才意味着本次子连接结束.
@@ -73,7 +73,7 @@ func NewServer(serviceName string) *Server {
 		serviceName: serviceName,
 	}
 
-	RegisterStreamServer_withName(gs, s, serviceName)
+	registerStreamServer_withName(gs, s, serviceName)
 
 	return s
 }

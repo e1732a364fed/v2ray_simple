@@ -91,15 +91,15 @@ func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr) (ne
 	// 不像服务端需要自己写一个实现StreamServer接口的结构, 我们Client端直接可以调用函数生成 StreamClient
 	// 这也是grpc的特点, 客户端只负责 “调用“ ”service“，而具体的service的实现 是在服务端.
 
-	streamClient := NewStreamClient((*grpc.ClientConn)(clientconn)).(StreamClient_withName)
+	streamClient := NewStreamClient((*grpc.ClientConn)(clientconn)).(streamClient_withName)
 
-	stream_TunClient, err := streamClient.Tun_withName(nil, path)
+	stream_TunClient, err := streamClient.tun_withName(nil, path)
 	if err != nil {
 		clientconnMutex.Lock()
 		delete(clientconnMap, addr.GetHashable())
 		clientconnMutex.Unlock()
 		return nil, err
 	}
-	return NewConn(stream_TunClient, nil), nil
+	return newConn(stream_TunClient, nil), nil
 
 }
