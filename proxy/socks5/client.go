@@ -29,7 +29,7 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 		return
 	}
 	if n != 2 || ba[0] != Version5 || ba[1] != 0 {
-		return 0, &utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 1}
+		return 0, utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 1}
 	}
 
 	//请求udp associate 阶段
@@ -45,6 +45,8 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 	ba[8] = 0 //port
 	ba[9] = 0 //port
 	// 按理说要告诉服务端我们要用到的ip和端口，但是我们不知道，所以全填零
+	// 在内网中的话，我们是可以知道的，但是因为内网很安全所以无所谓；在NAT中我们肯定是不知道的。
+	// 如果是在纯外网中则是可以知道的，但是为啥非要socks5这么不安全的协议呢？所以还是不予考虑。
 
 	_, err = conn.Write(ba[:10])
 	if err != nil {
@@ -56,7 +58,7 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 		return
 	}
 	if n != 10 || ba[0] != Version5 || ba[1] != 0 || ba[2] != 0 || ba[3] != 1 || ba[4] != 0 || ba[5] != 0 || ba[6] != 0 || ba[7] != 0 {
-		return 0, &utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 2}
+		return 0, utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 2}
 	}
 
 	port = int(ba[8])<<8 | int(ba[9])
@@ -126,7 +128,7 @@ func Client_ReadUDPResponse(udpConn *net.UDPConn, supposedServerAddr *net.UDPAdd
 		return
 	}
 	if buf[0] != 0 || buf[1] != 0 || buf[2] != 0 {
-		e = &utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 1}
+		e = utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 1}
 		return
 	}
 	atype := buf[3]
@@ -149,7 +151,7 @@ func Client_ReadUDPResponse(udpConn *net.UDPConn, supposedServerAddr *net.UDPAdd
 		target.Name = string(nameBuf)
 
 	default:
-		e = &utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 2}
+		e = utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 2}
 		return
 	}
 

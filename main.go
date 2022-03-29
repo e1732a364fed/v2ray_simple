@@ -399,9 +399,8 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			for {
 				newGConn, ok := <-grpcs.NewConnChan
 				if !ok {
-					if utils.CanLogErr() {
-						log.Println("upgrade grpc not ok")
-
+					if utils.CanLogWarn() {
+						log.Println("grpc getNewSubConn not ok")
 					}
 
 					iics.baseLocalConn.Close()
@@ -706,35 +705,34 @@ afterLocalServerHandshake:
 				//	server也一样，会在特定的场合给 CRUMFURS 传值，这个机制是与main函数无关的
 
 				// 而且 wrappedConn 会被 inServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
-
 				return
 			} else {
 				//如果不是CRUMFURS命令，那就是普通的针对某udp地址的连接，见下文 uniExtractor 的使用
-				//defer wrappedConn.Close()
+
 				iics.shouldCloseBaseConnAfterCopyComplete = true
 			}
 
 		case "socks5":
-
 			// UDP Associate：
-			//
 			// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
 			// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
-
 			//但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
-
 		default:
-			//defer wrappedConn.Close()
 			iics.shouldCloseBaseConnAfterCopyComplete = true
 
 		}
 	} else {
-		if !(iics.isTlsLazyServerEnd) {
 
-			//lazy_encrypt情况比较特殊
-			// 如果不是lazy的情况的话，转发结束后，要自动关闭
-			//defer wrappedConn.Close()
-			iics.shouldCloseBaseConnAfterCopyComplete = true
+		//lazy_encrypt情况比较特殊，基础连接何时被关闭会在tlslazy相关代码中处理。
+		// 如果不是lazy的情况的话，转发结束后，要自动关闭
+		if !iics.isTlsLazyServerEnd {
+
+			//实测 grpc.Conn 被调用了Close 也不会实际关闭连接，而是会卡住，阻塞，直到底层tcp连接被关闭后才会返回
+			// 但是我们还是 直接避免这种情况
+			if !inServer.IsMux() {
+				iics.shouldCloseBaseConnAfterCopyComplete = true
+
+			}
 
 		}
 
@@ -742,7 +740,7 @@ afterLocalServerHandshake:
 
 	// 下面一段代码 单独处理 udp承载数据的特殊转发。
 	//
-	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发到vless v1的情况;
+	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发到vless 的情况;
 	// 如果条件不符合则会跳过而进入下一阶段
 	if targetAddr.IsUDP() {
 
@@ -791,11 +789,11 @@ afterLocalServerHandshake:
 
 			// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
 
-			//direct 和 vless 都实现了 UDP_Putter.
+			//direct 和 vless 的Client 都实现了 UDP_Putter.
 
-			// direct 实现了 UDP_Putter (通过 UDP_Pipe和 RelayUDP_to_Direct函数), 所以目前 socks5直接转发udp到direct 的功能 已经实现。
+			// direct 通过 UDP_Pipe和 RelayUDP_to_Direct函数 实现了 UDP_Putter
 
-			// 我在 vless 的client 的 UserConn 中实现了 UDP_Putter, 新连接的Handshake过程会在 dialFunc 被调用 时发生
+			// vless 的client 实现了 UDP_Putter, 新连接的Handshake过程会在 dialFunc 被调用 时发生
 
 			if putter := client.(netLayer.UDP_Putter); putter != nil {
 
@@ -818,6 +816,9 @@ afterLocalServerHandshake:
 
 	}
 
+	////////////////////////////// 拨号阶段 /////////////////////////////////////
+
+	//log.Println("will dial", iics.shouldCloseBaseConnAfterCopyComplete)
 	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, false)
 }
 
@@ -830,11 +831,19 @@ afterLocalServerHandshake:
 func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriter, noCopy bool) (io.ReadWriter, error) {
 
 	if iics.shouldCloseBaseConnAfterCopyComplete && !noCopy {
+
+		/*
+			log.Println("iics.wrappedConn will close after", reflect.TypeOf(iics.wrappedConn))
+			defer func() {
+				log.Println("iics.wrappedConn called")
+				iics.wrappedConn.Close()
+				log.Println("iics.wrappedConn closed")
+			}()
+		*/
 		defer iics.wrappedConn.Close()
 	}
 
 	var err error
-	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	//先确认拨号地址
 
@@ -847,7 +856,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 			log.Println("request isn't the appointed domain", targetAddr, uniqueTestDomain)
 
 		}
-		return nil, &utils.NumErr{N: 1, Prefix: "dialClient err, "}
+		return nil, utils.NumErr{N: 1, Prefix: "dialClient err, "}
 	}
 
 	if utils.CanLogInfo() {
@@ -890,7 +899,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 			log.Println("failed in dial", realTargetAddr.String(), ", Reason: ", err)
 
 		}
-		return nil, &utils.NumErr{N: 2, Prefix: "dialClient err, "}
+		return nil, utils.NumErr{N: 2, Prefix: "dialClient err, "}
 	}
 
 	//log.Println("dial real addr ok", realTargetAddr)
@@ -912,7 +921,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 
 				}
 
-				return nil, &utils.NumErr{N: 3, Prefix: "dialClient err, "}
+				return nil, utils.NumErr{N: 3, Prefix: "dialClient err, "}
 
 			} else {
 				clientEndRemoteClientTlsRawReadRecorder = tlsLayer.NewRecorder()
@@ -925,7 +934,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
 		if err != nil {
 			log.Println("failed in handshake outClient tls", targetAddr.String(), ", Reason: ", err)
-			return nil, &utils.NumErr{N: 4, Prefix: "dialClient err, "}
+			return nil, utils.NumErr{N: 4, Prefix: "dialClient err, "}
 		}
 
 		clientConn = tlsConn
@@ -950,7 +959,7 @@ advLayerStep:
 						iics.baseLocalConn.Close()
 
 					}
-					return nil, &utils.NumErr{N: 5, Prefix: "dialClient err, "}
+					return nil, utils.NumErr{N: 5, Prefix: "dialClient err, "}
 				}
 
 			}
@@ -960,11 +969,14 @@ advLayerStep:
 				if utils.CanLogErr() {
 					log.Println("grpc.DialNewSubConn failed,", err)
 
+					//如果底层tcp连接被关闭了的话，错误会是：
+					// rpc error: code = Unavailable desc = connection error: desc = "transport: failed to write client preface: tls: use of closed connection"
+
 				}
 				if iics.baseLocalConn != nil {
 					iics.baseLocalConn.Close()
 				}
-				return nil, &utils.NumErr{N: 6, Prefix: "dialClient err, "}
+				return nil, utils.NumErr{N: 6, Prefix: "dialClient err, "}
 			}
 
 		case "ws":
@@ -981,7 +993,7 @@ advLayerStep:
 					if utils.CanLogErr() {
 						log.Println("err when reading ws early data", e)
 					}
-					return nil, &utils.NumErr{N: 7, Prefix: "dialClient err, "}
+					return nil, utils.NumErr{N: 7, Prefix: "dialClient err, "}
 				}
 				ed = edBuf[:n]
 				//log.Println("will send early data", n, ed)
@@ -1007,7 +1019,7 @@ advLayerStep:
 					log.Println("failed in handshake ws to", targetAddr.String(), ", Reason: ", err)
 
 				}
-				return nil, &utils.NumErr{N: 8, Prefix: "dialClient err, "}
+				return nil, utils.NumErr{N: 8, Prefix: "dialClient err, "}
 			}
 
 			clientConn = wc
@@ -1022,7 +1034,7 @@ advLayerStep:
 			log.Println("failed in handshake to", targetAddr.String(), ", Reason: ", err)
 
 		}
-		return nil, &utils.NumErr{N: 9, Prefix: "dialClient err, "}
+		return nil, utils.NumErr{N: 9, Prefix: "dialClient err, "}
 	}
 	//log.Println("all handshake finished")
 
@@ -1041,7 +1053,7 @@ advLayerStep:
 				//必须是 UserClient
 				if userClient := client.(proxy.UserClient); userClient != nil {
 					tryTlsLazyRawCopy(false, userClient, nil, nil, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
-					return nil, &utils.NumErr{N: 11, Prefix: "dialClient err, "}
+					return nil, utils.NumErr{N: 11, Prefix: "dialClient err, "}
 				}
 			}
 
@@ -1052,7 +1064,7 @@ advLayerStep:
 
 			if userServer, ok := iics.inServer.(proxy.UserServer); ok {
 				tryTlsLazyRawCopy(false, nil, userServer, nil, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
-				return nil, &utils.NumErr{N: 12, Prefix: "dialClient err, "}
+				return nil, utils.NumErr{N: 12, Prefix: "dialClient err, "}
 			}
 
 		}

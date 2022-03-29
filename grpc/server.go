@@ -9,8 +9,8 @@ import (
 )
 
 // google.golang.org/grpc.(*Server).handleRawConn
-//go:linkname HandleRawConn google.golang.org/grpc.(*Server).handleRawConn
-func HandleRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
+//go:linkname handle_grpcRawConn google.golang.org/grpc.(*Server).handleRawConn
+func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 
 //Server实现 grpc生成的 StreamServer 接口，用于不断处理一个客户端传来的新需求
 type Server struct {
@@ -25,15 +25,17 @@ type Server struct {
 }
 
 //  StartHandle方法 被用于 手动给 grpc提供新连接.
-// 在本作中  我们不使用 grpc的listen的方法。
-//非阻塞,
+// 在本作中  我们不使用 grpc的listen的方法。这样更加灵活.
+//非阻塞.
 func (s *Server) StartHandle(conn net.Conn) {
 
 	//非阻塞，因为 grpc.(*Server).handleRawConn 是非阻塞的，里面用了新的goroutine
-	HandleRawConn(s.gs, "", conn)
+	handle_grpcRawConn(s.gs, "", conn)
 }
 
 // 该 Tun方法会被 grpc包调用, stream_TunServer就是获取到的新连接;
+// 实际上就是在 handle_grpcRawConn 后, 每一条客户端发来的子连接 都会调用一次 s.Tun .
+//
 // 我们把该 stream_TunServer 包装成 net.Conn 并传入 NewConnChan
 // 该方法是自动调用的, 我们不用管.
 func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
@@ -66,7 +68,7 @@ func NewServer(serviceName string) *Server {
 	newConnChan := make(chan net.Conn, 10)
 
 	s := &Server{
-		NewConnChan: newConnChan,
+		NewConnChan: newConnChan, //该NewConnChan目前是永远不会被关闭的, 因为我们始终在监听新连接
 		gs:          gs,
 		serviceName: serviceName,
 	}

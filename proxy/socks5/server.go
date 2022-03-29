@@ -164,7 +164,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, er
 			Network: "udp",
 		}
 
-		//这里为了解析域名, 就是用了用 netLayer.Addr 作为中介的方式
+		//这里为了解析域名, 就用了 netLayer.Addr 作为中介的方式
 		uc := &UDPConn{
 			clientSupposedAddr: clientFutureAddr.ToUDPAddr(),
 			UDPConn:            udpRC,
@@ -243,6 +243,7 @@ func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 // 监听 与客户端的udp连接 (u.UDPConn)；循环查看客户端发来的请求信息;
 // 然后将该请求 用 udpPutter.WriteUDPRequest 发送给 udpPutter
 //	至于fullcone与否它是不管的。
+// 如果客户端一开始没有指明自己连接本服务端的ip和端口, 则将第一个发来的正确的socks5请求视为该客户端,并记录。
 func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(targetAddr *netLayer.Addr) (io.ReadWriter, error)) {
 
 	var clientSupposedAddrIsNothing bool
@@ -269,11 +270,14 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 			continue
 		}
 
-		if !clientSupposedAddrIsNothing && (!addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port) {
+		if !clientSupposedAddrIsNothing {
 
-			//just random attack message.
-			continue
+			if !addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port {
 
+				//just random attack message.
+				continue
+
+			}
 		}
 
 		atyp := bs[3]
@@ -322,7 +326,8 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 
 		newStart := off + l
 
-		thisaddr := &netLayer.Addr{
+		//为了解析域名, 我们用 netLayer.Addr 作为中介.
+		requestAddr := &netLayer.Addr{
 			IP:      theIP,
 			Name:    theName,
 			Port:    thePort,
@@ -336,7 +341,7 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 
 		//log.Println("socks5 server,StartReadRequest, got msg", thisaddr, string(bs[newStart:n]))
 
-		udpPutter.WriteUDPRequest(thisaddr.ToUDPAddr(), bs[newStart:n], dialFunc)
+		udpPutter.WriteUDPRequest(requestAddr.ToUDPAddr(), bs[newStart:n], dialFunc)
 
 	}
 }
