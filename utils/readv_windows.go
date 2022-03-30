@@ -28,6 +28,14 @@ func (r *windowsReader) Clear() {
 	r.bufs = r.bufs[:0]
 }
 
+func (r *windowsReader) Recover(bsLen int, bs [][]byte) {
+	r.bufs = r.bufs[:len(bs)]
+
+	for idx := range r.bufs {
+		r.bufs[idx].Buf = &(bs[idx][0])
+	}
+}
+
 func (r *windowsReader) Read(fd uintptr) (uint32, error) {
 	var nBytes uint32
 	var flags uint32

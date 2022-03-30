@@ -47,7 +47,7 @@ func (s *Server) Name() string { return Name }
 // 参考 https://studygolang.com/articles/31404
 
 // 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn.StartReadRequest 处理
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		return nil, nil, err

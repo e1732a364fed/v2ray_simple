@@ -148,9 +148,11 @@ func ClassicReadFrom(w io.Writer, r io.Reader) (written int64, err error) {
 	buf := utils.GetPacket()
 	defer utils.PutPacket(buf)
 	for {
+
 		nr, er := r.Read(buf)
 		if nr > 0 {
 			nw, ew := w.Write(buf[0:nr])
+
 			if nw < 0 || nr < nw {
 				nw = 0
 				if ew == nil {

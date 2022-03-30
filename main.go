@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/grpc"
@@ -59,9 +60,13 @@ var (
 
 	routePolicy  *netLayer.RoutePolicy
 	mainFallback *httpLayer.ClassicFallback
+
+	startPProf bool
 )
 
 func init() {
+
+	flag.BoolVar(&startPProf, "pp", false, "pprof")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -86,9 +91,18 @@ func isFlagPassed(name string) bool {
 }
 
 func main() {
+
 	printVersion()
 
 	flag.Parse()
+
+	if startPProf {
+		f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
+		defer f.Close()
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+
+	}
 
 	utils.AdjustBufSize()
 
@@ -120,6 +134,9 @@ func main() {
 
 	fmt.Println("Log Level:", utils.LogLevel)
 	fmt.Println("UseReadv:", netLayer.UseReadv)
+	if utils.CanLogDebug() {
+		fmt.Println("MaxBufSize", utils.MaxBufLen)
+	}
 
 	runPreCommands()
 
@@ -526,7 +543,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	inServer := iics.inServer
 
-	var wlc io.ReadWriter
+	var wlc io.ReadWriteCloser
 	var targetAddr *netLayer.Addr
 	var err error
 
@@ -869,10 +886,12 @@ afterLocalServerHandshake:
 //client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
 // noCopy是为了让其它调用者自行处理 转发 时使用。
-func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriter, noCopy bool) (io.ReadWriter, error) {
+func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, noCopy bool) (io.ReadWriter, error) {
 
 	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
-		defer iics.wrappedConn.Close()
+		if iics.baseLocalConn != nil {
+			defer iics.baseLocalConn.Close()
+		}
 	}
 
 	var err error
@@ -1131,26 +1150,7 @@ advLayerStep:
 
 	if utils.CanLogDebug() {
 
-		if netLayer.UseReadv {
-			go func() {
-				n, e := netLayer.TryCopy(wrc, wlc)
-				log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
-			}()
-
-			n, e := netLayer.TryCopy(wlc, wrc)
-			log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
-
-		} else {
-
-			go func() {
-				n, e := io.Copy(wrc, wlc)
-				log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
-			}()
-			n, e := io.Copy(wlc, wrc)
-
-			log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
-
-		}
+		netLayer.DebugRelay(realTargetAddr, wrc, wlc)
 
 	} else {
 		netLayer.Relay(wlc, wrc)

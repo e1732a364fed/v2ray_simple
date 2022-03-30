@@ -19,6 +19,7 @@ type SystemReadver interface {
 	Init(bs [][]byte, singleBufLen int) //将 给出的buffer 放入内部实际数据中
 	Read(fd uintptr) (uint32, error)    //读取一次文件，并放入 buffer中
 	Clear()                             //清理内部buffer
+	Recover(bsLen int, bs [][]byte)     //恢复内部buffer
 }
 
 // 因为 net.Buffers 的 WriteTo方法只会查看其是否实现了net包私有的 writeBuffers 接口
@@ -134,7 +135,7 @@ func MergeBuffers(bs [][]byte) (result []byte, duplicate bool) {
 		result = GetPacket()
 
 	} else {
-		result = make([]byte, allLen) //实际目前的readv实现也很难出现这种情况, 默认16个1500是不会出这种情况的
+		result = make([]byte, allLen) //实际目前的readv实现也很难出现这种情况
 	}
 
 	cursor := 0

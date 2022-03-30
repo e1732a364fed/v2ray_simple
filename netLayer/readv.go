@@ -74,13 +74,25 @@ func newReadvMem() any {
 }
 
 func get_readvMem() *readvMem {
-	return readvPool.Get().(*readvMem)
+	rm := readvPool.Get().(*readvMem)
+	if rm.mr == nil {
+		rm.mr = utils.GetReadVReader()
+		rm.mr.Init(rm.buffers, ReadvSingleBufLen)
+	} else {
+		rm.mr.Recover(readv_buffer_allocLen, rm.buffers)
+
+	}
+	return rm
 }
 
 //将创建好的rm放回 readvPool
 func put_readvMem(rm *readvMem) {
+
 	rm.buffers = utils.RecoverBuffers(rm.buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+	rm.mr.Clear()
+	rm.mr = nil
 	readvPool.Put(rm)
+
 }
 
 /*

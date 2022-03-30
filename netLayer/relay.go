@@ -19,8 +19,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var isWriteConn_a_MultiWriter bool
 	var isWriteConnBasic bool
 
-	var readv_mem *readvMem
-
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 	}
@@ -72,13 +70,13 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
 	}
 
-	readv_mem = get_readvMem()
-	defer put_readvMem(readv_mem)
-
 	for {
+		readv_mem := get_readvMem()
 		var buffers net.Buffers
+
 		buffers, err = readvFrom(rawConn, readv_mem)
 		if err != nil {
+			put_readvMem(readv_mem)
 			return
 		}
 		var thisWriteNum int64
@@ -108,10 +106,12 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		allnum += thisWriteNum
 		if writeErr != nil {
 			err = writeErr
+			put_readvMem(readv_mem)
 			return
 		}
 
-		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+		//buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+		put_readvMem(readv_mem)
 
 	}
 classic:
@@ -184,14 +184,36 @@ classic:
 // 返回从 conn1读取 写入到 conn2的数据
 // UseReadv==true 时 内部使用 TryCopy 进行拷贝
 // 会自动优选 splice，readv，不行则使用经典拷贝
-func Relay(conn1, conn2 io.ReadWriter) (int64, error) {
+func Relay(wrc, wlc io.ReadWriteCloser) {
+	go func() {
+		TryCopy(wrc, wlc)
 
-	if UseReadv {
-		go TryCopy(conn1, conn2)
-		return TryCopy(conn2, conn1)
+		wlc.Close()
+		wrc.Close()
 
-	} else {
-		go io.Copy(conn1, conn2)
-		return io.Copy(conn2, conn1)
-	}
+	}()
+
+	TryCopy(wlc, wrc)
+
+	wlc.Close()
+	wrc.Close()
+
+}
+
+func DebugRelay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
+	go func() {
+		n, e := TryCopy(wrc, wlc)
+		log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+
+		wlc.Close()
+		wrc.Close()
+
+	}()
+
+	n, e := TryCopy(wlc, wrc)
+	log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+
+	wlc.Close()
+	wrc.Close()
+
 }

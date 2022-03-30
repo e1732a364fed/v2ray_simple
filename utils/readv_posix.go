@@ -45,3 +45,11 @@ func (r *posixReader) Clear() {
 	}
 	r.iovecs = r.iovecs[:0]
 }
+
+func (r *posixReader) Recover(bsLen int, bs [][]byte) {
+	r.iovecs = r.iovecs[:len(bs)]
+
+	for idx := range r.iovecs {
+		r.iovecs[idx].Base = &(bs[idx][0])
+	}
+}

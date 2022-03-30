@@ -133,7 +133,7 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 func (s *Server) Name() string { return Name }
 
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		return nil, nil, err

@@ -40,7 +40,7 @@ type Client interface {
 
 	// Handshake的 underlay有可能传入nil，所以要求 所有的 Client 都要能够自己dial
 	// 不过目前暂时全在main函数里dial
-	Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriter, error)
+	Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriteCloser, error)
 }
 
 // Server 用于监听 客户端 的连接.
@@ -50,7 +50,7 @@ type Client interface {
 type Server interface {
 	ProxyCommon
 
-	Handshake(underlay net.Conn) (io.ReadWriter, *netLayer.Addr, error)
+	Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error)
 }
 
 // FullName 可以完整表示 一个 代理的 VSI 层级.
