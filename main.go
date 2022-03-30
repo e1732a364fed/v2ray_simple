@@ -798,7 +798,7 @@ afterLocalServerHandshake:
 
 	// 下面一段代码 单独处理 udp承载数据的特殊转发。
 	//
-	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发到vless 的情况;
+	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发 的情况;
 	// 如果条件不符合则会跳过而进入下一阶段
 	if targetAddr.IsUDP() {
 

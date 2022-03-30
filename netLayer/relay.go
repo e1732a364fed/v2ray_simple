@@ -14,11 +14,12 @@ import (
 //会接连尝试 splice、循环readv 以及 原始Copy方法
 func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
 	var multiWriter utils.MultiWriter
+	var buffers net.Buffers
 
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
 	var isWriteConnBasic bool
-
+	var readv_mem *readvMem
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 	}
@@ -69,14 +70,13 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	if !isWriteConnBasic {
 		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
 	}
-
+	readv_mem = get_readvMem()
+	defer put_readvMem(readv_mem)
 	for {
-		readv_mem := get_readvMem()
-		var buffers net.Buffers
 
 		buffers, err = readvFrom(rawConn, readv_mem)
 		if err != nil {
-			put_readvMem(readv_mem)
+
 			return
 		}
 		var thisWriteNum int64
@@ -106,12 +106,12 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		allnum += thisWriteNum
 		if writeErr != nil {
 			err = writeErr
-			put_readvMem(readv_mem)
+			//put_readvMem(readv_mem)
 			return
 		}
 
-		//buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
-		put_readvMem(readv_mem)
+		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+		//put_readvMem(readv_mem)
 
 	}
 classic:
