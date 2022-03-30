@@ -1,0 +1,36 @@
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10800
+
+
+[[dial]]
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "127.0.0.1"
+port = 4434
+version = 0
+insecure = true
+utls = true
+advancedLayer = "quic"
+
+#alpn = ["asdfsadf"]    # 如果alpn没指定，则会自动使用 "h3"作为alpn，quic包的限制，导致必须指定一个alpn
+
+# 只要 advancedLayer 设成了quic，network 就会自动被配置为udp，所以不需手动指定udp
+
+# 同时，因为quic的限制，一旦  advancedLayer 设成了quic， 你就必须要保证tls是开启的状态，
+#  要不就是在 vless 后面加个s变成 vlesss, 要不就明确指出 tls = true
+
+# tls = true
+
+# 我们可以选择性使用 “hysteria 阻塞控制” 方法, 但是协议依然为quic协议。具体请参考本作作者对hysteria的讨论
+# 不想用hy阻控的话就注释掉. 
+extra = { congestion_control = "hy", mbps = 3000 } 
+
+#因为我们不使用hysteria协议头，所以不用单独标注 上行流量和下行流量, 因为我们不与服务端协商
+# 我们这里统一是上行。因为只有发送方 可以控制这个阻塞控制速度的 参数
+# 这里我们配置为所在网络最大上传带宽即可.
+
+# 比如我们client.toml里配置 那就是 【客户端的最大上传速度、服务端的最大下载速度】的最小值，server.toml里配置对我们客户端来说就是 【客户端的最大下载速度、服务端的最大上传速度】的最小值.
+
+# 实测似乎mac上quic最大的网速就只能够达到 1400mbps左右，配置再大的数也没用

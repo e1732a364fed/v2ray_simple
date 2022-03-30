@@ -1,0 +1,18 @@
+[[listen]]
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "0.0.0.0"
+port = 4434
+version = 0
+insecure = true
+fallback = ":80"
+cert = "cert.pem"
+key = "cert.key"
+advancedLayer = "quic"
+#alpn = ["asdfsadf"]    #如果指定alpn，则客户端和服务端都要指定，而且要相同
+
+extra = { congestion_control = "hy", mbps = 3000 } 
+
+[[dial]]
+protocol = "direct"
+

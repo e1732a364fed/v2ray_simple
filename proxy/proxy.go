@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -10,7 +11,9 @@ import (
 	"github.com/hahahrfool/v2ray_simple/grpc"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
 )
 
@@ -60,12 +63,11 @@ func GetFullName(pc ProxyCommon) string {
 
 // return GetFullName(pc) + "://" + pc.AddrStr()
 func GetVSI_url(pc ProxyCommon) string {
-
 	return GetFullName(pc) + "://" + pc.AddrStr()
-
 }
 
-// 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端
+// 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端.
+//
 // 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息;
 type ProxyCommon interface {
 	Name() string       //代理协议名称, 如vless
@@ -76,7 +78,7 @@ type ProxyCommon interface {
 	/////////////////// 网络层/传输层 ///////////////////
 
 	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是 unix domain socket 则是文件路径 ，
-	// 在server就是监听地址，在client就是拨号地址
+	// 在 inServer就是监听地址，在 outClient就是拨号地址
 	AddrStr() string
 	SetAddrStr(string)
 	Network() string
@@ -93,7 +95,14 @@ type ProxyCommon interface {
 	// quic就属于这种接管底层协议的“超级协议”, 可称之为 SuperProxy。
 	IsHandleInitialLayers() bool
 
-	StarthandleInitialLayers() (newConnChan chan net.Conn, baseConn net.Conn)
+	// 在IsHandleInitialLayers时可用， 用于 inServer
+	HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any)
+
+	// 在IsHandleInitialLayers时可用， 用于 outClient
+	DialCommonInitialLayerConnFunc() func(serverAddr *netLayer.Addr) any
+
+	// 在IsHandleInitialLayers时可用， 用于 outClient
+	DialSubConnFunc() func(any) (net.Conn, error)
 
 	/////////////////// TLS层 ///////////////////
 
@@ -143,12 +152,63 @@ type ProxyCommon interface {
 	setDialConf(*DialConf)     //for outClient
 
 	setPath(string)
+
+	setFunc(index int, thefunc any)
 }
 
 //use dc.Host, dc.Insecure, dc.Utls
+// 如果用到了quic，还会直接配置quic的client的所有设置.
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	alpnList := dc.Alpn
-	if com.AdvancedLayer() == "grpc" {
+	switch com.AdvancedLayer() {
+	case "quic":
+
+		com.setNetwork("udp")
+		var useHysteria bool
+		var maxbyteCount int
+
+		if dc.Extra != nil {
+			if thing := dc.Extra["congestion_control"]; thing != nil {
+				if use, ok := thing.(string); ok && use == "hy" {
+					useHysteria = true
+
+					if thing := dc.Extra["mbps"]; thing != nil {
+						if mbps, ok := thing.(int64); ok && mbps > 1 {
+							maxbyteCount = int(mbps) * 1024 * 1024 / 8
+
+							log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
+						}
+					} else {
+						log.Println("Using Hysteria Congestion Control, max upload mbps: 3000mbps")
+					}
+				}
+			}
+
+		}
+
+		com.setFunc(proxyCommonStruct_setfunc_DialCommonInitialLayerConn, func(serverAddr *netLayer.Addr) any {
+
+			na, e := netLayer.NewAddr(com.AddrStr())
+			if e != nil {
+				log.Fatalln("prepareTLS_forClient,quic,netLayer.NewAddr err: ", e)
+			}
+			return quic.DialCommonInitialLayer(na, &tls.Config{
+				InsecureSkipVerify: dc.Insecure,
+				ServerName:         dc.Host,
+				NextProtos:         quic.AlpnList,
+				//实测quic的服务端和客户端必须指定alpn, 否则quic客户端会报错
+				// CRYPTO_ERROR (0x178): ALPN negotiation failed. Server didn't offer any protocols
+			}, useHysteria, maxbyteCount)
+		})
+
+		com.setFunc(proxyCommonStruct_setfunc_DialSubConn, func(t any) (net.Conn, error) {
+
+			return quic.DialSubConn(t)
+		})
+
+		return nil //quic直接接管了tls，所以不执行下面步骤
+
+	case "grpc":
 		has_h2 := false
 		for _, a := range alpnList {
 			if a == httpLayer.H2_Str {
@@ -165,12 +225,61 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 }
 
 //use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure
+// 如果用到了quic，还会直接配置quic的server的所有设置.
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
 	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径
 
 	alpnList := lc.Alpn
-	if com.AdvancedLayer() == "grpc" {
+	switch com.AdvancedLayer() {
+	case "quic":
+
+		com.setNetwork("udp")
+
+		var useHysteria bool
+		var maxbyteCount int
+
+		if lc.Extra != nil {
+			if thing := lc.Extra["congestion_control"]; thing != nil {
+				if use, ok := thing.(string); ok && use == "hy" {
+					useHysteria = true
+
+					if thing := lc.Extra["mbps"]; thing != nil {
+						if mbps, ok := thing.(int64); ok && mbps > 1 {
+							maxbyteCount = int(mbps) * 1024 * 1024 / 8
+
+							log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
+
+						}
+					} else {
+
+						log.Println("Using Hysteria Congestion Control, max upload mbps: 3000mbps")
+
+					}
+
+				}
+			}
+
+		}
+
+		com.setFunc(proxyCommonStruct_setfunc_HandleInitialLayers, func() (newConnChan chan net.Conn, baseConn any) {
+
+			cert, err := tls.LoadX509KeyPair(utils.GetFilePath(lc.TLSCert), utils.GetFilePath(lc.TLSKey))
+			if err != nil {
+				return nil, err
+			}
+
+			return quic.ListenInitialLayers(com.AddrStr(), &tls.Config{
+				InsecureSkipVerify: lc.Insecure,
+				ServerName:         lc.Host,
+				Certificates:       []tls.Certificate{cert},
+				NextProtos:         quic.AlpnList,
+			}, useHysteria, maxbyteCount)
+
+		})
+
+		return nil //quic直接接管了tls，所以不执行下面步骤
+	case "grpc":
 		has_h2 := false
 		for _, a := range alpnList {
 			if a == httpLayer.H2_Str {
@@ -222,9 +331,10 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	return nil
 }
 
-// ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法
+// ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法.
 // 规定，所有的proxy都要内嵌本struct
-// 这是verysimple的架构所要求的。verysimple规定，在加载完配置文件后，一个listen和一个dial所使用的全部层级都是确定了的
+// 这是verysimple的架构所要求的。
+// verysimple规定，在加载完配置文件后，一个listen和一个dial所使用的全部层级都是确定了的.
 //  因为所有使用的层级都是确定的，就可以进行针对性优化
 type ProxyCommonStruct struct {
 	Addr    string
@@ -250,6 +360,10 @@ type ProxyCommonStruct struct {
 
 	grpc_s       *grpc.Server
 	FallbackAddr *netLayer.Addr
+
+	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
+	dialCommonConnFunc   func(serverAddr *netLayer.Addr) any
+	dialSubConnFunc      func(any) (net.Conn, error)
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
@@ -325,12 +439,39 @@ func (s *ProxyCommonStruct) CanFallback() bool {
 
 //return false. As a placeholder.
 func (s *ProxyCommonStruct) IsHandleInitialLayers() bool {
-	return false
+	return s.AdvancedL == "quic"
 }
 
 //return nil. As a placeholder.
-func (s *ProxyCommonStruct) StarthandleInitialLayers() (newConnChan chan net.Conn, baseConn net.Conn) {
-	return nil, nil
+func (s *ProxyCommonStruct) HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any) {
+	return s.listenCommonConnFunc
+}
+
+//return nil. As a placeholder.
+func (s *ProxyCommonStruct) DialCommonInitialLayerConnFunc() func(serverAddr *netLayer.Addr) any {
+	return s.dialCommonConnFunc
+}
+
+//return nil. As a placeholder.
+func (s *ProxyCommonStruct) DialSubConnFunc() func(any) (net.Conn, error) {
+	return s.dialSubConnFunc
+}
+
+const (
+	proxyCommonStruct_setfunc_HandleInitialLayers = iota
+	proxyCommonStruct_setfunc_DialCommonInitialLayerConn
+	proxyCommonStruct_setfunc_DialSubConn
+)
+
+func (s *ProxyCommonStruct) setFunc(index int, thefunc any) {
+	switch index {
+	case proxyCommonStruct_setfunc_HandleInitialLayers:
+		s.listenCommonConnFunc = thefunc.(func() (newConnChan chan net.Conn, baseConn any))
+	case proxyCommonStruct_setfunc_DialCommonInitialLayerConn:
+		s.dialCommonConnFunc = thefunc.(func(serverAddr *netLayer.Addr) any)
+	case proxyCommonStruct_setfunc_DialSubConn:
+		s.dialSubConnFunc = thefunc.(func(any) (net.Conn, error))
+	}
 }
 
 func (pcs *ProxyCommonStruct) setTLS_Server(s *tlsLayer.Server) {
@@ -359,7 +500,11 @@ func (s *ProxyCommonStruct) IsUseTLS() bool {
 }
 
 func (s *ProxyCommonStruct) IsMux() bool {
-	return s.AdvancedL == "grpc"
+	switch s.AdvancedL {
+	case "grpc", "quic":
+		return true
+	}
+	return false
 }
 
 func (s *ProxyCommonStruct) SetUseTLS() {

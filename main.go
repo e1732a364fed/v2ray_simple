@@ -14,6 +14,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/grpc"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
@@ -229,35 +230,54 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 	//quic
 	if inServer.IsHandleInitialLayers() {
-		newConnChan, baseConn := inServer.StarthandleInitialLayers()
-		if newConnChan == nil || baseConn == nil {
+		//如果像quic一样自行处理传输层至tls层之间的部分，则我们跳过 handleNewIncomeConnection 函数
+		// 拿到连接后直接调用 handshakeInserver_and_passToOutClient
+
+		handleFunc := inServer.HandleInitialLayersFunc()
+		if handleFunc == nil {
+			log.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
+		}
+
+		newConnChan, baseConn := handleFunc()
+		if newConnChan == nil {
+			//baseConn可以为nil，quic就是如此
 			if utils.CanLogErr() {
 				log.Println("StarthandleInitialLayers can't extablish baseConn")
 			}
 			return
 		}
 
-		for {
-			newConn, ok := <-newConnChan
-			if !ok {
-				if utils.CanLogErr() {
-					log.Println("read from SuperProxy not ok")
+		go func() {
+			for {
+				newConn, ok := <-newConnChan
+				if !ok {
+					if utils.CanLogErr() {
+						log.Println("read from SuperProxy not ok")
 
+					}
+
+					quic.CloseBaseConn(baseConn, "quic")
+
+					return
 				}
 
-				baseConn.Close()
-				return
+				iics := incomingInserverConnState{
+					wrappedConn: newConn,
+					//baseLocalConn: baseConn,	//quic是没有baseLocalConn的，因为基于udp
+					inServer:      inServer,
+					defaultClient: defaultOutClientForThis,
+				}
+
+				go handshakeInserver_and_passToOutClient(iics)
 			}
 
-			iics := incomingInserverConnState{
-				wrappedConn:   newConn,
-				baseLocalConn: baseConn,
-				inServer:      inServer,
-			}
+		}()
 
-			go handshakeInserver_and_passToOutClient(iics)
+		if utils.CanLogInfo() {
+			log.Println(proxy.GetFullName(inServer), "is listening ", inServer.Network(), "on", inServer.AddrStr())
+
 		}
-
+		return
 	}
 
 	handleFunc := func(conn net.Conn) {
@@ -310,7 +330,7 @@ type incomingInserverConnState struct {
 
 	isTlsLazyServerEnd bool
 
-	shouldCloseBaseConnAfterCopyComplete bool
+	shouldCloseInSerBaseConnWhenFinish bool
 
 	routedToDirect bool
 }
@@ -318,6 +338,8 @@ type incomingInserverConnState struct {
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
 func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn) {
+
+	//log.Println("handleNewIncomeConnection called", defaultClientForThis)
 
 	iics := incomingInserverConnState{
 		baseLocalConn: thisLocalConnectionInstance,
@@ -379,6 +401,9 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 	if adv := inServer.AdvancedLayer(); adv != "" {
 		switch adv {
+		//quic虽然也是adv层，但是因为根本没调用 handleNewIncomeConnection 函数，所以不在此处理
+		//
+
 		case "grpc":
 			//grpc不太一样, 它是多路复用的
 			// 每一条建立好的 grpc 可以随时产生对新目标的请求,
@@ -709,7 +734,7 @@ afterLocalServerHandshake:
 			} else {
 				//如果不是CRUMFURS命令，那就是普通的针对某udp地址的连接，见下文 uniExtractor 的使用
 
-				iics.shouldCloseBaseConnAfterCopyComplete = true
+				iics.shouldCloseInSerBaseConnWhenFinish = true
 			}
 
 		case "socks5":
@@ -718,7 +743,7 @@ afterLocalServerHandshake:
 			// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
 			//但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
 		default:
-			iics.shouldCloseBaseConnAfterCopyComplete = true
+			iics.shouldCloseInSerBaseConnWhenFinish = true
 
 		}
 	} else {
@@ -730,7 +755,7 @@ afterLocalServerHandshake:
 			//实测 grpc.Conn 被调用了Close 也不会实际关闭连接，而是会卡住，阻塞，直到底层tcp连接被关闭后才会返回
 			// 但是我们还是 直接避免这种情况
 			if !inServer.IsMux() {
-				iics.shouldCloseBaseConnAfterCopyComplete = true
+				iics.shouldCloseInSerBaseConnWhenFinish = true
 
 			}
 
@@ -818,7 +843,7 @@ afterLocalServerHandshake:
 
 	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
-	//log.Println("will dial", iics.shouldCloseBaseConnAfterCopyComplete)
+	//log.Println("will dial", client)
 	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, false)
 }
 
@@ -830,7 +855,7 @@ afterLocalServerHandshake:
 // noCopy时为了让其它调用者自行处理 转发 时使用。
 func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriter, noCopy bool) (io.ReadWriter, error) {
 
-	if iics.shouldCloseBaseConnAfterCopyComplete && !noCopy {
+	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
 		defer iics.wrappedConn.Close()
 	}
 
@@ -869,21 +894,33 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 	var clientConn net.Conn
 
 	var grpcClientConn grpc.ClientConn
+	var dailedCommonConn any
 
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
 	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接
 
-	if client.IsMux() {
-		if client.AdvancedLayer() == "grpc" {
-			grpcClientConn = grpc.GetEstablishedConnFor(realTargetAddr)
+	switch client.AdvancedLayer() {
+	case "grpc":
 
-			if grpcClientConn != nil {
-				//如果有已经建立好的连接，则跳过拨号阶段
-				goto advLayerStep
-			}
+		grpcClientConn = grpc.GetEstablishedConnFor(realTargetAddr)
+
+		if grpcClientConn != nil {
+			//如果有已经建立好的连接，则跳过拨号阶段
+			goto advLayerStep
 		}
+	case "quic":
+		//quic这里并不是在tls层基础上进行dial，而是直接dial
+		dailedCommonConn = client.DialCommonInitialLayerConnFunc()(realTargetAddr)
+		if dailedCommonConn != nil {
+			//如果有已经建立好的连接，则跳过拨号阶段
+			goto advLayerStep
+		} else {
+			//dail失败, 直接return掉
 
+			return nil, utils.NumErr{N: 13, Prefix: "dial quic Client err"}
+		}
 	}
+
 	clientConn, err = realTargetAddr.Dial()
 	if err != nil {
 		if utils.CanLogErr() {
@@ -938,6 +975,14 @@ advLayerStep:
 
 	if adv := client.AdvancedLayer(); adv != "" {
 		switch adv {
+		case "quic":
+			clientConn, err = client.DialSubConnFunc()(dailedCommonConn)
+			if err != nil {
+				if utils.CanLogErr() {
+					log.Println("DialSubConnFunc failed,", err)
+				}
+				return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
+			}
 		case "grpc":
 			if grpcClientConn == nil {
 				grpcClientConn, err = grpc.ClientHandshake(clientConn, realTargetAddr)

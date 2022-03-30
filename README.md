@@ -75,7 +75,7 @@ vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 
 另外上面说的是承载数据支持udp；我们协议的底层传输方式也是全面支持udp的。也就是说可以用udp传输vless数据，然后vless里面还可以传输 udp的承载数据。
 
-底层用udp传输的话，可以理解为 比 v2ray的mkcp传输方式 更低级的模式，直接用udp传输, 不加任何控制。所以可能丢包，不过肯定是更快的。
+底层用udp传输的话，可以理解为 比 v2ray的mkcp传输方式 更低级的模式，直接用udp传输, 不加任何控制。所以可能丢包,导致速度较差 且不稳定。
 
 **机场多级转发的情况，udp暂时verysimple是没法处理的，**
 
@@ -465,6 +465,11 @@ github.com/gobwas/ws v1.1.0
 gonum.org/v1/gonum v0.11.0
 google.golang.org/grpc v1.45.0
 github.com/miekg/dns v1.1.47
+github.com/lucas-clemente/quic-go
+github.com/tobyxdd/quic-go
 ```
 
 可能不全，详情可见 go.mod 文件
+
+为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
+

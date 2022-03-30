@@ -290,6 +290,11 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 
 	case "grpc":
 		ser.initGRPC_server()
+		//case "quic":
+
+		//因为quic接管了tls层, 而我们的configCommonForServer是在tls配置之前被调用的
+		// 所以不能在这里配置quic。本作直接在 prepareTLS_forServer 函数里配置 quic的所有配置
+
 	}
 
 	fallbackThing := lc.Fallback

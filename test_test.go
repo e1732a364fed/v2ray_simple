@@ -44,7 +44,7 @@ func TestDNSLookup_CN(t *testing.T) {
 */
 
 //经实测，dokodemo->vless->udp 来请求dns是毫无问题的。
-func TestUDP(t *testing.T) {
+func TestUDP_dokodemo(t *testing.T) {
 
 	const testClientConfStr = `
 [[listen]]
@@ -95,23 +95,23 @@ key = "cert.key"
 	//vless in
 	serverEndInServer, err := proxy.NewServer(serverConf.Listen[0])
 	if err != nil {
-		log.Fatalln("can not create local server: ", err)
+		log.Fatalln("can not create serverEndInServer: ", err)
 	}
 	// direct out
 	serverEndOutClient, err := proxy.NewClient(serverConf.Dial[0])
 	if err != nil {
-		log.Fatalln("can not create local server: ", err)
+		log.Fatalln("can not create serverEndOutClient: ", err)
 	}
 
 	//domodemo in
 	clientEndInServer, err := proxy.NewServer(clientConf.Listen[0])
 	if err != nil {
-		log.Fatalln("can not create local server: ", err)
+		log.Fatalln("can not create clientEndInServer: ", err)
 	}
 	// vless out
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
-		log.Fatalln("can not create local server: ", err)
+		log.Fatalln("can not create clientEndOutClient: ", err)
 	}
 
 	listenSer(clientEndInServer, clientEndOutClient)
@@ -123,11 +123,11 @@ key = "cert.key"
 
 	r, _, err := c.Exchange(m, "127.0.0.1:1080")
 	if r == nil {
-		log.Fatalln("*** error: ", err.Error())
+		log.Fatalln("error: ", err.Error())
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
-		log.Fatalln("*** err2 ", r.Rcode, r)
+		log.Fatalln("err2 ", r.Rcode, r)
 	}
 
 	for _, a := range r.Answer {

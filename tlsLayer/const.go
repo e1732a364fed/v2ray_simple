@@ -1,6 +1,3 @@
-/*
-Package tlsLayer 提供tls流量的基本嗅探功能
-*/
 package tlsLayer
 
 var etStrMap map[int]string
