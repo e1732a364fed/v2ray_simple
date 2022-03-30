@@ -10,7 +10,7 @@
 #
 # 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
 
-BUILD_VERSION   := v1.1.0.3
+BUILD_VERSION   := v1.1.1
 
 prefix          :=verysimple
 
