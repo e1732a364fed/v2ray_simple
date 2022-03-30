@@ -171,6 +171,7 @@ classic:
 	bs := utils.GetPacket()
 	n, e := readConn.Read(bs)
 	if e != nil {
+		utils.PutPacket(bs)
 		return 0, e
 	}
 	n, e = writeConn.Write(bs[:n])

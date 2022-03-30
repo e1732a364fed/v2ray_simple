@@ -262,10 +262,12 @@ func (uc *UserConn) Read(p []byte) (int, error) {
 				n, e := from.Read(bs)
 
 				if e != nil {
+					utils.PutPacket(bs)
 					return 0, e
 				}
 
 				if n < 2 {
+					utils.PutPacket(bs)
 					return 0, errors.New("vless response head too short")
 				}
 				n = copy(p, bs[2:n])

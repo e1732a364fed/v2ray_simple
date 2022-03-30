@@ -7,7 +7,7 @@ const (
 	Log_debug = iota
 	Log_info
 	Log_warning
-	Log_error
+	Log_error //error一般用于输出一些 连接错误或者客户端协议错误之类的, 但不致命
 	Log_fatal
 	//Log_off	//不支持不打印致命输出。既然致命我们一定要尸检然后查看病因啊
 

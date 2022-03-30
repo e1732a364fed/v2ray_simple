@@ -75,13 +75,29 @@ func init() {
 
 }
 
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
+}
+
 func main() {
 	printVersion()
 
 	flag.Parse()
 
-	cmdLL := utils.LogLevel
-	cmdUseReadv := netLayer.UseReadv
+	utils.AdjustBufSize()
+
+	ll_beforeLoadConfigFile := utils.LogLevel
+	usereadv_beforeLoadConfigFile := netLayer.UseReadv
+
+	cmdLL_given := isFlagPassed("ll")
+	cmdUseReadv_given := isFlagPassed("readv")
+
 	loadConfig()
 
 	if confMode < 0 {
@@ -90,16 +106,16 @@ func main() {
 
 	//有点尴尬, 读取配置文件必须要用命令行参数，而配置文件里的部分配置又会覆盖部分命令行参数
 
-	if cmdLL != utils.DefaultLL && utils.LogLevel != cmdLL {
+	if cmdLL_given && utils.LogLevel != ll_beforeLoadConfigFile {
 		//配置文件配置了日志等级, 但是因为 命令行给出的值优先, 所以要设回
 
-		utils.LogLevel = cmdLL
+		utils.LogLevel = ll_beforeLoadConfigFile
 	}
 
-	if cmdUseReadv != netLayer.UseReadv {
+	if cmdUseReadv_given && netLayer.UseReadv != usereadv_beforeLoadConfigFile {
 		//配置文件配置了readv, 但是因为 命令行给出的值优先, 所以要设回
 
-		netLayer.UseReadv = cmdUseReadv
+		netLayer.UseReadv = usereadv_beforeLoadConfigFile
 	}
 
 	fmt.Println("Log Level:", utils.LogLevel)

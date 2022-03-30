@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"flag"
 	"sync"
 )
 
@@ -24,9 +25,13 @@ const StandardBytesLength int = 1500
 // https://en.wikipedia.org/wiki/Maximum_transmission_unit
 
 //本作设定的最大buf大小，64k
-const MaxBufLen = 64 * 1024
+var MaxBufLen = DefaultMaxBufLen
+
+const DefaultMaxBufLen = 64 * 1024
 
 func init() {
+	flag.IntVar(&MaxBufLen, "bl", DefaultMaxBufLen, "buf len")
+
 	standardBytesPool = sync.Pool{
 		New: func() interface{} {
 			return make([]byte, StandardBytesLength)
@@ -42,6 +47,15 @@ func init() {
 	bufPool = sync.Pool{
 		New: func() interface{} {
 			return &bytes.Buffer{}
+		},
+	}
+}
+
+//给了参数调节buf大小后,需要更新pool
+func AdjustBufSize() {
+	standardPacketPool = sync.Pool{
+		New: func() interface{} {
+			return make([]byte, MaxBufLen)
 		},
 	}
 }

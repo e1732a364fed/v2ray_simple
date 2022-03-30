@@ -18,8 +18,12 @@ import (
 
 //在内网单机自己连自己测速时,readv会导致降速.
 
-const readv_buffer_allocLen = 8
-const ReadvSingleBufLen = 4096
+const (
+	readv_buffer_allocLen = 8
+	ReadvSingleBufLen     = 4096
+
+	DefaultReadvOption = true
+)
 
 var (
 	// readv pool, 缓存 mr和buffers，进一步减轻内存分配负担
@@ -29,7 +33,7 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&UseReadv, "readv", true, "toggle the use of 'readv' syscall")
+	flag.BoolVar(&UseReadv, "readv", DefaultReadvOption, "toggle the use of 'readv' syscall")
 
 	readvPool = sync.Pool{
 		New: newReadvMem,
