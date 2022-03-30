@@ -76,6 +76,9 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 		}
 		fallthrough
 	default:
+		if network == "" {
+			network = "tcp"
+		}
 		listener, err := net.Listen(network, addr)
 		if err != nil {
 			return err

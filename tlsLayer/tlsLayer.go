@@ -10,6 +10,8 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"math/big"
+
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func GenerateRandomTLSCert() []tls.Certificate {
@@ -30,4 +32,18 @@ func GenerateRandomTLSCert() []tls.Certificate {
 		panic(err)
 	}
 	return []tls.Certificate{tlsCert}
+}
+
+func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate, err error) {
+	if certFile != "" && keyFile != "" {
+		cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))
+		if err != nil {
+			return nil, err
+		}
+		certArray = []tls.Certificate{cert}
+	} else {
+		certArray = GenerateRandomTLSCert()
+	}
+
+	return
 }

@@ -1,3 +1,4 @@
+//Package quic 实现高级层中的quic
 package quic
 
 import (
@@ -13,7 +14,7 @@ import (
 	"github.com/lucas-clemente/quic-go/congestion"
 )
 
-//quic的包装太简单了，我们就直接放在proxy包里了
+//quic的包装太简单了
 
 //超简单，直接参考 https://github.com/lucas-clemente/quic-go/blob/master/example/echo/echo.go
 
@@ -22,8 +23,9 @@ import (
 //但是我在mac里实测，内网单机极速测速的情况下，本来tcp能达到3000mbps的速度，到了quic就只能达到 1333mbps左右。
 
 //我们要是以后不使用hysteria的话，只需删掉 useHysteria 里的代码, 并删掉 go.mod中的replace部分
-// 然后proxy.go里的 相关配置部分也要删掉 在 prepareTLS_for* 函数中
+// 然后proxy.go里的 相关配置部分也要删掉 在 prepareTLS_for* 函数中 的相关配置 即可.
 
+//3000mbps
 const default_hysteriaMaxByteCount = 1024 * 1024 / 8 * 3000
 
 func CloseBaseConn(baseC any, t string) {
@@ -101,7 +103,7 @@ func ListenInitialLayers(addr string, tlsConf *tls.Config, useHysteria bool, hys
 				if utils.CanLogErr() {
 					log.Println("quic session accept err", err)
 				}
-				close(newConnChan)
+				//close(theChan)	//不应关闭chan，因为listen虽然不好使但是也许现存的stream还是好使的...
 				return
 			}
 
@@ -152,9 +154,6 @@ func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf *tls.Config, useH
 			hysteriaMaxByteCount = default_hysteriaMaxByteCount
 		}
 
-	}
-
-	if useHysteria {
 		bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
 		session.SetCongestionControl(bs)
 	}

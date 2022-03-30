@@ -12,7 +12,13 @@ import (
 //为了安全, 我们不支持socks5作为 proxy.Client;
 // 不过为了测试 udp associate 需要我们需要模拟一下socks5请求
 
+//传入 conn必须非nil，否则panic
 func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
+
+	if conn == nil {
+		panic("Client_EstablishUDPAssociate, nil conn is not allowed")
+	}
+
 	var ba [10]byte
 
 	//握手阶段
@@ -46,7 +52,7 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 	ba[9] = 0 //port
 	// 按理说要告诉服务端我们要用到的ip和端口，但是我们不知道，所以全填零
 	// 在内网中的话，我们是可以知道的，但是因为内网很安全所以无所谓；在NAT中我们肯定是不知道的。
-	// 如果是在纯外网中则是可以知道的，但是为啥非要socks5这么不安全的协议呢？所以还是不予考虑。
+	// 如果是在纯公网中则是可以知道的，但是为啥公网非要socks5这么不安全的协议呢？所以还是不予考虑。
 
 	_, err = conn.Write(ba[:10])
 	if err != nil {
@@ -69,11 +75,13 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 // RequestUDP 向一个 socks5服务器监听的 udp端口发送一次udp请求
 //在udp associate结束后，就已经知道了服务器给我们专用的port了，向这个端口发送一个udp请求.
 //
-// 另外的备忘是, 服务器返回的数据使用了相同的结构
+// 另外的备忘是, 服务器返回的数据使用了相同的结构。
+//
+//传入 conn必须非nil，否则panic
 func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte) {
 
 	if udpConn == nil {
-		//不允许
+		panic("Client_RequestUDP, nil udpConn is not allowed")
 	}
 
 	buf := &bytes.Buffer{}
@@ -107,8 +115,13 @@ func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte)
 	udpConn.Write(buf.Bytes())
 }
 
-//从 一个 socks5服务器的udp端口 读取一次 udp回应
+//从 一个 socks5服务器的udp端口 读取一次 udp回应。
+//传入 conn必须非nil，否则panic
 func Client_ReadUDPResponse(udpConn *net.UDPConn, supposedServerAddr *net.UDPAddr) (target netLayer.Addr, data []byte, e error) {
+
+	if udpConn == nil {
+		panic("Client_ReadUDPResponse, nil udpConn is not allowed")
+	}
 
 	buf := utils.GetPacket()
 	n, addr, err := udpConn.ReadFromUDP(buf)

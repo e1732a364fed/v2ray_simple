@@ -13,7 +13,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
 )
 
@@ -160,6 +159,7 @@ type ProxyCommon interface {
 // 如果用到了quic，还会直接配置quic的client的所有设置.
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	alpnList := dc.Alpn
+
 	switch com.AdvancedLayer() {
 	case "quic":
 
@@ -186,6 +186,10 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 
 		}
 
+		if len(alpnList) == 0 {
+			alpnList = quic.AlpnList
+		}
+
 		com.setFunc(proxyCommonStruct_setfunc_DialCommonInitialLayerConn, func(serverAddr *netLayer.Addr) any {
 
 			na, e := netLayer.NewAddr(com.AddrStr())
@@ -195,7 +199,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			return quic.DialCommonInitialLayer(na, &tls.Config{
 				InsecureSkipVerify: dc.Insecure,
 				ServerName:         dc.Host,
-				NextProtos:         quic.AlpnList,
+				NextProtos:         alpnList,
 				//实测quic的服务端和客户端必须指定alpn, 否则quic客户端会报错
 				// CRYPTO_ERROR (0x178): ALPN negotiation failed. Server didn't offer any protocols
 			}, useHysteria, maxbyteCount)
@@ -236,6 +240,10 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 		com.setNetwork("udp")
 
+		if len(alpnList) == 0 {
+			alpnList = quic.AlpnList
+		}
+
 		var useHysteria bool
 		var maxbyteCount int
 
@@ -264,16 +272,17 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 		com.setFunc(proxyCommonStruct_setfunc_HandleInitialLayers, func() (newConnChan chan net.Conn, baseConn any) {
 
-			cert, err := tls.LoadX509KeyPair(utils.GetFilePath(lc.TLSCert), utils.GetFilePath(lc.TLSKey))
+			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
+
 			if err != nil {
-				return nil, err
+				log.Fatalln("can't create tls cert from file:", lc.TLSCert, lc.TLSKey, err)
 			}
 
 			return quic.ListenInitialLayers(com.AddrStr(), &tls.Config{
 				InsecureSkipVerify: lc.Insecure,
 				ServerName:         lc.Host,
-				Certificates:       []tls.Certificate{cert},
-				NextProtos:         quic.AlpnList,
+				Certificates:       certArray,
+				NextProtos:         alpnList,
 			}, useHysteria, maxbyteCount)
 
 		})

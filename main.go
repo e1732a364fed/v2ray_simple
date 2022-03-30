@@ -852,7 +852,7 @@ afterLocalServerHandshake:
 // targetAddr为用户所请求的地址。
 //client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
-// noCopy时为了让其它调用者自行处理 转发 时使用。
+// noCopy是为了让其它调用者自行处理 转发 时使用。
 func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriter, noCopy bool) (io.ReadWriter, error) {
 
 	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
