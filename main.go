@@ -112,8 +112,6 @@ func main() {
 		defer p.Stop()
 	}
 
-	utils.AdjustBufSize()
-
 	ll_beforeLoadConfigFile := utils.LogLevel
 	usereadv_beforeLoadConfigFile := netLayer.UseReadv
 
