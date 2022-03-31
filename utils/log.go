@@ -40,10 +40,18 @@ func InitLog() {
 	var writes = []zapcore.WriteSyncer{zapcore.AddSync(os.Stdout)}
 
 	core := zapcore.NewCore(zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
-		MessageKey: "msg",
-		EncodeTime: zapcore.ISO8601TimeEncoder,
+		MessageKey:  "msg",
+		LevelKey:    "level",
+		TimeKey:     "time",
+		FunctionKey: "func",
+		//EncodeTime:  zapcore.ISO8601TimeEncoder,
+		EncodeLevel: zapcore.CapitalColorLevelEncoder,
+		EncodeTime:  zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000"),
+		EncodeName:  zapcore.FullNameEncoder,
+		LineEnding:  zapcore.DefaultLineEnding,
 	}), zapcore.NewMultiWriteSyncer(writes...), atomicLevel)
 
+	//zap.NewDevelopmentEncoderConfig()
 	ZapLogger = zap.New(core)
 	ZapLogger.Info("log 初始化成功")
 }

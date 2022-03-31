@@ -143,6 +143,8 @@ func main() {
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
 
+	utils.InitLog()
+
 	runPreCommands()
 
 	var err error

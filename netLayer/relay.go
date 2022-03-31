@@ -217,7 +217,8 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
 		n, e := TryCopy(wlc, wrc)
 		//log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 
-		ce.Write(zap.String("direction", "远程->本地"),
+		ce2 := utils.CanLogDebug("转发结束")
+		ce2.Write(zap.String("direction", "远程->本地"),
 			zap.String("target", realTargetAddr.String()),
 			zap.Int64("copied bytes", n),
 			zap.Error(e),

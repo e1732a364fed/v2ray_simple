@@ -31,10 +31,6 @@ Structure 本项目结构
 
 	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，可选经过ws, 然后都搞好后，传到proxy，然后就开始转发
 
-Other - 其他
-
-另外，本作暂时不考虑引入外界log包。依赖越少越好。
-
 */
 package main
 
