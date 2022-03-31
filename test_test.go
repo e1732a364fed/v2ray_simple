@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/miekg/dns"
 )
 
@@ -45,6 +46,7 @@ func TestDNSLookup_CN(t *testing.T) {
 
 //经实测，dokodemo->vless->udp 来请求dns是毫无问题的。
 func TestUDP_dokodemo(t *testing.T) {
+	utils.InitLog()
 
 	const testClientConfStr = `
 [[listen]]
@@ -131,6 +133,12 @@ key = "cert.key"
 	}
 
 	for _, a := range r.Answer {
-		t.Log(a)
+		t.Log("header is", a.Header())
+		t.Log("string is", a.String())
+		t.Log("a is ", a)
+
+		if aa, ok := a.(*dns.A); ok {
+			t.Log("arecord is ", aa.A)
+		}
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
+	"github.com/miekg/dns"
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 
@@ -62,6 +63,7 @@ var (
 
 	routePolicy  *netLayer.RoutePolicy
 	mainFallback *httpLayer.ClassicFallback
+	dnsMachine   *netLayer.DNSMachine
 
 	startPProf bool
 	startMProf bool
@@ -80,7 +82,7 @@ func init() {
 	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the local part in config file), only enbled when config file is not provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the remote part in config file), only enbled when config file is not provided.")
 
-	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com")
+	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com. Only valid when loglevel=0")
 
 }
 
@@ -738,6 +740,21 @@ afterLocalServerHandshake:
 		return
 	}
 
+	//此时 targetAddr已经完全确定
+
+	////////////////////////////// DNS解析阶段 /////////////////////////////////////
+
+	if dnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
+		//log.Println("will query", targetAddr.Name)
+		ip := dnsMachine.Query(targetAddr.Name, dns.TypeA)
+		if ip == nil {
+			ip = dnsMachine.Query(targetAddr.Name, dns.TypeAAAA)
+		}
+		if ip != nil {
+			targetAddr.IP = ip
+		}
+	}
+
 	////////////////////////////// 分流阶段 /////////////////////////////////////
 
 	var client proxy.Client = iics.defaultClient
@@ -979,9 +996,9 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
 	var realTargetAddr netLayer.Addr = targetAddr
 
-	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
-		if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
-			//log.Printf("request isn't the appointed domain, %s, %s\n", targetAddr.String(), uniqueTestDomain)
+	if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
+
+		if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
 			ce.Write(
 				zap.String("request", targetAddr.String()),
 				zap.String("uniqueTestDomain", uniqueTestDomain),
@@ -992,7 +1009,6 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	}
 
 	if ce := utils.CanLogInfo("Request"); ce != nil {
-		//log.Printf("%s request %s through %s\n", iics.cachedRemoteAddr, targetAddr.UrlString(), proxy.GetVSI_url(client))
 
 		ce.Write(
 			zap.String("from", iics.cachedRemoteAddr),
@@ -1002,7 +1018,6 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	}
 
 	if client.AddrStr() != "" {
-		//log.Println("will dial", client.AddrStr())
 
 		realTargetAddr, err = netLayer.NewAddr(client.AddrStr())
 		if err != nil {

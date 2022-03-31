@@ -16,6 +16,7 @@ prefix          :=verysimple
 
 linuxAmd        :=_linux_amd64
 linuxArm        :=_linux_arm64
+android         :=_android
 macosAmd        :=_macos
 macosArm        :=_macm1
 windows         :=_win10
@@ -24,6 +25,7 @@ windows         :=_win10
 
 linuxAmdFn:=${prefix}${linuxAmd}
 linuxArmFn:=${prefix}${linuxArm}
+androidFn :=${prefix}${android}
 macFn     :=${prefix}${macosAmd}
 macM1Fn   :=${prefix}${macosArm}
 winFn     :=${prefix}${windows}
@@ -48,7 +50,7 @@ endef
 endif
 
 
-all: win10 linux_amd64 linux_arm64 macos macm1
+all: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
 
 #注意调用参数时，逗号前后不能留空格
 
@@ -57,6 +59,9 @@ linux_amd64:
 
 linux_arm64:
 	$(call compile, $(linuxArmFn),linux,arm64)
+
+android_arm64:
+	$(call compile, $(androidFn),android,arm64)
 
 macos:
 	$(call compile, $(macFn),darwin,amd64)
@@ -78,11 +83,13 @@ clean:
 	rm -f ${winFn}.exe
 	rm -f $(macFn)
 	rm -f $(macM1Fn)
+	rm -f $(androidFn)
 
 	rm -f $(linuxAmdFn).tgz
 	rm -f $(linuxArmFn).tgz
 	rm -f ${winFn}.tgz
 	rm -f $(macFn).tgz
 	rm -f $(macM1Fn).tgz
+	rm -f $(androidFn).tgz
 
 	

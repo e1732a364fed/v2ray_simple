@@ -93,14 +93,16 @@ func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr) (ne
 
 	streamClient := NewStreamClient((*grpc.ClientConn)(clientconn)).(streamClient_withName)
 
-	stream_TunClient, err := streamClient.tun_withName(nil, path)
+	ctx, cancelF := context.WithCancel(context.Background())
+	stream_TunClient, err := streamClient.tun_withName(ctx, path)
 	if err != nil {
 		clientconnMutex.Lock()
 		delete(clientconnMap, addr.GetHashable())
 		clientconnMutex.Unlock()
+		cancelF()
 		return nil, err
 	}
-	return newConn(stream_TunClient, nil), nil
+	return newConn(stream_TunClient, cancelF), nil
 
 }
 

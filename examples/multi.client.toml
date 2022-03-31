@@ -8,6 +8,16 @@ loglevel = 1
 default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   
 
 
+[dns]
+servers = [
+	"udp://114.114.114.114:53"      # 如果把该url指向我们dokodemo监听的端口，就可以达到通过节点请求dns的目的.
+]
+
+[dns.hosts]     # 自己定义的dns解析
+"www.myfake.com" = "11.22.33.44"
+"www.myfake2.com" = "11.222.33.44"
+
+
 [[listen]]
 protocol = "socks5"
 host = "127.0.0.1"

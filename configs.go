@@ -48,6 +48,11 @@ func loadConfig() {
 					netLayer.UseReadv = false
 				}
 			}
+			if dnsConf := standardConf.DnsConf; dnsConf != nil {
+
+				dnsMachine = proxy.LoadDnsMachine(dnsConf)
+
+			}
 			return
 		} else {
 			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法

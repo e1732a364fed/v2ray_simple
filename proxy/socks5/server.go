@@ -182,11 +182,6 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, target
 		return uc, clientFutureAddr, nil
 
 	} else {
-		targetAddr = netLayer.Addr{
-			IP:   theIP,
-			Name: theName,
-			Port: thePort,
-		}
 
 		// 解读如下：
 		//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR （ipv4(0,0,0,0)）, BND.PORT(0, 2字节)
@@ -198,6 +193,18 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, target
 		if err != nil {
 			returnErr = fmt.Errorf("failed to write command response: %w", err)
 			return
+		}
+
+		//theName有可能是ip的形式，比如浏览器一般不会自己dns，把一切ip和域名都当作域名传入socks5代理
+
+		if ip := net.ParseIP(theName); ip != nil {
+			theIP = ip
+		}
+
+		targetAddr = netLayer.Addr{
+			IP:   theIP,
+			Name: theName,
+			Port: thePort,
 		}
 
 		return underlay, targetAddr, nil

@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"io/ioutil"
+	"log"
 	"net"
 	"net/netip"
 	"os"
@@ -75,7 +76,7 @@ func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 
 }
 
-// 监听所使用的设置, 使用者可以叫 listener 或者 inServer
+// 监听所使用的设置, 使用者可被称为 listener 或者 inServer
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为监听地址与端口
 type ListenConf struct {
 	CommonConf
@@ -91,7 +92,7 @@ type ListenConf struct {
 
 }
 
-// 拨号所使用的设置, 使用者可以叫 dialer 或者 outClient
+// 拨号所使用的设置, 使用者可被称为 dialer 或者 outClient
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为拨号地址与端口
 type DialConf struct {
 	CommonConf
@@ -104,6 +105,16 @@ type AppConf struct {
 	MyCountryISO_3166 string `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
 
 	NoReadV bool `toml:"noreadv"`
+}
+
+type DnsConf struct {
+	Hosts   map[string]any `toml:"hosts"`   //用于强制指定哪些域名会被解析为哪些具体的ip；可以为一个ip字符串，或者一个 []string 数组, 数组内可以是A,AAAA或CNAME
+	Servers []any          `toml:"servers"` //可以为一个地址url字符串，或者为 SpecialDnsServerConf; 如果第一个元素是字符串形式，则此第一个元素将会被用作默认dns服务器
+}
+
+type SpecialDnsServerConf struct {
+	Addr    string   `toml:"addr"`    //必须为 udp://1.1.1.1:53 这种格式
+	Domains []string `toml:"domains"` //指定哪些域名需要通过 该dns服务器进行查询
 }
 
 type RuleConf struct {
@@ -121,13 +132,14 @@ type RuleConf struct {
 // toml：https://toml.io/cn/
 // english: https://toml.io/en/
 type Standard struct {
+	App     *AppConf `toml:"app"`
+	DnsConf *DnsConf `toml:"dns"`
+
 	Listen []*ListenConf `toml:"listen"`
 	Dial   []*DialConf   `toml:"dial"`
-	Route  []*RuleConf   `toml:"route"`
 
+	Route     []*RuleConf               `toml:"route"`
 	Fallbacks []*httpLayer.FallbackConf `toml:"fallback"`
-
-	App *AppConf `toml:"app"`
 }
 
 func LoadTomlConfStr(str string) (c Standard, err error) {
@@ -193,4 +205,78 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
 	}
 
 	return rs
+}
+
+func LoadDnsMachine(conf *DnsConf) *netLayer.DNSMachine {
+	var dm = &netLayer.DNSMachine{}
+
+	var ok = false
+
+	if len(conf.Servers) > 0 {
+		ok = true
+		ss := conf.Servers
+		first := ss[0]
+		firstDealed := false
+
+		switch value := first.(type) {
+		case string:
+			ad, e := netLayer.NewAddrByURL(value)
+			if e != nil {
+				log.Fatalf("LoadDnsMachine loading server err %s\n", e)
+
+			}
+			dm = netLayer.NewDnsMachine(&ad)
+			firstDealed = true
+		}
+
+		if firstDealed {
+			ss = ss[1:]
+		}
+
+		dm.SpecialServerPollicy = make(map[string]string)
+
+		for _, s := range ss {
+			switch value := s.(type) {
+			case SpecialDnsServerConf:
+
+				for _, d := range value.Domains {
+					dm.SpecialServerPollicy[d] = value.Addr
+				}
+
+			}
+		}
+
+	}
+	if conf.Hosts != nil {
+		ok = true
+		dm.SpecialIPPollicy = make(map[string][]netip.Addr)
+
+		for thishost, things := range conf.Hosts {
+
+			switch value := things.(type) {
+			case string:
+				ip := net.ParseIP(value)
+
+				ad, _ := netip.AddrFromSlice(ip)
+
+				dm.SpecialIPPollicy[thishost] = []netip.Addr{ad}
+
+			case []string:
+				for _, str := range value {
+					ad, err := netLayer.NewAddrFromAny(str)
+					if err != nil {
+						log.Fatalf("LoadDnsMachine loading host err %s\n", err)
+					}
+
+					dm.SpecialIPPollicy[thishost] = append(dm.SpecialIPPollicy[thishost], ad.GetHashable().Addr())
+				}
+			}
+
+		}
+	}
+
+	if !ok {
+		return nil
+	}
+	return dm
 }
