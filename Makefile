@@ -10,13 +10,13 @@
 #
 # 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
 
-BUILD_VERSION   := v1.1.1.1
+BUILD_VERSION   := v1.1.2
 
 prefix          :=verysimple
 
 linuxAmd        :=_linux_amd64
 linuxArm        :=_linux_arm64
-android         :=_android
+androidArm64    :=_android_arm64
 macosAmd        :=_macos
 macosArm        :=_macm1
 windows         :=_win10
@@ -25,10 +25,10 @@ windows         :=_win10
 
 linuxAmdFn:=${prefix}${linuxAmd}
 linuxArmFn:=${prefix}${linuxArm}
-androidFn :=${prefix}${android}
 macFn     :=${prefix}${macosAmd}
 macM1Fn   :=${prefix}${macosArm}
 winFn     :=${prefix}${windows}
+androidArm64Fn :=${prefix}${androidArm64}
 
 
 cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
@@ -61,7 +61,7 @@ linux_arm64:
 	$(call compile, $(linuxArmFn),linux,arm64)
 
 android_arm64:
-	$(call compile, $(androidFn),android,arm64)
+	$(call compile, $(androidArm64Fn),android,arm64)
 
 macos:
 	$(call compile, $(macFn),darwin,amd64)
@@ -83,13 +83,13 @@ clean:
 	rm -f ${winFn}.exe
 	rm -f $(macFn)
 	rm -f $(macM1Fn)
-	rm -f $(androidFn)
+	rm -f $(androidArm64Fn)
 
 	rm -f $(linuxAmdFn).tgz
 	rm -f $(linuxArmFn).tgz
 	rm -f ${winFn}.tgz
 	rm -f $(macFn).tgz
 	rm -f $(macM1Fn).tgz
-	rm -f $(androidFn).tgz
+	rm -f $(androidArm64Fn).tgz
 
 	
