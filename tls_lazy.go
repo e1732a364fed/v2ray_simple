@@ -12,6 +12,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
@@ -40,8 +41,9 @@ func canNetwork_tlsLazy(nw string) bool {
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 // 第一个参数仅用于 tls_lazy_secure
 func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
-	if utils.CanLogDebug() {
-		log.Printf("trying tls lazy copy\n")
+	if ce := utils.CanLogDebug("trying tls lazy copy"); ce != nil {
+		//log.Printf("trying tls lazy copy\n")
+		ce.Write()
 	}
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
@@ -145,8 +147,9 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 
 				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
 				if err != nil {
-					if utils.CanLogErr() {
-						log.Printf("failed in handshake outClient tls , Reason: %s\n", err)
+					if ce := utils.CanLogErr("failed in handshake outClient tls"); ce != nil {
+						//log.Printf("failed in handshake outClient tls , Reason: %s\n", err)
+						ce.Write(zap.Error(err))
 
 					}
 					return
@@ -154,8 +157,9 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 
 				wrc, err = proxy_client.Handshake(tlsConn, targetAddr)
 				if err != nil {
-					if utils.CanLogErr() {
-						log.Printf("failed in handshake to %s , Reason: %s\n", targetAddr.String(), err)
+					if ce := utils.CanLogErr("failed in handshake"); ce != nil {
+						//log.Printf("failed in handshake to %s , Reason: %s\n", targetAddr.String(), err)
+						ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
 					}
 					return
 				}

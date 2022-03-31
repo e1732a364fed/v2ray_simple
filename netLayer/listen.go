@@ -1,13 +1,13 @@
 package netLayer
 
 import (
-	"log"
 	"net"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
@@ -16,18 +16,21 @@ func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
 		if err != nil {
 			errStr := err.Error()
 			if strings.Contains(errStr, "closed") {
-				if utils.CanLogDebug() {
-					log.Println("local connection closed", err)
+				if ce := utils.CanLogDebug("local connection closed"); ce != nil {
+					//log.Println("local connection closed", err)
+					ce.Write(zap.Error(err))
 
 				}
 				break
 			}
-			if utils.CanLogWarn() {
-				log.Println("failed to accept connection: ", err)
+			if ce := utils.CanLogWarn("failed to accept connection"); ce != nil {
+				//log.Println("failed to accept connection: ", err)
+				ce.Write(zap.Error(err))
 			}
 			if strings.Contains(errStr, "too many") {
-				if utils.CanLogWarn() {
-					log.Println("To many incoming conn! Sleep ", errStr)
+				if ce := utils.CanLogWarn("To many incoming conn! Will Sleep."); ce != nil {
+					//log.Println("To many incoming conn! Sleep ", errStr)
+					ce.Write(zap.String("err", errStr))
 
 				}
 				time.Sleep(time.Millisecond * 500)
@@ -65,8 +68,9 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 		// 总之RemoveAll函数千万不能用，Remove函数倒是没什么大事
 		if utils.FileExist(addr) {
 
-			if utils.CanLogDebug() {
-				log.Println("unix file exist, deleting", addr)
+			if ce := utils.CanLogDebug("unix file exist"); ce != nil {
+				//log.Println("unix file exist, deleting", addr)
+				ce.Write(zap.String("deleting", addr))
 			}
 			err := os.Remove(addr)
 			if err != nil {

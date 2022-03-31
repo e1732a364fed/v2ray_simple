@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"log"
 	"net"
 	"net/url"
 	"strconv"
@@ -13,6 +12,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 func init() {
@@ -123,9 +123,10 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 			UMFURS_conn, err := target.Dial()
 			if err != nil {
-				if utils.CanLogErr() {
+				if ce := utils.CanLogErr("尝试拨号 Cmd_CRUMFURS 信道时发生错误"); ce != nil {
 
-					log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
+					//log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
+					ce.Write(zap.Error(err))
 				}
 				return nil, err
 			}
@@ -138,9 +139,10 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 			bs := []byte{0}
 			n, err := UMFURS_conn.Read(bs)
 			if err != nil || n == 0 || bs[0] != CRUMFURS_ESTABLISHED {
-				if utils.CanLogErr() {
+				if ce := utils.CanLogErr("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误"); ce != nil {
 
-					log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
+					//log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
+					ce.Write(zap.Error(err))
 				}
 				return nil, err
 			}

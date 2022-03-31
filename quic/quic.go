@@ -4,7 +4,6 @@ package quic
 import (
 	"context"
 	"crypto/tls"
-	"log"
 	"net"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/congestion"
+	"go.uber.org/zap"
 )
 
 //quic的包装太简单了
@@ -80,8 +80,9 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 
 	listener, err := quic.ListenAddr(addr, &tlsConf, &our_ListenConfig)
 	if err != nil {
-		if utils.CanLogErr() {
-			log.Println(err)
+		if ce := utils.CanLogErr("quic listen"); ce != nil {
+			//log.Println(err)
+			ce.Write(zap.Error(err))
 		}
 		return
 	}
@@ -100,8 +101,9 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 		for {
 			session, err := listener.Accept(context.Background())
 			if err != nil {
-				if utils.CanLogErr() {
-					log.Println("quic session accept err", err)
+				if ce := utils.CanLogErr("quic session accept"); ce != nil {
+					//log.Println("quic session accept err", err)
+					ce.Write(zap.Error(err))
 				}
 				//close(theChan)	//不应关闭chan，因为listen虽然不好使但是也许现存的stream还是好使的...
 				return
@@ -118,7 +120,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 				for {
 					stream, err := session.AcceptStream(context.Background())
 					if err != nil {
-						if utils.CanLogDebug() {
+						if ce := utils.CanLogDebug("quic stream accept failed"); ce != nil {
 							//只要某个连接idle时间一长，服务端就会出现此错误:
 							// timeout: no recent network activity，即 IdleTimeoutError
 							//这不能说是错误, 而是quic的udp特性所致，所以放到debug 输出中.
@@ -126,7 +128,8 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 							//我们为了性能，不必将该err转成 net.Error然后判断是否是timeout
 							//如果要排错那就开启debug日志即可.
 
-							log.Println("quic stream accept failed:", err)
+							//log.Println("quic stream accept failed:", err)
+							ce.Write(zap.Error(err))
 						}
 						break
 					}
@@ -143,8 +146,9 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int) any {
 	session, err := quic.DialAddr(serverAddr.String(), &tlsConf, &our_DialConfig)
 	if err != nil {
-		if utils.CanLogErr() {
-			log.Println(err)
+		if ce := utils.CanLogErr("quic dial"); ce != nil {
+			//log.Println(err)
+			ce.Write(zap.Error(err))
 		}
 		return nil
 	}

@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/url"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
@@ -240,8 +240,9 @@ func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 		_, err = u.UDPConn.WriteToUDP(buf.Bytes(), u.clientSupposedAddr)
 
 		if err != nil {
-			if utils.CanLogErr() {
-				log.Println("socks5, StartPushResponse, write err ", err)
+			if ce := utils.CanLogErr("socks5, StartPushResponse, write"); ce != nil {
+				//log.Println("socks5, StartPushResponse, write err ", err)
+				ce.Write(zap.Error(err))
 
 			}
 			break
@@ -266,17 +267,19 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 	for {
 		n, addr, err := u.UDPConn.ReadFromUDP(bs)
 		if err != nil {
-			if utils.CanLogWarn() {
-				log.Println("UDPConn read err", err)
+			if ce := utils.CanLogWarn("UDPConn read"); ce != nil {
+				//log.Println("UDPConn read err", err)
+				ce.Write(zap.Error(err))
 
 			}
 			continue
 		}
 
 		if n < 6 {
-			if utils.CanLogWarn() {
+			if ce := utils.CanLogWarn("UDPConn short read"); ce != nil {
 
-				log.Println("UDPConn short read err", n)
+				//log.Println("UDPConn short read err", n)
+				ce.Write(zap.Error(err))
 			}
 			continue
 		}
@@ -308,18 +311,20 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 			l += int(bs[4])
 			off = 5
 		default:
-			if utils.CanLogWarn() {
+			if ce := utils.CanLogWarn("UDPConn unknown address"); ce != nil {
 
-				log.Println("UDPConn unknown address type ", atyp)
+				//log.Println("UDPConn unknown address type ", atyp)
+				ce.Write(zap.Uint8("atype", atyp))
 			}
 			continue
 
 		}
 
 		if len(bs[off:]) < l {
-			if utils.CanLogWarn() {
+			if ce := utils.CanLogWarn("UDPConn short command request"); ce != nil {
 
-				log.Println("UDPConn short command request ", atyp)
+				//log.Println("UDPConn short command request ", atyp)
+				ce.Write(zap.Uint8("atype", atyp))
 			}
 			continue
 

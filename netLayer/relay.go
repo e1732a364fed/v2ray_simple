@@ -2,12 +2,12 @@ package netLayer
 
 import (
 	"io"
-	"log"
 	"net"
 	"reflect"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 // TryCopy 尝试 循环 从 readConn 读取数据并写入 writeConn, 直到错误发生。
@@ -18,8 +18,12 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
 	var isWriteConnBasic bool
-	if utils.CanLogDebug() {
-		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
+	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
+		//log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
+		ce.Write(
+			zap.String("from", reflect.TypeOf(readConn).String()),
+			zap.String("->", reflect.TypeOf(writeConn).String()),
+		)
 	}
 
 	if SystemCanSplice {
@@ -38,8 +42,9 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 			}
 
 			if rCanSplice && wCanSplice {
-				if utils.CanLogDebug() {
-					log.Println("copying with splice")
+				if ce := utils.CanLogDebug("copying with splice"); ce != nil {
+					//log.Println("copying with splice")
+					ce.Write()
 				}
 
 				goto copy
@@ -59,8 +64,9 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		goto classic
 	}
 
-	if utils.CanLogDebug() {
-		log.Println("copying with readv")
+	if ce := utils.CanLogDebug("copying with readv"); ce != nil {
+		//log.Println("copying with readv")
+		ce.Write()
 	}
 
 	isWriteConnBasic = IsBasicConn(writeConn)
@@ -115,8 +121,9 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		}
 	}
 classic:
-	if utils.CanLogDebug() {
-		log.Println("copying with classic method")
+	if ce := utils.CanLogDebug("copying with classic method"); ce != nil {
+		//log.Println("copying with classic method")
+		ce.Write()
 	}
 copy:
 
@@ -132,8 +139,12 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 
 	var rm *readvMem
 
-	if utils.CanLogDebug() {
-		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
+	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
+		//log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
+		ce.Write(
+			zap.String("from", reflect.TypeOf(readConn).String()),
+			zap.String("->", reflect.TypeOf(writeConn).String()),
+		)
 	}
 
 	// 不全 支持splice的话，我们就考虑 read端 可 readv 的情况
@@ -148,8 +159,9 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 		goto classic
 	}
 
-	if utils.CanLogDebug() {
-		log.Println("copying with readv")
+	if ce := utils.CanLogDebug("copying with readv"); ce != nil {
+		//log.Println("copying with readv")
+		ce.Write()
 	}
 
 	rm = get_readvMem()
@@ -164,8 +176,9 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	return
 
 classic:
-	if utils.CanLogDebug() {
-		log.Println("copying with classic method")
+	if ce := utils.CanLogDebug("copying with classic method"); ce != nil {
+		//log.Println("copying with classic method")
+		ce.Write()
 	}
 
 	bs := utils.GetPacket()
@@ -186,10 +199,15 @@ classic:
 // 会自动优选 splice，readv，不行则使用经典拷贝. 拷贝完成后会主动关闭双方连接.
 func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
 
-	if utils.CanLogDebug() {
+	if ce := utils.CanLogDebug("转发结束"); ce != nil {
 		go func() {
 			n, e := TryCopy(wrc, wlc)
-			log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+			//log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+			ce.Write(zap.String("direction", "本地->远程"),
+				zap.String("target", realTargetAddr.String()),
+				zap.Int64("copied bytes", n),
+				zap.Error(e),
+			)
 
 			wlc.Close()
 			wrc.Close()
@@ -197,7 +215,13 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
 		}()
 
 		n, e := TryCopy(wlc, wrc)
-		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+		//log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
+
+		ce.Write(zap.String("direction", "远程->本地"),
+			zap.String("target", realTargetAddr.String()),
+			zap.Int64("copied bytes", n),
+			zap.Error(e),
+		)
 
 		wlc.Close()
 		wrc.Close()

@@ -47,6 +47,8 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持grpc，与 xray/v2ray兼容
 
+支持 quic以及hysteria 阻控，与xray/v2ray兼容（详情见wiki）
+
 ### 关于vless v1
 
 这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](vless_v1.md)

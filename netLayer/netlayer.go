@@ -10,10 +10,10 @@ package netLayer
 
 import (
 	"io"
-	"log"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 //net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
@@ -29,8 +29,9 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 	if sc, ok := reader.(syscall.Conn); ok {
 		rawConn, err := sc.SyscallConn()
 		if err != nil {
-			if utils.CanLogDebug() {
-				log.Println("can't convert syscall.Conn to syscall.RawConn", reader, err)
+			if ce := utils.CanLogDebug("can't convert syscall.Conn to syscall.RawConn"); ce != nil {
+				//log.Println("can't convert syscall.Conn to syscall.RawConn", reader, err)
+				ce.Write(zap.Any("reader", reader), zap.Error(err))
 			}
 			return nil
 		}

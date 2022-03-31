@@ -1,7 +1,13 @@
 // Package utils provides utils that needed by all sub-packages in verysimle
 package utils
 
-import "flag"
+import (
+	"flag"
+	"os"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
 
 const (
 	Log_debug = iota
@@ -16,32 +22,56 @@ const (
 
 // LogLevel 值越小越唠叨, 废话越多，值越大打印的越少，见log_开头的常量;
 // 默认是 info级别.因为还在开发中，所以默认级别高一些有好处，方便排错
-var LogLevel int
+var (
+	LogLevel  int
+	ZapLogger *zap.Logger
+)
 
 func init() {
-	flag.IntVar(&LogLevel, "ll", DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=fatal")
+	//我们的loglevel就是zap的loglevel+1
+
+	flag.IntVar(&LogLevel, "ll", DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 }
 
-//return LogLevel <= l
-func CanLogLevel(l int) bool {
-	return LogLevel <= l
+func InitLog() {
+	atomicLevel := zap.NewAtomicLevel()
+	atomicLevel.SetLevel(zapcore.Level(LogLevel - 1))
+
+	var writes = []zapcore.WriteSyncer{zapcore.AddSync(os.Stdout)}
+
+	core := zapcore.NewCore(zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+		MessageKey: "msg",
+		EncodeTime: zapcore.ISO8601TimeEncoder,
+	}), zapcore.NewMultiWriteSyncer(writes...), atomicLevel)
+
+	ZapLogger = zap.New(core)
+	ZapLogger.Info("log 初始化成功")
+}
+
+func CanLogLevel(l int, msg string) *zapcore.CheckedEntry {
+	return ZapLogger.Check(zapcore.Level(l-1), msg)
 
 }
 
-func CanLogErr() bool {
-	return LogLevel <= Log_error
+func canLogLevel(l zapcore.Level, msg string) *zapcore.CheckedEntry {
+	return ZapLogger.Check(l, msg)
 
 }
 
-func CanLogInfo() bool {
-	return LogLevel <= Log_info
+func CanLogErr(msg string) *zapcore.CheckedEntry {
+	return canLogLevel(zap.ErrorLevel, msg)
 
 }
-func CanLogWarn() bool {
-	return LogLevel <= Log_warning
+
+func CanLogInfo(msg string) *zapcore.CheckedEntry {
+	return canLogLevel(zap.InfoLevel, msg)
 
 }
-func CanLogDebug() bool {
-	return LogLevel == 0
+func CanLogWarn(msg string) *zapcore.CheckedEntry {
+	return canLogLevel(zap.WarnLevel, msg)
+
+}
+func CanLogDebug(msg string) *zapcore.CheckedEntry {
+	return canLogLevel(zap.DebugLevel, msg)
 
 }

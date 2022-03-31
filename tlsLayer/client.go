@@ -2,12 +2,12 @@ package tlsLayer
 
 import (
 	"crypto/tls"
-	"log"
 	"net"
 	"unsafe"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 	utls "github.com/refraction-networking/utls"
+	"go.uber.org/zap"
 )
 
 // 关于utls的简单分析，可参考
@@ -35,8 +35,9 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 			NextProtos:         alpnList,
 		}
 
-		if utils.CanLogInfo() {
-			log.Println("using utls and Chrome fingerprint for", host)
+		if ce := utils.CanLogInfo("using utls and Chrome fingerprint for"); ce != nil {
+			//log.Println("using utls and Chrome fingerprint for", host)
+			ce.Write(zap.String("host", host))
 		}
 	} else {
 		c.tlsConfig = &tls.Config{
