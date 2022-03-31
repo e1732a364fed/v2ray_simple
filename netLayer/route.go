@@ -10,7 +10,7 @@ import (
 // TargetDescription 可以完整地描述一个网络层/传输层上的一个特定目标,
 // 一般来说，一个具体的监听配置就会分配一个tag
 type TargetDescription struct {
-	Addr *Addr
+	Addr Addr
 	Tag  string
 }
 
@@ -72,7 +72,7 @@ func (sg *RouteSet) IsTransportProtocolAllowed(p uint16) bool {
 	return sg.AllowedTransportLayerProtocols&p > 0
 }
 
-func (sg *RouteSet) IsAddrNetworkAllowed(a *Addr) bool {
+func (sg *RouteSet) IsAddrNetworkAllowed(a Addr) bool {
 
 	if a.Network == "" {
 		return sg.IsTransportProtocolAllowed(TCP)
@@ -91,7 +91,7 @@ func (sg *RouteSet) IsTCPAllowed() bool {
 	return sg.IsTransportProtocolAllowed(TCP)
 }
 
-func (sg *RouteSet) IsAddrIn(a *Addr) bool {
+func (sg *RouteSet) IsAddrIn(a Addr) bool {
 	//我们先过滤传输层，再过滤网络层
 
 	if !sg.IsAddrNetworkAllowed(a) {

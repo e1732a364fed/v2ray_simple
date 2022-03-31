@@ -48,8 +48,8 @@ func GetRandLocalAddr() string {
 	return "0.0.0.0:" + RandPortStr()
 }
 
-func NewAddrFromUDPAddr(addr *net.UDPAddr) *Addr {
-	return &Addr{
+func NewAddrFromUDPAddr(addr *net.UDPAddr) Addr {
+	return Addr{
 		IP:      addr.IP,
 		Port:    addr.Port,
 		Network: "udp",
@@ -57,27 +57,27 @@ func NewAddrFromUDPAddr(addr *net.UDPAddr) *Addr {
 }
 
 //addrStr格式一般为 host:port ；如果不含冒号，将直接认为该字符串是域名或文件名
-func NewAddr(addrStr string) (*Addr, error) {
+func NewAddr(addrStr string) (Addr, error) {
 	if !strings.Contains(addrStr, ":") {
 		//unix domain socket, 或者域名默认端口的情况
-		return &Addr{Name: addrStr}, nil
+		return Addr{Name: addrStr}, nil
 	}
 
 	return NewAddrByHostPort(addrStr)
 }
 
 //hostPortStr格式 必须为 host:port，本函数不对此检查
-func NewAddrByHostPort(hostPortStr string) (*Addr, error) {
+func NewAddrByHostPort(hostPortStr string) (Addr, error) {
 	host, portStr, err := net.SplitHostPort(hostPortStr)
 	if err != nil {
-		return nil, err
+		return Addr{}, err
 	}
 	if host == "" {
 		host = "127.0.0.1"
 	}
 	port, err := strconv.Atoi(portStr)
 
-	a := &Addr{Port: port}
+	a := Addr{Port: port}
 	if ip := net.ParseIP(host); ip != nil {
 		a.IP = ip
 	} else {
@@ -88,27 +88,27 @@ func NewAddrByHostPort(hostPortStr string) (*Addr, error) {
 
 // 如 tcp://127.0.0.1:443 , tcp://google.com:443 ;
 // 不支持unix domain socket, 因为它是文件路径, / 还需要转义，太麻烦;不是我们代码麻烦, 而是怕用户嫌麻烦
-func NewAddrByURL(addrStr string) (*Addr, error) {
+func NewAddrByURL(addrStr string) (Addr, error) {
 
 	u, err := url.Parse(addrStr)
 	if err != nil {
-		return nil, err
+		return Addr{}, err
 	}
 	if u.Scheme == "unix" {
-		return nil, errors.New("parse unix domain socket by url is not supported")
+		return Addr{}, errors.New("parse unix domain socket by url is not supported")
 	}
 	addrStr = u.Host
 
 	host, portStr, err := net.SplitHostPort(addrStr)
 	if err != nil {
-		return nil, err
+		return Addr{}, err
 	}
 	if host == "" {
 		host = "127.0.0.1"
 	}
 	port, err := strconv.Atoi(portStr)
 
-	a := &Addr{Port: port}
+	a := Addr{Port: port}
 	if ip := net.ParseIP(host); ip != nil {
 		a.IP = ip
 	} else {
@@ -121,7 +121,7 @@ func NewAddrByURL(addrStr string) (*Addr, error) {
 }
 
 //会根据thing的类型 生成实际addr； 可以为数字端口，或者带冒号的字符串，或者一个 文件路径(unix domain socket)
-func NewAddrFromAny(thing any) (addr *Addr, err error) {
+func NewAddrFromAny(thing any) (addr Addr, err error) {
 	var integer int
 	var dest_type byte = 0 //0: port, 1: ip:port, 2: unix domain socket
 	var dest_string string
@@ -130,7 +130,7 @@ func NewAddrFromAny(thing any) (addr *Addr, err error) {
 	case float64: //json 默认把数字转换成float64，就算是整数也一样
 
 		if value > 65535 || value < 1 {
-			err = utils.NewDataErr("int port not valid", nil, value)
+			err = utils.ErrInErr{ErrDesc: "int port not valid", Data: value}
 			return
 		}
 
@@ -152,24 +152,24 @@ func NewAddrFromAny(thing any) (addr *Addr, err error) {
 		}
 
 	default:
-		err = utils.NewDataErr("Fallback dest config type err", nil, reflect.TypeOf(thing))
+		err = utils.ErrInErr{ErrDesc: "Fallback dest config type err", Data: reflect.TypeOf(thing)}
 		return
 	}
 
 	switch dest_type {
 	case 0:
-		addr = &Addr{
+		addr = Addr{
 			IP:   net.IPv4(127, 0, 0, 1),
 			Port: integer,
 		}
 	case 1:
 		addr, err = NewAddrByHostPort(dest_string)
 		if err != nil {
-			err = utils.NewDataErr("addr create with given string failed", err, dest_string)
+			err = utils.ErrInErr{ErrDesc: "addr create with given string failed", ErrDetail: err, Data: dest_string}
 			return
 		}
 	case 2:
-		addr = &Addr{
+		addr = Addr{
 			Network: "unix",
 			Name:    dest_string,
 		}
@@ -210,6 +210,10 @@ func (a *Addr) UrlString() string {
 
 	}
 
+}
+
+func (a *Addr) IsEmpty() bool {
+	return a.Name == "" && len(a.IP) == 0 && a.Network == "" && a.Port == 0
 }
 
 func (a *Addr) GetNetIPAddr() (na netip.Addr) {

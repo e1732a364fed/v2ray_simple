@@ -137,7 +137,7 @@ func Client_ReadUDPResponse(udpConn *net.UDPConn, supposedServerAddr *net.UDPAdd
 	}
 
 	if !(addr.IP.Equal(supposedServerAddr.IP) && addr.Port == supposedServerAddr.Port) {
-		e = utils.NewDataErr("socks5 Client_ReadUDPResponse , got data from unknown source", nil, addr)
+		e = utils.ErrInErr{ErrDesc: "socks5 Client_ReadUDPResponse , got data from unknown source", Data: addr}
 		return
 	}
 	if buf[0] != 0 || buf[1] != 0 || buf[2] != 0 {

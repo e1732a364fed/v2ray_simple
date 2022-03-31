@@ -18,27 +18,35 @@ type Simple struct {
 	MyCountryISO_3166         string                    `toml:"mycountry" json:"mycountry"`
 }
 
-func LoadSimpleConfigFile(fileNamePath string) (*Simple, error) {
+func LoadSimpleConfigFile(fileNamePath string) (config Simple, hasError bool, E utils.ErrInErr) {
 
 	if cf, err := os.Open(fileNamePath); err == nil {
 		defer cf.Close()
 		bs, _ := ioutil.ReadAll(cf)
-		config := &Simple{}
-		if err = json.Unmarshal(bs, config); err != nil {
-			return nil, utils.NewDataErr("can not parse config file ", err, fileNamePath)
+		if err = json.Unmarshal(bs, &config); err != nil {
+			hasError = true
+			E = utils.ErrInErr{
+				ErrDesc:   "can not parse config file ",
+				ErrDetail: err,
+				Data:      fileNamePath,
+			}
+
 		}
 
-		return config, nil
+		return
 	} else {
-		return nil, utils.NewErr("can't open config file", err)
+		hasError = true
+		E = utils.ErrInErr{ErrDesc: "can't open config file", ErrDetail: err}
+		return
 	}
 
 }
 
-func LoadSimpleConfigFromStr(str string) (*Simple, error) {
-	config := &Simple{}
-	if err := json.Unmarshal([]byte(str), config); err != nil {
-		return nil, utils.NewErr("can not parse config ", err)
+func LoadSimpleConfigFromStr(str string) (config Simple, hasE bool, E utils.ErrInErr) {
+
+	if err := json.Unmarshal([]byte(str), &config); err != nil {
+		E = utils.ErrInErr{ErrDesc: "can not parse config ", ErrDetail: err}
+		hasE = true
 	}
-	return config, nil
+	return
 }

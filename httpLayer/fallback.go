@@ -333,14 +333,14 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 	return cfb
 }
 
-func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, addr *netLayer.Addr) {
+func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, addr netLayer.Addr) {
 
 	theMap := cfb.Map
 
 	ftype := condition.GetType()
 	cfb.supportedTypeMask |= ftype
 
-	theMap[condition] = addr
+	theMap[condition] = &addr
 }
 
 func (cfb *ClassicFallback) FirstBuffer() *bytes.Buffer {

@@ -133,10 +133,11 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 func (s *Server) Name() string { return Name }
 
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, targetAddr netLayer.Addr, returnErr error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
-		return nil, nil, err
+		returnErr = err
+		return
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
@@ -149,30 +150,30 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 	//var auth [17]byte
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		return nil, nil, utils.NewDataErr("read err", err, wholeReadLen)
+		returnErr = utils.ErrInErr{ErrDesc: "read err", ErrDetail: err, Data: wholeReadLen}
+		return
 	}
 
 	if wholeReadLen < 17 {
 		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
 		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
 
-		return nil, nil, utils.NewDataErr("fallback, msg too short", nil, wholeReadLen)
-
+		returnErr = utils.ErrInErr{ErrDesc: "fallback, msg too short", Data: wholeReadLen}
+		return
 	}
 
 	readbuf := bytes.NewBuffer(readbs[:wholeReadLen])
-
-	var returnErr error
 
 	goto realPart
 
 errorPart:
 
 	//所返回的buffer必须包含所有数据，而Buffer不支持回退，所以只能重新New
-	return nil, nil, &utils.ErrFirstBuffer{
+	returnErr = &utils.ErrFirstBuffer{
 		Err:   returnErr,
 		First: bytes.NewBuffer(readbs[:wholeReadLen]),
 	}
+	return
 
 realPart:
 	//这部分过程可以参照 v2ray的 proxy/vless/encoding/encoding.go DecodeRequestHeader 方法
@@ -183,7 +184,7 @@ realPart:
 	version := auth[0]
 	if version > 1 {
 
-		returnErr = utils.NewDataErr("Vless invalid version ", nil, version)
+		returnErr = utils.ErrInErr{ErrDesc: "Vless invalid version ", Data: version}
 		goto errorPart
 
 	}
@@ -206,7 +207,8 @@ realPart:
 
 		addonLenByte, err := readbuf.ReadByte()
 		if err != nil {
-			return nil, nil, err //凡是和的层Read相关的错误，一律不再返回Fallback信息，因为连接已然不可用
+			returnErr = err //凡是和的层Read相关的错误，一律不再返回Fallback信息，因为连接已然不可用
+			return
 		}
 		if addonLenByte != 0 {
 			//v2ray的vless中没有对应的任何处理。
@@ -223,7 +225,8 @@ realPart:
 				utils.PutBytes(tmpBuf)
 			*/
 			if tmpbs := readbuf.Next(int(addonLenByte)); len(tmpbs) != int(addonLenByte) {
-				return nil, nil, errors.New("vless short read in addon")
+				returnErr = errors.New("vless short read in addon")
+				return
 			}
 		}
 	}
@@ -236,13 +239,11 @@ realPart:
 		goto errorPart
 	}
 
-	addr := &netLayer.Addr{}
-
 	switch commandByte {
 	case CmdMux: //实际目前verysimple 暂时还未实现mux，先这么写
 
-		addr.Port = 0
-		addr.Name = "v1.mux.cool"
+		targetAddr.Port = 0
+		targetAddr.Name = "v1.mux.cool"
 
 	case Cmd_CRUMFURS:
 		if version != 1 {
@@ -255,11 +256,11 @@ realPart:
 		_, err = underlay.Write([]byte{CRUMFURS_ESTABLISHED})
 		if err != nil {
 
-			returnErr = utils.NewErr("write to crumfurs err", err)
+			returnErr = utils.ErrInErr{ErrDesc: "write to crumfurs err", ErrDetail: err}
 			goto errorPart
 		}
 
-		addr.Name = CRUMFURS_Established_Str // 使用这个特殊的办法来告诉调用者，预留了 CRUMFURS 信道，防止其关闭上层连接导致 CRUMFURS 信道 被关闭。
+		targetAddr.Name = CRUMFURS_Established_Str // 使用这个特殊的办法来告诉调用者，预留了 CRUMFURS 信道，防止其关闭上层连接导致 CRUMFURS 信道 被关闭。
 
 		theCRUMFURS := &CRUMFURS{
 			Conn: underlay,
@@ -271,7 +272,7 @@ realPart:
 
 		s.mux4Hashes.Unlock()
 
-		return nil, addr, nil
+		return
 
 	case CmdTCP, CmdUDP:
 
@@ -283,10 +284,10 @@ realPart:
 			goto errorPart
 		}
 
-		addr.Port = int(binary.BigEndian.Uint16(portbs))
+		targetAddr.Port = int(binary.BigEndian.Uint16(portbs))
 
 		if commandByte == CmdUDP {
-			addr.Network = "udp"
+			targetAddr.Network = "udp"
 		}
 
 		var ip_or_domain_bytesLength byte = 0
@@ -303,7 +304,7 @@ realPart:
 		case netLayer.AtypIP4:
 
 			ip_or_domain_bytesLength = net.IPv4len
-			addr.IP = utils.GetBytes(net.IPv4len)
+			targetAddr.IP = utils.GetBytes(net.IPv4len)
 
 		case netLayer.AtypDomain:
 			// 解码域名的长度
@@ -320,7 +321,7 @@ realPart:
 		case netLayer.AtypIP6:
 
 			ip_or_domain_bytesLength = net.IPv6len
-			addr.IP = utils.GetBytes(net.IPv6len)
+			targetAddr.IP = utils.GetBytes(net.IPv6len)
 		default:
 
 			returnErr = fmt.Errorf("unknown address type %v", addrTypeByte)
@@ -332,13 +333,14 @@ realPart:
 		_, err = readbuf.Read(ip_or_domain)
 
 		if err != nil {
-			return nil, nil, errors.New("fallback, reason 6")
+			returnErr = errors.New("fallback, reason 6")
+			return
 		}
 
-		if addr.IP != nil {
-			copy(addr.IP, ip_or_domain)
+		if targetAddr.IP != nil {
+			copy(targetAddr.IP, ip_or_domain)
 		} else {
-			addr.Name = string(ip_or_domain)
+			targetAddr.Name = string(ip_or_domain)
 		}
 
 		utils.PutBytes(ip_or_domain)
@@ -355,10 +357,10 @@ realPart:
 		remainFirstBufLen: readbuf.Len(),
 		uuid:              thisUUIDBytes,
 		version:           int(version),
-		isUDP:             addr.IsUDP(),
+		isUDP:             targetAddr.IsUDP(),
 		underlayIsBasic:   netLayer.IsBasicConn(underlay),
 		isServerEnd:       true,
-	}, addr, nil
+	}, targetAddr, nil
 
 }
 
@@ -375,7 +377,7 @@ type CRUMFURS struct {
 	hasAdvancedLayer bool //在用ws或grpc时，这个开关保持打开
 }
 
-func (c *CRUMFURS) WriteUDPResponse(a *net.UDPAddr, b []byte) (err error) {
+func (c *CRUMFURS) WriteUDPResponse(a net.UDPAddr, b []byte) (err error) {
 	atype := netLayer.AtypIP4
 	if len(a.IP) > 4 {
 		atype = netLayer.AtypIP6

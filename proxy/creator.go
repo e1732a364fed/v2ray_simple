@@ -68,17 +68,17 @@ func NewClient(dc *DialConf) (Client, error) {
 
 		}
 	}
-	return nil, utils.NewDataErr("unknown client protocol '", nil, protocol)
+	return nil, utils.ErrInErr{ErrDesc: "unknown client protocol ", Data: protocol}
 
 }
 
 // ClientFromURL calls the registered creator to create client.
 // dialer is the default upstream dialer so cannot be nil, we can use Default when calling this function.
-func ClientFromURL(s string) (Client, error) {
+func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {
 
-		return nil, utils.NewDataErr("can not parse client url", err, s)
+		return nil, true, utils.ErrInErr{ErrDesc: "can not parse client url", ErrDetail: err, Data: s}
 	}
 
 	schemeName := strings.ToLower(u.Scheme)
@@ -87,10 +87,10 @@ func ClientFromURL(s string) (Client, error) {
 	if ok {
 		c, e := creator.NewClientFromURL(u)
 		if e != nil {
-			return nil, e
+			return nil, true, utils.ErrInErr{ErrDesc: "creator.NewClientFromURL err", ErrDetail: e}
 		}
 		configCommonByURL(c, u)
-		return c, nil
+		return c, false, utils.ErrInErr{}
 	} else {
 
 		//尝试判断是否套tls, 比如vlesss实际上是vless+tls，https实际上是http+tls
@@ -100,20 +100,20 @@ func ClientFromURL(s string) (Client, error) {
 		if ok {
 			c, err := creator.NewClientFromURL(u)
 			if err != nil {
-				return c, err
+				return nil, true, utils.ErrInErr{ErrDesc: "creator.NewClientFromURL err", ErrDetail: err}
 			}
 			configCommonByURL(c, u)
 
 			c.SetUseTLS()
 			prepareTLS_forProxyCommon_withURL(u, true, c)
 
-			return c, err
+			return c, false, utils.ErrInErr{}
 
 		}
 
 	}
 
-	return nil, utils.NewDataErr("unknown client protocol '", nil, u.Scheme)
+	return nil, false, utils.ErrInErr{ErrDesc: "unknown client protocol ", Data: u.Scheme}
 }
 
 func NewServer(lc *ListenConf) (Server, error) {
@@ -130,7 +130,7 @@ func NewServer(lc *ListenConf) (Server, error) {
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
-				log.Fatalln("prepareTLS error", err)
+				log.Fatalf("prepareTLS error %s\n", err)
 			}
 			return ser, nil
 		}
@@ -149,24 +149,28 @@ func NewServer(lc *ListenConf) (Server, error) {
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
-				log.Fatalln("prepareTLS error", err)
+				log.Fatalf("prepareTLS error %s\n", err)
 			}
 			return ser, nil
 
 		}
 	}
 
-	return nil, utils.NewDataErr("unknown server protocol '", nil, protocol)
+	return nil, utils.ErrInErr{ErrDesc: "unknown server protocol ", Data: protocol}
 }
 
 // ServerFromURL calls the registered creator to create proxy servers
 // dialer is the default upstream dialer so cannot be nil, we can use Default when calling this function
 // 所有的server都可有 "norule"参数，标明无需路由或者此server不可使用路由，在监听多个ip时是有用的;
 // 路由配置可以在json的其他配置里面设置，如 mycountry项
-func ServerFromURL(s string) (Server, error) {
+func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {
-		return nil, utils.NewDataErr("can not parse server url ", err, s)
+		return nil, true, utils.ErrInErr{
+			ErrDesc:   "can not parse server url ",
+			ErrDetail: err,
+			Data:      s,
+		}
 	}
 
 	schemeName := strings.ToLower(u.Scheme)
@@ -174,29 +178,35 @@ func ServerFromURL(s string) (Server, error) {
 	if ok {
 		ser, err := creator.NewServerFromURL(u)
 		if err != nil {
-			return nil, err
+			return nil, true, utils.ErrInErr{
+				ErrDesc:   "creator.NewServerFromURL err ",
+				ErrDetail: err,
+			}
 		}
 		configCommonURLQueryForServer(ser, u)
 
-		return ser, nil
+		return ser, false, utils.ErrInErr{}
 	} else {
 		realScheme := strings.TrimSuffix(schemeName, "s")
 		creator, ok = serverCreatorMap[realScheme]
 		if ok {
 			server, err := creator.NewServerFromURL(u)
 			if err != nil {
-				return nil, err
+				return nil, true, utils.ErrInErr{
+					ErrDesc:   "creator.NewServerFromURL err ",
+					ErrDetail: err,
+				}
 			}
 			configCommonURLQueryForServer(server, u)
 
 			server.SetUseTLS()
 			prepareTLS_forProxyCommon_withURL(u, false, server)
-			return server, nil
+			return server, false, utils.ErrInErr{}
 
 		}
 	}
 
-	return nil, utils.NewDataErr("unknown server protocol '", nil, u.Scheme)
+	return nil, true, utils.ErrInErr{ErrDesc: "unknown server protocol ", Data: u.Scheme}
 }
 
 //setTag, setCantRoute, call configCommonByURL
@@ -218,7 +228,7 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 		fa, err := netLayer.NewAddr(fallbackStr)
 
 		if err != nil {
-			log.Fatalln("invalid fallback ", fallbackStr)
+			log.Fatalf("invalid fallback %s\n", fallbackStr)
 		}
 
 		ser.setFallback(fa)

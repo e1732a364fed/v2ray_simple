@@ -48,7 +48,7 @@ func (_ Server) Name() string {
 	return name
 }
 
-func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, targetAddr *netLayer.Addr, err error) {
+func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, targetAddr netLayer.Addr, err error) {
 	var b = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
 	//因为要储存为 firstdata，所以也无法直接放回
 
@@ -67,7 +67,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, targe
 
 	method, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(b[:n], true)
 	if failreason != 0 {
-		err = utils.NewDataErr("get method/path failed, method:"+method+" ,reason:", nil, failreason)
+		err = utils.ErrInErr{ErrDesc: "get method/path failed, method:" + method + " ,reason:", Data: failreason}
 
 		//一个正常的http代理如果遇到了 格式不符的情况的话是要返回 400 等错误代码的
 		// 但是，也不能说不返回400的就是异常服务器，因为这可能是服务器自己的策略，无视一切错误请求，比如防黑客时就常常会如此.

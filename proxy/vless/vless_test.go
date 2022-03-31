@@ -24,13 +24,13 @@ func TestVLess1(t *testing.T) {
 
 func testVLess(version int, port string, t *testing.T) {
 	url := "vless://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?version=" + strconv.Itoa(version)
-	server, err := proxy.ServerFromURL(url)
-	if err != nil {
+	server, hase, _ := proxy.ServerFromURL(url)
+	if hase {
 		t.FailNow()
 	}
 	defer server.Stop()
-	client, err := proxy.ClientFromURL(url)
-	if err != nil {
+	client, hase, _ := proxy.ClientFromURL(url)
+	if hase {
 		t.FailNow()
 	}
 
@@ -127,15 +127,15 @@ func TestVLess0_udp(t *testing.T) {
 //  不过实测，这个test暂时只能使用v0版本，因为 v1版本具有 独特信道，不能直接使用下面代码。
 func testVLessUDP(version int, port string, t *testing.T) {
 	url := "vless://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?version=" + strconv.Itoa(version)
-	fakeServerEndLocalServer, err := proxy.ServerFromURL(url)
-	if err != nil {
-		t.Log("fakeClientEndLocalServer parse err", err)
+	fakeServerEndLocalServer, hase, errx := proxy.ServerFromURL(url)
+	if hase {
+		t.Log("fakeClientEndLocalServer parse err", errx)
 		t.FailNow()
 	}
 	defer fakeServerEndLocalServer.Stop()
-	fakeClientEndRemoteClient, err := proxy.ClientFromURL(url)
-	if err != nil {
-		t.Log("fakeClientEndRemoteClient parse err", err)
+	fakeClientEndRemoteClient, hase, errx := proxy.ClientFromURL(url)
+	if hase {
+		t.Log("fakeClientEndRemoteClient parse err", errx)
 		t.FailNow()
 	}
 

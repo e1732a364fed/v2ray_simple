@@ -54,7 +54,7 @@ func TestUDP(t *testing.T) {
 
 				go udpConn.StartPushResponse(putter)
 
-				dialFunc := func(targetAddr *netLayer.Addr) (io.ReadWriter, error) {
+				dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
 					return targetAddr.Dial()
 				}
 
@@ -142,7 +142,7 @@ func TestUDP(t *testing.T) {
 
 	t.Log("call Client_RequestUDP")
 
-	socks5.Client_RequestUDP(urc, raFake, []byte("hello"))
+	socks5.Client_RequestUDP(urc, &raFake, []byte("hello"))
 
 	t.Log("call Client_ReadUDPResponse")
 

@@ -130,21 +130,20 @@ type Standard struct {
 	App *AppConf `toml:"app"`
 }
 
-func LoadTomlConfStr(str string) (c *Standard, err error) {
-	c = &Standard{}
-	_, err = toml.Decode(str, c)
+func LoadTomlConfStr(str string) (c Standard, err error) {
+	_, err = toml.Decode(str, &c)
 
 	return
 }
 
-func LoadTomlConfFile(fileNamePath string) (*Standard, error) {
+func LoadTomlConfFile(fileNamePath string) (Standard, error) {
 
 	if cf, err := os.Open(fileNamePath); err == nil {
 		defer cf.Close()
 		bs, _ := ioutil.ReadAll(cf)
 		return LoadTomlConfStr(string(bs))
 	} else {
-		return nil, utils.NewErr("can't open config file", err)
+		return Standard{}, utils.ErrInErr{ErrDesc: "can't open config file", ErrDetail: err}
 	}
 
 }

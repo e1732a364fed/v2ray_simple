@@ -32,7 +32,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	if c.cacheReader == nil {
 		h, err := c.stream.Recv()
 		if err != nil {
-			return 0, utils.NewErr("unable to read from gun tunnel", err)
+			return 0, utils.ErrInErr{ErrDesc: "unable to read from gun tunnel", ErrDetail: err}
 		}
 		c.cacheReader = bytes.NewReader(h.Data)
 	}
@@ -47,7 +47,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 func (c *Conn) Write(b []byte) (n int, err error) {
 	err = c.stream.Send(&Hunk{Data: b})
 	if err != nil {
-		return 0, utils.NewErr("Unable to send data over stream service", err)
+		return 0, utils.ErrInErr{ErrDesc: "Unable to send data over stream service", ErrDetail: err}
 	}
 	return len(b), nil
 }

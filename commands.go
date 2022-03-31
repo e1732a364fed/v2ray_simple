@@ -12,10 +12,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-const (
-	mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
-)
-
 var (
 	cmdPrintSupportedProtocols bool
 	cmdGenerateUUID            bool
@@ -39,7 +35,7 @@ func generateAndPrintUUID() {
 		return
 	}
 
-	log.Println("Your new randomly generated uuid is : ", utils.GenerateUUIDStr())
+	log.Printf("Your new randomly generated uuid is : %s\n", utils.GenerateUUIDStr())
 }
 
 func mayPrintSupportedProtocols() {
@@ -55,33 +51,36 @@ func tryDownloadMMDB() {
 	if utils.FileExist(utils.GetFilePath(netLayer.GeoipFileName)) {
 		return
 	}
-	log.Println("No GeoLite2-Country.mmdb found,start downloading from " + mmdbDownloadLink)
+
+	const mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
+
+	log.Printf("No GeoLite2-Country.mmdb found,start downloading from%s\n", mmdbDownloadLink)
 
 	resp, err := http.Get(mmdbDownloadLink)
 
 	if err != nil {
-		log.Println("Download mmdb failed", err)
+		log.Printf("Download mmdb failed%s\n", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	out, err := os.Create(netLayer.GeoipFileName)
 	if err != nil {
-		log.Println("Download mmdb but Can't CreateFile,", err)
+		log.Printf("Download mmdb but Can't CreateFile,%s\n", err)
 		return
 	}
 	defer out.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Println("Download mmdb bad status:", resp.Status)
+		log.Printf("Download mmdb bad status:%s\n", resp.Status)
 		return
 	}
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		log.Println("Write downloaded mmdb to file err:", err)
+		log.Printf("Write downloaded mmdb to file err:%s\n", err)
 		return
 	}
-	log.Println("Download mmdb success!")
+	log.Printf("Download mmdb success!\n")
 
 }

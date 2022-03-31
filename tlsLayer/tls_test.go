@@ -27,15 +27,15 @@ func testTls(protocol string, port string, t *testing.T) {
 	}
 
 	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@localhost:" + port + "?alterID=4&cert=../cert.pem&key=../cert.key&insecure=1"
-	server, err := proxy.ServerFromURL(url)
-	if err != nil {
-		t.Log("fail1", err)
+	server, hase, errx := proxy.ServerFromURL(url)
+	if hase {
+		t.Log("fail1", errx)
 		t.FailNow()
 	}
 	defer server.Stop()
-	client, err := proxy.ClientFromURL(url)
-	if err != nil {
-		t.Log("fail2", err)
+	client, hase, errx := proxy.ClientFromURL(url)
+	if hase {
+		t.Log("fail2", errx)
 		t.FailNow()
 	}
 

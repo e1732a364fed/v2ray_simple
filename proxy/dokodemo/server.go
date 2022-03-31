@@ -73,7 +73,7 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 type Server struct {
 	proxy.ProxyCommonStruct
 
-	targetAddr *netLayer.Addr
+	targetAddr netLayer.Addr
 }
 
 func NewServer() (proxy.Server, error) {
@@ -82,6 +82,6 @@ func NewServer() (proxy.Server, error) {
 }
 func (d *Server) Name() string { return name }
 
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.Addr, error) {
 	return underlay, s.targetAddr, nil
 }

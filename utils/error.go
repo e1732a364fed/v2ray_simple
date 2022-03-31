@@ -34,7 +34,8 @@ func (ef ErrFirstBuffer) Error() string {
 }
 
 // 返回结构体，而不是指针, 这样可以避免内存逃逸到堆
-func NewErr(desc string, e error) ErrInErr {
+// 发现只要是函数就会逃逸到堆，自己初始化就没事。那就不提供初始化函数了。
+/*func NewErr(desc string, e error) ErrInErr {
 	return ErrInErr{
 		ErrDesc:   desc,
 		ErrDetail: e,
@@ -42,6 +43,7 @@ func NewErr(desc string, e error) ErrInErr {
 }
 
 // 返回结构体，而不是指针, 这样可以避免内存逃逸到堆
+
 func NewDataErr(desc string, e error, data interface{}) ErrInErr {
 	return ErrInErr{
 		ErrDesc:   desc,
@@ -49,6 +51,7 @@ func NewDataErr(desc string, e error, data interface{}) ErrInErr {
 		Data:      data,
 	}
 }
+*/
 
 // ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况.
 type ErrInErr struct {

@@ -21,8 +21,8 @@ func TestClientSimpleConfig(t *testing.T) {
   ]
 }`
 
-	mc, err := proxy.LoadSimpleConfigFromStr(confstr1)
-	if err != nil {
+	mc, hasE, err := proxy.LoadSimpleConfigFromStr(confstr1)
+	if hasE {
 		t.Log("loadConfigFromStr err", err)
 		t.FailNow()
 	}

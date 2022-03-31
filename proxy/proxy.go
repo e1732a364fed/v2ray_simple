@@ -17,17 +17,19 @@ import (
 )
 
 func PrintAllServerNames() {
-	fmt.Println("===============================\nSupported Server protocols:")
+	fmt.Printf("===============================\nSupported Server protocols:\n")
 	for v := range serverCreatorMap {
-		fmt.Println(v)
+		fmt.Print(v)
+		fmt.Print("\n")
 	}
 }
 
 func PrintAllClientNames() {
-	fmt.Println("===============================\nSupported client protocols:")
+	fmt.Printf("===============================\nSupported client protocols:\n")
 
 	for v := range clientCreatorMap {
-		fmt.Println(v)
+		fmt.Print(v)
+		fmt.Print("\n")
 	}
 }
 
@@ -50,7 +52,7 @@ type Client interface {
 type Server interface {
 	ProxyCommon
 
-	Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error)
+	Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.Addr, error)
 }
 
 // FullName 可以完整表示 一个 代理的 VSI 层级.
@@ -116,8 +118,8 @@ type ProxyCommon interface {
 
 	/////////////////// http层 ///////////////////
 	//默认回落地址.
-	GetFallback() *netLayer.Addr
-	setFallback(*netLayer.Addr)
+	GetFallback() netLayer.Addr
+	setFallback(netLayer.Addr)
 
 	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 
@@ -196,7 +198,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			if e != nil {
 				log.Fatalln("prepareTLS_forClient,quic,netLayer.NewAddr err: ", e)
 			}
-			return quic.DialCommonInitialLayer(na, &tls.Config{
+			return quic.DialCommonInitialLayer(&na, tls.Config{
 				InsecureSkipVerify: dc.Insecure,
 				ServerName:         dc.Host,
 				NextProtos:         alpnList,
@@ -275,10 +277,10 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
 
 			if err != nil {
-				log.Fatalln("can't create tls cert from file:", lc.TLSCert, lc.TLSKey, err)
+				log.Fatalf("can't create tls cert from file: %s, %s, %s\n", lc.TLSCert, lc.TLSKey, err)
 			}
 
-			return quic.ListenInitialLayers(com.AddrStr(), &tls.Config{
+			return quic.ListenInitialLayers(com.AddrStr(), tls.Config{
 				InsecureSkipVerify: lc.Insecure,
 				ServerName:         lc.Host,
 				Certificates:       certArray,
@@ -368,7 +370,7 @@ type ProxyCommonStruct struct {
 	ws_s *ws.Server
 
 	grpc_s       *grpc.Server
-	FallbackAddr *netLayer.Addr
+	FallbackAddr netLayer.Addr
 
 	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
 	dialCommonConnFunc   func(serverAddr *netLayer.Addr) any
@@ -386,10 +388,10 @@ func (pcs *ProxyCommonStruct) setPath(a string) {
 	pcs.PATH = a
 }
 
-func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {
+func (pcs *ProxyCommonStruct) GetFallback() netLayer.Addr {
 	return pcs.FallbackAddr
 }
-func (pcs *ProxyCommonStruct) setFallback(a *netLayer.Addr) {
+func (pcs *ProxyCommonStruct) setFallback(a netLayer.Addr) {
 	pcs.FallbackAddr = a
 }
 

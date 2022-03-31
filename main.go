@@ -41,11 +41,11 @@ var (
 
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
-	confMode        int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	simpleConf      *proxy.Simple
-	standardConf    *proxy.Standard
-	directClient, _ = proxy.ClientFromURL("direct://")
-	default_uuid    string
+	confMode           int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
+	simpleConf         proxy.Simple
+	standardConf       proxy.Standard
+	directClient, _, _ = proxy.ClientFromURL("direct://")
+	default_uuid       string
 
 	allServers = make([]proxy.Server, 0, 8)
 	allClients = make([]proxy.Client, 0, 8)
@@ -138,11 +138,9 @@ func main() {
 		netLayer.UseReadv = usereadv_beforeLoadConfigFile
 	}
 
-	fmt.Println("Log Level:", utils.LogLevel)
-	fmt.Println("UseReadv:", netLayer.UseReadv)
-	if utils.CanLogDebug() {
-		fmt.Println("MaxBufSize", utils.MaxBufLen)
-	}
+	//Printf不会发生 escapes to heap 现象，所以我们统一用 Printf
+	fmt.Printf("Log Level:%d\n", utils.LogLevel)
+	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
 
 	runPreCommands()
 
@@ -153,9 +151,10 @@ func main() {
 	//load server and routePolicy
 	switch confMode {
 	case simpleMode:
-		defaultInServer, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
-		if err != nil {
-			log.Fatalln("can not create local server: ", err)
+		var hase bool
+		defaultInServer, hase, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
+		if hase {
+			log.Fatalf("can not create local server: %s\n", err)
 		}
 
 		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
@@ -217,8 +216,9 @@ func main() {
 	// load client
 	switch confMode {
 	case simpleMode:
-		defaultOutClient, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
-		if err != nil {
+		var hase bool
+		defaultOutClient, hase, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
+		if hase {
 			log.Fatalln("can not create remote client: ", err)
 		}
 	case standardMode:
@@ -274,14 +274,14 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 		handleFunc := inServer.HandleInitialLayersFunc()
 		if handleFunc == nil {
-			log.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
+			log.Fatalf("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil\n")
 		}
 
 		newConnChan, baseConn := handleFunc()
 		if newConnChan == nil {
 			//baseConn可以为nil，quic就是如此
 			if utils.CanLogErr() {
-				log.Println("StarthandleInitialLayers can't extablish baseConn")
+				log.Printf("StarthandleInitialLayers can't extablish baseConn\n")
 			}
 			return
 		}
@@ -291,7 +291,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 				newConn, ok := <-newConnChan
 				if !ok {
 					if utils.CanLogErr() {
-						log.Println("read from SuperProxy not ok")
+						log.Printf("read from SuperProxy not ok\n")
 
 					}
 
@@ -313,7 +313,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 		}()
 
 		if utils.CanLogInfo() {
-			log.Println(proxy.GetFullName(inServer), "is listening ", inServer.Network(), "on", inServer.AddrStr())
+			log.Printf("%s is listening %s on %s\n", proxy.GetFullName(inServer), inServer.Network(), inServer.AddrStr())
 
 		}
 		return
@@ -328,13 +328,13 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 	if err == nil {
 		if utils.CanLogInfo() {
-			log.Println(proxy.GetFullName(inServer), "is listening ", network, "on", inServer.AddrStr())
+			log.Printf("%s is listening %s on %s\n", proxy.GetFullName(inServer), network, inServer.AddrStr())
 
 		}
 
 	} else {
 		if err != nil {
-			log.Fatalln("can not listen inServer on", inServer.AddrStr(), err)
+			log.Fatalf("can not listen inServer on %s %s\n", inServer.AddrStr(), err)
 
 		}
 	}
@@ -392,7 +392,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 	if utils.CanLogInfo() {
 		str := wrappedConn.RemoteAddr().String()
-		log.Println("New Accepted Conn from", str, ", being handled by "+proxy.GetVSI_url(inServer))
+		log.Printf("New Accepted Conn from %s , being handled by %s\n", str, proxy.GetVSI_url(inServer))
 
 		iics.cachedRemoteAddr = str
 	}
@@ -419,7 +419,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		if err != nil {
 
 			if utils.CanLogErr() {
-				log.Println("failed in inServer tls handshake ", inServer.AddrStr(), err)
+				log.Printf("failed in inServer tls handshake %s %s\n", inServer.AddrStr(), err)
 
 			}
 			wrappedConn.Close()
@@ -450,7 +450,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			// 我们直接循环监听然后分别用 新goroutine发向 handshakeInserver_and_passToOutClient
 
 			if utils.CanLogDebug() {
-				log.Println("start upgrade grpc")
+				log.Printf("start upgrade grpc\n")
 			}
 
 			grpcs := inServer.GetGRPC_Server() //这个grpc server是在配置阶段初始化好的.
@@ -464,7 +464,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				newGConn, ok := <-grpcs.NewConnChan
 				if !ok {
 					if utils.CanLogWarn() {
-						log.Println("grpc getNewSubConn not ok")
+						log.Printf("grpc getNewSubConn not ok\n")
 					}
 
 					iics.baseLocalConn.Close()
@@ -487,12 +487,12 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			if re != nil {
 				if re == httpLayer.ErrNotHTTP_Request {
 					if utils.CanLogErr() {
-						log.Println("ws: got not http request ", inServer.AddrStr())
+						log.Printf("ws: got not http request %s\n", inServer.AddrStr())
 					}
 
 				} else {
 					if utils.CanLogErr() {
-						log.Println("ws: handshake read error ", inServer.AddrStr())
+						log.Printf("ws: handshake read error %s\n", inServer.AddrStr())
 					}
 				}
 
@@ -507,7 +507,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				iics.theFallbackFirstBuffer = rp.WholeRequestBuf
 
 				if utils.CanLogDebug() {
-					log.Println("ws path not match", rp.Method, rp.Path, "should be:", wss.Thepath)
+					log.Printf("ws path not match %s %s should be: %s\n", rp.Method, rp.Path, wss.Thepath)
 
 				}
 
@@ -520,7 +520,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			wsConn, err := wss.Handshake(rp.WholeRequestBuf, wrappedConn)
 			if err != nil {
 				if utils.CanLogErr() {
-					log.Println("failed in inServer websocket handshake ", inServer.AddrStr(), err)
+					log.Printf("failed in inServer websocket handshake %s %s\n", inServer.AddrStr(), err)
 
 				}
 
@@ -550,7 +550,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	inServer := iics.inServer
 
 	var wlc io.ReadWriteCloser
-	var targetAddr *netLayer.Addr
+	var targetAddr netLayer.Addr
 	var err error
 
 	if iics.shouldFallback {
@@ -571,7 +571,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	wlc = nil
 
 	if utils.CanLogWarn() {
-		log.Println("failed in inServer proxy handshake from", inServer.AddrStr(), err)
+		log.Printf("failed in inServer proxy handshake from %s %s\n", inServer.AddrStr(), err)
 	}
 
 	if !inServer.CanFallback() {
@@ -591,7 +591,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		iics.theFallbackFirstBuffer = fe.First
 		if iics.theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
-			log.Fatal("No FirstBuffer")
+			log.Fatalf("No FirstBuffer\n")
 		}
 	}
 
@@ -602,7 +602,7 @@ checkFallback:
 	if mainFallback != nil {
 
 		if utils.CanLogDebug() {
-			log.Println("checkFallback")
+			log.Printf("checkFallback\n")
 		}
 
 		var thisFallbackType byte
@@ -649,10 +649,10 @@ checkFallback:
 		fbAddr := mainFallback.GetFallback(thisFallbackType, fallback_params...)
 
 		if utils.CanLogDebug() {
-			log.Println("checkFallback ,matched fallback:", fbAddr)
+			log.Printf("checkFallback ,matched fallback: %s\n", fbAddr.String())
 		}
 		if fbAddr != nil {
-			targetAddr = fbAddr
+			targetAddr = *fbAddr
 			wlc = wrappedConn
 			goto afterLocalServerHandshake
 		}
@@ -661,7 +661,7 @@ checkFallback:
 
 	//默认回落, 每个listen配置 都可 有一个自己独享的默认回落
 
-	if defaultFallbackAddr := inServer.GetFallback(); defaultFallbackAddr != nil {
+	if defaultFallbackAddr := inServer.GetFallback(); !defaultFallbackAddr.IsEmpty() {
 
 		targetAddr = defaultFallbackAddr
 		wlc = wrappedConn
@@ -673,7 +673,7 @@ afterLocalServerHandshake:
 	if wlc == nil {
 		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接return
 		if utils.CanLogDebug() {
-			log.Println("invalid request and no matched fallback, hung up.")
+			log.Printf("invalid request and no matched fallback, hung up.\n")
 		}
 		wrappedConn.Close()
 		return
@@ -692,7 +692,7 @@ afterLocalServerHandshake:
 		}
 
 		if utils.CanLogDebug() {
-			log.Println("try routing", desc)
+			log.Printf("try routing %v\n", desc)
 		}
 
 		outtag := routePolicy.GetOutTag(desc)
@@ -702,7 +702,7 @@ afterLocalServerHandshake:
 			iics.routedToDirect = true
 
 			if utils.CanLogInfo() {
-				log.Println("routed to direct", targetAddr.UrlString())
+				log.Printf("routed to direct %s\n", targetAddr.UrlString())
 			}
 		} else {
 			//log.Println("outtag", outtag, clientsTagMap)
@@ -710,7 +710,7 @@ afterLocalServerHandshake:
 			if tagC, ok := clientsTagMap[outtag]; ok {
 				client = tagC
 				if utils.CanLogInfo() {
-					log.Println("routed to", outtag, proxy.GetFullName(client))
+					log.Printf("routed to %s %s\n", outtag, proxy.GetFullName(client))
 				}
 			}
 		}
@@ -743,7 +743,7 @@ afterLocalServerHandshake:
 	if isTlsLazy_clientEnd || iics.isTlsLazyServerEnd {
 
 		if tlsLayer.PDD {
-			log.Println("loading TLS SniffConn", isTlsLazy_clientEnd, iics.isTlsLazyServerEnd)
+			log.Printf("loading TLS SniffConn %t %t\n", isTlsLazy_clientEnd, iics.isTlsLazyServerEnd)
 		}
 
 		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, tls_lazy_secure)
@@ -836,7 +836,7 @@ afterLocalServerHandshake:
 
 				unknownRemoteAddrMsgWriter = theCRUMFURS
 
-				uniExtractor := netLayer.NewUniUDP_Extractor(targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
+				uniExtractor := netLayer.NewUniUDP_Extractor(*targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
 
 				netLayer.RelayUDP_to_Direct(uniExtractor) //阻塞
 
@@ -847,7 +847,7 @@ afterLocalServerHandshake:
 			// 此时socks5包已经帮我们dial好了一个udp连接，即wlc，但是还未读取到客户端想要访问的东西
 			udpConn := wlc.(*socks5.UDPConn)
 
-			dialFunc := func(targetAddr *netLayer.Addr) (io.ReadWriter, error) {
+			dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
 				return dialClient(incomingInserverConnState{}, targetAddr, client, false, nil, true)
 			}
 
@@ -871,7 +871,7 @@ afterLocalServerHandshake:
 
 			} else {
 				if utils.CanLogErr() {
-					log.Println("socks5 server -> client for udp, but client didn't implement netLayer.UDP_Putter", client.Name())
+					log.Printf("socks5 server -> client for udp, but client didn't implement netLayer.UDP_Putter, %s\n", client.Name())
 				}
 			}
 			return
@@ -892,7 +892,7 @@ afterLocalServerHandshake:
 //client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
 // noCopy是为了让其它调用者自行处理 转发 时使用。
-func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, noCopy bool) (io.ReadWriter, error) {
+func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, noCopy bool) (io.ReadWriter, error) {
 
 	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
 		if iics.baseLocalConn != nil {
@@ -906,18 +906,18 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 
 	//direct的话自己是没有目的地址的，直接使用 请求的地址
 	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
-	var realTargetAddr *netLayer.Addr = targetAddr
+	var realTargetAddr netLayer.Addr = targetAddr
 
 	if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
 		if utils.CanLogDebug() {
-			log.Println("request isn't the appointed domain", targetAddr, uniqueTestDomain)
+			log.Printf("request isn't the appointed domain, %s, %s\n", targetAddr.String(), uniqueTestDomain)
 
 		}
 		return nil, utils.NumErr{N: 1, Prefix: "dialClient err, "}
 	}
 
 	if utils.CanLogInfo() {
-		log.Println(iics.cachedRemoteAddr, " request ", targetAddr.UrlString(), "through", proxy.GetVSI_url(client))
+		log.Printf("%s request %s through %s\n", iics.cachedRemoteAddr, targetAddr.UrlString(), proxy.GetVSI_url(client))
 
 	}
 
@@ -926,7 +926,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 
 		realTargetAddr, err = netLayer.NewAddr(client.AddrStr())
 		if err != nil {
-			log.Fatal("convert addr err:", err)
+			log.Fatalf("convert addr err:%s\n", err)
 		}
 		realTargetAddr.Network = client.Network()
 	}
@@ -943,7 +943,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 	switch client.AdvancedLayer() {
 	case "grpc":
 
-		grpcClientConn = grpc.GetEstablishedConnFor(realTargetAddr)
+		grpcClientConn = grpc.GetEstablishedConnFor(&realTargetAddr)
 
 		if grpcClientConn != nil {
 			//如果有已经建立好的连接，则跳过拨号阶段
@@ -951,7 +951,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 		}
 	case "quic":
 		//quic这里并不是在tls层基础上进行dial，而是直接dial
-		dailedCommonConn = client.DialCommonInitialLayerConnFunc()(realTargetAddr)
+		dailedCommonConn = client.DialCommonInitialLayerConnFunc()(&realTargetAddr)
 		if dailedCommonConn != nil {
 			//如果有已经建立好的连接，则跳过拨号阶段
 			goto advLayerStep
@@ -965,7 +965,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 	clientConn, err = realTargetAddr.Dial()
 	if err != nil {
 		if utils.CanLogErr() {
-			log.Println("failed in dial", realTargetAddr.String(), ", Reason: ", err)
+			log.Printf("failed in dial %s , Reason: , %s\n", realTargetAddr.String(), err)
 
 		}
 		return nil, utils.NumErr{N: 2, Prefix: "dialClient err, "}
@@ -986,7 +986,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 				// 而且为了避免黑客攻击或探测，我们要使用uuid作为特殊指令，此时需要 UserServer和 UserClient
 
 				if uc := client.(proxy.UserClient); uc != nil {
-					tryTlsLazyRawCopy(true, uc, nil, targetAddr, clientConn, wlc, nil, true, nil)
+					tryTlsLazyRawCopy(true, uc, nil, &targetAddr, clientConn, wlc, nil, true, nil)
 
 				}
 
@@ -1002,7 +1002,7 @@ func dialClient(iics incomingInserverConnState, targetAddr *netLayer.Addr, clien
 
 		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
 		if err != nil {
-			log.Println("failed in handshake outClient tls", targetAddr.String(), ", Reason: ", err)
+			log.Printf("failed in handshake outClient tls %s, Reason: %s\n", targetAddr.String(), err)
 			return nil, utils.NumErr{N: 4, Prefix: "dialClient err, "}
 		}
 
@@ -1020,16 +1020,16 @@ advLayerStep:
 			clientConn, err = client.DialSubConnFunc()(dailedCommonConn)
 			if err != nil {
 				if utils.CanLogErr() {
-					log.Println("DialSubConnFunc failed,", err)
+					log.Printf("DialSubConnFunc failed, %s\n", err)
 				}
 				return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
 			}
 		case "grpc":
 			if grpcClientConn == nil {
-				grpcClientConn, err = grpc.ClientHandshake(clientConn, realTargetAddr)
+				grpcClientConn, err = grpc.ClientHandshake(clientConn, &realTargetAddr)
 				if err != nil {
 					if utils.CanLogErr() {
-						log.Println("grpc.ClientHandshake failed,", err)
+						log.Printf("grpc.ClientHandshake failed, %s\n", err)
 
 					}
 					if iics.baseLocalConn != nil {
@@ -1041,10 +1041,10 @@ advLayerStep:
 
 			}
 
-			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, realTargetAddr)
+			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, &realTargetAddr)
 			if err != nil {
 				if utils.CanLogErr() {
-					log.Println("grpc.DialNewSubConn failed,", err)
+					log.Printf("grpc.DialNewSubConn failed,%s\n", err)
 
 					//如果底层tcp连接被关闭了的话，错误会是：
 					// rpc error: code = Unavailable desc = connection error: desc = "transport: failed to write client preface: tls: use of closed connection"
@@ -1068,7 +1068,7 @@ advLayerStep:
 				n, e := wlc.Read(edBuf)
 				if e != nil {
 					if utils.CanLogErr() {
-						log.Println("err when reading ws early data", e)
+						log.Printf("err when reading ws early data %s\n", e)
 					}
 					return nil, utils.NumErr{N: 7, Prefix: "dialClient err, "}
 				}
@@ -1093,7 +1093,7 @@ advLayerStep:
 			//wc, err := wsClient.Handshake(clientConn, ed)
 			if err != nil {
 				if utils.CanLogErr() {
-					log.Println("failed in handshake ws to", targetAddr.String(), ", Reason: ", err)
+					log.Printf("failed in handshake ws to %s , Reason: %s\n", targetAddr.String(), err)
 
 				}
 				return nil, utils.NumErr{N: 8, Prefix: "dialClient err, "}
@@ -1105,10 +1105,10 @@ advLayerStep:
 
 	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
 
-	wrc, err := client.Handshake(clientConn, targetAddr)
+	wrc, err := client.Handshake(clientConn, &targetAddr)
 	if err != nil {
 		if utils.CanLogErr() {
-			log.Println("failed in handshake to", targetAddr.String(), ", Reason: ", err)
+			log.Printf("failed in handshake to %s , Reason: %s\n", targetAddr.String(), err)
 
 		}
 		return nil, utils.NumErr{N: 9, Prefix: "dialClient err, "}
@@ -1154,7 +1154,7 @@ advLayerStep:
 		utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
-	netLayer.Relay(realTargetAddr, wlc, wrc)
+	netLayer.Relay(&realTargetAddr, wlc, wrc)
 
 	return wrc, nil
 }

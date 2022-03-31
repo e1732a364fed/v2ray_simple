@@ -76,9 +76,9 @@ var (
 	}
 )
 
-func ListenInitialLayers(addr string, tlsConf *tls.Config, useHysteria bool, hysteriaMaxByteCount int) (newConnChan chan net.Conn, baseConn any) {
+func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int) (newConnChan chan net.Conn, baseConn any) {
 
-	listener, err := quic.ListenAddr(addr, tlsConf, &our_ListenConfig)
+	listener, err := quic.ListenAddr(addr, &tlsConf, &our_ListenConfig)
 	if err != nil {
 		if utils.CanLogErr() {
 			log.Println(err)
@@ -140,8 +140,8 @@ func ListenInitialLayers(addr string, tlsConf *tls.Config, useHysteria bool, hys
 	return
 }
 
-func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf *tls.Config, useHysteria bool, hysteriaMaxByteCount int) any {
-	session, err := quic.DialAddr(serverAddr.String(), tlsConf, &our_DialConfig)
+func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int) any {
+	session, err := quic.DialAddr(serverAddr.String(), &tlsConf, &our_DialConfig)
 	if err != nil {
 		if utils.CanLogErr() {
 			log.Println(err)

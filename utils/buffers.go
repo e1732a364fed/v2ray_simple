@@ -136,6 +136,8 @@ func MergeBuffers(bs [][]byte) (result []byte, duplicate bool) {
 
 	} else {
 		result = make([]byte, allLen) //实际目前的readv实现也很难出现这种情况
+		// 一定要尽量避免这种情况，如果 MaxBufLen小于readv buf总长度，会导致严重的内存泄漏问题,
+		// 见github issue #24
 	}
 
 	cursor := 0

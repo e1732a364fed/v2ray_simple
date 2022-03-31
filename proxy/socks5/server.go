@@ -47,10 +47,11 @@ func (s *Server) Name() string { return Name }
 // 参考 https://studygolang.com/articles/31404
 
 // 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn.StartReadRequest 处理
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, targetAddr netLayer.Addr, returnErr error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
-		return nil, nil, err
+		returnErr = err
+		return
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
@@ -61,24 +62,28 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 	// 一般握手包发来的是 [5 1 0]
 	n, err := underlay.Read(buf)
 	if err != nil || n == 0 {
-		return nil, nil, fmt.Errorf("failed to read hello: %w", err)
+		returnErr = fmt.Errorf("failed to read hello: %w", err)
+		return
 	}
 	version := buf[0]
 	if version != Version5 {
-		return nil, nil, fmt.Errorf("unsupported socks version %v", version)
+		returnErr = fmt.Errorf("unsupported socks version %v", version)
+		return
 	}
 
 	// Write hello response， [5 0]
 	// TODO: Support Auth
 	_, err = underlay.Write([]byte{Version5, AuthNone})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to write hello response: %w", err)
+		returnErr = fmt.Errorf("failed to write hello response: %w", err)
+		return
 	}
 
 	// Read command message，
 	n, err = underlay.Read(buf)
 	if err != nil || n < 7 { // Shortest length is 7
-		return nil, nil, fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
+		returnErr = fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
+		return
 	}
 
 	// 一般可以为 5 1 0 3 n，3表示域名，n是域名长度，然后域名很可能是 119 119 119 46 开头，表示 www.
@@ -86,7 +91,8 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 
 	cmd := buf[1]
 	if cmd == CmdBind {
-		return nil, nil, fmt.Errorf("unsuppoted command %v", cmd)
+		returnErr = fmt.Errorf("unsuppoted command %v", cmd)
+		return
 	}
 
 	l := 2
@@ -104,11 +110,13 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 		l += int(buf[4])
 		off = 5
 	default:
-		return nil, nil, fmt.Errorf("unknown address type %v", buf[3])
+		returnErr = fmt.Errorf("unknown address type %v", buf[3])
+		return
 	}
 
 	if len(buf[off:]) < l {
-		return nil, nil, errors.New("short command request")
+		returnErr = errors.New("short command request")
+		return
 	}
 
 	var theName string
@@ -145,7 +153,8 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 
 		udpRC, err := net.ListenUDP("udp", udpPreparedAddr)
 		if err != nil {
-			return nil, nil, errors.New("UDPAssociate: unable to listen udp")
+			returnErr = errors.New("UDPAssociate: unable to listen udp")
+			return
 		}
 
 		//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR(4字节的ipv4) , BND.PORT(2字节)
@@ -154,10 +163,11 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 		// Write command response
 		_, err = underlay.Write(reply)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to write command response: %w", err)
+			returnErr = fmt.Errorf("failed to write command response: %w", err)
+			return
 		}
 
-		clientFutureAddr := &netLayer.Addr{
+		clientFutureAddr := netLayer.Addr{
 			IP:      theIP,
 			Name:    theName,
 			Port:    thePort,
@@ -172,7 +182,7 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 		return uc, clientFutureAddr, nil
 
 	} else {
-		addr := &netLayer.Addr{
+		targetAddr = netLayer.Addr{
 			IP:   theIP,
 			Name: theName,
 			Port: thePort,
@@ -186,10 +196,11 @@ func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, *netLayer.Add
 
 		_, err = underlay.Write(reply)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to write command response: %w", err)
+			returnErr = fmt.Errorf("failed to write command response: %w", err)
+			return
 		}
 
-		return underlay, addr, nil
+		return underlay, targetAddr, nil
 	}
 
 }
@@ -244,7 +255,7 @@ func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 // 然后将该请求 用 udpPutter.WriteUDPRequest 发送给 udpPutter
 //	至于fullcone与否它是不管的。
 // 如果客户端一开始没有指明自己连接本服务端的ip和端口, 则将第一个发来的正确的socks5请求视为该客户端,并记录。
-func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(targetAddr *netLayer.Addr) (io.ReadWriter, error)) {
+func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(targetAddr netLayer.Addr) (io.ReadWriter, error)) {
 
 	var clientSupposedAddrIsNothing bool
 	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
@@ -341,7 +352,7 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 
 		//log.Println("socks5 server,StartReadRequest, got msg", thisaddr, string(bs[newStart:n]))
 
-		udpPutter.WriteUDPRequest(requestAddr.ToUDPAddr(), bs[newStart:n], dialFunc)
+		udpPutter.WriteUDPRequest(*requestAddr.ToUDPAddr(), bs[newStart:n], dialFunc)
 
 	}
 }

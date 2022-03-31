@@ -137,7 +137,7 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 		_, encerr := io.Copy(encoder, multiReader)
 		if encerr != nil {
 			close(edc.firstHandshakeOkChan)
-			return 0, utils.NewErr("encode early data err", encerr)
+			return 0, utils.ErrInErr{ErrDesc: "encode early data err", ErrDetail: encerr}
 		}
 		encoder.Close()
 

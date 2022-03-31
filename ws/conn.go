@@ -89,7 +89,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 		*/
 
 		//log.Println("OpCode not Binary", h.OpCode)
-		return 0, utils.NewDataErr("ws OpCode not Binary", nil, h.OpCode)
+		return 0, utils.ErrInErr{ErrDesc: "ws OpCode not Binary", Data: h.OpCode}
 	}
 	//log.Println("Read next frame header ok,", h.Length, c.r.State.Fragmented(), "givenbuf len", len(p))
 

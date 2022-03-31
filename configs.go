@@ -33,7 +33,7 @@ func loadConfig() {
 			standardConf, err = proxy.LoadTomlConfFile(fpath)
 			if err != nil {
 
-				log.Fatalln("can not load standard config file: ", err)
+				log.Fatalf("can not load standard config file: %s\n", err)
 			}
 			//log.Println("standardConf.Fallbacks: ", len(standardConf.Fallbacks))
 			if len(standardConf.Fallbacks) != 0 {
@@ -53,10 +53,11 @@ func loadConfig() {
 			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法
 			// 默认所有json格式的文件都为 极简模式
 
-			simpleConf, err = proxy.LoadSimpleConfigFile(fpath)
-			if err != nil {
+			var hasE bool
+			simpleConf, hasE, err = proxy.LoadSimpleConfigFile(fpath)
+			if hasE {
 
-				log.Fatalln("can not load simple config file: ", err)
+				log.Fatalf("can not load simple config file: %s\n", err)
 			}
 			if simpleConf.Fallbacks != nil {
 				mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
@@ -70,15 +71,15 @@ func loadConfig() {
 		}
 
 	} else {
-		log.Println("No Such Config File:", configFileName, ",will try using -L parameter ")
+		log.Printf("No Such Config File:%s,will try using -L parameter \n", configFileName)
 		if listenURL != "" {
 			_, err = url.Parse(listenURL)
 			if err != nil {
-				log.Fatalln("listenURL given but invalid ", listenURL, err)
+				log.Fatalf("listenURL given but invalid %s %s\n", listenURL, err)
 
 			}
 
-			simpleConf = &proxy.Simple{
+			simpleConf = proxy.Simple{
 				Server_ThatListenPort_Url: listenURL,
 			}
 
@@ -86,7 +87,7 @@ func loadConfig() {
 
 				_, err = url.Parse(dialURL)
 				if err != nil {
-					log.Fatalln("dialURL given but invalid ", dialURL, err)
+					log.Fatalf("dialURL given but invalid %s %s\n", dialURL, err)
 
 				}
 
@@ -94,7 +95,7 @@ func loadConfig() {
 			}
 
 		} else {
-			log.Fatalln("no -L listen URL provided ")
+			log.Fatalf("no -L listen URL provided \n")
 
 		}
 	}

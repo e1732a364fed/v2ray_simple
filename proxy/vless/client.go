@@ -3,7 +3,6 @@ package vless
 import (
 	"bufio"
 	"bytes"
-	"encoding/binary"
 	"io"
 	"log"
 	"net"
@@ -17,14 +16,14 @@ import (
 )
 
 func init() {
-	proxy.RegisterClient(Name, &ClientCreator{})
+	proxy.RegisterClient(Name, ClientCreator{})
 }
 
 //实现 proxy.UserClient，以及 netLayer.UDP_Putter
 type Client struct {
 	proxy.ProxyCommonStruct
 
-	udpResponseChan chan *netLayer.UDPAddrData
+	udpResponseChan chan netLayer.UDPAddrData
 
 	version int
 
@@ -52,12 +51,12 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 		return nil, err
 	}
 
-	c := &Client{
+	c := Client{
 		user: id,
 	}
 
 	c.knownUDPDestinations = make(map[string]io.ReadWriter)
-	c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
+	c.udpResponseChan = make(chan netLayer.UDPAddrData, 20)
 
 	v := dc.Version
 	if v >= 0 {
@@ -68,7 +67,7 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	}
 
-	return c, nil
+	return &c, nil
 }
 
 func NewClientByURL(url *url.URL) (proxy.Client, error) {
@@ -78,11 +77,11 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 		return nil, err
 	}
 
-	c := &Client{
+	c := Client{
 		user: id,
 	}
 	c.knownUDPDestinations = make(map[string]io.ReadWriter)
-	c.udpResponseChan = make(chan *netLayer.UDPAddrData, 20)
+	c.udpResponseChan = make(chan netLayer.UDPAddrData, 20)
 
 	vStr := url.Query().Get("version")
 	if vStr != "" {
@@ -94,7 +93,7 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 		}
 	}
 
-	return c, nil
+	return &c, nil
 }
 
 func (c *Client) Name() string { return Name }
@@ -158,10 +157,10 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	}
 
 	buf := c.getBufWithCmd(cmd)
-	err = binary.Write(buf, binary.BigEndian, uint16(port)) // port
-	if err != nil {
-		return nil, err
-	}
+
+	buf.WriteByte(byte(uint16(port) >> 8))
+	buf.WriteByte(byte(uint16(port) << 8 >> 8))
+
 	buf.WriteByte(atyp)
 	buf.Write(addr)
 
@@ -178,13 +177,13 @@ func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWri
 	}, err
 }
 
-func (c *Client) GetNewUDPResponse() (*net.UDPAddr, []byte, error) {
+func (c *Client) GetNewUDPResponse() (net.UDPAddr, []byte, error) {
 	x := <-c.udpResponseChan //v1的话，由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充；v0的话，由 WriteUDPRequest 填充
 	return x.Addr, x.Data, nil
 }
 
 //一般由socks5或者透明代理等地方 获取到 udp请求后，被传入这里
-func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte, dialFunc func(targetAddr *netLayer.Addr) (io.ReadWriter, error)) (err error) {
+func (c *Client) WriteUDPRequest(a net.UDPAddr, b []byte, dialFunc func(targetAddr netLayer.Addr) (io.ReadWriter, error)) (err error) {
 
 	astr := a.String()
 
@@ -194,9 +193,9 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte, dialFunc func(targetA
 
 	if knownConn == nil {
 
-		knownConn, err = dialFunc(netLayer.NewAddrFromUDPAddr(a))
+		knownConn, err = dialFunc(netLayer.NewAddrFromUDPAddr(&a))
 		if err != nil || knownConn == nil {
-			return utils.NewErr("vless WriteUDPRequest, err when creating an underlay", err)
+			return utils.ErrInErr{ErrDesc: "vless WriteUDPRequest, err when creating an underlay", ErrDetail: err}
 		}
 		//这里原来的代码是调用 c.Handshake，会自动帮我们拨号代理节点CmdUDP
 		// 但是似乎有问题，因为不应该由client自己拨号vless，因为我们还有上层的tls;
@@ -221,7 +220,7 @@ func (c *Client) WriteUDPRequest(a *net.UDPAddr, b []byte, dialFunc func(targetA
 				msg := make([]byte, n)
 				copy(msg, bs[:n])
 
-				c.udpResponseChan <- &netLayer.UDPAddrData{
+				c.udpResponseChan <- netLayer.UDPAddrData{
 					Addr: a,
 					Data: msg,
 				}
@@ -283,8 +282,8 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 
 			port := int16(msg[portIndex])<<8 + int16(msg[portIndex+1])
 
-			c.udpResponseChan <- &netLayer.UDPAddrData{
-				Addr: &net.UDPAddr{
+			c.udpResponseChan <- netLayer.UDPAddrData{
+				Addr: net.UDPAddr{
 					IP:   theIP,
 					Port: int(port),
 				},
@@ -339,8 +338,8 @@ func (c *Client) handle_CRUMFURS(UMFURS_conn net.Conn) {
 				break
 			}
 
-			c.udpResponseChan <- &netLayer.UDPAddrData{
-				Addr: &net.UDPAddr{
+			c.udpResponseChan <- netLayer.UDPAddrData{
+				Addr: net.UDPAddr{
 					IP:   theIP,
 					Port: port,
 				},

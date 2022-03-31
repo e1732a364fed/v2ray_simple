@@ -70,7 +70,7 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 			}
 			err := os.Remove(addr)
 			if err != nil {
-				return utils.NewDataErr("Error when deleting previous unix socket file,", err, addr)
+				return utils.ErrInErr{ErrDesc: "Error when deleting previous unix socket file,", ErrDetail: err, Data: addr}
 			}
 
 		}
