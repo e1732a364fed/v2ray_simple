@@ -102,7 +102,7 @@ func (c *Client) GetUser() proxy.User {
 	return c.user
 }
 
-func (c *Client) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriteCloser, error) {
+func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 	var err error
 
 	if underlay == nil {

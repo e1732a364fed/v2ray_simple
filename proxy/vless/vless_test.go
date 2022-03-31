@@ -35,7 +35,7 @@ func testVLess(version int, port string, t *testing.T) {
 	}
 
 	targetStr := "dummy.com:80"
-	targetStruct := &netLayer.Addr{
+	targetStruct := netLayer.Addr{
 		Name: "dummy.com",
 		Port: 80,
 	}
@@ -200,7 +200,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 	}()
 
 	targetStr_forFakeUDPServer := "127.0.0.1:" + strconv.Itoa(thePort)
-	targetStruct_forFakeUDPServer := &netLayer.Addr{
+	targetStruct_forFakeUDPServer := netLayer.Addr{
 		Name:    "127.0.0.1",
 		Port:    thePort,
 		Network: "udp",

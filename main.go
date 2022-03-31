@@ -661,9 +661,9 @@ checkFallback:
 
 	//默认回落, 每个listen配置 都可 有一个自己独享的默认回落
 
-	if defaultFallbackAddr := inServer.GetFallback(); !defaultFallbackAddr.IsEmpty() {
+	if defaultFallbackAddr := inServer.GetFallback(); defaultFallbackAddr != nil {
 
-		targetAddr = defaultFallbackAddr
+		targetAddr = *defaultFallbackAddr
 		wlc = wrappedConn
 
 	}
@@ -986,7 +986,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 				// 而且为了避免黑客攻击或探测，我们要使用uuid作为特殊指令，此时需要 UserServer和 UserClient
 
 				if uc := client.(proxy.UserClient); uc != nil {
-					tryTlsLazyRawCopy(true, uc, nil, &targetAddr, clientConn, wlc, nil, true, nil)
+					tryTlsLazyRawCopy(true, uc, nil, targetAddr, clientConn, wlc, nil, true, nil)
 
 				}
 
@@ -1105,7 +1105,7 @@ advLayerStep:
 
 	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
 
-	wrc, err := client.Handshake(clientConn, &targetAddr)
+	wrc, err := client.Handshake(clientConn, targetAddr)
 	if err != nil {
 		if utils.CanLogErr() {
 			log.Printf("failed in handshake to %s , Reason: %s\n", targetAddr.String(), err)
@@ -1129,7 +1129,7 @@ advLayerStep:
 			if client.IsUseTLS() {
 				//必须是 UserClient
 				if userClient := client.(proxy.UserClient); userClient != nil {
-					tryTlsLazyRawCopy(false, userClient, nil, nil, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+					tryTlsLazyRawCopy(false, userClient, nil, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
 					return nil, utils.NumErr{N: 11, Prefix: "dialClient err, "}
 				}
 			}
@@ -1140,7 +1140,7 @@ advLayerStep:
 			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
 			if userServer, ok := iics.inServer.(proxy.UserServer); ok {
-				tryTlsLazyRawCopy(false, nil, userServer, nil, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
+				tryTlsLazyRawCopy(false, nil, userServer, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
 				return nil, utils.NumErr{N: 12, Prefix: "dialClient err, "}
 			}
 

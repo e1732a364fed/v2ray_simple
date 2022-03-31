@@ -42,7 +42,7 @@ type Client interface {
 
 	// Handshake的 underlay有可能传入nil，所以要求 所有的 Client 都要能够自己dial
 	// 不过目前暂时全在main函数里dial
-	Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriteCloser, error)
+	Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error)
 }
 
 // Server 用于监听 客户端 的连接.
@@ -118,7 +118,7 @@ type ProxyCommon interface {
 
 	/////////////////// http层 ///////////////////
 	//默认回落地址.
-	GetFallback() netLayer.Addr
+	GetFallback() *netLayer.Addr
 	setFallback(netLayer.Addr)
 
 	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
@@ -370,7 +370,7 @@ type ProxyCommonStruct struct {
 	ws_s *ws.Server
 
 	grpc_s       *grpc.Server
-	FallbackAddr netLayer.Addr
+	FallbackAddr *netLayer.Addr
 
 	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
 	dialCommonConnFunc   func(serverAddr *netLayer.Addr) any
@@ -388,11 +388,11 @@ func (pcs *ProxyCommonStruct) setPath(a string) {
 	pcs.PATH = a
 }
 
-func (pcs *ProxyCommonStruct) GetFallback() netLayer.Addr {
+func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {
 	return pcs.FallbackAddr
 }
 func (pcs *ProxyCommonStruct) setFallback(a netLayer.Addr) {
-	pcs.FallbackAddr = a
+	pcs.FallbackAddr = &a
 }
 
 func (pcs *ProxyCommonStruct) MiddleName() string {

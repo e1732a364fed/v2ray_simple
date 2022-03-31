@@ -21,7 +21,7 @@ type Direct struct {
 	proxy.ProxyCommonStruct
 	*netLayer.UDP_Pipe
 
-	targetAddr *netLayer.Addr
+	targetAddr netLayer.Addr
 	addrStr    string
 }
 
@@ -50,7 +50,7 @@ func (_ ClientCreator) NewClient(*proxy.DialConf) (proxy.Client, error) {
 func (d *Direct) Name() string { return name }
 
 //若 underlay 为nil，则我们会自动对target进行拨号。
-func (d *Direct) Handshake(underlay net.Conn, target *netLayer.Addr) (io.ReadWriteCloser, error) {
+func (d *Direct) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 
 	if underlay == nil {
 		d.targetAddr = target

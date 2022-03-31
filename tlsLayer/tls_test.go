@@ -40,7 +40,7 @@ func testTls(protocol string, port string, t *testing.T) {
 	}
 
 	targetStr := "dummy.com:80"
-	targetStruct := &netLayer.Addr{
+	targetStruct := netLayer.Addr{
 		Name: "dummy.com",
 		Port: 80,
 	}
