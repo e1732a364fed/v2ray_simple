@@ -18,7 +18,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
 	var isWriteConnBasic bool
-	var readv_mem *readvMem
 	if utils.CanLogDebug() {
 		log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 	}
@@ -69,47 +68,51 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	if !isWriteConnBasic {
 		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
 	}
-	readv_mem = get_readvMem()
-	defer put_readvMem(readv_mem)
-	for {
-		var buffers net.Buffers
 
-		buffers, err = readvFrom(rawConn, readv_mem)
-		if err != nil {
-			return
-		}
-		var thisWriteNum int64
-		var writeErr error
+	{
+		var readv_mem *readvMem
+		readv_mem = get_readvMem()
+		defer put_readvMem(readv_mem)
+		for {
+			var buffers net.Buffers
 
-		// vless.UserConn 和 ws.Conn 实现了 utils.MultiWriter
-		if isWriteConn_a_MultiWriter {
-			thisWriteNum, writeErr = multiWriter.WriteBuffers(buffers)
-
-		} else {
-			// 这里不能直接使用 buffers.WriteTo, 因为它会修改buffer本身
-			// 而我们为了缓存,是不能允许篡改的
-			// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
-
-			if isWriteConnBasic {
-				//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
-				// 而writev时是不会篡改 buffers的
-
-				thisWriteNum, writeErr = buffers.WriteTo(writeConn)
-			} else {
-
-				thisWriteNum, writeErr = utils.BuffersWriteTo(buffers, writeConn)
-
+			buffers, err = readvFrom(rawConn, readv_mem)
+			if err != nil {
+				return
 			}
+			var thisWriteNum int64
+			var writeErr error
+
+			// vless.UserConn 和 ws.Conn 实现了 utils.MultiWriter
+			if isWriteConn_a_MultiWriter {
+				thisWriteNum, writeErr = multiWriter.WriteBuffers(buffers)
+
+			} else {
+				// 这里不能直接使用 buffers.WriteTo, 因为它会修改buffer本身
+				// 而我们为了缓存,是不能允许篡改的
+				// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
+
+				if isWriteConnBasic {
+					//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
+					// 而writev时是不会篡改 buffers的
+
+					thisWriteNum, writeErr = buffers.WriteTo(writeConn)
+				} else {
+
+					thisWriteNum, writeErr = utils.BuffersWriteTo(buffers, writeConn)
+
+				}
+			}
+
+			allnum += thisWriteNum
+			if writeErr != nil {
+				err = writeErr
+				return
+			}
+
+			buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+
 		}
-
-		allnum += thisWriteNum
-		if writeErr != nil {
-			err = writeErr
-			return
-		}
-
-		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
-
 	}
 classic:
 	if utils.CanLogDebug() {
