@@ -136,7 +136,7 @@ func (c *UserConn) WriteBuffers(buffers [][]byte) (int64, error) {
 //专门适用于 裸奔splice的情况
 func (uc *UserConn) ReadFrom(r io.Reader) (written int64, err error) {
 	if uc.isUDP {
-		return netLayer.ClassicReadFrom(uc, r)
+		return netLayer.ClassicCopy(uc, r)
 	}
 	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, func() bool {
 		return uc.canDirectWrite()

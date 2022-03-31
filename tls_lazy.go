@@ -15,14 +15,13 @@ import (
 
 const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 
+//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，但暂不考虑
 func canLazyEncryptServer(inServer proxy.Server) bool {
-	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
 
 	return inServer.IsUseTLS() && canNetwork_tlsLazy(inServer.Network()) && inServer.AdvancedLayer() == ""
 }
 
 func canLazyEncryptClient(outClient proxy.Client) bool {
-	//grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，暂不考虑
 
 	return outClient.IsUseTLS() && canNetwork_tlsLazy(outClient.Network()) && outClient.AdvancedLayer() == ""
 }
@@ -39,7 +38,7 @@ func canNetwork_tlsLazy(nw string) bool {
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
 // 第一个参数仅用于 tls_lazy_secure
-func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr *netLayer.Addr, wrc, wlc io.ReadWriter, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr *netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 	if utils.CanLogDebug() {
 		log.Println("trying tls lazy copy")
 	}
@@ -109,7 +108,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 
 	waitWRC_CreateChan := make(chan int)
 
-	go func(wrcPtr *io.ReadWriter) {
+	go func(wrcPtr *io.ReadWriteCloser) {
 		//从 wlccc 读取，向 wrc 写入
 		// 此时如果ReadFrom，那就是 wrc.ReadFrom(wlccc)
 		//wrc 要实现 ReaderFrom才行, 或者把最底层TCPConn暴露，然后 wlccc 也要把最底层 TCPConn暴露出来
@@ -284,12 +283,11 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			if tlsLayer.PDD {
 				log.Println("SpliceRead R方向 退化……", wlcdc.R.GetFailReason())
 			}
-			if netLayer.UseReadv {
-				netLayer.TryCopy(wrc, wlc)
-			} else {
-				io.Copy(wrc, wlc)
 
-			}
+			netLayer.TryCopy(wrc, wlc)
+
+			wrc.Close()
+			wlc.Close()
 			return
 		}
 
@@ -306,6 +304,8 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 				rawWRC.ReadFrom(wlccc_raw)
 			}
 
+			wrc.Close()
+			wlc.Close()
 		}
 	}(&wrc)
 
@@ -396,12 +396,11 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 		if tlsLayer.PDD {
 			log.Println("SpliceRead W方向 退化……", wlcdc.W.GetFailReason())
 		}
-		if netLayer.UseReadv { //就算不用splice, 一样可以用readv来在读那一端增强性能
-			netLayer.TryCopy(wlc, wrc)
-		} else {
-			io.Copy(wlc, wrc)
+		//就算不用splice, 一样可以用readv来在读那一端增强性能
+		netLayer.TryCopy(wlc, wrc)
 
-		}
+		wrc.Close()
+		wlc.Close()
 		return
 	}
 
@@ -411,7 +410,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 		}
 
 		if tlslazy_willuseSystemCall {
-			runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的。不过不一定对，因为我很笨，只是看xray的代码有这一行
+			runtime.Gosched() //详情请阅读我的 xray_splice- 文章，了解为什么这个调用是必要的
 
 		}
 		if tlsLayer.PDD {
@@ -422,6 +421,8 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			wlccc_raw.ReadFrom(rawWRC)
 		}
 
+		wrc.Close()
+		wlc.Close()
 	}
 
 }

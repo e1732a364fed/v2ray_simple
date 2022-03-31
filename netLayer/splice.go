@@ -44,6 +44,7 @@ func CanSpliceEventually(r any) bool {
 //
 // 注意，splice只有在 maySpliceConn【本身是】或者【变成】 basicConn， 且 r 也是 basicConn时，才会发生。
 // 如果r本身就不是 basicConn，则调用本函数没有意义, 因为既然拿不到basicConn那就不是裸奔，也就不可能splice。
+//
 func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r io.Reader, canDirectFunc func() bool) (written int64, err error) {
 	//log.Println("TryReadFrom_withSplice called")
 
@@ -102,9 +103,9 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 					}
 				}
 				if er != nil {
-					if er != io.EOF {
-						err = er
-					}
+					//if er != io.EOF {
+					err = er
+					//}
 					break
 				}
 
@@ -139,12 +140,16 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 
 	} else { //splice not possible, 仅仅循环读写即可
 
-		return ClassicReadFrom(classicWriter, r)
+		// 我们的vless的ReadFrom方法使用到了该函数, 所以该函数的内部不再使用ReadFrom作为后备选项
+		// 而 io.CopyBuffer 是又会ReadFrom的，我们若那么做那就会造成无限递归然后栈溢出闪退。
+
+		return ClassicCopy(classicWriter, r)
 	}
 
 }
 
-func ClassicReadFrom(w io.Writer, r io.Reader) (written int64, err error) {
+//拷贝自 io.CopyBuffer。 因为原始的 CopyBuffer会又调用ReadFrom, 而我们这里过滤掉了ReadFrom, 希望直接进行经典拷贝
+func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
 	buf := utils.GetPacket()
 	defer utils.PutPacket(buf)
 	for {
@@ -170,9 +175,11 @@ func ClassicReadFrom(w io.Writer, r io.Reader) (written int64, err error) {
 			}
 		}
 		if er != nil {
-			if er != io.EOF {
-				err = er
-			}
+			//if er != io.EOF {
+			//io.CopyBuffer 这里竟然不会返回 io.EOF错误, 这回导致我们Copy结束后返回nil错误
+			// 而我想获知一切错误的可能。
+			err = er
+			//}
 			break
 		}
 	}

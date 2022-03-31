@@ -19,6 +19,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
+	"github.com/pkg/profile"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
@@ -62,11 +63,13 @@ var (
 	mainFallback *httpLayer.ClassicFallback
 
 	startPProf bool
+	startMProf bool
 )
 
 func init() {
 
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
+	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
 
 	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
@@ -102,6 +105,11 @@ func main() {
 		pprof.StartCPUProfile(f)
 		defer pprof.StopCPUProfile()
 
+	}
+	if startMProf {
+		p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
+
+		defer p.Stop()
 	}
 
 	utils.AdjustBufSize()
@@ -1148,13 +1156,7 @@ advLayerStep:
 		utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
-	if utils.CanLogDebug() {
-
-		netLayer.DebugRelay(realTargetAddr, wrc, wlc)
-
-	} else {
-		netLayer.Relay(wlc, wrc)
-	}
+	netLayer.Relay(realTargetAddr, wlc, wrc)
 
 	return wrc, nil
 }

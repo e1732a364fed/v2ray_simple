@@ -156,7 +156,7 @@ func (c *Conn) CanSplice() (r bool, conn net.Conn) {
 
 func (c *Conn) ReadFrom(r io.Reader) (written int64, err error) {
 	if c.state == ws.StateClientSide {
-		return netLayer.ClassicReadFrom(c, r)
+		return netLayer.ClassicCopy(c, r)
 	}
 
 	//采用 “超长包” 的办法 试图进行splice

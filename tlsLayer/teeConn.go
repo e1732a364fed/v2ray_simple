@@ -100,8 +100,6 @@ type TeeConn struct {
 	OldConn net.Conn
 
 	TargetReader io.Reader
-
-	closeCalled bool
 }
 
 func NewTeeConn(oldConn net.Conn, targetWriter io.Writer) *TeeConn {
@@ -136,13 +134,8 @@ func (tc *TeeConn) RemoteAddr() net.Addr {
 	return tc.OldConn.RemoteAddr()
 }
 
-//Close只会试图通知外界 Close调用过，并不真Close原Conn
 func (tc *TeeConn) Close() error {
-	tc.closeCalled = true
-	if utils.CanLogInfo() {
-
-		log.Println("TeeConn Close Called")
-	}
+	tc.OldConn.Close()
 	return nil
 }
 

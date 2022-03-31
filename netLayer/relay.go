@@ -14,7 +14,6 @@ import (
 //会接连尝试 splice、循环readv 以及 原始Copy方法
 func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
 	var multiWriter utils.MultiWriter
-	var buffers net.Buffers
 
 	var rawConn syscall.RawConn
 	var isWriteConn_a_MultiWriter bool
@@ -73,10 +72,10 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	readv_mem = get_readvMem()
 	defer put_readvMem(readv_mem)
 	for {
+		var buffers net.Buffers
 
 		buffers, err = readvFrom(rawConn, readv_mem)
 		if err != nil {
-
 			return
 		}
 		var thisWriteNum int64
@@ -106,12 +105,10 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		allnum += thisWriteNum
 		if writeErr != nil {
 			err = writeErr
-			//put_readvMem(readv_mem)
 			return
 		}
 
 		buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
-		//put_readvMem(readv_mem)
 
 	}
 classic:
@@ -183,37 +180,41 @@ classic:
 // 阻塞
 // 返回从 conn1读取 写入到 conn2的数据
 // UseReadv==true 时 内部使用 TryCopy 进行拷贝
-// 会自动优选 splice，readv，不行则使用经典拷贝
-func Relay(wrc, wlc io.ReadWriteCloser) {
-	go func() {
-		TryCopy(wrc, wlc)
+// 会自动优选 splice，readv，不行则使用经典拷贝. 拷贝完成后会主动关闭双方连接.
+func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
+
+	if utils.CanLogDebug() {
+		go func() {
+			n, e := TryCopy(wrc, wlc)
+			log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+
+			wlc.Close()
+			wrc.Close()
+
+		}()
+
+		n, e := TryCopy(wlc, wrc)
+		log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 
 		wlc.Close()
 		wrc.Close()
+	} else {
+		go func() {
+			TryCopy(wrc, wlc)
 
-	}()
+			wlc.Close()
+			wrc.Close()
 
-	TryCopy(wlc, wrc)
+		}()
 
-	wlc.Close()
-	wrc.Close()
-
-}
-
-func DebugRelay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
-	go func() {
-		n, e := TryCopy(wrc, wlc)
-		log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+		TryCopy(wlc, wrc)
 
 		wlc.Close()
 		wrc.Close()
+	}
 
-	}()
-
-	n, e := TryCopy(wlc, wrc)
-	log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
-
-	wlc.Close()
-	wrc.Close()
-
+	//log.Println("copy called", count)
+	//count++
 }
+
+//var count int
