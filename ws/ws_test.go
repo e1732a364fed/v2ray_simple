@@ -3,12 +3,20 @@ package ws_test
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/base64"
 	"net"
 	"testing"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/ws"
 )
+
+func TestBase64Len(t *testing.T) {
+	var arr [2048]byte
+	str := base64.StdEncoding.EncodeToString(arr[:])
+	t.Log(len(str)) //2732
+	//t.Log((str))	//一堆A后面跟一个等号
+}
 
 // ws基本读写功能测试.
 // 分别测试写入短数据和长数据

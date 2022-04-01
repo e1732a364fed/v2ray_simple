@@ -1,5 +1,5 @@
 /*
-Package httpLayer 提供http层的一些方法和定义.
+Package httpLayer provides methods and definitions for http layer
 
 比如fallback一般由httpLayer处理
 */

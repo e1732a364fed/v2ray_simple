@@ -1,4 +1,4 @@
-// Package utils provides utils that needed by all sub-packages in verysimle
+// Package utils provides utilities that is used in all sub-packages in verysimple
 package utils
 
 import (

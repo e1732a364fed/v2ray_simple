@@ -1,4 +1,4 @@
-//Package quic 实现高级层中的quic
+//Package quic defines functions to listen and dial quic, with some customizable congestion settings.
 package quic
 
 import (

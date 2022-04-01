@@ -16,7 +16,7 @@ import (
 )
 
 // 2048 /3 = 682.6666 ,
-// 683 * 4 = 2732
+// 683 * 4 = 2732, 若你不信，运行 we_test.go中的 TestBase64Len
 const MaxEarlyDataLen_Base64 = 2732
 
 type Server struct {

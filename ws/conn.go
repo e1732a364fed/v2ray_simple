@@ -47,7 +47,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 	// https://www.rfc-editor.org/rfc/rfc6455#section-5.2
 	// (使用了 Extended payload length 字段)
 	// 肯定会有多读的情况，此时如果一次用 wsutil.ReadServerBinary()的话，那么服务器缓存就超大，不可能如此实现
-	// （wsutil.ReadServerBinary内部使用了 io.ReadAll, 而ReadAll是会无限增长内存的
+	// ( wsutil.ReadServerBinary内部使用了 io.ReadAll, 而ReadAll是会无限增长内存的 )
 	// 所以我们肯定要分段读， 直接用 wsutil.Reader.Read 即可， 但是每个Read前必须要有 NextFrame调用
 	//
 	//关于读 的完整过程，建议参考 ws/example.autoban.go 里的 wsHandler 函数
@@ -70,7 +70,6 @@ func (c *Conn) Read(p []byte) (int, error) {
 	}
 	if h.OpCode.IsControl() {
 		//log.Println("Got control frame")
-		//return 0, nil
 
 		// 控制帧已经在我们的 OnIntermediate 里被处理了, 直接读取下一个数据即可
 		return c.Read(p)
@@ -88,8 +87,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 		OpPong         OpCode = 0xa
 		*/
 
-		//log.Println("OpCode not Binary", h.OpCode)
-		return 0, utils.ErrInErr{ErrDesc: "ws OpCode not Binary", Data: h.OpCode}
+		return 0, utils.ErrInErr{ErrDesc: "ws OpCode not OpBinary/OpContinuation", Data: h.OpCode}
 	}
 	//log.Println("Read next frame header ok,", h.Length, c.r.State.Fragmented(), "givenbuf len", len(p))
 
@@ -102,9 +100,9 @@ func (c *Conn) Read(p []byte) (int, error) {
 
 	// 但是后来发现，只有 fragmented的情况下，才会处理EOF，否则还是会传递到我们这里
 	// 也就是说，websocket虽然一个数据帧可以超大，但是 还有一种 分片功能，而如果不分片的话，gobwas就不处理EOF
-	//经过实测，如果数据比较小的话，就不会分片，此时就会出现EOF; 如果数据比较大，比如 4327，就要分片
+	//经过实测，如果数据比较小的话，就不会分片，此时就会出现EOF; 如果数据比较大，比如 4327，某客户端就可能选择分片
 
-	//这种产生EOF的情况，时 gobwas/ws包的一种特性，这样可以说每一次读取都能有明确的EOF边界，便于使用 io.ReadAll
+	//这种产生EOF的情况，是 gobwas/ws包的一种特性，这样可以说每一次读取都能有明确的EOF边界，便于使用 io.ReadAll
 
 	n, e := c.r.Read(p)
 	//log.Println("read data result", e, n, h.Length)
@@ -169,7 +167,7 @@ func (c *Conn) ReadFrom(r io.Reader) (written int64, err error) {
 		if rt, ok := c.Conn.(io.ReaderFrom); ok {
 			return rt.ReadFrom(r)
 		} else {
-			panic("uc.underlayIsBasic, but can't cast to ReadFrom")
+			panic("ws.Conn underlayIsBasic, but can't cast to ReadFrom")
 		}
 	}
 

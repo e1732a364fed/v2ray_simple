@@ -121,6 +121,7 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 			//log.Println("尝试拨号 Cmd_CRUMFURS 信道")
 
+			//这段代码明显有问题，如果直接dial的话，那就是脱离tls的裸协议，所以这里以后需要处理一下
 			UMFURS_conn, err := target.Dial()
 			if err != nil {
 				if ce := utils.CanLogErr("尝试拨号 Cmd_CRUMFURS 信道时发生错误"); ce != nil {

@@ -160,7 +160,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 		count := 0
 
 		for {
-			t.Log(" udp for! ")
+			//t.Log(" udp for! ")
 			// 读取数据
 			readNum, remoteAddr, err := fakeRealUDPServerListener.ReadFromUDP(readbuf)
 			if err != nil {

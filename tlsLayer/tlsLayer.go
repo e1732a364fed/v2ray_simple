@@ -1,5 +1,5 @@
 /*
-Package tlsLayer 提供tls层的各种支持. 也包括tls流量的嗅探功能
+Package tlsLayer provides support for tlsLayer, including sniffing.
 */
 package tlsLayer
 

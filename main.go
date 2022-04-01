@@ -321,7 +321,6 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 			ce.Write(
 				zap.String("protocol", proxy.GetFullName(inServer)),
-				zap.String("network", inServer.Network()),
 				zap.String("addr", inServer.AddrStr()),
 			)
 			//log.Printf("%s is listening %s on %s\n", , , )
@@ -342,7 +341,6 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 			ce.Write(
 				zap.String("protocol", proxy.GetFullName(inServer)),
-				zap.String("network", inServer.Network()),
 				zap.String("addr", inServer.AddrStr()),
 			)
 			//log.Printf("%s is listening %s on %s\n", proxy.GetFullName(inServer), network, inServer.AddrStr())
@@ -744,20 +742,33 @@ afterLocalServerHandshake:
 
 	////////////////////////////// DNS解析阶段 /////////////////////////////////////
 
+	//dns解析会试图解析域名并将ip放入 targetAddr中
+	// 因为在direct时，netLayer.Addr 拨号时，会优先选用ip拨号，而且我们下面的分流阶段 如果使用ip的话，
+	// 可以利用geoip文件,  可以做到国别分流.
+
 	if dnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
-		//log.Println("will query", targetAddr.Name)
+
+		if ce := utils.CanLogDebug("querying"); ce != nil {
+			ce.Write(zap.String("domain", targetAddr.Name))
+		}
+
 		ip := dnsMachine.Query(targetAddr.Name, dns.TypeA)
 		if ip == nil {
 			ip = dnsMachine.Query(targetAddr.Name, dns.TypeAAAA)
 		}
 		if ip != nil {
 			targetAddr.IP = ip
+
+			if ce2 := utils.CanLogDebug("dns query result"); ce2 != nil {
+				ce2.Write(zap.String("domain", targetAddr.Name), zap.String("ip", ip.String()))
+			}
 		}
 	}
 
 	////////////////////////////// 分流阶段 /////////////////////////////////////
 
 	var client proxy.Client = iics.defaultClient
+	routed := false
 
 	//尝试分流, 获取到真正要发向 的 outClient
 	if routePolicy != nil && !inServer.CantRoute() {
@@ -768,8 +779,7 @@ afterLocalServerHandshake:
 		}
 
 		if ce := utils.CanLogDebug("try routing"); ce != nil {
-			//log.Printf("try routing %v\n", desc)
-			ce.Write(zap.Any("desc", desc))
+			ce.Write(zap.Any("source", desc))
 		}
 
 		outtag := routePolicy.GetOutTag(desc)
@@ -777,9 +787,9 @@ afterLocalServerHandshake:
 		if outtag == "direct" {
 			client = directClient
 			iics.routedToDirect = true
+			routed = true
 
 			if ce := utils.CanLogInfo("routed to direct"); ce != nil {
-				//log.Printf("routed to direct %s\n", targetAddr.UrlString())
 				ce.Write(
 					zap.String("target", targetAddr.UrlString()),
 				)
@@ -789,14 +799,26 @@ afterLocalServerHandshake:
 
 			if tagC, ok := clientsTagMap[outtag]; ok {
 				client = tagC
-				if ce := utils.CanLogInfo("routed to"); ce != nil {
-					//log.Printf("routed to %s %s\n", outtag, proxy.GetFullName(client))
+				routed = true
+				if ce := utils.CanLogInfo("routed"); ce != nil {
 					ce.Write(
-						zap.String("outtag", outtag),
-						zap.String("client", proxy.GetFullName(client)),
+						zap.Any("source", desc),
+						zap.String("to outtag", outtag),
+						zap.String("P", proxy.GetFullName(client)),
+						zap.String("addr", client.AddrStr()),
 					)
 				}
 			}
+		}
+	}
+
+	if !routed {
+		if ce := utils.CanLogDebug("not routed, using default"); ce != nil {
+			ce.Write(
+				zap.Any("source", targetAddr.String()),
+				zap.String("client", proxy.GetFullName(client)),
+				zap.String("addr", client.AddrStr()),
+			)
 		}
 	}
 
@@ -999,13 +1021,14 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
 
 		if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
+
 			ce.Write(
 				zap.String("request", targetAddr.String()),
 				zap.String("uniqueTestDomain", uniqueTestDomain),
 			)
+			return nil, utils.NumErr{N: 1, Prefix: "dialClient err, "}
 
 		}
-		return nil, utils.NumErr{N: 1, Prefix: "dialClient err, "}
 	}
 
 	if ce := utils.CanLogInfo("Request"); ce != nil {
@@ -1100,7 +1123,10 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
 		if err != nil {
-			log.Printf("failed in handshake outClient tls %s, Reason: %s\n", targetAddr.String(), err)
+			if ce := utils.CanLogErr("failed in handshake outClient tls"); ce != nil {
+				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
+			}
+
 			return nil, utils.NumErr{N: 4, Prefix: "dialClient err, "}
 		}
 
@@ -1118,7 +1144,6 @@ advLayerStep:
 			clientConn, err = client.DialSubConnFunc()(dailedCommonConn)
 			if err != nil {
 				if ce := utils.CanLogErr("DialSubConnFunc failed"); ce != nil {
-					//log.Printf("DialSubConnFunc failed, %s\n", err)
 					ce.Write(
 						zap.Error(err),
 					)
@@ -1130,7 +1155,6 @@ advLayerStep:
 				grpcClientConn, err = grpc.ClientHandshake(clientConn, &realTargetAddr)
 				if err != nil {
 					if ce := utils.CanLogErr("grpc.ClientHandshake failed"); ce != nil {
-						//log.Printf("grpc.ClientHandshake failed, %s\n", err)
 						ce.Write(zap.Error(err))
 
 					}
@@ -1146,7 +1170,6 @@ advLayerStep:
 			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, &realTargetAddr)
 			if err != nil {
 				if ce := utils.CanLogErr("grpc.DialNewSubConn failed"); ce != nil {
-					//log.Printf("grpc.DialNewSubConn failed,%s\n", err)
 
 					ce.Write(zap.Error(err))
 
@@ -1171,8 +1194,7 @@ advLayerStep:
 				edBuf = edBuf[:ws.MaxEarlyDataLen]
 				n, e := wlc.Read(edBuf)
 				if e != nil {
-					if ce := utils.CanLogErr("reading ws early data"); ce != nil {
-						//log.Printf("err when reading ws early data %s\n", e)
+					if ce := utils.CanLogErr("failed to read ws early data"); ce != nil {
 						ce.Write(zap.Error(e))
 					}
 					return nil, utils.NumErr{N: 7, Prefix: "dialClient err, "}
@@ -1195,11 +1217,9 @@ advLayerStep:
 				wc, err = wsClient.Handshake(clientConn)
 
 			}
-			//wc, err := wsClient.Handshake(clientConn, ed)
+
 			if err != nil {
 				if ce := utils.CanLogErr("failed in handshake ws"); ce != nil {
-					//log.Printf("failed in handshake ws to %s , Reason: %s\n", targetAddr.String(), err)
-
 					ce.Write(
 						zap.String("target", targetAddr.String()),
 						zap.Error(err),
@@ -1217,8 +1237,6 @@ advLayerStep:
 	wrc, err := client.Handshake(clientConn, targetAddr)
 	if err != nil {
 		if ce := utils.CanLogErr("failed in handshake"); ce != nil {
-			//log.Printf("failed in handshake to %s , Reason: %s\n", targetAddr.String(), err)
-
 			ce.Write(
 				zap.String("target", targetAddr.String()),
 				zap.Error(err),

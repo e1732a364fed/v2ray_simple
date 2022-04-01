@@ -43,7 +43,30 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
 replace github.com/lucas-clemente/quic-go => github.com/tobyxdd/quic-go v0.25.1-0.20220224051149-310bd1bfaf1f
+
+retract v1.1.1
+
+retract v1.1.0
+
+retract v1.0.9
+
+retract v1.0.8
+
+retract v1.0.7
+
+retract v1.0.6
+
+retract v1.0.5
+
+retract v1.0.4
+
+retract v1.0.3
+
+retract v1.0.2
+
+retract v1.0.1
+
+retract v1.0.0
