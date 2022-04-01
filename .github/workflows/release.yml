@@ -170,7 +170,7 @@ jobs:
           cp -r ${GITHUB_WORKSPACE}/examples ./build_assets/examples
 
  
-       - name: Create ZIP archive
+      - name: Create ZIP archive
         shell: bash
         run: |
           pushd build_assets || exit 1
