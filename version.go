@@ -41,12 +41,16 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
 
-var Version string //版本号由 Makefile 里的 BUILD_VERSION 指定
+// 版本号在这里指定
+var version string = "v1.1.3-beta.2"
+
+// 这里指定发行版本，如果是 Custom 则为发行版，否则为测试版
+var build string = "Custom"
 
 func printVersion() {
-	const desc = "a very simple implementation of V2Ray with some innovation"
+	const desc = "A very simple implementation of V2Ray with some innovation"
 
-	fmt.Printf("===============================\nverysimple %s (%s), %s %s %s\n", Version, desc, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("===============================\nverysimple %s (%s), %s %s %s\n", version, build, desc, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	fmt.Printf("Support tls and websocket for all protocols.\n")
 	if netLayer.HasEmbedGeoip() {
 		fmt.Printf("Contains embeded Geoip file\n")
