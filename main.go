@@ -285,6 +285,10 @@ func main() {
 		return
 	}
 
+	if interactive_mode {
+		runCli()
+	}
+
 	{
 		osSignals := make(chan os.Signal, 1)
 		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)

@@ -11,15 +11,16 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"log"
 	"math/big"
 	"net"
+	"os"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-func GenerateRandomTLSCert() []tls.Certificate {
-
+func GenerateRandomeCert_Key() ([]byte, []byte) {
 	//ecc p256
 
 	max := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -57,12 +58,8 @@ func GenerateRandomTLSCert() []tls.Certificate {
 		panic(err)
 	}
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	return certPEM, keyPEM
 
-	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
-	if err != nil {
-		panic(err)
-	}
-	return []tls.Certificate{tlsCert}
 	/*
 		//rsa
 
@@ -71,6 +68,39 @@ func GenerateRandomTLSCert() []tls.Certificate {
 		keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pk)})
 
 	*/
+}
+
+func GenerateRandomTLSCert() []tls.Certificate {
+
+	tlsCert, err := tls.X509KeyPair(GenerateRandomeCert_Key())
+	if err != nil {
+		panic(err)
+	}
+	return []tls.Certificate{tlsCert}
+
+}
+
+func GenerateRandomCertKeyFiles(cfn, kfn string) {
+
+	cb, kb := GenerateRandomeCert_Key()
+
+	certOut, err := os.Create(cfn)
+	if err != nil {
+		log.Fatalf("failed to open file %s", err)
+	}
+
+	certOut.Write(cb)
+
+	kOut, err := os.Create(kfn)
+	if err != nil {
+		log.Fatalf("failed to open file %s", err)
+	}
+
+	kOut.Write(kb)
+
+	certOut.Close()
+	kOut.Close()
+
 }
 
 func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate, err error) {

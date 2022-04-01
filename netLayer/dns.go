@@ -92,8 +92,8 @@ type DnsConn struct {
 	mutex sync.Mutex
 }
 
-//dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求
-// 会缓存dns记录;
+//dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求。
+// 会缓存dns记录; 该设施是一个状态机, 所以叫 DNSMachine
 // SpecialIPPollicy 用于指定特殊的 域名-ip映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询
 type DNSMachine struct {

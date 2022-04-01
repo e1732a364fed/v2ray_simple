@@ -10,6 +10,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -25,6 +26,25 @@ func init() {
 	flag.BoolVar(&cmdGenerateUUID, "gu", false, "generate a random valid uuid string")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 
+	cliCmdList = append(cliCmdList, CliCmd{
+		"生成uuid", func() {
+			generateAndPrintUUID()
+		},
+	})
+
+	cliCmdList = append(cliCmdList, CliCmd{
+		"查询当前状态", func() {
+			printAllState(os.Stdout)
+		},
+	})
+
+	cliCmdList = append(cliCmdList, CliCmd{
+		"生成随机ssl证书", func() {
+			tlsLayer.GenerateRandomCertKeyFiles("yourcert.pem", "yourcert.key")
+			log.Printf("生成成功！请查看目录中的 yourcert.pem 和 yourcert.key")
+		},
+	})
+
 }
 
 //是否是活的。如果没有监听 也没有 动态修改配置的功能，则认为当前的运行是没有灵魂的、不灵活的、腐朽的.
@@ -34,24 +54,27 @@ func isFlexible() bool {
 
 //在开始正式代理前, 先运行一些需要运行的命令与函数
 func runPreCommands() {
-	mayPrintSupportedProtocols()
+
+	if cmdPrintSupportedProtocols {
+		printSupportedProtocols()
+	}
+
 	tryDownloadMMDB()
-	generateAndPrintUUID()
+
+	if cmdGenerateUUID {
+		generateAndPrintUUID()
+
+	}
 
 }
 
 func generateAndPrintUUID() {
-	if !cmdGenerateUUID {
-		return
-	}
 
 	log.Printf("Your new randomly generated uuid is : %s\n", utils.GenerateUUIDStr())
 }
 
-func mayPrintSupportedProtocols() {
-	if !cmdPrintSupportedProtocols {
-		return
-	}
+func printSupportedProtocols() {
+
 	proxy.PrintAllServerNames()
 	proxy.PrintAllClientNames()
 }
