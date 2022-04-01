@@ -7,6 +7,7 @@ loglevel = 1
 
 default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   
 
+admin_pass = "adfadfadfadfa"	# 用于 api服务器的登陆密码.只要给出, 且命令行给了-ea参数, 就会自动运行api服务, 在 127.0.0.1:48345
 
 [dns]
 

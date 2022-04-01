@@ -19,7 +19,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	var isWriteConn_a_MultiWriter bool
 	var isWriteConnBasic bool
 	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
-		//log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 		ce.Write(
 			zap.String("from", reflect.TypeOf(readConn).String()),
 			zap.String("->", reflect.TypeOf(writeConn).String()),
@@ -43,7 +42,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 
 			if rCanSplice && wCanSplice {
 				if ce := utils.CanLogDebug("copying with splice"); ce != nil {
-					//log.Println("copying with splice")
 					ce.Write()
 				}
 
@@ -65,7 +63,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	}
 
 	if ce := utils.CanLogDebug("copying with readv"); ce != nil {
-		//log.Println("copying with readv")
 		ce.Write()
 	}
 
@@ -140,7 +137,6 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	var rm *readvMem
 
 	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
-		//log.Println("TryCopy", reflect.TypeOf(readConn), "->", reflect.TypeOf(writeConn))
 		ce.Write(
 			zap.String("from", reflect.TypeOf(readConn).String()),
 			zap.String("->", reflect.TypeOf(writeConn).String()),
@@ -160,7 +156,6 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 	}
 
 	if ce := utils.CanLogDebug("copying with readv"); ce != nil {
-		//log.Println("copying with readv")
 		ce.Write()
 	}
 
@@ -177,7 +172,6 @@ func TryCopyOnce(writeConn io.Writer, readConn io.Reader) (allnum int64, err err
 
 classic:
 	if ce := utils.CanLogDebug("copying with classic method"); ce != nil {
-		//log.Println("copying with classic method")
 		ce.Write()
 	}
 
@@ -196,16 +190,19 @@ classic:
 // 阻塞
 // 返回从 conn1读取 写入到 conn2的数据
 // UseReadv==true 时 内部使用 TryCopy 进行拷贝
-// 会自动优选 splice，readv，不行则使用经典拷贝. 拷贝完成后会主动关闭双方连接.
-func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
+// 会自动优选 splice，readv，不行则使用经典拷贝.
+//
+//拷贝完成后会主动关闭双方连接.
+// 返回从 wrc读取到的总字节长度（即下载流量）
+func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
 
 	if ce := utils.CanLogDebug("转发结束"); ce != nil {
 		go func() {
 			n, e := TryCopy(wrc, wlc)
-			//log.Println("本地->远程 转发结束", realTargetAddr.String(), n, e)
+
 			ce.Write(zap.String("direction", "本地->远程"),
 				zap.String("target", realTargetAddr.String()),
-				zap.Int64("copied bytes", n),
+				zap.Int64("bytes", n),
 				zap.Error(e),
 			)
 
@@ -215,17 +212,17 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
 		}()
 
 		n, e := TryCopy(wlc, wrc)
-		//log.Println("远程->本地 转发结束", realTargetAddr.String(), n, e)
 
 		ce2 := utils.CanLogDebug("转发结束")
 		ce2.Write(zap.String("direction", "远程->本地"),
 			zap.String("target", realTargetAddr.String()),
-			zap.Int64("copied bytes", n),
+			zap.Int64("bytes", n),
 			zap.Error(e),
 		)
 
 		wlc.Close()
 		wrc.Close()
+		return n
 	} else {
 		go func() {
 			TryCopy(wrc, wlc)
@@ -235,14 +232,11 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) {
 
 		}()
 
-		TryCopy(wlc, wrc)
+		n, _ := TryCopy(wlc, wrc)
 
 		wlc.Close()
 		wrc.Close()
+		return n
 	}
 
-	//log.Println("copy called", count)
-	//count++
 }
-
-//var count int

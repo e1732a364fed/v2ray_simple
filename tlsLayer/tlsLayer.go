@@ -4,34 +4,73 @@ Package tlsLayer provides support for tlsLayer, including sniffing.
 package tlsLayer
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
+	"net"
+	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func GenerateRandomTLSCert() []tls.Certificate {
-	key, err := rsa.GenerateKey(rand.Reader, 1024)
+
+	//ecc p256
+
+	max := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, _ := rand.Int(rand.Reader, max)
+	subject := pkix.Name{
+		Country:            []string{"ZZ"},
+		Province:           []string{"asfdsdaf"},
+		Organization:       []string{"daffd"},
+		OrganizationalUnit: []string{"adsadf"},
+		CommonName:         "127.0.0.1",
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject:      subject,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+
+	rootKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
 	}
-	template := x509.Certificate{SerialNumber: big.NewInt(1)}
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+
+	b, err := x509.MarshalECPrivateKey(rootKey)
 	if err != nil {
 		panic(err)
 	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &rootKey.PublicKey, rootKey)
+	if err != nil {
+		panic(err)
+	}
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 
 	tlsCert, err := tls.X509KeyPair(certPEM, keyPEM)
 	if err != nil {
 		panic(err)
 	}
 	return []tls.Certificate{tlsCert}
+	/*
+		//rsa
+
+		pk, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+		keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(pk)})
+
+	*/
 }
 
 func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate, err error) {

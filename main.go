@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/grpc"
@@ -178,7 +179,10 @@ func main() {
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
 
 		if len(standardConf.Listen) < 1 {
-			log.Fatal("no Listen in config settings!")
+			if ce := utils.CanLogWarn("no listen in config settings"); ce != nil {
+				ce.Write()
+			}
+			break
 		}
 
 		for _, serverConf := range standardConf.Listen {
@@ -229,7 +233,10 @@ func main() {
 	case standardMode:
 
 		if len(standardConf.Dial) < 1 {
-			log.Fatal("no dial in config settings!")
+			if ce := utils.CanLogWarn("no dial in config settings"); ce != nil {
+				ce.Write()
+			}
+			break
 		}
 
 		for _, thisConf := range standardConf.Dial {
@@ -254,12 +261,28 @@ func main() {
 	// 后台运行主代码，而main函数只监听中断信号
 	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用;
 	//  或可用于交互生成自己想要的配置
-	if confMode == simpleMode {
-		listenSer(defaultInServer, defaultOutClient)
-	} else {
-		for _, inServer := range allServers {
-			listenSer(inServer, defaultOutClient)
+	proxyStarted := false
+
+	if (defaultInServer != nil || len(allServers) > 0) && defaultOutClient != nil {
+		proxyStarted = true
+		if confMode == simpleMode {
+			listenSer(defaultInServer, defaultOutClient)
+		} else {
+			for _, inServer := range allServers {
+				listenSer(inServer, defaultOutClient)
+			}
 		}
+	}
+
+	if enableApiServer {
+		go checkConfigAndTryRunApiServer()
+
+	}
+
+	//没配置可用的listen或者dail，而且还无法动态更改配置
+	if !proxyStarted && !isFlexible() {
+		utils.ZapLogger.Fatal("No valid proxy settings available, exit now.")
+		return
 	}
 
 	{
@@ -1285,7 +1308,12 @@ advLayerStep:
 		utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 	}
 
-	netLayer.Relay(&realTargetAddr, wlc, wrc)
+	atomic.AddInt32(&activeConnectionCount, 1)
+
+	downloadBytes := netLayer.Relay(&realTargetAddr, wlc, wrc)
+
+	atomic.AddInt32(&activeConnectionCount, -1)
+	atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
 
 	return wrc, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -15,12 +16,20 @@ import (
 var (
 	cmdPrintSupportedProtocols bool
 	cmdGenerateUUID            bool
+
+	interactive_mode bool
 )
 
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdGenerateUUID, "gu", false, "generate a random valid uuid string")
+	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 
+}
+
+//是否是活的。如果没有监听 也没有 动态修改配置的功能，则认为当前的运行是没有灵魂的、不灵活的、腐朽的.
+func isFlexible() bool {
+	return interactive_mode || apiServerRunning
 }
 
 //在开始正式代理前, 先运行一些需要运行的命令与函数
@@ -28,6 +37,7 @@ func runPreCommands() {
 	mayPrintSupportedProtocols()
 	tryDownloadMMDB()
 	generateAndPrintUUID()
+
 }
 
 func generateAndPrintUUID() {
@@ -83,4 +93,18 @@ func tryDownloadMMDB() {
 	}
 	log.Printf("Download mmdb success!\n")
 
+}
+
+func printAllState(w io.Writer) {
+	fmt.Fprintln(w, "activeConnectionCount", activeConnectionCount)
+	fmt.Fprintln(w, "allDownloadBytesSinceStart", allDownloadBytesSinceStart)
+
+	for i, s := range allServers {
+		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
+
+	}
+
+	for i, c := range allClients {
+		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
+	}
 }

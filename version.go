@@ -44,7 +44,7 @@ import (
 var Version string //版本号由 Makefile 里的 BUILD_VERSION 指定
 
 func printVersion() {
-	const desc = "verysimple, a very simple implementation of V2Ray with some innovation"
+	const desc = "a very simple implementation of V2Ray with some innovation"
 
 	fmt.Printf("===============================\nverysimple %s (%s), %s %s %s\n", Version, desc, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	fmt.Printf("Support tls and websocket for all protocols.\n")

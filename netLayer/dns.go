@@ -93,7 +93,9 @@ type DnsConn struct {
 }
 
 //dns machine维持与多个dns服务器的连接(最好是udp这种无状态的)，并可以发起dns请求
-// 会缓存dns记录
+// 会缓存dns记录;
+// SpecialIPPollicy 用于指定特殊的 域名-ip映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip
+// SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询
 type DNSMachine struct {
 	DefaultConn DnsConn
 	conns       map[string]*DnsConn
@@ -101,13 +103,13 @@ type DNSMachine struct {
 
 	SpecialIPPollicy map[string][]netip.Addr
 
-	SpecialServerPollicy map[string]string //domain -> dns server name 的map
+	SpecialServerPollicy map[string]string //domain -> dns server name
 
 	mutex sync.RWMutex //读写 conns, cache, SpecialIPPollicy, SpecialServerPollicy 时所使用的 mutex
 
 }
 
-//并不初始化所有内部成员, 只是创建并拨个号，若为nil则号也不拨
+//并不初始化所有内部成员, 只是创建空结构并拨号，若为nil则号也不拨
 func NewDnsMachine(defaultDnsServerAddr *Addr) *DNSMachine {
 	var dm DNSMachine
 	if defaultDnsServerAddr != nil {
@@ -140,6 +142,7 @@ func (dm *DNSMachine) SetDefaultConn(c net.Conn) {
 	dm.DefaultConn.Conn.Conn = c
 }
 
+// 添加一个 特定名称的 域名服务器的 连接。
 //name为该dns服务器的名称
 func (dm *DNSMachine) AddConnForServer(name string, c net.Conn) {
 	dc := new(dns.Conn)
@@ -153,9 +156,9 @@ func (dm *DNSMachine) AddConnForServer(name string, c net.Conn) {
 
 //传入的domain必须是不带尾缀点号的domain, 即没有包过 Fqdn
 func (dm *DNSMachine) Query(domain string, dns_type uint16) (ip net.IP) {
-	var cacheHit bool
+	var generalCacheHit bool // 若读到了 cache 或 SpecialIPPollicy 的项, 则 generalCacheHit 为 true
 	defer func() {
-		if cacheHit {
+		if generalCacheHit {
 			return
 		}
 
@@ -187,7 +190,7 @@ func (dm *DNSMachine) Query(domain string, dns_type uint16) (ip net.IP) {
 
 	if dm.cache != nil {
 		if ip = dm.cache[domain]; ip != nil {
-			cacheHit = true
+			generalCacheHit = true
 			if ce := utils.CanLogDebug("hit dns cache"); ce != nil {
 				ce.Write(zap.String("domain", domain))
 			}
@@ -204,6 +207,7 @@ func (dm *DNSMachine) Query(domain string, dns_type uint16) (ip net.IP) {
 
 					if a.Is4() || a.Is4In6() {
 						aa := a.As4()
+						generalCacheHit = true
 						return aa[:]
 					}
 				}
@@ -211,6 +215,7 @@ func (dm *DNSMachine) Query(domain string, dns_type uint16) (ip net.IP) {
 				for _, a := range na {
 					if a.Is6() {
 						aa := a.As16()
+						generalCacheHit = true
 						return aa[:]
 					}
 				}
