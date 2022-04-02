@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"log"
 	"net/url"
@@ -22,8 +23,7 @@ func init() {
 
 // set conf variable, or exit the program; 还会设置mainFallback
 // 先检查configFileName是否存在，存在就尝试加载文件，否则尝试 -L参数
-func loadConfig() {
-	var err error
+func loadConfig() (err error) {
 
 	fpath := utils.GetFilePath(configFileName)
 	if fpath != "" {
@@ -33,7 +33,8 @@ func loadConfig() {
 			standardConf, err = proxy.LoadTomlConfFile(fpath)
 			if err != nil {
 
-				log.Fatalf("can not load standard config file: %s\n", err)
+				log.Printf("can not load standard config file: %s\n", err)
+				return
 			}
 			//log.Println("standardConf.Fallbacks: ", len(standardConf.Fallbacks))
 			if len(standardConf.Fallbacks) != 0 {
@@ -62,7 +63,8 @@ func loadConfig() {
 			simpleConf, hasE, err = proxy.LoadSimpleConfigFile(fpath)
 			if hasE {
 
-				log.Fatalf("can not load simple config file: %s\n", err)
+				log.Printf("can not load simple config file: %s\n", err)
+				return
 			}
 			if simpleConf.Fallbacks != nil {
 				mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
@@ -80,8 +82,8 @@ func loadConfig() {
 		if listenURL != "" {
 			_, err = url.Parse(listenURL)
 			if err != nil {
-				log.Fatalf("listenURL given but invalid %s %s\n", listenURL, err)
-
+				log.Printf("listenURL given but invalid %s %s\n", listenURL, err)
+				return
 			}
 
 			simpleConf = proxy.Simple{
@@ -92,17 +94,18 @@ func loadConfig() {
 
 				_, err = url.Parse(dialURL)
 				if err != nil {
-					log.Fatalf("dialURL given but invalid %s %s\n", dialURL, err)
-
+					log.Printf("dialURL given but invalid %s %s\n", dialURL, err)
+					return
 				}
 
 				simpleConf.Client_ThatDialRemote_Url = dialURL
 			}
 
 		} else {
-			log.Fatalf("no -L listen URL provided \n")
-
+			log.Printf("no -L listen URL provided \n")
+			err = errors.New("no -L listen URL provided")
+			return
 		}
 	}
-
+	return
 }

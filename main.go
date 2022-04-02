@@ -122,11 +122,14 @@ func main() {
 	cmdLL_given := isFlagPassed("ll")
 	cmdUseReadv_given := isFlagPassed("readv")
 
-	loadConfig()
-
-	if confMode < 0 {
-		log.Fatal("no config exist")
+	if err := loadConfig(); err != nil && !isFlexible() {
+		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
+		os.Exit(-1)
 	}
+
+	//if confMode < 0 {
+	//	log.Fatal("no config exist")
+	//}
 
 	//有点尴尬, 读取配置文件必须要用命令行参数，而配置文件里的部分配置又会覆盖部分命令行参数
 
