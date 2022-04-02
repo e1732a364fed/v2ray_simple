@@ -171,7 +171,8 @@ func generateConfigFileInteractively() {
 				}
 
 				fmt.Printf("你输入了 %q\n", result)
-				configStruct.App.LogLevel = int(theint64)
+				ii := int(theint64)
+				configStruct.App.LogLevel = &ii
 			case 1:
 
 			case 2:

@@ -100,7 +100,7 @@ type DialConf struct {
 }
 
 type AppConf struct {
-	LogLevel          int    `toml:"loglevel"`
+	LogLevel          *int   `toml:"loglevel"` //需要为指针, 否则无法判断0到底是未给出的默认值还是 显式声明的0
 	DefaultUUID       string `toml:"default_uuid"`
 	MyCountryISO_3166 string `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
 

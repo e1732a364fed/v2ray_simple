@@ -43,7 +43,10 @@ func loadConfig() (err error) {
 			}
 			confMode = 1
 			if appConf := standardConf.App; appConf != nil {
-				utils.LogLevel = appConf.LogLevel
+				if appConf.LogLevel != nil {
+					utils.LogLevel = *appConf.LogLevel
+
+				}
 				default_uuid = appConf.DefaultUUID
 				if appConf.NoReadV {
 					netLayer.UseReadv = false
