@@ -23,6 +23,8 @@ type UDPConn struct {
 	readDeadline  PipeDeadline
 	writeDeadline PipeDeadline
 
+	clientFirstWriteChan chan int
+
 	unread   []byte
 	isClient bool
 }
@@ -35,10 +37,11 @@ func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
 	return NewUDPConn(raddr, conn, true), nil
 }
 
+//如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据
 func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	inDataChan := make(chan []byte, 50)
 	theUDPConn := &UDPConn{raddr, conn, inDataChan, MakePipeDeadline(),
-		MakePipeDeadline(), []byte{}, isClient}
+		MakePipeDeadline(), make(chan int), []byte{}, isClient}
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
 	conn.SetReadBuffer(MaxUDP_packetLen)
@@ -46,8 +49,9 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 
 	if isClient {
 
-		//客户端要自己循环读取udp,
+		//客户端要自己循环读取udp,(但是要等待先Write之后)
 		go func() {
+			<-theUDPConn.clientFirstWriteChan
 			for {
 				buf := utils.GetPacket()
 				n, _, err := conn.ReadFromUDP(buf)
@@ -80,6 +84,28 @@ func (uc *UDPConn) ReadMsg() (b []byte, err error) {
 		return nil, ErrTimeout
 	}
 }
+
+//实现 net.PacketConn， 可以与 miekg/dns 配合
+func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	select {
+	case msg, ok := <-uc.inMsgChan:
+		if !ok {
+			return 0, uc.peerAddr, io.EOF
+		}
+		n = copy(msg, p)
+		return n, uc.peerAddr, io.EOF
+
+	case <-uc.readDeadline.Wait():
+		return 0, uc.peerAddr, ErrTimeout
+	}
+}
+
+//实现 net.PacketConn， 可以与 miekg/dns 配合
+func (uc *UDPConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+	return uc.Write(p)
+
+}
+
 func (uc *UDPConn) GetReadChan() chan []byte {
 	return uc.inMsgChan
 }
@@ -91,6 +117,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 		return
 	}
 	var msg []byte
+
 	msg, err = uc.ReadMsg()
 	if err != nil {
 		return
@@ -115,7 +142,7 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 		return 0, ErrTimeout
 	default:
 		if uc.isClient {
-			time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
+			//time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 
 			/*
 				一些常见的丢包后出现的错误：
@@ -132,6 +159,7 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 
 			//if use writeToUDP at client end, we will get err Write write udp 127.0.0.1:50361->:60006: use of WriteTo with pre-connected connection
 
+			defer close(uc.clientFirstWriteChan)
 			return uc.realConn.Write(buf)
 		} else {
 			return uc.realConn.WriteToUDP(buf, uc.peerAddr)
@@ -140,7 +168,12 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 	}
 }
 
-func (*UDPConn) Close() error { return nil }
+func (uc *UDPConn) Close() error {
+	if uc.isClient {
+		return uc.realConn.Close()
+	}
+	return nil
+}
 
 func (b *UDPConn) LocalAddr() net.Addr         { return b.realConn.LocalAddr() }
 func (b *UDPConn) RemoteAddr() net.Addr        { return b.peerAddr }

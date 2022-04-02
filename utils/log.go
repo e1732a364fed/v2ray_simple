@@ -95,3 +95,10 @@ func CanLogDebug(msg string) *zapcore.CheckedEntry {
 	return ZapLogger.Check(zap.DebugLevel, msg)
 
 }
+func CanLogFatal(msg string) *zapcore.CheckedEntry {
+	if LogLevel > Log_fatal {
+		return nil
+	}
+	return ZapLogger.Check(zap.FatalLevel, msg)
+
+}

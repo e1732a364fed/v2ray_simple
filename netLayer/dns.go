@@ -117,6 +117,9 @@ func NewDnsMachine(defaultDnsServerAddr *Addr) *DNSMachine {
 		var conn net.Conn
 		var err error
 
+		//实测 miekg/dns 必须用 net.PacketConn，不过本作udp最新代码已经支持了.
+		// 不过dns还是没必要额外包装一次, 直接用原始的udp即可.
+
 		if defaultDnsServerAddr.IsUDP() {
 			conn, err = net.DialUDP("udp", nil, defaultDnsServerAddr.ToUDPAddr())
 		} else {

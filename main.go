@@ -652,7 +652,6 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 			zap.String("handler", inServer.AddrStr()),
 			zap.Error(err),
 		)
-		//log.Printf("failed in inServer proxy handshake from %s %s\n", inServer.AddrStr(), err)
 	}
 
 	if !inServer.CanFallback() {
@@ -672,6 +671,11 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		iics.theFallbackFirstBuffer = fe.First
 		if iics.theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
+
+			if ce := utils.CanLogFatal("No FirstBuffer"); ce != nil {
+				ce.Write()
+			}
+
 			log.Fatalf("No FirstBuffer\n")
 		}
 	}
@@ -683,7 +687,6 @@ checkFallback:
 	if mainFallback != nil {
 
 		if ce := utils.CanLogDebug("checkFallback"); ce != nil {
-			//log.Printf("checkFallback\n")
 			ce.Write()
 		}
 
@@ -712,7 +715,6 @@ checkFallback:
 		if inServerTlsConn := iics.inServerTlsConn; inServerTlsConn != nil {
 			//默认似乎默认tls不会给出alpn和sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
 			// 而alpn则也是正常的, 不设置肯定就是空值
-			// TODO: 配置中加一个 alpn选项.
 			alpn := inServerTlsConn.GetAlpn()
 
 			if alpn != "" {
@@ -731,7 +733,6 @@ checkFallback:
 		fbAddr := mainFallback.GetFallback(thisFallbackType, fallback_params...)
 
 		if ce := utils.CanLogDebug("checkFallback"); ce != nil {
-			//log.Printf("checkFallback ,matched fallback: %s\n", fbAddr.String())
 			ce.Write(
 				zap.String("matched fallback", fbAddr.String()),
 			)
