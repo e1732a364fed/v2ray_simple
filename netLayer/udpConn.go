@@ -23,7 +23,8 @@ type UDPConn struct {
 	readDeadline  PipeDeadline
 	writeDeadline PipeDeadline
 
-	clientFirstWriteChan chan int
+	clientFirstWriteChan       chan int
+	clientFirstWriteChanClosed bool
 
 	unread   []byte
 	isClient bool
@@ -41,7 +42,7 @@ func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
 func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	inDataChan := make(chan []byte, 50)
 	theUDPConn := &UDPConn{raddr, conn, inDataChan, MakePipeDeadline(),
-		MakePipeDeadline(), make(chan int), []byte{}, isClient}
+		MakePipeDeadline(), make(chan int), false, []byte{}, isClient}
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
 	conn.SetReadBuffer(MaxUDP_packetLen)
@@ -49,7 +50,7 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 
 	if isClient {
 
-		//客户端要自己循环读取udp,(但是要等待先Write之后)
+		//客户端要自己循环读取udp,(但是要等待客户端自己先Write之后)
 		go func() {
 			<-theUDPConn.clientFirstWriteChan
 			for {
@@ -142,7 +143,7 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 		return 0, ErrTimeout
 	default:
 		if uc.isClient {
-			//time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
+			time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 
 			/*
 				一些常见的丢包后出现的错误：
@@ -159,7 +160,12 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 
 			//if use writeToUDP at client end, we will get err Write write udp 127.0.0.1:50361->:60006: use of WriteTo with pre-connected connection
 
-			defer close(uc.clientFirstWriteChan)
+			if !uc.clientFirstWriteChanClosed {
+				defer func() {
+					close(uc.clientFirstWriteChan)
+					uc.clientFirstWriteChanClosed = true
+				}()
+			}
 			return uc.realConn.Write(buf)
 		} else {
 			return uc.realConn.WriteToUDP(buf, uc.peerAddr)
