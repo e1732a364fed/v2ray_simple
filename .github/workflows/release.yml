@@ -188,13 +188,13 @@ jobs:
             openssl dgst -$METHOD $FILE | sed 's/([^)]*)//g' >>$DGST
           done
 
+
       - name: Upload files to Artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: verysimple-$ASSET_NAME.tar.xz
-          path: |
-            ./verysimple-$ASSET_NAME.tar.xz
-            
+          name: verysimple-${{ steps.get_filename.outputs.ASSET_NAME }}.tar.xz
+          path: ./verysimple-${{ steps.get_filename.outputs.ASSET_NAME }}.tar.xz
+
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         if: github.event_name == 'release'
