@@ -174,14 +174,14 @@ jobs:
           cp -r ${GITHUB_WORKSPACE}/examples ./build_assets/examples
 
  
-      - name: Create ZIP archive
+      - name: Create xz archive
         shell: bash
         run: |
           pushd build_assets || exit 1
           touch -mt $(date +%Y01010000) *
-          zip -9vr ../verysimple-$ASSET_NAME.zip .
+          tar -cJf ../verysimple-$ASSET_NAME.tar.xz .
           popd || exit 1
-          FILE=./verysimple-$ASSET_NAME.zip
+          FILE=./verysimple-$ASSET_NAME.tar.xz
           DGST=$FILE.dgst
           for METHOD in {"md5","sha1","sha256","sha512"}
           do
@@ -203,7 +203,7 @@ jobs:
         if: github.event_name == 'release'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./verysimple-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
+          file: ./verysimple-${{ steps.get_filename.outputs.ASSET_NAME }}.tar.xz*
           tag: ${{ github.ref }}
           file_glob: true
  

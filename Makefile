@@ -39,7 +39,7 @@ ifdef PACK
 define compile
 	GOOS=$(2) GOARCH=$(3) $(cmd) $(1)
 	mv $(1) verysimple$(4)
-	tar -czf $(1).tgz verysimple$(4) examples/
+	tar -cJf $(1).tar.xz verysimple$(4) examples/
 	rm verysimple$(4)
 endef
 
@@ -86,9 +86,9 @@ clean:
 	rm -f $(macM1Fn)
 	rm -f $(androidArm64Fn)
 
-	rm -f $(linuxAmdFn).tgz
-	rm -f $(linuxArmFn).tgz
-	rm -f ${winFn}.tgz
-	rm -f $(macFn).tgz
-	rm -f $(macM1Fn).tgz
-	rm -f $(androidArm64Fn).tgz
+	rm -f $(linuxAmdFn).tar.xz
+	rm -f $(linuxArmFn).tar.xz
+	rm -f ${winFn}.tar.xz
+	rm -f $(macFn).tar.xz
+	rm -f $(macM1Fn).tar.xz
+	rm -f $(androidArm64Fn).tar.xz

@@ -1037,6 +1037,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			defer iics.baseLocalConn.Close()
 		}
 	}
+	defer wlc.Close()
 
 	var err error
 
@@ -1072,7 +1073,11 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 		realTargetAddr, err = netLayer.NewAddr(client.AddrStr())
 		if err != nil {
-			log.Fatalf("convert addr err:%s\n", err)
+
+			if ce := utils.CanLogErr("dial client convert addr err"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return nil, utils.NumErr{N: 15, Prefix: "dial client convert addr err "}
 		}
 		realTargetAddr.Network = client.Network()
 	}
@@ -1111,7 +1116,6 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	clientConn, err = realTargetAddr.Dial()
 	if err != nil {
 		if ce := utils.CanLogErr("failed in dial"); ce != nil {
-			//log.Printf("failed in dial %s , Reason: , %s\n", realTargetAddr.String(), err)
 			ce.Write(
 				zap.String("target", realTargetAddr.String()),
 				zap.Error(err),
@@ -1119,6 +1123,8 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 		}
 		return nil, utils.NumErr{N: 2, Prefix: "dialClient err, "}
 	}
+
+	defer clientConn.Close()
 
 	//log.Println("dial real addr ok", realTargetAddr)
 
