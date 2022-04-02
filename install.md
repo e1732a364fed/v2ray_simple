@@ -1,11 +1,12 @@
 
 下面给出安装到 ubuntu amd64服务器 所需要的命令, 大家总结一下即可得到一个简单的一键脚本
 
-
 ```sh
-wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.1.2/verysimple_linux_amd64_v1.1.2.tgz
+sudo apt-get -y install
 
-tar -xzf verysimple_linux_amd64_v1.1.2.tgz
+wget https://github.com/hahahrfool/v2ray_simple/releases/download/v1.1.2/verysimple_linux_amd64.tgz
+
+tar -xzf verysimple_linux_amd64.tgz
 sudo mkdir -p /usr/local/etc/verysimple
 sudo mv verysimple /usr/local/etc/verysimple/
 sudo cp examples/vlesss.server.toml /usr/local/etc/verysimple/server.toml
