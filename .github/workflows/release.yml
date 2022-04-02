@@ -116,7 +116,7 @@ jobs:
 
       - name: Get current version and remove Makefile
         run: |
-          BUILD_VERSION = `grep -oE "(v1.*)$"  Makefile`
+          BUILD_VERSION=`grep -oE "(v1.*)$"  Makefile`
           rm ${GITHUB_WORKSPACE}/Makefile
 
       - name: Show workflow information 
