@@ -114,6 +114,12 @@ jobs:
       - name: Checkout codebase
         uses: actions/checkout@v3
 
+      - name: Get current version and remove Makefile
+        run: |
+          BUILD_VERSION = `grep "BUILD_VERSION   :="  ${GITHUB_WORKSPACE}/Makefile` | version=`echo ${str:19}`
+          rm ${GITHUB_WORKSPACE}/Makefile
+
+
       - name: Show workflow information 
         id: get_filename
         run: |
@@ -139,24 +145,22 @@ jobs:
           then
             ID=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})
           fi
-          # 改动 version.go 中 build 项为 github.sha
-          sed -i '/var build string/ s/Custom/'$ID'/' ./version.go
  
       - name: Build verysimple
         run: |
           mkdir -p build_assets
-          go build -tags $(tags) -v -o build_assets/verysimple -trimpath -ldflags "-s -w -buildid="
+          go build -tags $(tags) -v -o build_assets/verysimple -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="
 
       # 在 Windows 中加入无窗口运行的 Wverysimple.exe
       - name: Build background verysimple on Windows 
         if: matrix.goos == 'windows'
         run: |
-          go build -tags $(tags) -v -o build_assets/Wverysimple.exe -trimpath -ldflags "-s -w -H windowsgui -buildid="
+          go build -tags $(tags) -v -o build_assets/Wverysimple.exe -trimpath -ldflags "main.Version=${BUILD_VERSION}' -s -w -H windowsgui -buildid="
     
       - name: Build Mips softfloat verysimple
         if: matrix.goarch == 'mips' || matrix.goarch == 'mipsle'
         run: |
-          GOMIPS=softfloat go build -tags $(tags) -v -o build_assets/verysimple_softfloat -trimpath -ldflags "-s -w -buildid="
+          GOMIPS=softfloat go build -tags $(tags) -v -o build_assets/verysimple_softfloat -trimpath -ldflags "main.Version=${BUILD_VERSION}' -s -w -buildid="
 
       - name: Rename Windows verysimple
         if: matrix.goos == 'windows'

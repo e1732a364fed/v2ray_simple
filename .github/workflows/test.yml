@@ -35,5 +35,8 @@ jobs:
       - name: Checkout codebase
         uses: actions/checkout@v3
 
+      - name: Build
+        run: make
+
       - name: Test
         run: go test -timeout 1h -v ./...
