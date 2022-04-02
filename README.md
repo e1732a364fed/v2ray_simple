@@ -25,6 +25,9 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
 
 经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。最新1.10的测速似乎不lazy时即可比xray的 xtls快。（ [最新测速](speed_macos_1.1.0.md) )
+
+本作的命令行界面还在开发一种 “交互模式”，欢迎下载体验，也欢迎提交PR来 丰富交互模式的功能。
+
 ### 创新之外的已实现的有用特性
 
 在没有mmdb文件时，自动下载mmdb
@@ -41,7 +44,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 按 geoip,ip,cidr,domain,inTag,network 分流，以及 按国别 顶级域名分流，用到了 mmdb
 
-支持utls伪装tls指纹，本作的 utls 与 webscoket和grpc均兼容
+支持utls伪装tls指纹，本作的 utls 还可以在 用 webscoket和grpc 时使用
 
 支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，应该是与现有xray/v2ray兼容的
 

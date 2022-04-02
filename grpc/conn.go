@@ -32,7 +32,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 	if c.cacheReader == nil {
 		h, err := c.stream.Recv()
 		if err != nil {
-			return 0, utils.ErrInErr{ErrDesc: "unable to read from gun tunnel", ErrDetail: err}
+			return 0, utils.ErrInErr{ErrDesc: "grpc read failed", ErrDetail: err}
 		}
 		c.cacheReader = bytes.NewReader(h.Data)
 	}

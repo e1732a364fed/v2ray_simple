@@ -252,16 +252,46 @@ func (addr *Addr) Dial() (net.Conn, error) {
 
 	switch addr.Network {
 	case "":
-		return net.Dial("tcp", addr.String())
-
+		goto tcp
 	case "udp", "udp4", "udp6":
+		ua := addr.ToUDPAddr()
 
-		return DialUDP(addr.ToUDPAddr())
+		if machineCanConnectToIpv6 && addr.IP.To4() == nil {
+			return nil, ErrMachineCanConnectToIpv6
+		}
+
+		return DialUDP(ua)
 	default:
-		return net.Dial(addr.Network, addr.String())
+		if strings.HasPrefix(addr.Network, "tcp") {
+			goto tcp
+		}
+		goto defaultPart
 
 	}
 
+tcp:
+	if addr.IP != nil {
+		if addr.IP.To4() == nil {
+			if machineCanConnectToIpv6 {
+				return nil, ErrMachineCanConnectToIpv6
+			} else {
+
+				return net.DialTCP("tcp6", nil, &net.TCPAddr{
+					IP:   addr.IP,
+					Port: addr.Port,
+				})
+			}
+		} else {
+
+			return net.DialTCP("tcp4", nil, &net.TCPAddr{
+				IP:   addr.IP,
+				Port: addr.Port,
+			})
+		}
+
+	}
+defaultPart:
+	return net.Dial(addr.Network, addr.String())
 }
 
 // 如果a的ip不为空，则会返回 AtypIP4 或 AtypIP6，否则会返回 AtypDomain

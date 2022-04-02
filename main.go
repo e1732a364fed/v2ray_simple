@@ -127,6 +127,8 @@ func main() {
 		os.Exit(-1)
 	}
 
+	netLayer.Prepare()
+
 	//if confMode < 0 {
 	//	log.Fatal("no config exist")
 	//}
@@ -1118,12 +1120,24 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 	clientConn, err = realTargetAddr.Dial()
 	if err != nil {
-		if ce := utils.CanLogErr("failed in dial"); ce != nil {
-			ce.Write(
-				zap.String("target", realTargetAddr.String()),
-				zap.Error(err),
-			)
+		if err == netLayer.ErrMachineCanConnectToIpv6 {
+			//如果一开始就知道机器没有ipv6地址，那么该错误就不是error等级，而是warning等级
+
+			if ce := utils.CanLogWarn("Machine HasNo ipv6 but got ipv6 request"); ce != nil {
+				ce.Write(
+					zap.String("target", realTargetAddr.String()),
+				)
+			}
+
+		} else {
+			if ce := utils.CanLogErr("failed in dial"); ce != nil {
+				ce.Write(
+					zap.String("target", realTargetAddr.String()),
+					zap.Error(err),
+				)
+			}
 		}
+
 		return nil, utils.NumErr{N: 2, Prefix: "dialClient err, "}
 	}
 

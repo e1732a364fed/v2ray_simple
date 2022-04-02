@@ -19,7 +19,7 @@ const (
 	Log_fatal
 	//Log_off	//不支持不打印致命输出。既然致命我们一定要尸检然后查看病因啊
 
-	DefaultLL = Log_info
+	DefaultLL = Log_warning
 )
 
 // LogLevel 值越小越唠叨, 废话越多，值越大打印的越少，见log_开头的常量;

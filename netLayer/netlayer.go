@@ -10,11 +10,46 @@ package netLayer
 
 import (
 	"io"
+	"net"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
+
+var (
+	// 如果机器没有ipv6地址, 就无法联通ipv6, 此时可以在dial时更快拒绝ipv6地址,
+	// 避免打印过多错误输出
+	machineCanConnectToIpv6 bool
+
+	ErrMachineCanConnectToIpv6 = utils.NumErr{Prefix: "ErrMachineCanConnectToIpv6"}
+)
+
+//做一些网络层的资料准备工作, 可以优化本包其它函数的调用。
+func Prepare() {
+	machineCanConnectToIpv6 = HasIpv6Interface()
+}
+
+func HasIpv6Interface() bool {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		return false
+	}
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
+			// IsLinkLocalUnicast: something starts with fe80:
+			// According to godoc, If ip is not an IPv4 address, To4 returns nil.
+			// This means it's ipv6
+			if ipnet.IP.To4() == nil {
+				return true
+			}
+		}
+	}
+	return false
+}
 
 //net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
 func IsBasicConn(r interface{}) bool {
@@ -30,7 +65,6 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 		rawConn, err := sc.SyscallConn()
 		if err != nil {
 			if ce := utils.CanLogDebug("can't convert syscall.Conn to syscall.RawConn"); ce != nil {
-				//log.Println("can't convert syscall.Conn to syscall.RawConn", reader, err)
 				ce.Write(zap.Any("reader", reader), zap.Error(err))
 			}
 			return nil

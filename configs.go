@@ -36,7 +36,7 @@ func loadConfig() (err error) {
 				log.Printf("can not load standard config file: %s\n", err)
 				return
 			}
-			//log.Println("standardConf.Fallbacks: ", len(standardConf.Fallbacks))
+
 			if len(standardConf.Fallbacks) != 0 {
 				mainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
 
