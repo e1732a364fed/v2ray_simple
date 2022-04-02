@@ -206,4 +206,4 @@ jobs:
           file: ./verysimple-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
           tag: ${{ github.ref }}
           file_glob: true
-          
+ 
