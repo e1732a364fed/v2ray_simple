@@ -32,9 +32,15 @@ func (cc CliCmd) String() string {
 var cliCmdList []CliCmd
 
 //交互式命令行用户界面
-
+//
+//阻塞，可按ctrl+C推出
 func runCli() {
-	defer fmt.Printf("Interactive Mode exited. \n")
+	defer func() {
+		fmt.Printf("Interactive Mode exited. \n")
+		if ce := utils.CanLogInfo("Interactive Mode exited"); ce != nil {
+			ce.Write()
+		}
+	}()
 
 	langList := []string{"Chinese", "English"}
 	fmt.Printf("Welcome to Interactive Mode, please choose a Language \n")

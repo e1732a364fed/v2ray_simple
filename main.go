@@ -266,10 +266,11 @@ func main() {
 	// 后台运行主代码，而main函数只监听中断信号
 	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用;
 	//  或可用于交互生成自己想要的配置
-	proxyStarted := false
+	configFileQualifiedToRun := false
 
 	if (defaultInServer != nil || len(allServers) > 0) && defaultOutClient != nil {
-		proxyStarted = true
+		configFileQualifiedToRun = true
+
 		if confMode == simpleMode {
 			listenSer(defaultInServer, defaultOutClient)
 		} else {
@@ -277,17 +278,17 @@ func main() {
 				listenSer(inServer, defaultOutClient)
 			}
 		}
+
+	}
+	//没配置可用的listen或者dail，而且还无法动态更改配置
+	if !configFileQualifiedToRun && !isFlexible() {
+		utils.ZapLogger.Fatal("No valid proxy settings available, exit now.")
+		return
 	}
 
 	if enableApiServer {
 		go checkConfigAndTryRunApiServer()
 
-	}
-
-	//没配置可用的listen或者dail，而且还无法动态更改配置
-	if !proxyStarted && !isFlexible() {
-		utils.ZapLogger.Fatal("No valid proxy settings available, exit now.")
-		return
 	}
 
 	if interactive_mode {

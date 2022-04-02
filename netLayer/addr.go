@@ -252,6 +252,7 @@ func (addr *Addr) Dial() (net.Conn, error) {
 
 	switch addr.Network {
 	case "":
+		addr.Network = "tcp"
 		goto tcp
 	case "udp", "udp4", "udp6":
 		ua := addr.ToUDPAddr()
