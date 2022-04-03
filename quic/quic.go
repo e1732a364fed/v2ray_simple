@@ -51,6 +51,12 @@ func (qsc StreamConn) RemoteAddr() net.Addr {
 	return nil
 }
 
+func (qsc StreamConn) Close() error {
+	qsc.CancelRead(quic.StreamErrorCode(quic.ConnectionRefused))
+	qsc.CancelWrite(quic.StreamErrorCode(quic.ConnectionRefused))
+	return qsc.Stream.Close()
+}
+
 const (
 	our_maxidletimeout       = time.Hour * 2 //time.Second * 45	//idletimeout 设的时间越长越不容易断连.
 	our_HandshakeIdleTimeout = time.Second * 8

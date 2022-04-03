@@ -1122,10 +1122,10 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			goto advLayerStep
 		}
 	case "quic":
-		//quic这里并不是在tls层基础上进行dial，而是直接dial
+		//quic这里并不是在tls层基础上进行dial，而是直接从传输层dial 或者获取之前已经存在的session
 		dailedCommonConn = client.DialCommonInitialLayerConnFunc()(&realTargetAddr)
 		if dailedCommonConn != nil {
-			//如果有已经建立好的连接，则跳过拨号阶段
+			//跳过tls阶段
 			goto advLayerStep
 		} else {
 			//dail失败, 直接return掉
