@@ -111,8 +111,9 @@ type AppConf struct {
 }
 
 type DnsConf struct {
-	Hosts   map[string]any `toml:"hosts"`   //用于强制指定哪些域名会被解析为哪些具体的ip；可以为一个ip字符串，或者一个 []string 数组, 数组内可以是A,AAAA或CNAME
-	Servers []any          `toml:"servers"` //可以为一个地址url字符串，或者为 SpecialDnsServerConf; 如果第一个元素是字符串形式，则此第一个元素将会被用作默认dns服务器
+	Strategy int64          `toml:"strategy"` //0表示默认(和4含义相同), 4表示先查ip4后查ip6, 6表示先查6后查4; 40表示只查ipv4, 60 表示只查ipv6
+	Hosts    map[string]any `toml:"hosts"`    //用于强制指定哪些域名会被解析为哪些具体的ip；可以为一个ip字符串，或者一个 []string 数组, 数组内可以是A,AAAA或CNAME
+	Servers  []any          `toml:"servers"`  //可以为一个地址url字符串，或者为 SpecialDnsServerConf; 如果第一个元素是字符串形式，则此第一个元素将会被用作默认dns服务器
 }
 
 type SpecialDnsServerConf struct {
@@ -211,7 +212,7 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
 }
 
 func LoadDnsMachine(conf *DnsConf) *netLayer.DNSMachine {
-	var dm = &netLayer.DNSMachine{}
+	var dm = &netLayer.DNSMachine{TypeStrategy: conf.Strategy}
 
 	var ok = false
 
@@ -234,6 +235,7 @@ func LoadDnsMachine(conf *DnsConf) *netLayer.DNSMachine {
 
 			}
 			dm = netLayer.NewDnsMachine(&ad)
+			dm.TypeStrategy = conf.Strategy
 			firstDealed = true
 		}
 

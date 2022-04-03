@@ -20,7 +20,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
-	"github.com/miekg/dns"
 	"github.com/pkg/profile"
 	"go.uber.org/zap"
 
@@ -801,10 +800,8 @@ afterLocalServerHandshake:
 			ce.Write(zap.String("domain", targetAddr.Name))
 		}
 
-		ip := dnsMachine.Query(targetAddr.Name, dns.TypeA)
-		if ip == nil {
-			ip = dnsMachine.Query(targetAddr.Name, dns.TypeAAAA)
-		}
+		ip := dnsMachine.Query(targetAddr.Name)
+
 		if ip != nil {
 			targetAddr.IP = ip
 

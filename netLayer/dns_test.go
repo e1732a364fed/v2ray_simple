@@ -4,10 +4,13 @@ import (
 	"testing"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/miekg/dns"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 func TestDNS(t *testing.T) {
+	utils.LogLevel = utils.Log_debug
+	utils.InitLog()
+
 	config := `
 
 	[dns]
@@ -33,7 +36,13 @@ servers = [
 	t.Log(&dm)
 	t.Log(dm.DefaultConn.RemoteAddr().Network(), dm.DefaultConn.RemoteAddr())
 
-	t.Log("record for  www.myfake.com is ", dm.Query("www.myfake.com", dns.TypeA))
+	//dm.TypeStrategy = 60
 
-	t.Log("record for  www.qq.com is ", dm.Query("www.qq.com", dns.TypeA))
+	t.Log("record for  www.myfake.com is ", dm.Query("www.myfake.com"))
+
+	t.Log("record for  www.qq.com is ", dm.Query("www.qq.com"))
+
+	t.Log("record for  imgstat.baidu.com is ", dm.Query("imgstat.baidu.com"))
+	t.Log("record for  imgstat.n.shifen.com is ", dm.Query("imgstat.n.shifen.com"))
+
 }

@@ -97,9 +97,10 @@ type DnsConn struct {
 // SpecialIPPollicy 用于指定特殊的 域名-ip映射，这样遇到这种域名时，不经过dns查询，直接返回预设ip
 // SpecialServerPollicy 用于为特殊的 域名指定特殊的 dns服务器，这样遇到这种域名时，会通过该特定服务器查询
 type DNSMachine struct {
-	DefaultConn DnsConn
-	conns       map[string]*DnsConn
-	cache       map[string]net.IP
+	TypeStrategy int64 // 0, 4, 6, 40, 60
+	DefaultConn  DnsConn
+	conns        map[string]*DnsConn
+	cache        map[string]net.IP
 
 	SpecialIPPollicy map[string][]netip.Addr
 
@@ -159,8 +160,32 @@ func (dm *DNSMachine) AddConnForServer(name string, c net.Conn) {
 	dm.conns[name] = dcc
 }
 
+func (dm *DNSMachine) Query(domain string) (ip net.IP) {
+	switch dm.TypeStrategy {
+	default:
+		fallthrough
+	case 0:
+		fallthrough
+	case 4:
+		ip = dm.QueryType(domain, dns.TypeA)
+		if ip == nil {
+			ip = dm.QueryType(domain, dns.TypeAAAA)
+		}
+	case 6:
+		ip = dm.QueryType(domain, dns.TypeAAAA)
+		if ip == nil {
+			ip = dm.QueryType(domain, dns.TypeA)
+		}
+	case 40:
+		ip = dm.QueryType(domain, dns.TypeA)
+	case 60:
+		ip = dm.QueryType(domain, dns.TypeAAAA)
+	}
+	return
+}
+
 //传入的domain必须是不带尾缀点号的domain, 即没有包过 Fqdn
-func (dm *DNSMachine) Query(domain string, dns_type uint16) (ip net.IP) {
+func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 	var generalCacheHit bool // 若读到了 cache 或 SpecialIPPollicy 的项, 则 generalCacheHit 为 true
 	defer func() {
 		if generalCacheHit {

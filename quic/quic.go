@@ -51,6 +51,9 @@ func (qsc StreamConn) RemoteAddr() net.Addr {
 	return nil
 }
 
+//这里必须要同时调用 CancelRead 和 CancelWrite
+// 因为 quic-go这个设计的是双工的，调用Close实际上只是间接调用了 CancelWrite
+// 看 quic-go包中的 quic.SendStream 的注释就知道了.
 func (qsc StreamConn) Close() error {
 	qsc.CancelRead(quic.StreamErrorCode(quic.ConnectionRefused))
 	qsc.CancelWrite(quic.StreamErrorCode(quic.ConnectionRefused))
