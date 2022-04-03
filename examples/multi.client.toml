@@ -10,7 +10,7 @@ default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 admin_pass = "adfadfadfadfa"	# 用于 api服务器的登陆密码.只要给出, 且命令行给了-ea参数, 就会自动运行api服务, 在 127.0.0.1:48345
 
 [dns]
-
+# 只要dns模块存在并给出了servers，则所有域名请求都会被先解析成ip
 # dns解析仅仅是为了能够精准分流, 如果你不需要分流, 没有自定义dns需求，则不需要dns模块
 
 # dns解析的默认方式是先查A记录，没有A再查AAAA记录
@@ -87,3 +87,6 @@ dialTag = "my_vless1"
 # network = ["tcp","udp"]
 # inTag = ["tag1","tag2"]
 # country = ["CN"]
+
+# 关于ip中使用cidr匹配ipv6，可以参考 https://www.mediawiki.org/wiki/Help:Range_blocks/IPv6
+# 比如要想路由所有的ipv6地址，可用 ip = ["::/0"]
