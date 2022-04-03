@@ -168,7 +168,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	case "quic":
 
 		com.setNetwork("udp")
-		var useHysteria bool
+		var useHysteria, hysteria_manual bool
 		var maxbyteCount int
 
 		if dc.Extra != nil {
@@ -184,6 +184,15 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 						}
 					} else {
 						log.Println("Using Hysteria Congestion Control, max upload mbps: 3000mbps")
+					}
+
+					if thing := dc.Extra["hy_manual"]; thing != nil {
+						if ismanual, ok := thing.(bool); ok {
+							hysteria_manual = ismanual
+							if ismanual {
+								log.Println("Using Hysteria Manual Control Mode")
+							}
+						}
 					}
 				}
 			}
@@ -206,7 +215,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 				NextProtos:         alpnList,
 				//实测quic的服务端和客户端必须指定alpn, 否则quic客户端会报错
 				// CRYPTO_ERROR (0x178): ALPN negotiation failed. Server didn't offer any protocols
-			}, useHysteria, maxbyteCount)
+			}, useHysteria, maxbyteCount, hysteria_manual)
 		})
 
 		com.setFunc(proxyCommonStruct_setfunc_DialSubConn, func(t any) (net.Conn, error) {
@@ -249,6 +258,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 		}
 
 		var useHysteria bool
+		var hysteria_manual bool
 		var maxbyteCount int
 
 		if lc.Extra != nil {
@@ -269,6 +279,14 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 					}
 
+					if thing := lc.Extra["hy_manual"]; thing != nil {
+						if ismanual, ok := thing.(bool); ok {
+							hysteria_manual = ismanual
+							if ismanual {
+								log.Println("Using Hysteria Manual Control Mode")
+							}
+						}
+					}
 				}
 			}
 
@@ -287,7 +305,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 				ServerName:         lc.Host,
 				Certificates:       certArray,
 				NextProtos:         alpnList,
-			}, useHysteria, maxbyteCount)
+			}, useHysteria, maxbyteCount, hysteria_manual)
 
 		})
 

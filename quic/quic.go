@@ -76,12 +76,11 @@ var (
 	}
 )
 
-func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int) (newConnChan chan net.Conn, baseConn any) {
+func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool) (newConnChan chan net.Conn, baseConn any) {
 
 	listener, err := quic.ListenAddr(addr, &tlsConf, &our_ListenConfig)
 	if err != nil {
 		if ce := utils.CanLogErr("quic listen"); ce != nil {
-			//log.Println(err)
 			ce.Write(zap.Error(err))
 		}
 		return
@@ -102,7 +101,6 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 			session, err := listener.Accept(context.Background())
 			if err != nil {
 				if ce := utils.CanLogErr("quic session accept"); ce != nil {
-					//log.Println("quic session accept err", err)
 					ce.Write(zap.Error(err))
 				}
 				//close(theChan)	//不应关闭chan，因为listen虽然不好使但是也许现存的stream还是好使的...
@@ -110,9 +108,16 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 			}
 
 			if useHysteria {
-				bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
 
-				session.SetCongestionControl(bs)
+				if hysteria_manual {
+					bs := NewBrutalSender_M(congestion.ByteCount(hysteriaMaxByteCount))
+
+					session.SetCongestionControl(bs)
+				} else {
+					bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
+
+					session.SetCongestionControl(bs)
+				}
 
 			}
 
@@ -128,7 +133,6 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 							//我们为了性能，不必将该err转成 net.Error然后判断是否是timeout
 							//如果要排错那就开启debug日志即可.
 
-							//log.Println("quic stream accept failed:", err)
 							ce.Write(zap.Error(err))
 						}
 						break
@@ -143,11 +147,10 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 	return
 }
 
-func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int) any {
+func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool) any {
 	session, err := quic.DialAddr(serverAddr.String(), &tlsConf, &our_DialConfig)
 	if err != nil {
 		if ce := utils.CanLogErr("quic dial"); ce != nil {
-			//log.Println(err)
 			ce.Write(zap.Error(err))
 		}
 		return nil
@@ -158,8 +161,15 @@ func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHy
 			hysteriaMaxByteCount = default_hysteriaMaxByteCount
 		}
 
-		bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
-		session.SetCongestionControl(bs)
+		if hysteria_manual {
+			bs := NewBrutalSender_M(congestion.ByteCount(hysteriaMaxByteCount))
+			session.SetCongestionControl(bs)
+
+		} else {
+			bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
+			session.SetCongestionControl(bs)
+
+		}
 	}
 
 	return session
