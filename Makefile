@@ -11,7 +11,7 @@
 # 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
 
 # 注意 这里的 := 后需要有空格，否则会导致版本号切片错误
-BUILD_VERSION   := v1.1.3-beta.5
+BUILD_VERSION   := v1.1.3-beta.6
 
 prefix          :=verysimple
 

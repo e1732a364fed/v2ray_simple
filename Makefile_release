@@ -1,4 +1,4 @@
-BUILD_VERSION   := v1.1.3-beta.5
+#BUILD_VERSION   := v1.1.3-beta.5 这个将在github action里自动通过tag配置
 
 prefix          :=verysimple
 
