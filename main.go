@@ -1136,7 +1136,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 	clientConn, err = realTargetAddr.Dial()
 	if err != nil {
-		if err == netLayer.ErrMachineCanConnectToIpv6 {
+		if err == netLayer.ErrMachineCantConnectToIpv6 {
 			//如果一开始就知道机器没有ipv6地址，那么该错误就不是error等级，而是warning等级
 
 			if ce := utils.CanLogWarn("Machine HasNo ipv6 but got ipv6 request"); ce != nil {

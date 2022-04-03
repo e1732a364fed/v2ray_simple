@@ -23,7 +23,7 @@ var (
 	// 避免打印过多错误输出
 	machineCanConnectToIpv6 bool
 
-	ErrMachineCanConnectToIpv6 = utils.NumErr{Prefix: "ErrMachineCanConnectToIpv6"}
+	ErrMachineCantConnectToIpv6 = utils.NumErr{Prefix: "ErrMachineCanConnectToIpv6"}
 )
 
 //做一些网络层的资料准备工作, 可以优化本包其它函数的调用。
