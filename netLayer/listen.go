@@ -41,16 +41,17 @@ func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
 // ListenAndAccept 试图监听 所有类型的网络，包括tcp, udp 和 unix domain socket.
 //
 // 非阻塞，在自己的goroutine中监听.
-func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
+func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener net.Listener, err error) {
 	switch network {
 	case "udp", "udp4", "udp6":
-		ua, err := net.ResolveUDPAddr("udp", addr)
+		var ua *net.UDPAddr
+		ua, err = net.ResolveUDPAddr("udp", addr)
 		if err != nil {
-			return err
+			return
 		}
-		listener, err := NewUDPListener(ua)
+		listener, err = NewUDPListener(ua)
 		if err != nil {
-			return err
+			return
 		}
 		go loopAccept(listener, acceptFunc)
 	case "unix":
@@ -69,9 +70,10 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 				//log.Println("unix file exist, deleting", addr)
 				ce.Write(zap.String("deleting", addr))
 			}
-			err := os.Remove(addr)
+			err = os.Remove(addr)
 			if err != nil {
-				return utils.ErrInErr{ErrDesc: "Error when deleting previous unix socket file,", ErrDetail: err, Data: addr}
+				err = utils.ErrInErr{ErrDesc: "Error when deleting previous unix socket file,", ErrDetail: err, Data: addr}
+				return
 			}
 
 		}
@@ -80,12 +82,12 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) error {
 		if network == "" {
 			network = "tcp"
 		}
-		listener, err := net.Listen(network, addr)
+		listener, err = net.Listen(network, addr)
 		if err != nil {
-			return err
+			return
 		}
 		go loopAccept(listener, acceptFunc)
 
 	}
-	return nil
+	return
 }

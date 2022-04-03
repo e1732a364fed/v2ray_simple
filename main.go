@@ -299,8 +299,24 @@ func main() {
 		osSignals := make(chan os.Signal, 1)
 		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
 		<-osSignals
+
+		if confMode == simpleMode && defaultInServer != nil {
+
+		} else {
+
+			//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
+			// 用下面代码以试图解决端口占用问题.
+
+			for _, listener := range listenerArray {
+				if listener != nil {
+					listener.Close()
+				}
+			}
+		}
 	}
 }
+
+var listenerArray []net.Listener
 
 //非阻塞
 func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
@@ -367,7 +383,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 	}
 
 	network := inServer.Network()
-	err := netLayer.ListenAndAccept(network, inServer.AddrStr(), handleFunc)
+	thisListener, err := netLayer.ListenAndAccept(network, inServer.AddrStr(), handleFunc)
 
 	if err == nil {
 		if ce := utils.CanLogInfo("Listening"); ce != nil {
@@ -376,9 +392,9 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 				zap.String("protocol", proxy.GetFullName(inServer)),
 				zap.String("addr", inServer.AddrStr()),
 			)
-			//log.Printf("%s is listening %s on %s\n", proxy.GetFullName(inServer), network, inServer.AddrStr())
-
 		}
+
+		listenerArray = append(listenerArray, thisListener)
 
 	} else {
 		if err != nil {

@@ -16,7 +16,9 @@ admin_pass = "adfadfadfadfa"	# 用于 api服务器的登陆密码.只要给出, 
 # dns解析的默认方式是先查A记录，没有A再查AAAA记录
 
 servers = [
-	"udp://114.114.114.114:53",      # 如果把该url指向我们dokodemo监听的端口，就可以达到通过节点请求dns的目的.
+	#"udp://114.114.114.114:53",      # 如果把该url指向我们dokodemo监听的端口，就可以达到通过节点请求dns的目的.
+	"udp://127.0.0.1:63782",      # 如这一行 就是通过我们节点请求dns
+	
 	{ addr = "udp://1.1.1.1:53", domains = [ "google.com" ] }	# 还可以为特定域名指定特定服务器
 ]
 
@@ -31,15 +33,15 @@ host = "127.0.0.1"
 port = 10800
 
 [[listen]]
-protocol = "dokodemo"
+protocol = "dokodemo"			# dokodemo协议会指定一个目标，并通过我们的节点来请求
 network = "udp"                 # 本监听为了监听dns请求，所以必须要指明监听的传输层为 udp
 host = "127.0.0.1"
-port = 20053
-target = "udp://1.1.1.1:53"     #必须写这种url格式，前面是udp或者tcp，后面要加端口, 我们要转发到udp地址，所以用udp。
+port = 63782
+target = "udp://8.8.8.8:53"     #必须写这种url格式，前面是udp或者tcp，后面要加端口, 我们要转发到udp地址，所以用udp。
 
 # 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(1.1.1.1，即cloudflare的dns服务器)
 
-# 我们电脑只要配置好dns服务器指向127.0.0.1:20053，就可以通过我们的节点去申请实际的udp的dns请求，这里就是通过我们的 my_vless1 这个节点转发。
+# 我们电脑只要配置好dns服务器指向127.0.0.1:63782，就可以通过我们的节点去申请实际的udp的dns请求，这里就是通过我们的 my_vless1 这个节点转发。
 # 只要是定向的流量，如果某客户端可以自己指定地址，那么我们就可以用dokodemo进行转发
 
 [[dial]]
@@ -62,21 +64,48 @@ utls = true
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" 
 
+
+[[dial]]
+tag = "my_grpc"
+protocol = "vlesss"
+host = "127.0.0.1"
+port = 4435
+version = 0
+insecure = true
+utls = true
+advancedLayer = "grpc"
+path = "ohmygod_verysimple_is_very_simple"
+
+
 # route就是分流规则，分流规则从上到下匹配，匹配到哪一个就用哪一个. 
-
-[[route]]
-
-# 意思就是所有向CN国家的ip请求的数据通通 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
-# direct并不需要 在dial中实际给出。 "proxy" 代表首个dial，也不需要实际赋值该tag
-
-dialTag = "my_ws1"
-country = ["CN"]    
-
 
 [[route]]
 dialTag = "my_vless1"
 
-# 这个最后一个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
+# 这个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
+
+
+[[route]]
+
+# 意思就是所有向US国家的ip请求的数据通通 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
+# direct并不需要 在dial中实际给出。 "proxy" 代表首个dial，也不需要实际赋值该tag
+
+dialTag = "my_ws1"
+country = ["US"]    
+
+
+# 比如这个就是 将CN国家的ip 导向自己的grpc节点
+[[route]]
+dialTag = "my_grpc"
+country = ["CN"]    
+
+
+# 比如这个就是 将CN国家的ip进行直连
+#[[route]]
+#dialTag = "direct"
+#country = ["CN"]    
+
+# 本示例为了测试节点可用性, 默认将直连的路由注释掉了, 如果你在CN国家并想直连CN的ip, 请取消注释上面三行. 并移除其它路由CN的route项
 
 # 如果所有route均不匹配，则数据会流向 "proxy" 这个tag 的 dial，如果 没有任何dial具有 "proxy" 这个标签名，则流向第一个dial
 

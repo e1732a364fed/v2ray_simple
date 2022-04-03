@@ -54,7 +54,7 @@ protocol = "dokodemo"
 network = "udp"
 host = "127.0.0.1"
 port = 1080
-target = "udp://114.114.114.114:53"
+target = "udp://8.8.8.8:53"
 
 
 [[dial]]

@@ -25,6 +25,18 @@ path = "/ohmygod_verysimple_is_very_simple"
 fallback = 80
 
 
+[[listen]]
+tag = "my_grpc1"
+protocol = "vlesss"
+host = "0.0.0.0"
+port = 4435
+insecure = true
+cert = "cert.pem"
+key = "cert.key"
+advancedLayer = "grpc"
+path = "ohmygod_verysimple_is_very_simple"
+
+
 [[dial]]
 protocol = "direct"
 

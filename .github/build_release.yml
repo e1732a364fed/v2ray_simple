@@ -1,0 +1,37 @@
+name: Build For Release
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.18
+
+    - name: Build
+      run: |
+        make -f Makefile_release PACK=1 BUILD_VERSION=${GITHUB_REF}
+    
+    - name: touch xz archive
+      shell: bash
+      run: |
+        touch -mt $(date +%Y01010000) *.tar.xz
+    
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v2
+      if: github.event_name == 'release'
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ./*.tar.xz
+        tag: ${{ github.ref }}
+        file_glob: true

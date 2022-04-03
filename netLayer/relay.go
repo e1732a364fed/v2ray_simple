@@ -95,16 +95,19 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 				// 而我们为了缓存,是不能允许篡改的
 				// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
 
-				if isWriteConnBasic {
-					//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
-					// 而writev时是不会篡改 buffers的
+				//if isWriteConnBasic {
+				//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
+				// 而writev时是不会篡改 buffers的
 
-					thisWriteNum, writeErr = buffers.WriteTo(writeConn)
-				} else {
+				//然而经实测,writev会篡改我们的buffers，会导致问题. 而且writev也毫无性能优势,
+				//所以这里统一使用我们自己的函数
 
-					thisWriteNum, writeErr = utils.BuffersWriteTo(buffers, writeConn)
+				//thisWriteNum, writeErr = buffers.WriteTo(writeConn)
+				//} else {
 
-				}
+				thisWriteNum, writeErr = utils.BuffersWriteTo(buffers, writeConn)
+
+				//}
 			}
 
 			allnum += thisWriteNum
