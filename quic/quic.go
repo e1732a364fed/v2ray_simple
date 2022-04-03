@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
@@ -51,7 +52,7 @@ func (qsc StreamConn) RemoteAddr() net.Addr {
 }
 
 const (
-	our_maxidletimeout       = time.Second * 45
+	our_maxidletimeout       = time.Hour * 2 //time.Second * 45	//idletimeout 设的时间越长越不容易断连.
 	our_HandshakeIdleTimeout = time.Second * 8
 	our_ConnectionIDLength   = 12
 )
@@ -147,7 +148,33 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 	return
 }
 
+var (
+	clientconnMap   = make(map[netLayer.HashableAddr]quic.Session)
+	clientconnMutex sync.RWMutex
+)
+
+func isActive(s quic.Session) bool {
+	select {
+	case <-s.Context().Done():
+		return false
+	default:
+		return true
+	}
+}
+
 func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool) any {
+
+	hash := serverAddr.GetHashable()
+
+	clientconnMutex.RLock()
+	existSession, has := clientconnMap[hash]
+	clientconnMutex.RUnlock()
+	if has {
+		if isActive(existSession) {
+			return existSession
+		}
+	}
+
 	session, err := quic.DialAddr(serverAddr.String(), &tlsConf, &our_DialConfig)
 	if err != nil {
 		if ce := utils.CanLogErr("quic dial"); ce != nil {
@@ -171,6 +198,10 @@ func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHy
 
 		}
 	}
+
+	clientconnMutex.Lock()
+	clientconnMap[hash] = session
+	clientconnMutex.Unlock()
 
 	return session
 }
