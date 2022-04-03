@@ -21,7 +21,7 @@ endef
 endif
 
 
-all: linux_amd64 linux_arm64 linux_arm32_v7 linux_mips64 linux_mips android_arm64 macos macm1 win10 win10_arm win32
+all: linux_amd64 linux_arm64 linux_arm32_v7 linux_mips64 linux_mips macos macm1 win10 win10_arm win32
 
 # 注意调用参数时，逗号前后不能留空格
 # 关于arm版本号 https://github.com/goreleaser/goreleaser/issues/36
@@ -41,8 +41,8 @@ linux_mips64:
 linux_mips:
 	$(call compile, ${prefix}_linux_mips,linux,mips)
 
-android_arm64:
-	$(call compile, ${prefix}_android_arm64,android,arm64)
+#android_arm64:
+#	$(call compile, ${prefix}_android_arm64,android,arm64)
 
 macos:
 	$(call compile, ${prefix}_macOS_intel,darwin,amd64)

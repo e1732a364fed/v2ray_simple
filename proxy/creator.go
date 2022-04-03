@@ -7,6 +7,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 type ClientCreator interface {
@@ -130,7 +131,12 @@ func NewServer(lc *ListenConf) (Server, error) {
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
-				log.Fatalf("prepareTLS error %s\n", err)
+				if utils.ZapLogger != nil {
+					utils.ZapLogger.Fatal("prepareTLS failed", zap.Error(err))
+				} else {
+					log.Fatalf("prepareTLS error %s\n", err)
+
+				}
 			}
 			return ser, nil
 		}
@@ -149,7 +155,14 @@ func NewServer(lc *ListenConf) (Server, error) {
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
-				log.Fatalf("prepareTLS error %s\n", err)
+
+				if utils.ZapLogger != nil {
+					utils.ZapLogger.Fatal("prepareTLS failed", zap.Error(err))
+				} else {
+					log.Fatalf("prepareTLS error %s\n", err)
+
+				}
+
 			}
 			return ser, nil
 
@@ -228,7 +241,12 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 		fa, err := netLayer.NewAddr(fallbackStr)
 
 		if err != nil {
-			log.Fatalf("invalid fallback %s\n", fallbackStr)
+			if utils.ZapLogger != nil {
+				utils.ZapLogger.Fatal("configCommonURLQueryForServer failed", zap.String("invalid fallback", fallbackStr))
+			} else {
+				log.Fatalf("invalid fallback %s\n", fallbackStr)
+
+			}
 		}
 
 		ser.setFallback(fa)
@@ -313,7 +331,12 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 		fa, err := netLayer.NewAddrFromAny(fallbackThing)
 
 		if err != nil {
-			log.Fatalln("invalid fallback", fallbackThing)
+			if utils.ZapLogger != nil {
+				utils.ZapLogger.Fatal("configCommonURLQueryForServer failed", zap.Any("invalid fallback", fallbackThing))
+			} else {
+				log.Fatalln("invalid fallback", fallbackThing)
+
+			}
 		}
 
 		ser.setFallback(fa)

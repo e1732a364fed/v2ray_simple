@@ -10,6 +10,7 @@ package netLayer
 
 import (
 	"io"
+	"log"
 	"net"
 	"syscall"
 
@@ -31,13 +32,46 @@ func Prepare() {
 }
 
 func HasIpv6Interface() bool {
+
+	if utils.LogLevel == utils.Log_debug {
+		log.Println("HasIpv6Interface called")
+	}
+
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
-			ce.Write(zap.Error(err))
+		if utils.ZapLogger != nil {
+			if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+		} else {
+			log.Println("call net.InterfaceAddrs failed", err)
 		}
+
 		return false
 	}
+
+	if utils.LogLevel == utils.Log_debug {
+
+		log.Println("interfaces", len(addrs), addrs)
+
+		for _, address := range addrs {
+
+			if ipnet, ok := address.(*net.IPNet); ok {
+
+				isipv6 := false
+
+				if !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
+					if ipnet.IP.To4() == nil {
+						isipv6 = true
+					}
+				}
+				log.Println(ipnet.IP.String(), isipv6)
+
+			}
+
+		}
+	}
+
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
 			// IsLinkLocalUnicast: something starts with fe80:

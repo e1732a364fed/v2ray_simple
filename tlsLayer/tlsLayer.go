@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 func GenerateRandomeCert_Key() ([]byte, []byte) {
@@ -86,14 +87,23 @@ func GenerateRandomCertKeyFiles(cfn, kfn string) {
 
 	certOut, err := os.Create(cfn)
 	if err != nil {
-		log.Fatalf("failed to open file %s", err)
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal("failed to open file", zap.Error(err))
+		} else {
+			log.Fatalf("failed to open file %s", err)
+
+		}
 	}
 
 	certOut.Write(cb)
 
 	kOut, err := os.Create(kfn)
 	if err != nil {
-		log.Fatalf("failed to open file %s", err)
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal("failed to open file", zap.Error(err))
+		} else {
+			log.Fatalf("failed to open file %s", err)
+		}
 	}
 
 	kOut.Write(kb)

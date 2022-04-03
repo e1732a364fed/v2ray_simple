@@ -13,7 +13,9 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/hahahrfool/v2ray_simple/ws"
+	"go.uber.org/zap"
 )
 
 func PrintAllServerNames() {
@@ -557,7 +559,13 @@ func (s *ProxyCommonStruct) GetGRPC_Server() *grpc.Server {
 //for outClient
 func (s *ProxyCommonStruct) initWS_client() {
 	if s.dialConf == nil {
-		log.Fatal("initWS_client failed when no dialConf assigned")
+		const eStr = "initWS_client failed when no dialConf assigned"
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal(eStr)
+		} else {
+			log.Fatal(eStr)
+
+		}
 	}
 	path := s.dialConf.Path
 	if path == "" { // 至少Path需要为 "/"
@@ -575,7 +583,15 @@ func (s *ProxyCommonStruct) initWS_client() {
 
 	c, e := ws.NewClient(s.dialConf.GetAddrStr(), path)
 	if e != nil {
-		log.Fatal("initWS_client failed", e)
+
+		const eStr2 = "initWS_client failed"
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal(eStr2, zap.Error(e))
+		} else {
+			log.Fatal(eStr2, e)
+
+		}
+
 	}
 	c.UseEarlyData = useEarlyData
 	s.ws_c = c
@@ -584,7 +600,14 @@ func (s *ProxyCommonStruct) initWS_client() {
 
 func (s *ProxyCommonStruct) initWS_server() {
 	if s.listenConf == nil {
-		log.Fatal("initWS_server failed when no listenConf assigned")
+
+		const eStr3 = "initWS_server failed when no listenConf assigned"
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal(eStr3)
+		} else {
+			log.Fatal(eStr3)
+		}
+
 	}
 	path := s.listenConf.Path
 	if path == "" { // 至少Path需要为 "/"
@@ -607,12 +630,25 @@ func (s *ProxyCommonStruct) initWS_server() {
 
 func (s *ProxyCommonStruct) initGRPC_server() {
 	if s.listenConf == nil {
-		log.Fatal("initGRPC_server failed when no listenConf assigned")
+
+		const eStr1 = "initGRPC_server failed when no listenConf assigned"
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal(eStr1)
+		} else {
+			log.Fatal(eStr1)
+		}
+
 	}
 
 	serviceName := s.listenConf.Path
 	if serviceName == "" { //不能为空
-		log.Fatal("initGRPC_server failed, path must be specified")
+
+		const eStr2 = "initGRPC_server failed, path must be specified"
+		if utils.ZapLogger != nil {
+			utils.ZapLogger.Fatal(eStr2)
+		} else {
+			log.Fatal(eStr2)
+		}
 	}
 
 	s.grpc_s = grpc.NewServer(serviceName)

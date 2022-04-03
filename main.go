@@ -328,7 +328,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 		handleFunc := inServer.HandleInitialLayersFunc()
 		if handleFunc == nil {
-			log.Fatalf("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil\n")
+			utils.ZapLogger.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
 		}
 
 		newConnChan, baseConn := handleFunc()
@@ -398,7 +398,8 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 	} else {
 		if err != nil {
-			log.Fatalf("can not listen inServer on %s %s\n", inServer.AddrStr(), err)
+			utils.ZapLogger.Fatal(
+				"can not listen inServer on %s %s\n", zap.String("addr", inServer.AddrStr()), zap.Error(err))
 
 		}
 	}
@@ -694,9 +695,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		if iics.theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
 
-			if ce := utils.CanLogFatal("No FirstBuffer"); ce != nil {
-				ce.Write()
-			}
+			utils.ZapLogger.Fatal("No FirstBuffer")
 
 			log.Fatalf("No FirstBuffer\n")
 		}

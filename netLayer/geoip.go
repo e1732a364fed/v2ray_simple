@@ -7,7 +7,9 @@ import (
 	"net"
 	"os"
 
+	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/oschwald/maxminddb-golang"
+	"go.uber.org/zap"
 )
 
 var (
@@ -29,7 +31,8 @@ func HasEmbedGeoip() bool {
 func loadMaxmindGeoipBytes(bs []byte) {
 	db, err := maxminddb.FromBytes(bs)
 	if err != nil {
-		log.Fatalln("err when loadMaxmindGeoipBytes", err)
+		log.Println("loadMaxmindGeoipBytes err,", err)
+		return
 	}
 	the_geoipdb = db
 }
@@ -44,7 +47,8 @@ func LoadMaxmindGeoipFile(fn string) {
 	}
 	bs, e := os.ReadFile(fn)
 	if e != nil {
-		log.Fatalln("loadMaxmindGeoipBytes", e)
+		log.Println("LoadMaxmindGeoipFile err", e)
+		return
 	}
 	loadMaxmindGeoipBytes(bs)
 
@@ -69,7 +73,14 @@ func GetIP_ISO_byReader(db *maxminddb.Reader, ip net.IP) string {
 
 	err := db.Lookup(ip, &record)
 	if err != nil {
-		log.Fatal(err) //不应该发生
+
+		if utils.ZapLogger != nil {
+			if ce := utils.CanLogErr("GetIP_ISO_byReader db.Lookup err"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+		}
+
+		return ""
 	}
 	return record.Country.ISOCode
 }

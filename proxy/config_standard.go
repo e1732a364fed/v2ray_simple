@@ -14,6 +14,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/yl2chen/cidranger"
+	"go.uber.org/zap"
 )
 
 // CommonConf 是标准配置中 Listen和Dial 都有的部分
@@ -224,7 +225,12 @@ func LoadDnsMachine(conf *DnsConf) *netLayer.DNSMachine {
 		case string:
 			ad, e := netLayer.NewAddrByURL(value)
 			if e != nil {
-				log.Fatalf("LoadDnsMachine loading server err %s\n", e)
+				if utils.ZapLogger != nil {
+					utils.ZapLogger.Fatal("LoadDnsMachine loading server err", zap.Error(e))
+				} else {
+					log.Fatalf("LoadDnsMachine loading server err %s\n", e)
+
+				}
 
 			}
 			dm = netLayer.NewDnsMachine(&ad)
@@ -267,7 +273,12 @@ func LoadDnsMachine(conf *DnsConf) *netLayer.DNSMachine {
 				for _, str := range value {
 					ad, err := netLayer.NewAddrFromAny(str)
 					if err != nil {
-						log.Fatalf("LoadDnsMachine loading host err %s\n", err)
+						if utils.ZapLogger != nil {
+							utils.ZapLogger.Fatal("LoadDnsMachine loading host err", zap.Error(err))
+						} else {
+							log.Fatalf("LoadDnsMachine loading host err %s\n", err)
+
+						}
 					}
 
 					dm.SpecialIPPollicy[thishost] = append(dm.SpecialIPPollicy[thishost], ad.GetHashable().Addr())

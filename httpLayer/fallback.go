@@ -6,6 +6,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 	"gonum.org/v1/gonum/stat/combin"
 )
 
@@ -301,11 +302,13 @@ type FallbackConf struct {
 func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 	cfb := NewClassicFallback()
 	for _, fc := range fcl {
-		//log.Println("NewClassicFallbackFromConfList called", reflect.TypeOf(v.Dest))
-
 		addr, err := netLayer.NewAddrFromAny(fc.Dest)
 		if err != nil {
-			log.Fatal(err)
+			if utils.ZapLogger != nil {
+				utils.ZapLogger.Fatal("NewClassicFallbackFromConfList, netLayer.NewAddrFromAny err", zap.Error(err))
+			} else {
+				log.Fatalln("NewClassicFallbackFromConfList, netLayer.NewAddrFromAny err", err)
+			}
 		}
 		var aMask byte
 		if len(fc.Alpn) > 2 {
