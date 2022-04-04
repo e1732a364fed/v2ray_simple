@@ -98,9 +98,16 @@ func isFlagPassed(name string) bool {
 
 func main() {
 
-	printVersion()
-
 	flag.Parse()
+
+	if cmdPrintVer {
+		printVersion_simple()
+		//根据 cmdPrintVer 的定义, 我们直接退出
+		os.Exit(0)
+	} else {
+		printVersion()
+
+	}
 
 	if startPProf {
 		f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
@@ -110,6 +117,7 @@ func main() {
 
 	}
 	if startMProf {
+		//若不使用 NoShutdownHook, 我们ctrl+c退出时不会产生 pprof文件
 		p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
 
 		defer p.Stop()
@@ -127,10 +135,6 @@ func main() {
 	}
 
 	netLayer.Prepare()
-
-	//if confMode < 0 {
-	//	log.Fatal("no config exist")
-	//}
 
 	//有点尴尬, 读取配置文件必须要用命令行参数，而配置文件里的部分配置又会覆盖部分命令行参数
 

@@ -43,13 +43,30 @@ import (
 
 var Version string //版本号由 Makefile 里的 BUILD_VERSION 指定
 
-func printVersion() {
-	const desc = "A very simple implementation of V2Ray with some innovation"
+func versionStr() string {
+	return fmt.Sprintf("verysimple %s, %s %s %s", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+}
 
-	fmt.Printf("===============================\nverysimple %s (%s), %s %s %s\n", Version, desc, runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	fmt.Printf("Support tls and websocket for all protocols.\n")
+func printVersion_simple() {
+	fmt.Printf(versionStr())
+	fmt.Printf("\n")
+}
+
+func printVersion() {
+	const delimiter = "===============================\n"
+
+	fmt.Printf(delimiter)
+	printVersion_simple()
+	fmt.Printf(delimiter)
+
+	const desc = "A very simple implementation of V2Ray with some innovation"
+	fmt.Printf(desc)
+	fmt.Printf("\n")
+
+	fmt.Printf("Support tls, grpc, websocket, quic for all protocols.\n")
 	if netLayer.HasEmbedGeoip() {
 		fmt.Printf("Contains embeded Geoip file\n")
 	}
+	fmt.Printf(delimiter)
 
 }

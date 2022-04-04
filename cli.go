@@ -63,8 +63,6 @@ func runCli() {
 		return
 	}
 
-	fmt.Printf("Welcome to Interactive Mode, please choose a Language \n")
-
 	for {
 		Select = promptui.Select{
 			Label: "请选择想执行的功能",

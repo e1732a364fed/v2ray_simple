@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
@@ -16,12 +15,15 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+//本文件下所有命令的输出统一使用 fmt 而不是 log
+
 var (
 	cmdPrintSupportedProtocols bool
 	cmdGenerateUUID            bool
 
 	interactive_mode bool
 	nodownload       bool
+	cmdPrintVer      bool
 )
 
 func init() {
@@ -29,10 +31,17 @@ func init() {
 	flag.BoolVar(&cmdGenerateUUID, "gu", false, "generate a random valid uuid string")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 	flag.BoolVar(&nodownload, "nd", false, "don't download any extra data files")
+	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成uuid", func() {
 			generateAndPrintUUID()
+		},
+	})
+
+	cliCmdList = append(cliCmdList, CliCmd{
+		"打印当前版本所支持的所有协议", func() {
+			printSupportedProtocols()
 		},
 	})
 
@@ -45,7 +54,7 @@ func init() {
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成随机ssl证书", func() {
 			tlsLayer.GenerateRandomCertKeyFiles("yourcert.pem", "yourcert.key")
-			log.Printf("生成成功！请查看目录中的 yourcert.pem 和 yourcert.key")
+			fmt.Printf("生成成功！请查看目录中的 yourcert.pem 和 yourcert.key")
 		},
 	})
 
@@ -78,7 +87,7 @@ func init() {
 				case 2:
 					fmt.Printf("当前rate %f\n", quic.TheCustomRate)
 				case 3:
-					fmt.Printf("rate越小越加速，rate越大越减速. 最小0.2最大1.5。实际速度倍率为 1.5/rate \n")
+					fmt.Printf("rate越小越加速, rate越大越减速. 最小0.2最大1.5。实际速度倍率为 1.5/rate \n")
 				}
 			}
 		},
@@ -112,7 +121,7 @@ func runPreCommands() {
 
 func generateAndPrintUUID() {
 
-	log.Printf("Your new randomly generated uuid is : %s\n", utils.GenerateUUIDStr())
+	fmt.Printf("New random uuid : %s\n", utils.GenerateUUIDStr())
 }
 
 func printSupportedProtocols() {
@@ -129,34 +138,34 @@ func tryDownloadMMDB() {
 
 	const mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
 
-	log.Printf("No GeoLite2-Country.mmdb found,start downloading from%s\n", mmdbDownloadLink)
+	fmt.Printf("No GeoLite2-Country.mmdb found,start downloading from%s\n", mmdbDownloadLink)
 
 	resp, err := http.Get(mmdbDownloadLink)
 
 	if err != nil {
-		log.Printf("Download mmdb failed%s\n", err)
+		fmt.Printf("Download mmdb failed%s\n", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	out, err := os.Create(netLayer.GeoipFileName)
 	if err != nil {
-		log.Printf("Download mmdb but Can't CreateFile,%s\n", err)
+		fmt.Printf("Download mmdb but Can't CreateFile,%s\n", err)
 		return
 	}
 	defer out.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Download mmdb bad status:%s\n", resp.Status)
+		fmt.Printf("Download mmdb bad status:%s\n", resp.Status)
 		return
 	}
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		log.Printf("Write downloaded mmdb to file err:%s\n", err)
+		fmt.Printf("Write downloaded mmdb to file err:%s\n", err)
 		return
 	}
-	log.Printf("Download mmdb success!\n")
+	fmt.Printf("Download mmdb success!\n")
 
 }
 

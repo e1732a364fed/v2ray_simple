@@ -353,6 +353,7 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 
 **不够极简或者解释不够清晰的代码我们将会进行淘汰或修正。**
 
+有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) 或者issue中的开发者贡献指南.
 
 ## 本项目所使用的开源协议
 

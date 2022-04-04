@@ -26,7 +26,7 @@ type CommonConf struct {
 	Host     string   `toml:"host"`     //ip 或域名. 若unix domain socket 则为文件路径
 	IP       string   `toml:"ip"`       //给出Host后，该项可以省略; 既有Host又有ip的情况比较适合cdn
 	Port     int      `toml:"port"`     //若Network不为 unix , 则port项必填
-	Version  int      `toml:"ver"`      //可选
+	Version  int      `toml:"version"`  //可选
 	TLS      bool     `toml:"tls"`      //可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
 	Insecure bool     `toml:"insecure"` //tls 是否安全
 	Alpn     []string `toml:"alpn"`
@@ -35,7 +35,7 @@ type CommonConf struct {
 
 	AdvancedLayer string `toml:"advancedLayer"` //可不填，或者为ws，或者为grpc
 
-	Path string `toml:"path"` //grpc或ws 的path
+	Path string `toml:"path"` //ws 的path 或 grpc的 serviceName。为了简便我们在同一位置给出.
 
 	Extra map[string]interface{} `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
 }
