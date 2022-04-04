@@ -1149,7 +1149,8 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			}
 
 		} else {
-			if ce := utils.CanLogErr("failed in dial"); ce != nil {
+			//虽然拨号失败,但是不能认为我们一定有错误, 因为很可能申请的ip本身就是不可达的, 所以不是error等级而是warn等级
+			if ce := utils.CanLogWarn("failed in dial"); ce != nil {
 				ce.Write(
 					zap.String("target", realTargetAddr.String()),
 					zap.Error(err),

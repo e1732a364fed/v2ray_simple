@@ -8,6 +8,38 @@ import (
 	"github.com/yl2chen/cidranger"
 )
 
+//用于 HasFullOrSubDomain函数
+type DomainHaser interface {
+	HasDomain(string) bool
+}
+
+type MapDomainHaser map[string]bool
+
+func (mdh MapDomainHaser) HasDomain(d string) bool {
+	_, found := mdh[d]
+	return found
+}
+
+//会以点号分裂domain判断每一个子域名是否被包含，最终会试图匹配整个字符串.
+func HasFullOrSubDomain(domain string, ds DomainHaser) bool {
+	lastDotIndex := len(domain)
+
+	suffix := domain
+	for {
+
+		lastDotIndex = strings.LastIndex(domain[:lastDotIndex], ".")
+
+		suffix = domain[lastDotIndex+1:]
+		if ds.HasDomain(suffix) {
+			return true
+		}
+		if lastDotIndex == -1 {
+			return false
+		}
+	}
+
+}
+
 // TargetDescription 可以完整地描述一个网络层/传输层上的一个特定目标,
 // 一般来说，一个具体的监听配置就会分配一个tag
 type TargetDescription struct {
@@ -130,26 +162,11 @@ func (sg *RouteSet) IsAddrIn(a Addr) bool {
 	if a.Name != "" {
 		if sg.Domains != nil {
 
-			lastDotIndex := len(a.Name)
-
-			suffix := a.Name
-			for {
-
-				lastDotIndex = strings.LastIndex(a.Name[:lastDotIndex], ".")
-
-				suffix = a.Name[lastDotIndex+1:]
-				if _, found := sg.Domains[suffix]; found {
-					return true
-				}
-				if lastDotIndex == -1 {
-					goto afterName
-				}
-			}
+			return HasFullOrSubDomain(a.Name, MapDomainHaser(sg.Domains))
 
 		}
 
 	}
-afterName:
 	return false
 }
 

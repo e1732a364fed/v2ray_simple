@@ -42,8 +42,13 @@ func canNetwork_tlsLazy(nw string) bool {
 // 第一个参数仅用于 tls_lazy_secure
 func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 	if ce := utils.CanLogDebug("trying tls lazy copy"); ce != nil {
-		//log.Printf("trying tls lazy copy\n")
 		ce.Write()
+	}
+	if wlc != nil {
+		defer wlc.Close()
+	}
+	if wrc != nil {
+		defer wrc.Close()
 	}
 
 	//如果用了 lazy_encrypt， 则不直接利用Copy，因为有两个阶段：判断阶段和直连阶段
@@ -82,14 +87,11 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
 			rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
 
-			//不过仔细思考，我们根本不需要这么繁琐地获取啊？！因为我们的 原始连接我们本来就是有的！
-			//rawWRC = localConn.(*net.TCPConn) //然而我实测，竟然传输会得到错误的结果，怎么回事
-
 		} else {
 			rawWRC = wrc.(*net.TCPConn) //因为是direct
 		}
 
-		if rawWRC == nil {
+		if rawWRC == nil { //一般情况下这段代码是不会被触发的.
 			if tlsLayer.PDD {
 				log.Printf("splice fail reason 0\n")
 
@@ -101,8 +103,10 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			}
 
 			//退化回原始状态
-			go io.Copy(wrc, wlc)
-			io.Copy(wlc, wrc)
+			//go io.Copy(wrc, wlc)
+			//io.Copy(wlc, wrc)
+			go netLayer.TryCopy(wrc, wlc)
+			netLayer.TryCopy(wlc, wrc)
 			return
 		}
 	} else {
@@ -148,7 +152,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake outClient tls"); ce != nil {
-						//log.Printf("failed in handshake outClient tls , Reason: %s\n", err)
 						ce.Write(zap.Error(err))
 
 					}
@@ -158,7 +161,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 				wrc, err = proxy_client.Handshake(tlsConn, targetAddr)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake"); ce != nil {
-						//log.Printf("failed in handshake to %s , Reason: %s\n", targetAddr.String(), err)
 						ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
 					}
 					return
@@ -291,8 +293,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 
 			netLayer.TryCopy(wrc, wlc)
 
-			wrc.Close()
-			wlc.Close()
 			return
 		}
 
@@ -309,8 +309,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 				rawWRC.ReadFrom(wlccc_raw)
 			}
 
-			wrc.Close()
-			wlc.Close()
 		}
 	}(&wrc)
 
@@ -404,8 +402,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 		//就算不用splice, 一样可以用readv来在读那一端增强性能
 		netLayer.TryCopy(wlc, wrc)
 
-		wrc.Close()
-		wlc.Close()
 		return
 	}
 
@@ -426,8 +422,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			wlccc_raw.ReadFrom(rawWRC)
 		}
 
-		wrc.Close()
-		wlc.Close()
 	}
 
 }
