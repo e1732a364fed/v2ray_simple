@@ -35,7 +35,7 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 ### 兼容性与速度
 v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现有支持vless的客户端，服务端使用verysimple
 
-经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。最新1.10的测速似乎不lazy时即可比xray的 xtls快。（ [最新测速](speed_macos_1.1.0.md) )
+经过实际测速，就算不使用lazy encrypt等任何附加技术，verysimple作为服务端还是要比 v2ray做服务端要快。作客户端时也是成立的。最新1.10的测速似乎不lazy时即可比xray的 xtls快。（ [最新测速](docs/speed_macos_1.1.0.md) )
 
 ### 命令行
 
@@ -68,7 +68,7 @@ api服务器。
 ## 技术详情
 ### 关于vless v1
 
-这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](vless_v1.md)
+这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)
 
 在客户端的 配置url中，添加 `?version=1` 即可生效。
 
@@ -78,7 +78,7 @@ api服务器。
 
 测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 verysimple vless v1 + direct 的服务端。
 
-v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1](vless_v1.md)
+v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1](docs/vless_v1.md)
 
 vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 
@@ -175,7 +175,7 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 ### 下载安装
 
-如果是 linux服务器，可以参考我的一篇指导文章 [install.md](install.md)
+如果是 linux服务器，可以参考我的一篇指导文章 [install.md](docs/install.md)
 
 电脑客户端的话直接自己到release下载就行。
 
@@ -358,7 +358,7 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 
 MIT协议，即你用的时候也要附带一个MIT文件，然后我不承担任何后果。
 
-同时附带要求满足[此文件](No_PR_For_V2Ray_XRAY.md)中提到的要求
+同时附带要求满足[此文件](docs/No_PR_For_V2Ray_XRAY.md)中提到的要求
 
 ## 历史
 
@@ -450,7 +450,7 @@ verysimple 版本 v1.0.3
 159，157
 ```
 
-详细测速还可以参考另外几个文件，speed_macos.md 和 speed_ubuntu.md。
+详细测速还可以参考另外几个文件，docs/speed_macos.md 和 docs/speed_ubuntu.md。
 
 总之目前可以看到，在有splice的情况下（即linux中），verysimple是绝对的王者。虽然有时还不够稳定，但是我会进一步优化这个问题的。
 
