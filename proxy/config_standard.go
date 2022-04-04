@@ -122,7 +122,7 @@ type SpecialDnsServerConf struct {
 }
 
 type RuleConf struct {
-	DialTag string `toml:"dialTag"`
+	DialTag any `toml:"dialTag"`
 
 	InTags []string `toml:"inTag"`
 
@@ -173,7 +173,13 @@ func LoadRulesForRoutePolicy(rules []*RuleConf, policy *netLayer.RoutePolicy) {
 
 func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
 	rs = netLayer.NewFullRouteSet()
-	rs.OutTag = rule.DialTag
+
+	switch value := rule.DialTag.(type) {
+	case string:
+		rs.OutTag = value
+	case []string:
+		rs.OutTags = value
+	}
 
 	for _, c := range rule.Countries {
 		rs.Countries[c] = true

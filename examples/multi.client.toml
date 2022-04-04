@@ -108,6 +108,12 @@ country = ["CN"]
 #dialTag = "direct"
 #country = ["CN"]    
 
+# 下面这种dialTag传入列表的用法非常简洁, 可以达到负载均衡的效果,
+# 每次路由US国家的流量都会随机从列表中选一项
+#[[route]]
+#dialTag = ["my_vps1","myvps2"]
+#country = ["US"]    
+
 # 本示例为了测试节点可用性, 默认将直连的路由注释掉了, 如果你在CN国家并想直连CN的ip, 请取消注释上面三行. 并移除其它路由CN的route项
 
 # 如果所有route均不匹配，则数据会流向 "proxy" 这个tag 的 dial，如果 没有任何dial具有 "proxy" 这个标签名，则流向第一个dial

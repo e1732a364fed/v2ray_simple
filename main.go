@@ -330,9 +330,9 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 			utils.ZapLogger.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
 		}
 
+		//baseConn可以为nil，quic就是如此
 		newConnChan, baseConn := handleFunc()
 		if newConnChan == nil {
-			//baseConn可以为nil，quic就是如此
 			if ce := utils.CanLogErr("StarthandleInitialLayers can't extablish baseConn"); ce != nil {
 				ce.Write()
 			}
@@ -1054,7 +1054,10 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			defer iics.baseLocalConn.Close()
 		}
 	}
-	defer wlc.Close()
+	if wlc != nil {
+		defer wlc.Close()
+
+	}
 
 	var err error
 

@@ -21,12 +21,14 @@ var (
 	cmdGenerateUUID            bool
 
 	interactive_mode bool
+	nodownload       bool
 )
 
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
 	flag.BoolVar(&cmdGenerateUUID, "gu", false, "generate a random valid uuid string")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
+	flag.BoolVar(&nodownload, "nd", false, "don't download any extra data files")
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成uuid", func() {
@@ -96,7 +98,10 @@ func runPreCommands() {
 		printSupportedProtocols()
 	}
 
-	tryDownloadMMDB()
+	if !nodownload {
+		tryDownloadMMDB()
+
+	}
 
 	if cmdGenerateUUID {
 		generateAndPrintUUID()

@@ -1,6 +1,7 @@
 package netLayer
 
 import (
+	"math/rand"
 	"net/netip"
 	"strings"
 
@@ -27,7 +28,8 @@ type RouteSet struct {
 	//传输层
 	AllowedTransportLayerProtocols uint16
 
-	OutTag string //目标
+	OutTag  string   //目标
+	OutTags []string //目标列表
 
 }
 
@@ -173,7 +175,15 @@ func (rp *RoutePolicy) AddRouteSet(rs *RouteSet) {
 func (rp *RoutePolicy) GetOutTag(td *TargetDescription) string {
 	for _, s := range rp.List {
 		if s.IsIn(td) {
-			return s.OutTag
+			switch n := len(s.OutTags); n {
+			case 0:
+				return s.OutTag
+			case 1:
+				return s.OutTags[0]
+			default:
+				return s.OutTags[rand.Intn(n)]
+			}
+
 		}
 	}
 	return "proxy"

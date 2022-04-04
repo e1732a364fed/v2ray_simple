@@ -1,4 +1,4 @@
-/*Package grpc implements methods for grpc
+/*Package grpc implements methods for grpc.
 
 从stream.proto 生成 stream.pb.go 和 stream_grpc.pb.go:
 
