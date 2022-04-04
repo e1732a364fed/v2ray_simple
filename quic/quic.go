@@ -26,29 +26,26 @@ import (
 //我们要是以后不使用hysteria的话，只需删掉 useHysteria 里的代码, 并删掉 go.mod中的replace部分
 // 然后proxy.go里的 相关配置部分也要删掉 在 prepareTLS_for* 函数中 的相关配置 即可.
 
-//3000mbps
-const default_hysteriaMaxByteCount = 1024 * 1024 / 8 * 3000
+//100mbps
+const Default_hysteriaMaxByteCount = 1024 * 1024 / 8 * 100
 
-func CloseBaseConn(baseC any, t string) {
-	switch t {
-	case "quic":
-
-		baseC.(quic.Session).CloseWithError(1, "I want to close")
-	}
+func CloseSession(baseC any) {
+	baseC.(quic.Session).CloseWithError(0, "")
 }
 
 //给 quic.Stream 添加 方法使其满足 net.Conn.
 // quic.Stream 唯独不支持 LocalAddr 和 RemoteAddr 方法.
-// 因为它是通过 StreamID 来识别连接.
+// 因为它是通过 StreamID 来识别连接. 不过session是有的。
 type StreamConn struct {
 	quic.Stream
+	laddr, raddr net.Addr
 }
 
 func (qsc StreamConn) LocalAddr() net.Addr {
-	return nil
+	return qsc.laddr
 }
 func (qsc StreamConn) RemoteAddr() net.Addr {
-	return nil
+	return qsc.raddr
 }
 
 //这里必须要同时调用 CancelRead 和 CancelWrite
@@ -73,16 +70,16 @@ var (
 		ConnectionIDLength:    our_ConnectionIDLength,
 		HandshakeIdleTimeout:  our_HandshakeIdleTimeout,
 		MaxIdleTimeout:        our_maxidletimeout,
-		MaxIncomingStreams:    32,
+		MaxIncomingStreams:    320, //32,	//没必要限制stream数搞多个session，我们直接单session, 更多stream
 		MaxIncomingUniStreams: -1,
-		KeepAlive:             true,
+		//KeepAlive:             true,
 	}
 
 	our_DialConfig = quic.Config{
 		ConnectionIDLength:   our_ConnectionIDLength,
 		HandshakeIdleTimeout: our_HandshakeIdleTimeout,
 		MaxIdleTimeout:       our_maxidletimeout,
-		KeepAlive:            true,
+		//KeepAlive:            true,
 	}
 )
 
@@ -98,7 +95,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 
 	if useHysteria {
 		if hysteriaMaxByteCount <= 0 {
-			hysteriaMaxByteCount = default_hysteriaMaxByteCount
+			hysteriaMaxByteCount = Default_hysteriaMaxByteCount
 		}
 
 	}
@@ -136,9 +133,10 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 					stream, err := session.AcceptStream(context.Background())
 					if err != nil {
 						if ce := utils.CanLogDebug("quic stream accept failed"); ce != nil {
-							//只要某个连接idle时间一长，服务端就会出现此错误:
+							//只要某个连接idle时间一长，超过了idleTimeout，服务端就会出现此错误:
 							// timeout: no recent network activity，即 IdleTimeoutError
 							//这不能说是错误, 而是quic的udp特性所致，所以放到debug 输出中.
+							//这也同时说明, keep alive功能并不会更新 idle的最后期限.
 
 							//我们为了性能，不必将该err转成 net.Error然后判断是否是timeout
 							//如果要排错那就开启debug日志即可.
@@ -147,7 +145,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 						}
 						break
 					}
-					theChan <- StreamConn{stream}
+					theChan <- StreamConn{stream, session.LocalAddr(), session.RemoteAddr()}
 				}
 			}()
 		}
@@ -194,7 +192,7 @@ func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHy
 
 	if useHysteria {
 		if hysteriaMaxByteCount <= 0 {
-			hysteriaMaxByteCount = default_hysteriaMaxByteCount
+			hysteriaMaxByteCount = Default_hysteriaMaxByteCount
 		}
 
 		if hysteria_manual {
@@ -221,5 +219,5 @@ func DialSubConn(thing any) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return StreamConn{stream}, nil
+	return StreamConn{stream, session.LocalAddr(), session.RemoteAddr()}, nil
 }

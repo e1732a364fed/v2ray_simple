@@ -348,7 +348,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 					}
 
-					quic.CloseBaseConn(baseConn, "quic")
+					quic.CloseSession(baseConn)
 
 					return
 				}
@@ -356,6 +356,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 				iics := incomingInserverConnState{
 					wrappedConn: newConn,
 					//baseLocalConn: baseConn,	//quic是没有baseLocalConn的，因为基于udp
+					// 或者说虽然有baseConn，但是并不与子连接一一对应.那个conn更类似于一个listener
 					inServer:      inServer,
 					defaultClient: defaultOutClientForThis,
 				}
@@ -371,8 +372,6 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 				zap.String("protocol", proxy.GetFullName(inServer)),
 				zap.String("addr", inServer.AddrStr()),
 			)
-			//log.Printf("%s is listening %s on %s\n", , , )
-
 		}
 		return
 	}

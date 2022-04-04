@@ -183,7 +183,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 							log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
 						}
 					} else {
-						log.Println("Using Hysteria Congestion Control, max upload mbps: 3000mbps")
+						log.Println("Using Hysteria Congestion Control, max upload mbps: ", quic.Default_hysteriaMaxByteCount, "mbps")
 					}
 
 					if thing := dc.Extra["hy_manual"]; thing != nil {
@@ -275,7 +275,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 						}
 					} else {
 
-						log.Println("Using Hysteria Congestion Control, max upload mbps: 3000mbps")
+						log.Println("Using Hysteria Congestion Control, max upload mbps:", quic.Default_hysteriaMaxByteCount, "mbps")
 
 					}
 

@@ -25,7 +25,7 @@ advancedLayer = "quic"
 
 # 我们可以选择性使用 “hysteria 阻塞控制” 方法, 但是协议依然为quic协议。具体请参考本作作者对hysteria的讨论
 # 不想用hy阻控的话就注释掉. 
-extra = { congestion_control = "hy", mbps = 3000 } 
+extra = { congestion_control = "hy", mbps = 100 } 
 
 #因为我们不使用hysteria协议头，所以不用单独标注 上行流量和下行流量, 因为我们不与服务端协商
 # 我们这里统一是上行。因为只有发送方 可以控制这个阻塞控制速度的 参数
