@@ -46,7 +46,11 @@ func TestUDP(t *testing.T) {
 
 			udpConn := wlc.(*socks5.UDPConn)
 
-			if putter := direct.(netLayer.UDP_Putter); putter != nil {
+			dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
+				return targetAddr.Dial()
+			}
+
+			if putter, ok := direct.(netLayer.UDP_Putter); ok {
 
 				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
 
@@ -54,12 +58,18 @@ func TestUDP(t *testing.T) {
 
 				go udpConn.StartPushResponse(putter)
 
-				dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
-					return targetAddr.Dial()
-				}
-
 				udpConn.StartReadRequest(putter, dialFunc)
 
+			} else if pc, ok := direct.(netLayer.UDP_Putter_Generator); ok {
+
+				// direct 通过 UDP_Pipe和 RelayUDP_to_Direct函数 实现了 UDP_Putter_Generator
+
+				putter := pc.GetNewUDP_Putter()
+				if putter != nil {
+					go udpConn.StartPushResponse(putter)
+
+					udpConn.StartReadRequest(putter, dialFunc)
+				}
 			} else {
 
 				t.Log("socks5 server -> client for udp, but client didn't implement netLayer.UDP_Putter", direct.Name())

@@ -13,12 +13,13 @@ var (
 	ErrTimeout = errors.New("timeout")
 )
 
-//UDPConn 实现了 net.Conn
+//UDPConn 实现了 net.Conn 和 net.PacketConn
 type UDPConn struct {
 	peerAddr *net.UDPAddr
 	realConn *net.UDPConn
 
-	inMsgChan chan []byte
+	inMsgChan       chan []byte
+	inMsgChanClosed bool
 
 	readDeadline  PipeDeadline
 	writeDeadline PipeDeadline
@@ -30,6 +31,10 @@ type UDPConn struct {
 	isClient bool
 }
 
+//我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
+// 主动设置了 内层udp连接的 read的 timeout为 UDP_timeout。
+// 你依然可以设置 DialUDP 所返回的 net.Conn 的 Deadline, 这属于外层的Deadline,
+// 不会影响底层 udp所强制设置的 deadline.
 func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
@@ -38,11 +43,11 @@ func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
 	return NewUDPConn(raddr, conn, true), nil
 }
 
-//如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的
+//如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的。
 // 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
 func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
-	inDataChan := make(chan []byte, 50)
-	theUDPConn := &UDPConn{raddr, conn, inDataChan, MakePipeDeadline(),
+	inDataChan := make(chan []byte, 20)
+	theUDPConn := &UDPConn{raddr, conn, inDataChan, false, MakePipeDeadline(),
 		MakePipeDeadline(), make(chan int), false, []byte{}, isClient}
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
@@ -52,18 +57,26 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	if isClient {
 
 		//客户端要自己循环读取udp,(但是要等待客户端自己先Write之后)
+		//我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
+		// 主动设置了 timeout为 UDP_timeout
+
 		go func() {
 			<-theUDPConn.clientFirstWriteChan
 			for {
 				buf := utils.GetPacket()
+
+				conn.SetReadDeadline(time.Now().Add(UDP_timeout))
 				n, _, err := conn.ReadFromUDP(buf)
 
 				//这里默认认为每个客户端都是在NAT后的,不怕遇到其它raddr,
 				// 即默认认为只可能读到 我们服务器发来的数据.
 
-				inDataChan <- buf[:n] //该数据会被ReadMsg和 Read读到
+				if n > 0 {
+					inDataChan <- buf[:n] //该数据会被ReadMsg和 Read读到
+				}
 
 				if err != nil {
+					theUDPConn.Close()
 					break
 				}
 			}
@@ -175,8 +188,18 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 	}
 }
 
+func (uc *UDPConn) CloseMsgChan() {
+	if uc.isClient {
+		if !uc.clientFirstWriteChanClosed {
+			uc.clientFirstWriteChanClosed = true
+			close(uc.inMsgChan)
+		}
+	}
+}
+
 func (uc *UDPConn) Close() error {
 	if uc.isClient {
+		uc.CloseMsgChan()
 		return uc.realConn.Close()
 	}
 	return nil

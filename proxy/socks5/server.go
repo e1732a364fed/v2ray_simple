@@ -273,15 +273,14 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 
 	bs := make([]byte, netLayer.MaxUDP_packetLen)
 	for {
-		u.UDPConn.SetReadDeadline(time.Now().Add(netLayer.UDP_timeout)) //不能无限制阻塞在读udp上
+
 		n, addr, err := u.UDPConn.ReadFromUDP(bs)
 		if err != nil {
-			if ce := utils.CanLogWarn("socks5 failed UDPConn read"); ce != nil {
-				ce.Write(zap.Error(err))
 
-			}
 			u.UDPConn.Close()
-			udpPutter.CloseUDPRequestWriter() //只要读udp超时，我们就关闭RequestWriter，这样 StartPushResponse 方法中调用的 udpPutter.GetNewUDPResponse 就应该同步退出了
+			udpPutter.CloseUDPRequestWriter() //只要读udp发生致命错误，我们就关闭RequestWriter，这样 StartPushResponse 方法中调用的 udpPutter.GetNewUDPResponse 就应该同步退出了
+
+			utils.ZapLogger.Fatal("socks5 failed UDPConn read", zap.Error(err))
 			break
 		}
 

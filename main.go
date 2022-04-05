@@ -897,7 +897,7 @@ afterLocalServerHandshake:
 	// 下面一段代码 单独处理 udp承载数据的特殊转发。
 	//
 	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发 的情况;
-	// 如果条件不符合则会跳过而进入下一阶段
+	// 如果条件不符合则会跳过这段代码 并进入下一阶段
 	if targetAddr.IsUDP() {
 
 		switch inServer.Name() {
@@ -916,6 +916,7 @@ afterLocalServerHandshake:
 				//
 				// 因为direct使用 proxy.RelayUDP_to_Direct 函数 直接实现了fullcone
 				// 那么我们只需要传入一个  UDP_Extractor 即可
+				// 我们通过 netLayer.UniUDP_Extractor 达到此目的
 
 				//unknownRemoteAddrMsgWriter 在 vless v1中的实现就是 theCRUMFURS （vless v0就是mux）
 
@@ -947,10 +948,10 @@ afterLocalServerHandshake:
 				return rw, nil
 			}
 
-			// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
-			// vless 的client 实现了 UDP_Putter, 新连接的Handshake过程会在 dialFunc 被调用 时发生
-
 			if putter, ok := client.(netLayer.UDP_Putter); ok {
+
+				// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
+				// vless.Client 实现了 UDP_Putter, 新连接的Handshake过程会在 dialFunc 被调用 时发生
 
 				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
 
@@ -962,7 +963,7 @@ afterLocalServerHandshake:
 
 			} else if pc, ok := client.(netLayer.UDP_Putter_Generator); ok {
 
-				// direct 通过 UDP_Pipe和 RelayUDP_to_Direct函数 实现了 UDP_Putter_Generator
+				// direct 实现了 UDP_Putter_Generator
 
 				putter := pc.GetNewUDP_Putter()
 				if putter != nil {

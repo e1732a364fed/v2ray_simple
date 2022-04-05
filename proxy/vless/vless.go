@@ -138,9 +138,7 @@ func (uc *UserConn) ReadFrom(r io.Reader) (written int64, err error) {
 	if uc.isUDP {
 		return netLayer.ClassicCopy(uc, r)
 	}
-	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, func() bool {
-		return uc.canDirectWrite()
-	})
+	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, uc.canDirectWrite)
 }
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。

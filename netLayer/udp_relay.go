@@ -10,7 +10,10 @@ import (
 const (
 	MaxUDP_packetLen = 64 * 1024 // 关于 udp包数据长度，可参考 https://cloud.tencent.com/developer/article/1021196
 
-	UDP_timeout = time.Hour * 2 //udp不能无限监听, 否则每一个udp申请都对应一个
+	//udp不能无限监听, 否则每一个udp申请都对应打开了一个本地udp端口，一直监听的话时间一长，就会导致 too many open files
+	// 因为实际上udp在网页代理中主要用于dns请求, 所以不妨设的小一点。
+	// 放心，只要能持续不断地从远程服务器收到数据, 建立的udp连接就会持续地更新Deadline 而续命一段时间.
+	UDP_timeout = time.Minute * 3
 )
 
 //本文件内含 一些 转发 udp 数据的 接口与方法
@@ -280,32 +283,37 @@ func (u *UDP_Pipe) WriteUDPRequest(addr net.UDPAddr, bs []byte, dialFunc func(ta
 //
 func RelayUDP_to_Direct(extractor UDP_Extractor) {
 
+	type connState struct {
+		conn     *net.UDPConn
+		raddrMap map[string]bool //所有与thisconn关联的 raddr
+	}
+
 	//具体实现： 每当有对新远程udp地址的请求发生时，就会同时 监听 “用于发送该请求到远程udp主机的本地udp端口”，接受一切发往 该端口的数据
 
-	var dialedUDPConnMap map[string]*net.UDPConn = make(map[string]*net.UDPConn)
+	var dialedUDPConnMap = make(map[string]*connState)
 
 	var mutex sync.RWMutex
 
 	for {
 
-		addr, requestData, err := extractor.GetNewUDPRequest()
+		raddr, requestData, err := extractor.GetNewUDPRequest()
 		if err != nil {
 			break
 		}
 
-		addrStr := addr.String()
+		first_raddrStr := raddr.String()
 
 		mutex.RLock()
-		oldConn := dialedUDPConnMap[addrStr]
+		oldConn := dialedUDPConnMap[first_raddrStr]
 		mutex.RUnlock()
 
 		if oldConn != nil {
 
-			oldConn.Write(requestData)
+			oldConn.conn.Write(requestData)
 
 		} else {
 
-			newConn, err := net.DialUDP("udp", nil, &addr)
+			newConn, err := net.DialUDP("udp", nil, &raddr)
 			if err != nil {
 
 				break
@@ -316,31 +324,57 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 				break
 			}
 
-			mutex.Lock()
-			dialedUDPConnMap[addrStr] = newConn
-			mutex.Unlock()
+			first_cs := &connState{
+				conn:     newConn,
+				raddrMap: make(map[string]bool),
+			}
+			first_cs.raddrMap[first_raddrStr] = true
 
-			newConn.SetDeadline(time.Now().Add(UDP_timeout))
+			mutex.Lock()
+			dialedUDPConnMap[first_raddrStr] = first_cs
+			mutex.Unlock()
 
 			//监听所有发往 newConn的 远程任意主机 发来的消息。
 			go func(thisconn *net.UDPConn, supposedRemoteAddr net.UDPAddr) {
 				bs := make([]byte, MaxUDP_packetLen)
 				for {
+					thisconn.SetDeadline(time.Now().Add(UDP_timeout))
+
 					//log.Println("redirect udp, start read", supposedRemoteAddr)
 					n, raddr, err := thisconn.ReadFromUDP(bs)
 					if err != nil {
 
+						//timeout后，就会删掉第一个拨号的raddr,以及因为fullcone而产生的其它raddr
+						//然后关闭此udp端口
+
+						mutex.Lock()
+
+						delete(dialedUDPConnMap, first_raddrStr)
+
+						for anotherRaddr := range first_cs.raddrMap {
+							delete(dialedUDPConnMap, anotherRaddr)
+						}
+						mutex.Unlock()
+
+						thisconn.Close()
 						break
 					}
 
 					// 这个远程 地址 无论是新的还是旧的， 都是要 和 newConn关联的，下一次向 这个远程地址发消息时，也要用 newConn来发，而不是新dial一个。
 
-					// 因为判断本身也要占一个语句，所以就不管新旧了，直接赋值即可。
-					// 所以也就不需要 比对 supposedRemoteAddr 和 raddr了
+					hasThisRaddr := false
+					this_raddr_str := raddr.String()
+					mutex.RLock()
+					_, hasThisRaddr = dialedUDPConnMap[this_raddr_str]
+					mutex.RUnlock()
 
-					mutex.Lock()
-					dialedUDPConnMap[raddr.String()] = thisconn
-					mutex.Unlock()
+					if !hasThisRaddr {
+
+						mutex.Lock()
+						dialedUDPConnMap[this_raddr_str] = first_cs
+						first_cs.raddrMap[this_raddr_str] = true
+						mutex.Unlock()
+					}
 
 					//log.Println("redirect udp, will write to extractor", string(bs[:n]))
 
@@ -350,7 +384,7 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 					}
 
 				}
-			}(newConn, addr)
+			}(newConn, raddr)
 		}
 
 	}

@@ -180,6 +180,11 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	}, err
 }
 
+func (u *Client) CloseUDPRequestWriter() {
+	//因为我们的vless的client是 【一个 outClient实例 处理 一切 dial 的udp连接】
+	// 所以不能直接close c.udpResponseChan
+}
+
 func (c *Client) GetNewUDPResponse() (net.UDPAddr, []byte, error) {
 	x := <-c.udpResponseChan //v1的话，由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充；v0的话，由 WriteUDPRequest 填充
 	return x.Addr, x.Data, nil
@@ -201,10 +206,9 @@ func (c *Client) WriteUDPRequest(a net.UDPAddr, b []byte, dialFunc func(targetAd
 			return utils.ErrInErr{ErrDesc: "vless WriteUDPRequest, err when creating an underlay", ErrDetail: err}
 		}
 		//这里原来的代码是调用 c.Handshake，会自动帮我们拨号代理节点CmdUDP
-		// 但是似乎有问题，因为不应该由client自己拨号vless，因为我们还有上层的tls;
+		// 但是有问题，因为不应该由client自己拨号vless，因为我们还有上层的tls;
 		// 自己拨号的话，那就是裸奔状态
 		// 最新代码采用dialFunc的方式解决
-		//knownConn, err = c.Handshake(newUnderlay, netLayer.NewAddrFromUDPAddr(a))
 
 		c.mutex.Lock()
 		c.knownUDPDestinations[astr] = knownConn
@@ -214,6 +218,8 @@ func (c *Client) WriteUDPRequest(a net.UDPAddr, b []byte, dialFunc func(targetAd
 			bs := make([]byte, netLayer.MaxUDP_packetLen)
 			for {
 				n, err := knownConn.Read(bs)
+				//一般knownConn为tcp连接. 在远程节点的 udp的direct的Read一直读不到数据导致timeout后, 就会关闭对应的vless的tcp连接, 然后我们这里的Read就会收到通知
+				// 不过我们不用管 inServer的conn的关闭, 因为监听udp的conn是不需要关闭的, 它还要接着监听其它客户端发来的连接.
 				if err != nil {
 					break
 				}
