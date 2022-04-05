@@ -182,6 +182,9 @@ func LoadGeositeFiles() (err error) {
 	return nil
 }
 
+// DownloadCommunity_DomainListFiles 从 v2fly/domain-list-community 下载数据文件, 并放到 geosite文件夹中。
+// 如果已存在geosite文件夹，return immediately.
+//
 // 该函数适用于系统中没有git的情况, 如果有git我们直接 git clone就行了,而且还能不断pull进行滚动更新
 func DownloadCommunity_DomainListFiles(proxyurl string) {
 
@@ -257,7 +260,7 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 
 	fmt.Println("downloaded size", buf.Len())
 
-	folderName, err := unTarGeositeSourceFIles(&buf)
+	folderName, err := untarGeositeSourceFiles(&buf)
 
 	if err != nil {
 		fmt.Println("untar failed,", err)
@@ -273,8 +276,8 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 	}
 }
 
-//创建一个 geosite文件夹并把内容解压到里面
-func unTarGeositeSourceFIles(fr io.Reader) (rootFolderName string, err error) {
+//把tar.gz内容解压出来, 并返回根文件夹名称
+func untarGeositeSourceFiles(fr io.Reader) (rootFolderName string, err error) {
 
 	gr, err := gzip.NewReader(fr)
 	if err != nil {
@@ -298,7 +301,7 @@ func unTarGeositeSourceFIles(fr io.Reader) (rootFolderName string, err error) {
 			continue
 		}
 
-		dstFileDir := hdr.Name //filepath.Join("geosite", hdr.Name)
+		dstFileDir := hdr.Name
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:

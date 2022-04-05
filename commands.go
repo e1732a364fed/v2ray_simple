@@ -201,8 +201,6 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 		fmt.Println("trying to download geosite through your proxy dial")
 	} else {
 		fmt.Println("trying to download geosite directly")
-
-		//return
 	}
 
 	var proxyurl string

@@ -496,6 +496,7 @@ github.com/miekg/dns v1.1.47
 github.com/lucas-clemente/quic-go
 github.com/tobyxdd/quic-go
 go.uber.org/zap
+github.com/manifoldco/promptui
 ```
 
 可能不全，详情可见 go.mod 文件
