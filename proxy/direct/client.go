@@ -16,26 +16,15 @@ func init() {
 	proxy.RegisterClient(name, &ClientCreator{})
 }
 
-//实现了 proxy.Client, netLayer.UDP_Extractor, netLayer.UDP_Putter
+//实现了 proxy.Client, netLayer.UDP_Extractor, netLayer.UDP_Putter_Generator
 type Direct struct {
 	proxy.ProxyCommonStruct
-	*netLayer.UDP_Pipe
-
-	targetAddr netLayer.Addr
-	addrStr    string
 }
 
 type ClientCreator struct{}
 
 func NewClient() (proxy.Client, error) {
-	d := &Direct{
-		UDP_Pipe: netLayer.NewUDP_Pipe(),
-	}
-	//单单的pipe是无法做到转发的，它就像一个缓存一样;
-	// 一方是未知的, 将 Direct 视为 UDP_Putter, 放入请求,
-	// 然后我们这边就要通过一个 goroutine 来不断提取请求然后转发到direct.
-
-	go netLayer.RelayUDP_to_Direct(d.UDP_Pipe)
+	d := &Direct{}
 	return d, nil
 }
 
@@ -53,11 +42,20 @@ func (d *Direct) Name() string { return name }
 func (d *Direct) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 
 	if underlay == nil {
-		d.targetAddr = target
-		d.SetAddrStr(d.targetAddr.String())
 		return target.Dial()
 	}
 
 	return underlay, nil
 
+}
+
+func (d *Direct) GetNewUDP_Putter() netLayer.UDP_Putter {
+
+	//单单的pipe是无法做到转发的，它就像一个缓存一样;
+	// 一方是未知的,向 UDP_Putter 放入请求,
+	// 然后我们这边就要通过一个 goroutine 来不断提取请求然后转发到direct.
+
+	pipe := netLayer.NewUDP_Pipe()
+	go netLayer.RelayUDP_to_Direct(pipe)
+	return pipe
 }

@@ -128,17 +128,16 @@ func main() {
 
 	runPreCommands()
 
-	var err error
-
 	var defaultInServer proxy.Server
 
 	//load server and routePolicy
 	switch confMode {
 	case simpleMode:
 		var hase bool
-		defaultInServer, hase, err = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
+		var eie utils.ErrInErr
+		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
 		if hase {
-			log.Fatalf("can not create local server: %s\n", err)
+			log.Fatalf("can not create local server: %s\n", eie)
 		}
 
 		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
@@ -190,9 +189,10 @@ func main() {
 	switch confMode {
 	case simpleMode:
 		var hase bool
-		defaultOutClient, hase, err = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
+		var eie utils.ErrInErr
+		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
 		if hase {
-			log.Fatalln("can not create remote client: ", err)
+			log.Fatalln("can not create remote client: ", eie)
 		}
 	case standardMode:
 
@@ -239,7 +239,7 @@ func main() {
 	}
 	//没配置可用的listen或者dail，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
-		utils.ZapLogger.Fatal("No valid proxy settings available, exit now.")
+		utils.Fatal("No valid proxy settings available, exit now.")
 		return
 	}
 
@@ -257,19 +257,15 @@ func main() {
 		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
 		<-osSignals
 
-		if confMode == simpleMode && defaultInServer != nil {
+		//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
+		// 用下面代码以试图解决端口占用问题.
 
-		} else {
-
-			//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
-			// 用下面代码以试图解决端口占用问题.
-
-			for _, listener := range listenerArray {
-				if listener != nil {
-					listener.Close()
-				}
+		for _, listener := range listenerArray {
+			if listener != nil {
+				listener.Close()
 			}
 		}
+
 	}
 }
 
@@ -413,7 +409,6 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			zap.String("from", addrstr),
 			zap.String("handler", proxy.GetVSI_url(inServer)),
 		)
-		//log.Printf("New Accepted Conn from %s , being handled by %s\n", str, )
 
 		iics.cachedRemoteAddr = addrstr
 	}
@@ -444,7 +439,6 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 					zap.String("inServer", inServer.AddrStr()),
 					zap.Error(err),
 				)
-				//log.Printf("failed in inServer tls handshake %s %s\n", , err)
 
 			}
 			wrappedConn.Close()
@@ -646,9 +640,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		if iics.theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
 
-			utils.ZapLogger.Fatal("No FirstBuffer")
+			utils.Fatal("No FirstBuffer")
 
-			log.Fatalf("No FirstBuffer\n")
 		}
 	}
 
@@ -658,9 +651,7 @@ checkFallback:
 
 	if mainFallback != nil {
 
-		if ce := utils.CanLogDebug("checkFallback"); ce != nil {
-			ce.Write()
-		}
+		utils.Debug("checkFallback")
 
 		var thisFallbackType byte
 
@@ -730,10 +721,7 @@ afterLocalServerHandshake:
 
 	if wlc == nil {
 		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接return
-		if ce := utils.CanLogDebug("invalid request and no matched fallback, hung up"); ce != nil {
-			//log.Printf("invalid request and no matched fallback, hung up.\n")
-			ce.Write()
-		}
+		utils.Debug("invalid request and no matched fallback, hung up")
 		wrappedConn.Close()
 		return
 	}
@@ -952,18 +940,17 @@ afterLocalServerHandshake:
 			udpConn := wlc.(*socks5.UDPConn)
 
 			dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
-				return dialClient(incomingInserverConnState{}, targetAddr, client, false, nil, true)
+				rw, ne := dialClient(incomingInserverConnState{}, targetAddr, client, false, nil, true)
+				if ne != (utils.NumErr{}) {
+					return rw, ne
+				}
+				return rw, nil
 			}
 
 			// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
-
-			//direct 和 vless 的Client 都实现了 UDP_Putter.
-
-			// direct 通过 UDP_Pipe和 RelayUDP_to_Direct函数 实现了 UDP_Putter
-
 			// vless 的client 实现了 UDP_Putter, 新连接的Handshake过程会在 dialFunc 被调用 时发生
 
-			if putter := client.(netLayer.UDP_Putter); putter != nil {
+			if putter, ok := client.(netLayer.UDP_Putter); ok {
 
 				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
 
@@ -973,11 +960,20 @@ afterLocalServerHandshake:
 
 				udpConn.StartReadRequest(putter, dialFunc)
 
+			} else if pc, ok := client.(netLayer.UDP_Putter_Generator); ok {
+
+				// direct 通过 UDP_Pipe和 RelayUDP_to_Direct函数 实现了 UDP_Putter_Generator
+
+				putter := pc.GetNewUDP_Putter()
+				if putter != nil {
+					go udpConn.StartPushResponse(putter)
+
+					udpConn.StartReadRequest(putter, dialFunc)
+				}
 			} else {
 				if ce := utils.CanLogErr("socks5 udp err"); ce != nil {
-					//log.Printf("socks5 server -> client for udp, but client didn't implement netLayer.UDP_Putter, %s\n", client.Name())
 					ce.Write(
-						zap.String("detail", "server -> client for udp, but client didn't implement netLayer.UDP_Putter"),
+						zap.String("detail", "server -> client for udp, but client didn't implement netLayer.UDP_Putter or UDP_Putter_Generator"),
 						zap.String("client", client.Name()),
 					)
 				}
@@ -1000,7 +996,7 @@ afterLocalServerHandshake:
 //client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
 // noCopy是为了让其它调用者自行处理 转发 时使用。
-func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, noCopy bool) (io.ReadWriter, error) {
+func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, noCopy bool) (io.ReadWriter, utils.NumErr) {
 
 	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
 		if iics.baseLocalConn != nil {
@@ -1269,7 +1265,7 @@ advLayerStep:
 	////////////////////////////// 实际转发阶段 /////////////////////////////////////
 
 	if noCopy {
-		return wrc, nil
+		return wrc, utils.NumErr{}
 	}
 
 	if !iics.routedToDirect && tls_lazy_encrypt {
@@ -1312,5 +1308,5 @@ advLayerStep:
 	atomic.AddInt32(&activeConnectionCount, -1)
 	atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
 
-	return wrc, nil
+	return wrc, utils.NumErr{}
 }

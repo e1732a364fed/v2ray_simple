@@ -23,13 +23,15 @@ Config Format  配置格式
 
 Structure 本项目结构
 
-	main -> proxy.Standard(配置文件) -> netLayer-> tlsLayer -> httpLayer -> ws -> proxy.
+	main -> proxy.Standard(配置文件) -> netLayer-> tlsLayer -> httpLayer -> advLayer -> proxy.
 
 	main中，读取配置文件，生成 Dail、Listen 、 RoutePolicy 和 Fallback等 对象后，开始监听；
 
 	具体调用链 是 listenSer -> handleNewIncomeConnection -> handshakeInserver_and_passToOutClient -> dialClient
 
-	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，可选经过ws, 然后都搞好后，传到proxy，然后就开始转发
+	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，可选经过ws/grpc, 然后都搞好后，传到proxy，然后就开始转发
+
+	当然如果遇到quic这种自己处理从传输层到高级层所有阶段的“超级协议”的话, 在操纵路由后直接传给 quic，然后quic握手建立后直接传到 proxy
 
 */
 package main
@@ -41,7 +43,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
 
-var Version string //版本号由 Makefile 里的 BUILD_VERSION 指定
+var Version string = "[version_undefined]" //版本号可由 -ldflags "-X 'main.Version=v1.x.x'" 指定, 本项目的Makefile就是用这种方式确定版本号
 
 func versionStr() string {
 	return fmt.Sprintf("verysimple %s, %s %s %s", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)

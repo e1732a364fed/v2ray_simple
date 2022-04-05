@@ -4,10 +4,13 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 )
 
 const (
 	MaxUDP_packetLen = 64 * 1024 // 关于 udp包数据长度，可参考 https://cloud.tencent.com/developer/article/1021196
+
+	UDP_timeout = time.Hour * 2 //udp不能无限监听, 否则每一个udp申请都对应一个
 )
 
 //本文件内含 一些 转发 udp 数据的 接口与方法
@@ -62,6 +65,7 @@ type UDP_Extractor interface {
 // 因为有时该地址从来没申请过，所以此时就要用dialFunc创建一个新连接
 type UDPRequestWriter interface {
 	WriteUDPRequest(target net.UDPAddr, request []byte, dialFunc func(targetAddr Addr) (io.ReadWriter, error)) error
+	CloseUDPRequestWriter() //如果read端失败,则一定需要close Write端. CloseUDPRequestWriter就是这个用途.
 }
 
 //拉取一个新的 UDP 响应
@@ -75,6 +79,10 @@ type UDPResponseReader interface {
 type UDP_Putter interface {
 	UDPRequestWriter
 	UDPResponseReader
+}
+
+type UDP_Putter_Generator interface {
+	GetNewUDP_Putter() UDP_Putter
 }
 
 //////////////////// 具体实现 ////////////////////
@@ -174,7 +182,31 @@ type UDPAddrData struct {
 
 //一种简单的本地 UDP_Extractor + UDP_Putter
 type UDP_Pipe struct {
-	requestChan, responseChan chan UDPAddrData
+	requestChan, responseChan             chan UDPAddrData
+	requestChanClosed, responseChanClosed bool
+}
+
+func (u *UDP_Pipe) IsInvalid() bool {
+	return u.requestChanClosed || u.responseChanClosed
+}
+
+func (u *UDP_Pipe) closeRequestChan() {
+	if !u.requestChanClosed {
+		close(u.requestChan)
+		u.requestChanClosed = true
+	}
+}
+func (u *UDP_Pipe) closeResponseChan() {
+	if !u.responseChanClosed {
+		close(u.responseChan)
+		u.responseChanClosed = true
+	}
+}
+
+func (u *UDP_Pipe) Close() {
+	u.closeRequestChan()
+	u.closeResponseChan()
+
 }
 
 func NewUDP_Pipe() *UDP_Pipe {
@@ -183,15 +215,34 @@ func NewUDP_Pipe() *UDP_Pipe {
 		responseChan: make(chan UDPAddrData, 10),
 	}
 }
-func (u *UDP_Pipe) GetNewUDPRequest() (net.UDPAddr, []byte, error) {
-	d := <-u.requestChan
-	return d.Addr, d.Data, nil
 
+func (u *UDP_Pipe) CloseUDPRequestWriter() {
+	u.closeRequestChan()
+}
+
+func (u *UDP_Pipe) GetNewUDPRequest() (net.UDPAddr, []byte, error) {
+
+	d, ok := <-u.requestChan
+	if ok {
+		return d.Addr, d.Data, nil
+
+	} else {
+		//如果requestChan被关闭了，就要同时关闭 responseChan
+		u.closeResponseChan()
+		return net.UDPAddr{}, nil, io.EOF
+	}
 }
 
 func (u *UDP_Pipe) GetNewUDPResponse() (net.UDPAddr, []byte, error) {
-	d := <-u.responseChan
-	return d.Addr, d.Data, nil
+	d, ok := <-u.responseChan
+	if ok {
+		return d.Addr, d.Data, nil
+
+	} else {
+		//如果 responseChan 被关闭了，就要同时关闭 requestChan
+		u.closeRequestChan()
+		return net.UDPAddr{}, nil, io.EOF
+	}
 
 }
 
@@ -256,6 +307,7 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 
 			newConn, err := net.DialUDP("udp", nil, &addr)
 			if err != nil {
+
 				break
 			}
 
@@ -268,6 +320,8 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 			dialedUDPConnMap[addrStr] = newConn
 			mutex.Unlock()
 
+			newConn.SetDeadline(time.Now().Add(UDP_timeout))
+
 			//监听所有发往 newConn的 远程任意主机 发来的消息。
 			go func(thisconn *net.UDPConn, supposedRemoteAddr net.UDPAddr) {
 				bs := make([]byte, MaxUDP_packetLen)
@@ -275,6 +329,7 @@ func RelayUDP_to_Direct(extractor UDP_Extractor) {
 					//log.Println("redirect udp, start read", supposedRemoteAddr)
 					n, raddr, err := thisconn.ReadFromUDP(bs)
 					if err != nil {
+
 						break
 					}
 

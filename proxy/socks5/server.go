@@ -225,6 +225,7 @@ func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
 		raddr, bs, err := udpPutter.GetNewUDPResponse()
 		//log.Println("StartPushResponse got new response", raddr, string(bs), err)
 		if err != nil {
+			u.UDPConn.Close()
 			break
 		}
 		buf := &bytes.Buffer{}
@@ -272,20 +273,21 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 
 	bs := make([]byte, netLayer.MaxUDP_packetLen)
 	for {
+		u.UDPConn.SetReadDeadline(time.Now().Add(netLayer.UDP_timeout)) //不能无限制阻塞在读udp上
 		n, addr, err := u.UDPConn.ReadFromUDP(bs)
 		if err != nil {
-			if ce := utils.CanLogWarn("UDPConn read"); ce != nil {
-				//log.Println("UDPConn read err", err)
+			if ce := utils.CanLogWarn("socks5 failed UDPConn read"); ce != nil {
 				ce.Write(zap.Error(err))
 
 			}
-			continue
+			u.UDPConn.Close()
+			udpPutter.CloseUDPRequestWriter() //只要读udp超时，我们就关闭RequestWriter，这样 StartPushResponse 方法中调用的 udpPutter.GetNewUDPResponse 就应该同步退出了
+			break
 		}
 
 		if n < 6 {
-			if ce := utils.CanLogWarn("UDPConn short read"); ce != nil {
+			if ce := utils.CanLogWarn("socks5 UDPConn short read"); ce != nil {
 
-				//log.Println("UDPConn short read err", n)
 				ce.Write(zap.Error(err))
 			}
 			continue
@@ -318,9 +320,8 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 			l += int(bs[4])
 			off = 5
 		default:
-			if ce := utils.CanLogWarn("UDPConn unknown address"); ce != nil {
+			if ce := utils.CanLogWarn("socks5 read UDPConn unknown address"); ce != nil {
 
-				//log.Println("UDPConn unknown address type ", atyp)
 				ce.Write(zap.Uint8("atype", atyp))
 			}
 			continue
@@ -328,9 +329,8 @@ func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(
 		}
 
 		if len(bs[off:]) < l {
-			if ce := utils.CanLogWarn("UDPConn short command request"); ce != nil {
+			if ce := utils.CanLogWarn("socks5 UDPConn short command request"); ce != nil {
 
-				//log.Println("UDPConn short command request ", atyp)
 				ce.Write(zap.Uint8("atype", atyp))
 			}
 			continue
