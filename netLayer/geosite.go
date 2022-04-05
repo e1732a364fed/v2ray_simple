@@ -4,12 +4,13 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -176,23 +177,57 @@ func LoadGeositeFiles() (err error) {
 			os.Exit(1)
 		}
 
-		//pl.Inclusion = nil
 		GeositeListMap[name] = pl.ToGeositeList()
 	}
 	return nil
 }
 
 // 该函数适用于系统中没有git的情况, 如果有git我们直接 git clone就行了,而且还能不断pull进行滚动更新
-func DownloadCommunity_DomainListFiles() {
-	resp, err := http.Get("https://api.github.com/repos/v2fly/domain-list-community/releases/latest")
+func DownloadCommunity_DomainListFiles(proxyurl string) {
+
+	dir := "geosite/data"
+	dir = utils.GetFilePath(dir)
+	if utils.DirExist(dir) {
+		fmt.Println("geosite/data folder already exists.")
+		return
+	}
+
+	var resp *http.Response
+	var err error
+
+	const requestUrl = "https://api.github.com/repos/v2fly/domain-list-community/releases/latest"
+
+	var thehttpClient = http.DefaultClient
+
+	if proxyurl == "" {
+		resp, err = thehttpClient.Get(requestUrl)
+
+	} else {
+		url_proxy, e2 := url.Parse(proxyurl)
+		if e2 != nil {
+			fmt.Println("proxyurl given was wrong,", proxyurl, e2)
+			return
+		}
+
+		client := &http.Client{
+			Transport: &http.Transport{
+				Proxy:           http.ProxyURL(url_proxy),
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}
+
+		resp, err = client.Get(requestUrl)
+
+		thehttpClient = client
+	}
 	if err != nil {
-		log.Println("http get error", err)
+		fmt.Println("http get failed", err)
 		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		log.Println("http read error", err)
+		fmt.Println("http read failed", err)
 		return
 	}
 
@@ -207,31 +242,39 @@ func DownloadCommunity_DomainListFiles() {
 
 	const downloadStr = "https://github.com/v2fly/domain-list-community/archive/refs/tags/%s.tar.gz"
 
-	resp, err = http.Get(fmt.Sprintf(downloadStr, s.Tag))
+	resp, err = thehttpClient.Get(fmt.Sprintf(downloadStr, s.Tag))
 	if err != nil {
-		log.Println("http get error 2", err)
+		fmt.Println("http get failed 2", err)
 		return
 	}
 	var buf bytes.Buffer
 	_, err = buf.ReadFrom(resp.Body)
 
 	if err != nil {
-		log.Println("http read error 2", err)
+		fmt.Println("http read failed 2", err)
 		return
 	}
 
-	log.Println("gz size", buf.Len())
+	fmt.Println("downloaded size", buf.Len())
 
-	err = unTarGeositeSourceFIles(&buf)
+	folderName, err := unTarGeositeSourceFIles(&buf)
 
 	if err != nil {
-		log.Println("untar error", err)
+		fmt.Println("untar failed,", err)
+		return
+	}
+
+	fmt.Println("download and extract success!")
+
+	err = os.Rename(folderName, "geosite")
+	if err != nil {
+		fmt.Println("rename folder failed", err)
 		return
 	}
 }
 
 //创建一个 geosite文件夹并把内容解压到里面
-func unTarGeositeSourceFIles(fr io.Reader) (err error) {
+func unTarGeositeSourceFIles(fr io.Reader) (rootFolderName string, err error) {
 
 	gr, err := gzip.NewReader(fr)
 	if err != nil {
@@ -242,36 +285,44 @@ func unTarGeositeSourceFIles(fr io.Reader) (err error) {
 	tr := tar.NewReader(gr)
 
 	for {
-		hdr, err := tr.Next()
+		var hdr *tar.Header
+		hdr, err = tr.Next()
 
 		switch {
 		case err == io.EOF:
-			return nil
+			err = nil
+			return
 		case err != nil:
-			return err
+			return
 		case hdr == nil:
 			continue
 		}
 
-		dstFileDir := filepath.Join("geosite", hdr.Name)
+		dstFileDir := hdr.Name //filepath.Join("geosite", hdr.Name)
 
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if b := utils.DirExist(dstFileDir); !b {
-				if err := os.MkdirAll(dstFileDir, 0775); err != nil {
-					return err
+				if err = os.MkdirAll(dstFileDir, 0775); err != nil {
+					return
 				}
 			}
+
+			if rootFolderName == "" {
+				rootFolderName = dstFileDir
+			}
+
 		case tar.TypeReg:
 
-			file, err := os.OpenFile(dstFileDir, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
+			var file *os.File
+			file, err = os.OpenFile(dstFileDir, os.O_CREATE|os.O_RDWR, os.FileMode(hdr.Mode))
 			if err != nil {
-				return err
+				return
 			}
 			_, err = io.Copy(file, tr)
 			if err != nil {
 				file.Close()
-				return err
+				return
 			}
 
 			file.Close()

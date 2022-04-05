@@ -48,6 +48,10 @@ func GetRandLocalAddr() string {
 	return "0.0.0.0:" + RandPortStr()
 }
 
+func GetRandLocalPrivateAddr() string {
+	return "127.0.0.1:" + RandPortStr()
+}
+
 func NewAddrFromUDPAddr(addr *net.UDPAddr) Addr {
 	return Addr{
 		IP:      addr.IP,

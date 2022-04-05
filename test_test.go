@@ -116,8 +116,8 @@ key = "cert.key"
 		log.Fatalln("can not create clientEndOutClient: ", err)
 	}
 
-	listenSer(clientEndInServer, clientEndOutClient)
-	listenSer(serverEndInServer, serverEndOutClient)
+	listenSer(clientEndInServer, clientEndOutClient, false)
+	listenSer(serverEndInServer, serverEndOutClient, false)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)

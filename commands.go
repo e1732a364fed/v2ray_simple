@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 
@@ -36,6 +37,12 @@ func init() {
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成uuid", func() {
 			generateAndPrintUUID()
+		},
+	})
+
+	cliCmdList = append(cliCmdList, CliCmd{
+		"下载geosite原文件", func() {
+			tryDownloadGeositeSourceFromConfiguredProxy()
 		},
 	})
 
@@ -180,5 +187,58 @@ func printAllState(w io.Writer) {
 
 	for i, c := range allClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
+	}
+}
+
+//试图从自己已经配置好的节点去下载geosite源码文件
+// 我们只需要一个dial配置即可. listen我们不使用配置文件的配置，而是自行监听一个随机端口用于http代理
+func tryDownloadGeositeSourceFromConfiguredProxy() {
+
+	var outClient proxy.Client
+
+	if defaultOutClient != nil {
+		outClient = defaultOutClient
+		fmt.Println("trying to download geosite through your proxy dial")
+	} else {
+		fmt.Println("trying to download geosite directly")
+
+		//return
+	}
+
+	var proxyurl string
+	var listener net.Listener
+
+	if outClient != nil {
+
+		const testClientConfStr = `
+[[listen]]
+protocol = "http"
+`
+
+		clientConf, err := proxy.LoadTomlConfStr(testClientConfStr)
+		if err != nil {
+			fmt.Println("can not create LoadTomlConfStr: ", err)
+
+			return
+		}
+
+		clientEndInServer, err := proxy.NewServer(clientConf.Listen[0])
+		if err != nil {
+			fmt.Println("can not create clientEndInServer: ", err)
+			return
+		}
+		listenAddrStr := netLayer.GetRandLocalPrivateAddr()
+		clientEndInServer.SetAddrStr(listenAddrStr)
+
+		listener = listenSer(clientEndInServer, outClient, false)
+
+		proxyurl = "http://" + listenAddrStr
+
+	}
+
+	netLayer.DownloadCommunity_DomainListFiles(proxyurl)
+
+	if listener != nil {
+		listener.Close()
 	}
 }

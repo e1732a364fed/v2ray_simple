@@ -176,7 +176,7 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
 	if len(netLayer.GeositeListMap) == 0 {
 		err := netLayer.LoadGeositeFiles()
 		if err != nil {
-			if ce := utils.CanLogWarn("geosite folder not exist"); ce != nil {
+			if ce := utils.CanLogWarn("netLayer.LoadGeositeFiles err"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 		}

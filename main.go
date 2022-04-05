@@ -47,6 +47,7 @@ var (
 	simpleConf         proxy.Simple
 	standardConf       proxy.Standard
 	directClient, _, _ = proxy.ClientFromURL("direct://")
+	defaultOutClient   proxy.Client
 	default_uuid       string
 
 	allServers = make([]proxy.Server, 0, 8)
@@ -183,8 +184,6 @@ func main() {
 
 	}
 
-	var defaultOutClient proxy.Client
-
 	// load client
 	switch confMode {
 	case simpleMode:
@@ -229,10 +228,10 @@ func main() {
 		configFileQualifiedToRun = true
 
 		if confMode == simpleMode {
-			listenSer(defaultInServer, defaultOutClient)
+			listenSer(defaultInServer, defaultOutClient, true)
 		} else {
 			for _, inServer := range allServers {
-				listenSer(inServer, defaultOutClient)
+				listenSer(inServer, defaultOutClient, true)
 			}
 		}
 
@@ -272,7 +271,9 @@ func main() {
 var listenerArray []net.Listener
 
 //非阻塞
-func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
+func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
+
+	var err error
 
 	//quic
 	if inServer.IsHandleInitialLayers() {
@@ -326,11 +327,11 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 	}
 
 	handleFunc := func(conn net.Conn) {
-		handleNewIncomeConnection(inServer, defaultOutClientForThis, conn)
+		handleNewIncomeConnection(inServer, defaultOutClientForThis, conn, !not_temporary)
 	}
 
 	network := inServer.Network()
-	thisListener, err := netLayer.ListenAndAccept(network, inServer.AddrStr(), handleFunc)
+	thisListener, err = netLayer.ListenAndAccept(network, inServer.AddrStr(), handleFunc)
 
 	if err == nil {
 		if ce := utils.CanLogInfo("Listening"); ce != nil {
@@ -341,7 +342,10 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 			)
 		}
 
-		listenerArray = append(listenerArray, thisListener)
+		if not_temporary {
+			listenerArray = append(listenerArray, thisListener)
+
+		}
 
 	} else {
 		if err != nil {
@@ -350,6 +354,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 		}
 	}
+	return
 }
 
 type incomingInserverConnState struct {
@@ -375,7 +380,8 @@ type incomingInserverConnState struct {
 	inServerTlsConn            *tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
 
-	shouldFallback bool
+	shouldFallback    bool
+	forbidDNS_orRoute bool
 
 	theFallbackFirstBuffer *bytes.Buffer
 
@@ -388,14 +394,15 @@ type incomingInserverConnState struct {
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
-func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn) {
+func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, forbidDNS_orRoute bool) {
 
 	//log.Println("handleNewIncomeConnection called", defaultClientForThis)
 
 	iics := incomingInserverConnState{
-		baseLocalConn: thisLocalConnectionInstance,
-		inServer:      inServer,
-		defaultClient: defaultClientForThis,
+		baseLocalConn:     thisLocalConnectionInstance,
+		inServer:          inServer,
+		defaultClient:     defaultClientForThis,
+		forbidDNS_orRoute: forbidDNS_orRoute,
 	}
 
 	iics.isTlsLazyServerEnd = tls_lazy_encrypt && canLazyEncryptServer(inServer)
@@ -734,7 +741,7 @@ afterLocalServerHandshake:
 	// 因为在direct时，netLayer.Addr 拨号时，会优先选用ip拨号，而且我们下面的分流阶段 如果使用ip的话，
 	// 可以利用geoip文件,  可以做到国别分流.
 
-	if dnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
+	if !iics.forbidDNS_orRoute && dnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
 
 		if ce := utils.CanLogDebug("querying"); ce != nil {
 			ce.Write(zap.String("domain", targetAddr.Name))
@@ -757,7 +764,7 @@ afterLocalServerHandshake:
 	routed := false
 
 	//尝试分流, 获取到真正要发向 的 outClient
-	if routePolicy != nil && !inServer.CantRoute() {
+	if !iics.forbidDNS_orRoute && routePolicy != nil && !inServer.CantRoute() {
 
 		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,

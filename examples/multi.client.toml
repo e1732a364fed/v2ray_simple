@@ -29,6 +29,10 @@ servers = [
 "www.myfake.com" = "11.22.33.44"
 "www.myfake2.com" = "11.222.33.44"
 
+[[listen]]
+protocol = "http"
+host = "127.0.0.1"
+port = 1080
 
 [[listen]]
 protocol = "socks5"
