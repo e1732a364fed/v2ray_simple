@@ -38,7 +38,8 @@ func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
 	return NewUDPConn(raddr, conn, true), nil
 }
 
-//如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据
+//如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的
+// 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
 func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	inDataChan := make(chan []byte, 50)
 	theUDPConn := &UDPConn{raddr, conn, inDataChan, MakePipeDeadline(),

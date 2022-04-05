@@ -1,4 +1,4 @@
-// Package direct provies direct proxy support for proxy.Client
+// Package direct provies a struct that implements proxy.Client
 package direct
 
 import (
@@ -16,15 +16,15 @@ func init() {
 	proxy.RegisterClient(name, &ClientCreator{})
 }
 
-//实现了 proxy.Client, netLayer.UDP_Extractor, netLayer.UDP_Putter_Generator
-type Direct struct {
+//实现了 proxy.Client, netLayer.UDP_Putter_Generator
+type Client struct {
 	proxy.ProxyCommonStruct
 }
 
 type ClientCreator struct{}
 
 func NewClient() (proxy.Client, error) {
-	d := &Direct{}
+	d := &Client{}
 	return d, nil
 }
 
@@ -36,10 +36,10 @@ func (_ ClientCreator) NewClient(*proxy.DialConf) (proxy.Client, error) {
 	return NewClient()
 }
 
-func (d *Direct) Name() string { return name }
+func (d *Client) Name() string { return name }
 
 //若 underlay 为nil，则我们会自动对target进行拨号。
-func (d *Direct) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
+func (d *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 
 	if underlay == nil {
 		return target.Dial()
@@ -49,7 +49,7 @@ func (d *Direct) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 }
 
-func (d *Direct) GetNewUDP_Putter() netLayer.UDP_Putter {
+func (d *Client) GetNewUDP_Putter() netLayer.UDP_Putter {
 
 	//单单的pipe是无法做到转发的，它就像一个缓存一样;
 	// 一方是未知的,向 UDP_Putter 放入请求,

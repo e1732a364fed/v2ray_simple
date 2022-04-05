@@ -103,9 +103,7 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 					}
 				}
 				if er != nil {
-					//if er != io.EOF {
 					err = er
-					//}
 					break
 				}
 
@@ -140,8 +138,10 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 
 	} else { //splice not possible, 仅仅循环读写即可
 
-		// 我们的vless的ReadFrom方法使用到了该函数, 所以该函数的内部不再使用ReadFrom作为后备选项
-		// 而 io.CopyBuffer 是又会ReadFrom的，我们若那么做那就会造成无限递归然后栈溢出闪退。
+		// 我们的vless的ReadFrom方法使用到了本TryReadFrom_withSplice函数, 所以本函数的内部不可再使用ReadFrom作为回落选项
+		// ReadFrom会调用 io.CopyBuffer 而 io.CopyBuffer 是又会ReadFrom的，所以说我们调用 ReadFrom 那就会造成无限递归然后栈溢出闪退。
+
+		//所以我们只能单独把纯粹的经典拷贝代码拿出来使用
 
 		return ClassicCopy(classicWriter, r)
 	}
@@ -175,11 +175,8 @@ func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
 			}
 		}
 		if er != nil {
-			//if er != io.EOF {
-			//io.CopyBuffer 这里竟然不会返回 io.EOF错误, 这回导致我们Copy结束后返回nil错误
-			// 而我想获知一切错误的可能。
+
 			err = er
-			//}
 			break
 		}
 	}
