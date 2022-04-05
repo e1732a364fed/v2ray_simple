@@ -21,6 +21,33 @@ func init() {
 	flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
 }
 
+//mainfallback, dnsConf, routePolicy
+func loadCommonComponentsFromStandardConf() {
+
+	if len(standardConf.Fallbacks) != 0 {
+		mainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
+	}
+
+	if dnsConf := standardConf.DnsConf; dnsConf != nil {
+		dnsMachine = proxy.LoadDnsMachine(dnsConf)
+	}
+
+	hasAppLevelMyCountry := (standardConf.App != nil && standardConf.App.MyCountryISO_3166 != "")
+
+	if standardConf.Route != nil || hasAppLevelMyCountry {
+
+		netLayer.LoadMaxmindGeoipFile("")
+
+		routePolicy = netLayer.NewRoutePolicy()
+		if hasAppLevelMyCountry {
+			routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
+
+		}
+
+		proxy.LoadRulesForRoutePolicy(standardConf.Route, routePolicy)
+	}
+}
+
 // set conf variable, or exit the program; 还会设置mainFallback
 // 先检查configFileName是否存在，存在就尝试加载文件，否则尝试 -L参数
 func loadConfig() (err error) {
@@ -37,26 +64,21 @@ func loadConfig() (err error) {
 				return
 			}
 
-			if len(standardConf.Fallbacks) != 0 {
-				mainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
-
-			}
 			confMode = 1
+
+			//loglevel 和 noreadv这种会被 命令行覆盖的配置，需要直接在 loadConfig函数中先处理一遍
 			if appConf := standardConf.App; appConf != nil {
-				if appConf.LogLevel != nil {
+				default_uuid = appConf.DefaultUUID
+
+				if appConf.LogLevel != nil && !utils.IsFlagPassed("ll") {
 					utils.LogLevel = *appConf.LogLevel
 
 				}
-				default_uuid = appConf.DefaultUUID
-				if appConf.NoReadV {
+				if appConf.NoReadV && !utils.IsFlagPassed("readv") {
 					netLayer.UseReadv = false
 				}
 			}
-			if dnsConf := standardConf.DnsConf; dnsConf != nil {
 
-				dnsMachine = proxy.LoadDnsMachine(dnsConf)
-
-			}
 			return
 		} else {
 			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法

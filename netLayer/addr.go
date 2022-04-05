@@ -383,6 +383,9 @@ func UDPAddr_v4_to_Bytes(addr *net.UDPAddr) [6]byte {
 }
 
 func UDPAddr2AddrPort(ua *net.UDPAddr) netip.AddrPort {
+	if ua == nil {
+		return netip.AddrPort{}
+	}
 	a, _ := netip.AddrFromSlice(ua.IP)
 	return netip.AddrPortFrom(a, uint16(ua.Port))
 }

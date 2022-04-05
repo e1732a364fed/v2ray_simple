@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
@@ -83,7 +85,9 @@ var GeositeListMap = make(map[string]*GeositeList)
 //geosite:cn 这种是geosite列表匹配
 
 func IsDomainInsideGeosite(geositeName string, domain string) bool {
+	geositeName = strings.ToUpper(geositeName)
 	glist := GeositeListMap[geositeName]
+	//log.Println("IsDomainInsideGeosite called", geositeName, len(glist))
 	if glist == nil {
 		return false
 	}
@@ -91,11 +95,15 @@ func IsDomainInsideGeosite(geositeName string, domain string) bool {
 	if _, found := glist.FullDomains[domain]; found {
 		return true
 	}
-	if found := HasFullOrSubDomain(domain, MapGeositeDomainHaser(glist.Domains)); found {
+	if HasFullOrSubDomain(domain, MapGeositeDomainHaser(glist.Domains)) {
 		return true
 	}
 
-	//todo: regex part
+	for _, reg := range glist.RegexDomains {
+		if reg.MatchString(domain) {
+			return true
+		}
+	}
 
 	return false
 }
@@ -122,7 +130,7 @@ type GeositeList struct {
 
 	FullDomains  map[string]GeositeDomain
 	Domains      map[string]GeositeDomain
-	RegexDomains []GeositeDomain
+	RegexDomains []*regexp.Regexp
 }
 
 type MapGeositeDomainHaser map[string]GeositeDomain
@@ -132,10 +140,15 @@ func (mdh MapGeositeDomainHaser) HasDomain(d string) bool {
 	return found
 }
 
-//从 geosite/data 文件夹中读取所有文件并加载到 GeositeListMap 中
+//从 geosite/data 文件夹中读取所有文件并加载到 GeositeListMap 中.
+//
+//该 geosite/data 就是 github.com/v2fly/domain-list-community 项目的 data文件夹.
 func LoadGeositeFiles() (err error) {
 	dir := "geosite/data"
 	dir = utils.GetFilePath(dir)
+	if !utils.DirExist(dir) {
+		return os.ErrNotExist
+	}
 	ref := make(map[string]*GeositeRawList)
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -169,7 +182,7 @@ func LoadGeositeFiles() (err error) {
 	return nil
 }
 
-// 该函数适用于系统中没有git的情况, 如果有git我们直接 git clone就行了
+// 该函数适用于系统中没有git的情况, 如果有git我们直接 git clone就行了,而且还能不断pull进行滚动更新
 func DownloadCommunity_DomainListFiles() {
 	resp, err := http.Get("https://api.github.com/repos/v2fly/domain-list-community/releases/latest")
 	if err != nil {

@@ -1,4 +1,3 @@
-// Package utils provides utilities that is used in all sub-packages in verysimple
 package utils
 
 import (
@@ -101,4 +100,20 @@ func CanLogFatal(msg string) *zapcore.CheckedEntry {
 	}
 	return ZapLogger.Check(zap.FatalLevel, msg)
 
+}
+
+func Debug(msg string) {
+	ZapLogger.Debug(msg)
+}
+func Info(msg string) {
+	ZapLogger.Info(msg)
+}
+func Warn(msg string) {
+	ZapLogger.Warn(msg)
+}
+func Error(msg string) {
+	ZapLogger.Error(msg)
+}
+func Fatal(msg string) {
+	ZapLogger.Fatal(msg)
 }

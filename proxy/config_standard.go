@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -172,6 +173,14 @@ func LoadRulesForRoutePolicy(rules []*RuleConf, policy *netLayer.RoutePolicy) {
 }
 
 func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
+	if len(netLayer.GeositeListMap) == 0 {
+		err := netLayer.LoadGeositeFiles()
+		if err != nil {
+			if ce := utils.CanLogWarn("geosite folder not exist"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+		}
+	}
 	rs = netLayer.NewFullRouteSet()
 
 	switch value := rule.DialTag.(type) {
@@ -185,12 +194,37 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *netLayer.RouteSet) {
 		rs.Countries[c] = true
 	}
 
-	for _, c := range rule.Domains {
-		rs.Domains[c] = true
+	for _, d := range rule.Domains {
+		colonIdx := strings.Index(d, ":")
+		if colonIdx < 0 {
+			rs.Match = append(rs.Match, d)
+
+		} else {
+			switch d[:colonIdx] {
+			case "geosite":
+				if netLayer.GeositeListMap != nil {
+					rs.Geosites = append(rs.Geosites, d[colonIdx+1:])
+
+				}
+			case "full":
+				rs.Full[d[colonIdx+1:]] = true
+			case "domain":
+				rs.Domains[d[colonIdx+1:]] = true
+			case "regexp":
+				reg, err := regexp.Compile(d[colonIdx+1:])
+				if err == nil {
+					rs.Regex = append(rs.Regex, reg)
+				}
+			}
+
+		}
+
+		continue
+
 	}
 
-	for _, c := range rule.InTags {
-		rs.InTags[c] = true
+	for _, t := range rule.InTags {
+		rs.InTags[t] = true
 	}
 
 	//ip 过滤 需要 分辨 cidr 和普通ip

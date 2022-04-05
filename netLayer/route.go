@@ -3,6 +3,7 @@ package netLayer
 import (
 	"math/rand"
 	"net/netip"
+	"regexp"
 	"strings"
 
 	"github.com/yl2chen/cidranger"
@@ -53,9 +54,17 @@ type TargetDescription struct {
 // RouteSet 只负责把一些属性相同的 “网络层/传输层 特征” 放到一起
 type RouteSet struct {
 	//网络层
-	NetRanger                  cidranger.Ranger    //一个范围
-	IPs                        map[netip.Addr]bool //一个确定值
-	Domains, InTags, Countries map[string]bool     // Countries 使用 ISO 3166 字符串 作为key
+	NetRanger cidranger.Ranger    //一个范围
+	IPs       map[netip.Addr]bool //一个确定值
+
+	//Match 匹配任意字符串
+	//Domains匹配子域名，当此域名是目标域名或其子域名时，该规则生效
+	//Full只匹配完整域名
+	Domains, Full, InTags, Countries map[string]bool // Countries 使用 ISO 3166 字符串 作为key
+
+	//Regex是正则匹配域名
+	Regex           []*regexp.Regexp
+	Match, Geosites []string
 
 	//传输层
 	AllowedTransportLayerProtocols uint16
@@ -76,7 +85,7 @@ func NewRouteSetForMyCountry(iso string) *RouteSet {
 		AllowedTransportLayerProtocols: TCP | UDP, //默认即支持tcp和udp
 
 	}
-	rs.Countries[iso] = true
+	rs.Countries[strings.ToUpper(iso)] = true
 	rs.Domains[strings.ToLower(iso)] = true //iso字符串的小写正好可以作为顶级域名
 	return rs
 }
@@ -85,7 +94,10 @@ func NewFullRouteSet() *RouteSet {
 	return &RouteSet{
 		NetRanger:                      cidranger.NewPCTrieRanger(),
 		IPs:                            make(map[netip.Addr]bool),
+		Match:                          make([]string, 0),
 		Domains:                        make(map[string]bool),
+		Full:                           make(map[string]bool),
+		Geosites:                       make([]string, 0),
 		InTags:                         make(map[string]bool),
 		Countries:                      make(map[string]bool),
 		AllowedTransportLayerProtocols: TCP | UDP, //默认即支持tcp和udp
@@ -160,9 +172,42 @@ func (sg *RouteSet) IsAddrIn(a Addr) bool {
 	}
 
 	if a.Name != "" {
-		if sg.Domains != nil {
+
+		if len(sg.Full) > 0 {
+			if _, found := sg.Full[a.Name]; found {
+				return true
+			}
+		}
+
+		if len(sg.Domains) > 0 {
 
 			return HasFullOrSubDomain(a.Name, MapDomainHaser(sg.Domains))
+
+		}
+
+		if len(sg.Match) > 0 {
+			for _, m := range sg.Match {
+				if strings.Contains(a.Name, m) {
+					return true
+				}
+			}
+		}
+
+		if len(sg.Regex) > 0 {
+			for _, reg := range sg.Regex {
+				if reg.MatchString(a.Name) {
+					return true
+				}
+			}
+		}
+
+		if len(sg.Geosites) > 0 && len(GeositeListMap) > 0 {
+
+			for _, g := range sg.Geosites {
+				if IsDomainInsideGeosite(g, a.Name) {
+					return true
+				}
+			}
 
 		}
 

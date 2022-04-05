@@ -5,11 +5,12 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
-//来自 v2fly, 改动改了一下命名。
+//来自 v2fly, 有一定改动.
 
 // GeositeRawList 用于序列化
 type GeositeRawList struct {
@@ -34,7 +35,7 @@ func LoadGeositeFile(path string) (*GeositeRawList, error) {
 		if len(line) == 0 {
 			continue
 		}
-		entry, err := parseGeoSiteEntry(line)
+		entry, err := parseGeositeEntry(line)
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +45,7 @@ func LoadGeositeFile(path string) (*GeositeRawList, error) {
 	return list, nil
 }
 
-func parseGeoSiteEntry(line string) (GeositeDomain, error) {
+func parseGeositeEntry(line string) (GeositeDomain, error) {
 	line = strings.TrimSpace(line)
 	parts := strings.Split(line, " ")
 
@@ -219,13 +220,17 @@ func (grl *GeositeRawList) ToGeositeList() (gl *GeositeList) {
 	gl.Name = grl.Name
 	gl.Domains = make(map[string]GeositeDomain)
 	gl.FullDomains = make(map[string]GeositeDomain)
-	gl.RegexDomains = make([]GeositeDomain, 0)
+	gl.RegexDomains = make([]*regexp.Regexp, 0)
 	for _, v := range grl.Domains {
 		switch v.Type {
 		case "domain":
 			gl.Domains[v.Value] = v
 		case "regexp":
-			gl.RegexDomains = append(gl.RegexDomains, v)
+			reg, err := regexp.Compile(v.Value)
+			if err == nil {
+				gl.RegexDomains = append(gl.RegexDomains, reg)
+
+			}
 		case "full":
 			gl.FullDomains[v.Value] = v
 		}

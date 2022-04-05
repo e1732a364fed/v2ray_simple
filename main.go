@@ -86,16 +86,6 @@ func init() {
 
 }
 
-func isFlagPassed(name string) bool {
-	found := false
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			found = true
-		}
-	})
-	return found
-}
-
 func main() {
 
 	flag.Parse()
@@ -123,32 +113,12 @@ func main() {
 		defer p.Stop()
 	}
 
-	ll_beforeLoadConfigFile := utils.LogLevel
-	usereadv_beforeLoadConfigFile := netLayer.UseReadv
-
-	cmdLL_given := isFlagPassed("ll")
-	cmdUseReadv_given := isFlagPassed("readv")
-
 	if err := loadConfig(); err != nil && !isFlexible() {
 		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
 		os.Exit(-1)
 	}
 
 	netLayer.Prepare()
-
-	//有点尴尬, 读取配置文件必须要用命令行参数，而配置文件里的部分配置又会覆盖部分命令行参数
-
-	if cmdLL_given && utils.LogLevel != ll_beforeLoadConfigFile {
-		//配置文件配置了日志等级, 但是因为 命令行给出的值优先, 所以要设回
-
-		utils.LogLevel = ll_beforeLoadConfigFile
-	}
-
-	if cmdUseReadv_given && netLayer.UseReadv != usereadv_beforeLoadConfigFile {
-		//配置文件配置了readv, 但是因为 命令行给出的值优先, 所以要设回
-
-		netLayer.UseReadv = usereadv_beforeLoadConfigFile
-	}
 
 	//Printf不会发生 escapes to heap 现象，所以我们统一用 Printf
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
@@ -183,13 +153,14 @@ func main() {
 			}
 		}
 	case standardMode:
+
+		loadCommonComponentsFromStandardConf()
+
 		//虽然标准模式支持多个Server，目前先只考虑一个
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
 
 		if len(standardConf.Listen) < 1 {
-			if ce := utils.CanLogWarn("no listen in config settings"); ce != nil {
-				ce.Write()
-			}
+			utils.Warn("no listen in config settings")
 			break
 		}
 
@@ -211,21 +182,6 @@ func main() {
 			}
 		}
 
-		hasMyCountry := (standardConf.App != nil && standardConf.App.MyCountryISO_3166 != "")
-
-		if standardConf.Route != nil || hasMyCountry {
-
-			netLayer.LoadMaxmindGeoipFile("")
-
-			routePolicy = netLayer.NewRoutePolicy()
-			if hasMyCountry {
-				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
-
-			}
-
-			proxy.LoadRulesForRoutePolicy(standardConf.Route, routePolicy)
-		}
-
 	}
 
 	var defaultOutClient proxy.Client
@@ -241,9 +197,7 @@ func main() {
 	case standardMode:
 
 		if len(standardConf.Dial) < 1 {
-			if ce := utils.CanLogWarn("no dial in config settings"); ce != nil {
-				ce.Write()
-			}
+			utils.Warn("no dial in config settings")
 			break
 		}
 
@@ -331,15 +285,13 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 
 		handleFunc := inServer.HandleInitialLayersFunc()
 		if handleFunc == nil {
-			utils.ZapLogger.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
+			utils.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
 		}
 
 		//baseConn可以为nil，quic就是如此
 		newConnChan, baseConn := handleFunc()
 		if newConnChan == nil {
-			if ce := utils.CanLogErr("StarthandleInitialLayers can't extablish baseConn"); ce != nil {
-				ce.Write()
-			}
+			utils.Error("StarthandleInitialLayers can't extablish baseConn")
 			return
 		}
 
@@ -347,10 +299,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client) {
 			for {
 				newConn, ok := <-newConnChan
 				if !ok {
-					if ce := utils.CanLogErr("read from SuperProxy not ok"); ce != nil {
-						ce.Write()
-
-					}
+					utils.Error("read from SuperProxy not ok")
 
 					quic.CloseSession(baseConn)
 
@@ -1150,7 +1099,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 		} else {
 			//虽然拨号失败,但是不能认为我们一定有错误, 因为很可能申请的ip本身就是不可达的, 所以不是error等级而是warn等级
-			if ce := utils.CanLogWarn("failed in dial"); ce != nil {
+			if ce := utils.CanLogWarn("failed dialing"); ce != nil {
 				ce.Write(
 					zap.String("target", realTargetAddr.String()),
 					zap.Error(err),

@@ -85,7 +85,7 @@ path = "ohmygod_verysimple_is_very_simple"
 [[route]]
 dialTag = "my_vless1"
 
-# 这个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
+# 上面这个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
 
 
 [[route]]
@@ -98,9 +98,9 @@ country = ["US"]
 
 
 # 比如这个就是 将CN国家的ip 导向自己的grpc节点
-[[route]]
-dialTag = "my_grpc"
-country = ["CN"]    
+#[[route]]
+#dialTag = "my_grpc"
+#country = ["CN"]    
 
 
 # 比如这个就是 将CN国家的ip进行直连
@@ -108,20 +108,31 @@ country = ["CN"]
 #dialTag = "direct"
 #country = ["CN"]    
 
+# 本示例为了测试节点可用性, 默认将直连的路由注释掉了, 如果你在CN国家并想直连CN的ip, 请取消注释上面三行. 并移除其它路由CN的route项
+
+
 # 下面这种dialTag传入列表的用法非常简洁, 可以达到负载均衡的效果,
 # 每次路由US国家的流量都会随机从列表中选一项
 #[[route]]
 #dialTag = ["my_vps1","myvps2"]
 #country = ["US"]    
 
-# 本示例为了测试节点可用性, 默认将直连的路由注释掉了, 如果你在CN国家并想直连CN的ip, 请取消注释上面三行. 并移除其它路由CN的route项
+
 
 # 如果所有route均不匹配，则数据会流向 "proxy" 这个tag 的 dial，如果 没有任何dial具有 "proxy" 这个标签名，则流向第一个dial
 
 # 如果匹配了app.mycountry, 则数据会直接被直连.
 # 其它分流匹配示例：
 # ip = ["0.0.0.0/8","10.0.0.0/8","fe80::/10","10.0.0.1"]
-# domain = ["www.google.com","www.twitter.com"]
+
+# 域名匹配完全兼容 v2ray，请参考 https://www.v2fly.org/config/routing.html#ruleobject
+# domain = ["domain:www.google.com","full:www.twitter.com", "geosite:cn"]
+
+# 比如这个就是 将CN国家的域名 导向自己的grpc节点
+[[route]]
+dialTag = "my_grpc"
+domain = ["geosite:cn"]
+
 # network = ["tcp","udp"]
 # inTag = ["tag1","tag2"]
 # country = ["CN"]
