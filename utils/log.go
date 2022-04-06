@@ -36,6 +36,41 @@ func init() {
 	flag.IntVar(&LogLevel, "ll", DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 }
 
+func LogLevelStrList() (sl []string) {
+	sl = make([]string, 0, 7)
+	for i := 0; i < 7; i++ {
+		sl = append(sl, LogLevelStr(i))
+	}
+	return sl
+}
+
+func LogLevelStr(lvl int) string {
+	switch lvl {
+	case 0:
+		return "debug"
+
+	case 1:
+		return "info"
+
+	case 2:
+		return "warning"
+
+	case 3:
+		return "error"
+
+	case 4:
+		return "dpanic"
+
+	case 5:
+		return "panic"
+
+	case 6:
+		return "fatal"
+	default:
+		return "undefined"
+	}
+}
+
 //本作大量用到zap打印输出, 所以必须调用InitLog函数来初始化，否则就会闪退
 func InitLog() {
 	atomicLevel := zap.NewAtomicLevel()

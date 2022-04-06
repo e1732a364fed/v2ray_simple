@@ -33,6 +33,17 @@ func init() {
 		},
 	})
 	cliCmdList = append(cliCmdList, CliCmd{
+		"热加载新配置文件", func() {
+			interactively_hotLoadConfigFile()
+		},
+	})
+	cliCmdList = append(cliCmdList, CliCmd{
+		"调节日志等级", func() {
+			interactively_adjust_loglevel()
+		},
+	})
+
+	cliCmdList = append(cliCmdList, CliCmd{
 		"调节hy手动挡", func() {
 			var arr = []string{"加速", "减速", "当前状态", "讲解"}
 
@@ -674,8 +685,17 @@ func interactively_hotLoadConfigFile() {
 	fmt.Printf("请输入你想添加的文件名称\n")
 
 	promptFile := promptui.Prompt{
-		Label:    "配置文件",
-		Validate: utils.IsFilePath,
+		Label: "配置文件",
+		Validate: func(s string) error {
+
+			if err := utils.IsFilePath(s); err != nil {
+				return err
+			}
+			if !utils.FileExist(utils.GetFilePath(s)) {
+				return errors.New("文件不存在")
+			}
+			return nil
+		},
 	}
 
 	fpath, err := promptFile.Run()
@@ -704,17 +724,46 @@ func interactively_hotLoadConfigFile() {
 
 	//也就是说，理论上要写一个比较好的前端，才能妥善解决 复杂条目的热增删问题。
 
-	if len(standardConf.Listen) > 0 {
-		hotLoadListenConfForRuntime(standardConf.Listen)
+	if len(standardConf.Dial) > 0 {
+		hotLoadDialConfForRuntime(standardConf.Dial)
 
 	}
 
-	if len(standardConf.Dial) > 0 {
-		hotLoadDialConfForRuntime(standardConf.Dial)
+	if len(standardConf.Listen) > 0 {
+		hotLoadListenConfForRuntime(standardConf.Listen)
 
 	}
 
 	fmt.Printf("添加成功！当前状态：\n")
 	fmt.Printf(delimiter)
 	printAllState(os.Stdout)
+}
+
+func interactively_adjust_loglevel() {
+	fmt.Println("当前日志等级为：", utils.LogLevelStr(utils.LogLevel))
+
+	list := utils.LogLevelStrList()
+	Select := promptui.Select{
+		Label: "请选择你调节为点loglevel",
+		Items: list,
+	}
+
+	i, result, err := Select.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	fmt.Printf("你选择了 %s\n", result)
+
+	if i < len(list) && i >= 0 {
+		utils.LogLevel = i
+		utils.InitLog()
+
+		fmt.Printf("调节 日志等级完毕. 现在等级为\n")
+		fmt.Printf(list[i])
+		fmt.Printf("\n")
+
+	}
 }
