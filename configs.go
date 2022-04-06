@@ -21,7 +21,7 @@ func init() {
 	flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
 }
 
-//mainfallback, dnsConf, routePolicy
+//mainfallback, dnsMachine, routePolicy
 func loadCommonComponentsFromStandardConf() {
 
 	if len(standardConf.Fallbacks) != 0 {
@@ -81,7 +81,7 @@ func loadConfig() (err error) {
 
 			return
 		} else {
-			//默认认为所有其他后缀的都是json格式，因为有时我会用 server.json.vless 这种写法
+			//默认认为所有其他后缀的都是json格式，因为有时会用 server.json.vless 这种写法
 			// 默认所有json格式的文件都为 极简模式
 
 			var hasE bool

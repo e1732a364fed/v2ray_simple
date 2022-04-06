@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,11 +23,31 @@ func DirExist(dirname string) bool {
 	return (err == nil || os.IsExist(err)) && fi.IsDir()
 }
 
+//判断一个字符串是否是合法的文件名, 注意本函数不实际检查是否存在该文件
+func IsFilePath(s string) error {
+
+	//https://stackoverflow.com/questions/1976007/what-characters-are-forbidden-in-windows-and-linux-directory-names
+
+	if runtime.GOOS == "windows" {
+		if strings.ContainsAny(s, ":<>\"/\\|?*") {
+			return errors.New("contain illegal characters")
+		}
+		if strings.ContainsAny(s, string([]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31})) {
+			return errors.New("contain illegal ASCII control characters")
+		}
+	} else {
+		if strings.Contains(s, string([]byte{0})) {
+			return errors.New("contain illegal characters")
+		}
+	}
+	return nil
+}
+
 // Function that search the specified file in the following directories:
 //  -1. if starts with '/', or is an empty string, return directly
 //  0. if starts with string similar to "C:/", "D:\\", or "e:/", return directly
 //	1. Same folder with exec file
-//  2. Same folder of the source file, 一种可能是用于 go test等情况
+//  2. Same folder of the source file, 一种可能 是 用于 go test等情况
 //  3. Same folder of working folder
 func GetFilePath(fileName string) string {
 	if len(fileName) < 1 {

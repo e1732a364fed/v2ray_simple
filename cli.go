@@ -25,7 +25,7 @@ func init() {
 	})
 	cliCmdList = append(cliCmdList, CliCmd{
 		"热删除配置", func() {
-			hotRemoveServerOrClient()
+			interactively_hotRemoveServerOrClient()
 		},
 	})
 
@@ -222,35 +222,12 @@ func generateConfigFileInteractively() {
 			switch ihot {
 			case 0:
 
-				//vless in
-				serverEndInServer, err := proxy.NewServer(confServer.Listen[0])
-				if err != nil {
-					log.Fatalln("can not create serverEndInServer: ", err)
-				}
-				// direct out
-				serverEndOutClient, err := proxy.NewClient(confServer.Dial[0])
-				if err != nil {
-					log.Fatalln("can not create serverEndOutClient: ", err)
-				}
-				listenSer(serverEndInServer, serverEndOutClient, true)
-
-				allServers = append(allServers, serverEndInServer)
-				allClients = append(allClients, serverEndOutClient)
+				hotLoadDialConfForRuntime(confServer.Dial)
+				hotLoadListenConfForRuntime(confServer.Listen)
 
 			case 1:
-				clientEndInServer, err := proxy.NewServer(confClient.Listen[0])
-				if err != nil {
-					log.Fatalln("can not create clientEndInServer: ", err)
-				}
-				clientEndOutClient, err := proxy.NewClient(confClient.Dial[0])
-				if err != nil {
-					log.Fatalln("can not create clientEndOutClient: ", err)
-				}
-				listenSer(clientEndInServer, clientEndOutClient, true)
-
-				allServers = append(allServers, clientEndInServer)
-				allClients = append(allClients, clientEndOutClient)
-
+				hotLoadDialConfForRuntime(confClient.Dial)
+				hotLoadListenConfForRuntime(confClient.Listen)
 			}
 
 			fmt.Printf("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
@@ -550,7 +527,8 @@ func generateConfigFileInteractively() {
 	} //for
 }
 
-func hotRemoveServerOrClient() {
+//热删除配置
+func interactively_hotRemoveServerOrClient() {
 	fmt.Printf("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
 	fmt.Printf("【当前所有配置】为：\n")
 	fmt.Printf(delimiter)
@@ -592,7 +570,7 @@ func hotRemoveServerOrClient() {
 
 	if (will_delete_dial && len(allClients) > 1) || (will_delete_listen && len(allServers) > 1) {
 
-		validatePort := func(input string) error {
+		validateFunc := func(input string) error {
 			theInt, err = strconv.ParseInt(input, 10, 64)
 			if err != nil || theInt < 0 {
 				return errors.New("Invalid number")
@@ -611,12 +589,12 @@ func hotRemoveServerOrClient() {
 
 		fmt.Printf("请输入你想删除的序号\n")
 
-		promptPort := promptui.Prompt{
+		promptIdx := promptui.Prompt{
 			Label:    "序号",
-			Validate: validatePort,
+			Validate: validateFunc,
 		}
 
-		result, err = promptPort.Run()
+		result, err = promptIdx.Run()
 
 		if err != nil {
 			fmt.Printf("Prompt failed %v\n", err)
@@ -630,13 +608,13 @@ func hotRemoveServerOrClient() {
 	will_delete_index = int(theInt)
 
 	if will_delete_dial {
-		allClients = utils.DeleteSliceItem(allClients, will_delete_index)
+		allClients = utils.TrimSlice(allClients, will_delete_index)
 	}
 	if will_delete_listen {
 		listenerArray[will_delete_index].Close()
 
-		allServers = utils.DeleteSliceItem(allServers, will_delete_index)
-		listenerArray = utils.DeleteSliceItem(listenerArray, will_delete_index)
+		allServers = utils.TrimSlice(allServers, will_delete_index)
+		listenerArray = utils.TrimSlice(listenerArray, will_delete_index)
 
 	}
 

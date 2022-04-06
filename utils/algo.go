@@ -54,7 +54,7 @@ func CopySlice[T any](a []T) (r []T) {
 }
 
 //会直接改动原slice数据
-func DeleteSliceItem[T any](a []T, deleteIndex int) []T {
+func TrimSlice[T any](a []T, deleteIndex int) []T {
 	j := 0
 	for idx, val := range a {
 		if idx != deleteIndex {

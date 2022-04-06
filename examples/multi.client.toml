@@ -94,7 +94,7 @@ dialTag = "my_vless1"
 
 [[route]]
 
-# 意思就是所有向US国家的ip请求的数据通通 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
+# 意思就是所有向US国家的ip请求的数据 通通 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
 # direct并不需要 在dial中实际给出。 "proxy" 代表首个dial，也不需要实际赋值该tag
 
 dialTag = "my_ws1"

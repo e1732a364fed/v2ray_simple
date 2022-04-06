@@ -12,14 +12,14 @@ var x = []string{"AA", "BB", "CC", "DD"}
 var y = []int{1, 2, 3, 4}
 
 func TestSplice(t *testing.T) {
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(x), 0))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(x), 1))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(x), 2))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(x), 3))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(y), 0))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(y), 1))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(y), 2))
-	t.Log(utils.DeleteSliceItem(utils.CopySlice(y), 3))
+	t.Log(utils.TrimSlice(utils.CopySlice(x), 0))
+	t.Log(utils.TrimSlice(utils.CopySlice(x), 1))
+	t.Log(utils.TrimSlice(utils.CopySlice(x), 2))
+	t.Log(utils.TrimSlice(utils.CopySlice(x), 3))
+	t.Log(utils.TrimSlice(utils.CopySlice(y), 0))
+	t.Log(utils.TrimSlice(utils.CopySlice(y), 1))
+	t.Log(utils.TrimSlice(utils.CopySlice(y), 2))
+	t.Log(utils.TrimSlice(utils.CopySlice(y), 3))
 }
 
 /*

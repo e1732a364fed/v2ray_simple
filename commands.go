@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -208,12 +209,12 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 
 	if outClient != nil {
 
-		const testClientConfStr = `
+		const tempClientConfStr = `
 [[listen]]
 protocol = "http"
 `
 
-		clientConf, err := proxy.LoadTomlConfStr(testClientConfStr)
+		clientConf, err := proxy.LoadTomlConfStr(tempClientConfStr)
 		if err != nil {
 			fmt.Println("can not create LoadTomlConfStr: ", err)
 
@@ -239,4 +240,33 @@ protocol = "http"
 	if listener != nil {
 		listener.Close()
 	}
+}
+
+func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
+	for _, d := range conf {
+		outClient, err := proxy.NewClient(d)
+		if err != nil {
+			log.Println("can not create outClient: ", err)
+			return
+		}
+		if defaultOutClient == nil {
+			defaultOutClient = outClient
+		}
+		allClients = append(allClients, outClient)
+	}
+
+}
+func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
+
+	for _, l := range conf {
+		inServer, err := proxy.NewServer(l)
+		if err != nil {
+			log.Println("can not create inServer: ", err)
+			return
+		}
+		listenSer(inServer, defaultOutClient, true)
+		allServers = append(allServers, inServer)
+
+	}
+
 }

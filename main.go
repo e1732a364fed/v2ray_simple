@@ -50,8 +50,9 @@ var (
 	defaultOutClient   proxy.Client
 	default_uuid       string
 
-	allServers = make([]proxy.Server, 0, 8)
-	allClients = make([]proxy.Client, 0, 8)
+	allServers    = make([]proxy.Server, 0, 8)
+	allClients    = make([]proxy.Client, 0, 8)
+	listenerArray []net.Listener
 
 	serversTagMap = make(map[string]proxy.Server)
 	clientsTagMap = make(map[string]proxy.Client)
@@ -121,7 +122,7 @@ func main() {
 
 	netLayer.Prepare()
 
-	//Printf不会发生 escapes to heap 现象，所以我们统一用 Printf
+	//Printf 纯 string 时 不会发生 escapes to heap 现象，所以我们此时尽量用 Printf
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
 
@@ -268,9 +269,8 @@ func main() {
 	}
 }
 
-var listenerArray []net.Listener
-
-//非阻塞
+//非阻塞.
+// 若 not_temporary 为true, 则生成的listener将会被添加到 listenerArray 中
 func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
 
 	var err error

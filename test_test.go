@@ -94,17 +94,6 @@ key = "cert.key"
 
 	//先建立服务端监听和客户端监听，最后自定义dns查询 并导向 客户端的 dokodemo监听端口
 
-	//vless in
-	serverEndInServer, err := proxy.NewServer(serverConf.Listen[0])
-	if err != nil {
-		log.Fatalln("can not create serverEndInServer: ", err)
-	}
-	// direct out
-	serverEndOutClient, err := proxy.NewClient(serverConf.Dial[0])
-	if err != nil {
-		log.Fatalln("can not create serverEndOutClient: ", err)
-	}
-
 	//domodemo in
 	clientEndInServer, err := proxy.NewServer(clientConf.Listen[0])
 	if err != nil {
@@ -114,6 +103,17 @@ key = "cert.key"
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
 		log.Fatalln("can not create clientEndOutClient: ", err)
+	}
+
+	//vless in
+	serverEndInServer, err := proxy.NewServer(serverConf.Listen[0])
+	if err != nil {
+		log.Fatalln("can not create serverEndInServer: ", err)
+	}
+	// direct out
+	serverEndOutClient, err := proxy.NewClient(serverConf.Dial[0])
+	if err != nil {
+		log.Fatalln("can not create serverEndOutClient: ", err)
 	}
 
 	listenSer(clientEndInServer, clientEndOutClient, false)
