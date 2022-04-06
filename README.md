@@ -53,7 +53,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 默认回落，以及按 path/sni/alpn 回落
 
-按 geoip,ip,cidr,domain,inTag,network 分流，以及 按国别 顶级域名分流，用到了 mmdb
+按 geoip,geosite,ip,cidr,domain,inTag,network 分流，以及 按国别 顶级域名分流，用到了 mmdb和 v2fly的社区维护版域名列表
 
 支持utls伪装tls指纹，本作的 utls 还可以在 用 webscoket和grpc 时使用
 
@@ -86,25 +86,15 @@ vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 
 ### 关于udp
 
-本项目 vless 和 socks5 均支持 udp
+本项目 完整支持 udp
 
 最新的代码已经完整支持vless v0
 
-后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。v1还处于测试阶段.
+后来我还自己实现了vless v1，自然也是支持udp的，也支持fullcone。v1还处于测试、研发阶段.
 
 另外上面说的是承载数据支持udp；我们协议的底层传输方式也是全面支持udp的。也就是说可以用udp传输vless数据，然后vless里面还可以传输 udp的承载数据。
 
 底层用udp传输的话，可以理解为 比 v2ray的mkcp传输方式 更低级的模式，直接用udp传输, 不加任何控制。所以可能丢包,导致速度较差 且不稳定。
-
-**机场多级转发的情况，udp暂时verysimple是没法处理的，**
-
-读代码就知道了，我特地注释了，在转发udp时，我暂时只考虑了 直接转发到direct到情况；也就是说客户所链接的那个节点必须直接向direct发送数据，而不能再包任何代理协议。
-
-这个我以后有精力了可以研究一下，现在暂时先这样。
-
-关键在于，本作的udp转发特地考虑到了fullcone的情况，而多级级连的情况肯定是无法fullcone的。
-
-有级连udp需求的, 暂时可以针对udp流量配置转发其 到普通xray/v2ray等服务端，专门处理udp。
 
 ### tls lazy encrypt (splice) 
 
@@ -167,9 +157,9 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/hahahrfool/v2ray_simple/discussions/2
 
-### ws/grpc
+### ws/grpc/quic
 
-目前最新代码已经支持了ws和grpc，并且对于ws/grpc，我设计的vless v1协议将会针对它们 有专门的udp优化。
+目前最新代码已经支持了ws/grpc/quic，并且对于ws/grpc/quic，我设计的vless v1协议将会针对它们 有专门的udp优化。
 
 ## 安装方式：
 
@@ -217,7 +207,7 @@ cp examples/vlesss.server.toml server.toml
 内嵌编译 所使用的 文件名 必须是 GeoLite2-Country.mmdb.tgz
 
 
-因为为了减小文件体积，所以才内嵌的gzip格式，而不是直接内嵌原始数据
+因为为了减小文件体积，所以才内嵌的gzip格式，而不是内嵌原始mmdb
 
 
 
@@ -282,7 +272,11 @@ verysimple -c server.toml
 
 ### 交互模式
 
-未来会推出交互模式, 可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
+已经推出了交互模式, 可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
+
+交互模式有很多好玩的功能，可以试试。
+
+运行 `verysimple -i` 即可进入交互模式
 
 ### 其他说明
 
@@ -321,7 +315,10 @@ openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 
 此命令会生成ecc证书，这个证书比rsa证书 速度更快, 有利于网速加速（加速tls握手）。
 
+
 ### 交互模式自动生成证书
+
+本作的交互模式也有自动生成随机自签名证书功能
 
 在你的服务端下载好程序后，运行 `verysimple -i` 开启交互模式，然后通过提示来自动生成tls证书。
 
@@ -353,7 +350,7 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 
 **不够极简或者解释不够清晰的代码我们将会进行淘汰或修正。**
 
-有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) 或者issue中的开发者贡献指南.
+有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) 或者issue中的【开发者贡献指南】.
 
 ## 本项目所使用的开源协议
 
@@ -416,10 +413,10 @@ https://github.com/librespeed/speedtest-go
 
 ### 关于readv与测速
 
-如果你是按上面指导内网进行测速的话，实际上readv会造成减速效果，具体可参考
+如果你是按上面指导内网进行测速的话，实际上readv有可能会造成减速效果，具体可参考
 https://github.com/hahahrfool/v2ray_simple/issues/14
 
-此时要关闭readv
+如果发现减速，则要关闭readv
 
 ### 结果
 

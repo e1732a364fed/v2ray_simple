@@ -6,8 +6,11 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )
@@ -92,6 +95,7 @@ func generateConfigFileInteractively() {
 		"开始交互生成配置",
 		"清除此次缓存的配置",
 		"将该缓存的配置写到输出(client.toml和 server.toml)",
+		"生成客户端分享链接url",
 	}
 
 	confClient := proxy.Standard{}
@@ -116,10 +120,10 @@ func generateConfigFileInteractively() {
 
 		generateConfStr := func() {
 
-			confClient.Route = append(confClient.Route, &proxy.RuleConf{
+			confClient.Route = []*proxy.RuleConf{{
 				DialTag: "direct",
 				Domains: []string{"geosite:cn"},
-			})
+			}}
 
 			confClient.App = &proxy.AppConf{MyCountryISO_3166: "CN"}
 
@@ -175,11 +179,20 @@ func generateConfigFileInteractively() {
 			serverFile.Close()
 
 			fmt.Println("生成成功！请查看文件")
+		case 4: //share url
+			if len(confClient.Dial) > 0 {
 
-		case 1:
+				fmt.Println("生成的分享链接如下：")
+				fmt.Println(vless.GenerateXrayShareURL(confClient.Dial[0]))
+
+			} else {
+				fmt.Println("请先进行配置")
+
+			}
+		case 1: //interactively generate
 
 			select0 := promptui.Select{
-				Label: "【提醒】我们交互模式生成的配置都是直接带tls的,且客户端默认使用utls模拟chrome指纹",
+				Label: "【提醒】我们交互模式生成的配置都是直接带tls的,且客户端【默认使用utls】模拟chrome指纹",
 				Items: []string{"知道了"},
 			}
 
@@ -314,8 +327,13 @@ func generateConfigFileInteractively() {
 				case 1, 2:
 					clientlisten.Tag += "_" + result
 					promptPath := promptui.Prompt{
-						Label:    "Path",
-						Validate: func(string) error { return nil },
+						Label: "Path",
+						Validate: func(s string) error {
+							if result == "ws" && !strings.HasPrefix(s, "/") {
+								return errors.New("ws path must start with /")
+							}
+							return nil
+						},
 					}
 
 					result, err = promptPath.Run()
@@ -335,7 +353,7 @@ func generateConfigFileInteractively() {
 
 			promptIP := promptui.Prompt{
 				Label:    "IP",
-				Validate: func(string) error { return nil },
+				Validate: utils.WrapFuncForPromptUI(govalidator.IsIP),
 			}
 
 			result, err = promptIP.Run()
@@ -352,7 +370,7 @@ func generateConfigFileInteractively() {
 
 			promptDomain := promptui.Prompt{
 				Label:    "域名",
-				Validate: func(string) error { return nil },
+				Validate: utils.WrapFuncForPromptUI(govalidator.IsDNSName),
 			}
 
 			result, err = promptDomain.Run()
@@ -385,7 +403,7 @@ func generateConfigFileInteractively() {
 			} else {
 				promptUUID := promptui.Prompt{
 					Label:    "uuid",
-					Validate: func(string) error { return nil },
+					Validate: utils.WrapFuncForPromptUI(govalidator.IsUUID),
 				}
 
 				result, err = promptUUID.Run()
@@ -416,7 +434,7 @@ func generateConfigFileInteractively() {
 				Label: "请配置服务端tls证书路径",
 				Items: []string{
 					"默认(cert.pem和cert.key),此时将自动开启 insecure",
-					"手动输入(要保证你输入的是正确、存在的证书路径)",
+					"手动输入(要保证你输入的是正确的文件路径)",
 				},
 			}
 			i6, result, err := select6.Run()
@@ -435,7 +453,7 @@ func generateConfigFileInteractively() {
 
 				promptCPath := promptui.Prompt{
 					Label:    "path",
-					Validate: func(string) error { return nil },
+					Validate: utils.IsFilePath,
 				}
 
 				result, err = promptCPath.Run()

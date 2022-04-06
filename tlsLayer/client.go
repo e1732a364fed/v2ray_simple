@@ -36,7 +36,6 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 		}
 
 		if ce := utils.CanLogInfo("using utls and Chrome fingerprint for"); ce != nil {
-			//log.Println("using utls and Chrome fingerprint for", host)
 			ce.Write(zap.String("host", host))
 		}
 	} else {

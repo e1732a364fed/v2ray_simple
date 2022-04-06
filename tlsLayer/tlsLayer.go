@@ -113,6 +113,7 @@ func GenerateRandomCertKeyFiles(cfn, kfn string) {
 
 }
 
+//如 certFile, keyFile 有一项没给出，则会自动生成随机证书
 func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate, err error) {
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))

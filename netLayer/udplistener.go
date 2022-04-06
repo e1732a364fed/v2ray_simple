@@ -20,6 +20,7 @@ type UDPListener struct {
 	newConnChan chan *UDPConn
 	connMap     map[netip.AddrPort]*UDPConn
 	mux         sync.RWMutex
+	isclosed    bool
 }
 
 // NewUDPListener 返回一个 *UDPListener, 该Listener实现了 net.Listener
@@ -72,13 +73,18 @@ func (ul *UDPListener) Accept() (net.Conn, error) {
 //Once closed, it cannot be used again.
 // it calls ul.CloseClients()
 func (ul *UDPListener) Close() error {
+	if ul.isclosed {
+		return nil
+	}
+
+	ul.isclosed = true
 
 	err := ul.conn.Close()
 	if err != nil {
 		return err
 	}
 
-	ul.CloseClients()
+	ul.closeClients()
 
 	return nil
 }
@@ -88,19 +94,15 @@ func (ul *UDPListener) Close() error {
 //		The application can then tell the remote client that it will be closed by sending a message using its custom protocol.
 //
 //Once closed, it cannot be used again.
-func (ul *UDPListener) CloseClients() error {
+func (ul *UDPListener) closeClients() error {
 	close(ul.newConnChan)
 
 	ul.mux.Lock()
 	for _, c := range ul.connMap {
 		close(c.inMsgChan)
 	}
+	ul.connMap = make(map[netip.AddrPort]*UDPConn)
 	ul.mux.Unlock()
-
-	//err := ul.conn.Close()
-	//if err != nil {
-	//	return err
-	//}
 
 	return nil
 }
@@ -121,7 +123,7 @@ func (ul *UDPListener) run() {
 			var oldConn *UDPConn
 
 			ul.mux.RLock()
-			oldConn = ul.connMap[addrport] //每次都从connMap查找是很慢的,先这样，以后使用更快的方法
+			oldConn = ul.connMap[addrport]
 			ul.mux.RUnlock()
 
 			if oldConn == nil {
