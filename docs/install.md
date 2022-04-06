@@ -38,7 +38,7 @@ sudo cp examples/vlesss.server.toml server.toml
 
 ## 第二部，证书部分
 
-如果你没有证书，想要先用自签名证书试试，可以运行 `verysimple -i` 进入交互模式，然后根据提示自行生成tls证书
+如果你没有证书，想要先用自签名证书试试，可以运行 `verysimple -i` 进入交互模式，然后根据提示自行生成自签名ssl证书
 
 生成的证书会为 yourcert.pem 和 yourcert.key
 
@@ -46,7 +46,7 @@ sudo cp examples/vlesss.server.toml server.toml
 
 当然，你也可以通过README.md 里的指导自行使用openssl生成证书。
 
-当然，最好还是用自己的域名+acme等形式 申请证书。
+当然，最好还是用自己的域名+acme等形式 申请真证书。
 
 ## 第三步，服务部分
 然后编辑服务文件

@@ -358,8 +358,6 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 
 MIT协议，即你用的时候也要附带一个MIT文件，然后我不承担任何后果。
 
-同时附带要求满足[此文件](docs/No_PR_For_V2Ray_XRAY.md)中提到的要求
-
 ## 历史
 
 启发自我fork的v2simple，不过原作者的架构还是有点欠缺，我就直接完全重构了，完全使用我自己的代码。

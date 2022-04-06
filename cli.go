@@ -11,6 +11,7 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
+	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )
@@ -18,6 +19,9 @@ import (
 var cliCmdList []CliCmd
 
 func init() {
+
+	//cli.go 中定义的 CliCmd都是需进一步交互的命令
+
 	cliCmdList = append(cliCmdList, CliCmd{
 		"交互生成配置，超级强大", func() {
 			generateConfigFileInteractively()
@@ -26,6 +30,40 @@ func init() {
 	cliCmdList = append(cliCmdList, CliCmd{
 		"热删除配置", func() {
 			interactively_hotRemoveServerOrClient()
+		},
+	})
+	cliCmdList = append(cliCmdList, CliCmd{
+		"调节hy手动挡", func() {
+			var arr = []string{"加速", "减速", "当前状态", "讲解"}
+
+			Select := promptui.Select{
+				Label: "请选择",
+				Items: arr,
+			}
+
+			for {
+				i, result, err := Select.Run()
+
+				if err != nil {
+					fmt.Printf("Prompt failed %v\n", err)
+					return
+				}
+
+				fmt.Printf("你选择了 %q\n", result)
+
+				switch i {
+				case 0:
+					quic.TheCustomRate -= 0.1
+					fmt.Printf("调好了!当前rate %f\n", quic.TheCustomRate)
+				case 1:
+					quic.TheCustomRate += 0.1
+					fmt.Printf("调好了!当前rate %f\n", quic.TheCustomRate)
+				case 2:
+					fmt.Printf("当前rate %f\n", quic.TheCustomRate)
+				case 3:
+					fmt.Printf("rate越小越加速, rate越大越减速. 最小0.2最大1.5。实际速度倍率为 1.5/rate \n")
+				}
+			}
 		},
 	})
 
@@ -51,29 +89,31 @@ func runCli() {
 		}
 	}()
 
-	langList := []string{"简体中文", "English"}
-	fmt.Printf("Welcome to Interactive Mode, please choose a Language \n")
-	Select := promptui.Select{
-		Label: "Select Language",
-		Items: langList,
-	}
+	/*
+		langList := []string{"简体中文", "English"}
+		fmt.Printf("Welcome to Interactive Mode, please choose a Language \n")
+		Select := promptui.Select{
+			Label: "Select Language",
+			Items: langList,
+		}
 
-	_, result, err := Select.Run()
+		_, result, err := Select.Run()
 
-	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		return
-	}
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			return
+		}
 
-	fmt.Printf("You choose %q\n", result)
+		fmt.Printf("You choose %q\n", result)
 
-	if result != langList[0] {
-		fmt.Printf("Sorry, language not supported yet \n")
-		return
-	}
+		if result != langList[0] {
+			fmt.Printf("Sorry, language not supported yet \n")
+			return
+		}
+	*/
 
 	for {
-		Select = promptui.Select{
+		Select := promptui.Select{
 			Label: "请选择想执行的功能",
 			Items: cliCmdList,
 		}

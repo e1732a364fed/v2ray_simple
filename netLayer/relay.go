@@ -189,9 +189,8 @@ classic:
 	return int64(n), e
 }
 
-// 从conn1读取 写入到 conn2，并同时从 conn2读取写入conn1
+// 从 wrc 读取 写入到 wlc ，并同时从 wlc 读取写入 wrc
 // 阻塞
-// 返回从 conn1读取 写入到 conn2的数据
 // UseReadv==true 时 内部使用 TryCopy 进行拷贝
 // 会自动优选 splice，readv，不行则使用经典拷贝.
 //
