@@ -303,7 +303,7 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	}
 }
 
-//SetAddrStr,setNetwork, setTag, setCantRoute,setListenConf(lc), call configCommon
+//SetAddrStr,setNetwork, setTag, setCantRoute,setListenConf(lc),setFallback, call configCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	ser.setNetwork(lc.Network)

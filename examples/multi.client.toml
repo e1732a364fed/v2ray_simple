@@ -130,7 +130,11 @@ country = ["US"]
 # ip = ["0.0.0.0/8","10.0.0.0/8","fe80::/10","10.0.0.1"]
 
 # 域名匹配完全兼容 v2ray，请参考 https://www.v2fly.org/config/routing.html#ruleobject
-# domain = ["domain:www.google.com","full:www.twitter.com", "geosite:cn"]
+# 下面简单说一下:
+# 不包含冒号的项会使用字符串匹配方式 (MATCH), 而如果是 domain:的话，会依次尝试匹配其子域名; 如果是full:的话则会完整匹配该域名
+# 还可以用正则表达式，不过太难了我就不在这里讲了. 懂正则的人有需求就用, 不懂正则就不要用.
+#
+# domain = ["domain:www.google.com","full:www.twitter.com", "geosite:cn","baidu"]
 
 # 比如这个就是 将CN国家的域名 导向自己的grpc节点
 [[route]]

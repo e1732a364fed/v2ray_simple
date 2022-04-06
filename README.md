@@ -180,7 +180,11 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 ```sh
 git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
+```
 
+
+可选拷贝示例文件
+```sh
 #如果使用极简模式，则复制vs.json文件
 cp examples/vs.client.json client.json
 cp examples/vs.server.json server.json
@@ -189,6 +193,8 @@ cp examples/vs.server.json server.json
 cp examples/vlesss.client.toml client.toml
 cp examples/vlesss.server.toml server.toml
 ```
+
+如果你不拷贝示例文件，也可以通过 [交互模式](#交互模式) 来生成自定义的配置。
 
 详细优化的编译参数请参考Makefile文件
 
@@ -327,7 +333,10 @@ openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 
 ## 开发标准以及理念
 
-文档尽量多，代码尽量少
+文档尽量多，代码尽量少. 同时本作不追求极致模块化, 可以进行适当耦合. 一切以速度、浅显易懂 优先
+
+KISS, Keep it Simple and Stupid
+
 ### 文档
 
 文档、注释尽量详细，且尽量完全使用中文，尽量符合golang的各种推荐标准。
@@ -356,7 +365,7 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 
 ## 本项目所使用的开源协议
 
-MIT协议，即你用的时候也要附带一个MIT文件，然后我不承担任何后果。
+MIT协议，即你用的时候也要附带一个MIT文件，然后作者不承担任何责任、义务、后果。
 
 ## 历史
 

@@ -662,3 +662,59 @@ func interactively_hotRemoveServerOrClient() {
 	fmt.Printf(delimiter)
 	printAllState(os.Stdout)
 }
+
+//热添加配置文件
+func interactively_hotLoadConfigFile() {
+	fmt.Printf("即将开始热添加配置文件\n")
+	fmt.Printf("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
+	fmt.Printf("【当前所有配置】为：\n")
+	fmt.Printf(delimiter)
+	printAllState(os.Stdout)
+
+	fmt.Printf("请输入你想添加的文件名称\n")
+
+	promptFile := promptui.Prompt{
+		Label:    "配置文件",
+		Validate: utils.IsFilePath,
+	}
+
+	fpath, err := promptFile.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	fmt.Printf("你输入了 %s\n", fpath)
+
+	standardConf, err = proxy.LoadTomlConfFile(fpath)
+	if err != nil {
+
+		log.Printf("can not load standard config file: %s\n", err)
+		return
+	}
+
+	//listen, dial, dns, route, fallbacks 这几项都可以选择性加载
+
+	//但是route和fallback的话，动态增删很麻烦，因为route/fallback可能配置相当多条;
+
+	//而dns的话,没法简单增删, 而是会覆盖。
+
+	//因此我们交互模式暂且只支持 listen和dial的热加载。 dns/route/fallback的热增删可以用apiServer实现.
+
+	//也就是说，理论上要写一个比较好的前端，才能妥善解决 复杂条目的热增删问题。
+
+	if len(standardConf.Listen) > 0 {
+		hotLoadListenConfForRuntime(standardConf.Listen)
+
+	}
+
+	if len(standardConf.Dial) > 0 {
+		hotLoadDialConfForRuntime(standardConf.Dial)
+
+	}
+
+	fmt.Printf("添加成功！当前状态：\n")
+	fmt.Printf(delimiter)
+	printAllState(os.Stdout)
+}
