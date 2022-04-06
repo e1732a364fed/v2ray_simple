@@ -157,6 +157,8 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/hahahrfool/v2ray_simple/discussions/2
 
+在不使用新协议时，lazy只能通过不lazy tls1.2的方式来解决此问题, 即裸奔转发 tls1.3、加密转发 tls1.2. 
+
 ### ws/grpc/quic
 
 目前最新代码已经支持了ws/grpc/quic，并且对于ws/grpc/quic，我设计的vless v1协议将会针对它们 有专门的udp优化。

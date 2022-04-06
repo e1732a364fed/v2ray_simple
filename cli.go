@@ -91,11 +91,12 @@ func runCli() {
 func generateConfigFileInteractively() {
 
 	rootLevelList := []string{
-		"打印当前生成的配置",
+		"打印当前缓存的配置",
 		"开始交互生成配置",
 		"清除此次缓存的配置",
-		"将该缓存的配置写到输出(client.toml和 server.toml)",
-		"生成客户端分享链接url",
+		"将该缓存的配置写到文件(client.toml和 server.toml)",
+		"以该缓存的配置【生成客户端分享链接url】",
+		"将此次生成的配置投入运行（热加载）",
 	}
 
 	confClient := proxy.Standard{}
@@ -183,12 +184,71 @@ func generateConfigFileInteractively() {
 			if len(confClient.Dial) > 0 {
 
 				fmt.Println("生成的分享链接如下：")
-				fmt.Println(vless.GenerateXrayShareURL(confClient.Dial[0]))
+				d := confClient.Dial[0]
+				switch d.Protocol {
+				case "vless":
+					fmt.Println(vless.GenerateXrayShareURL(d))
+
+				}
 
 			} else {
 				fmt.Println("请先进行配置")
 
 			}
+		case 5: //hot load
+			fmt.Println("因为本次同时生成了服务端和客户端配置, 请选择要热加载的是哪一个")
+			selectHot := promptui.Select{
+				Label: "加载客户端配置还是服务端配置？",
+				Items: []string{
+					"服务端",
+					"客户端",
+				},
+			}
+			ihot, result, err := selectHot.Run()
+
+			if err != nil {
+				fmt.Printf("Prompt failed %v\n", err)
+				return
+			}
+
+			fmt.Printf("你选择了 %s\n", result)
+
+			switch ihot {
+			case 0:
+
+				//vless in
+				serverEndInServer, err := proxy.NewServer(confServer.Listen[0])
+				if err != nil {
+					log.Fatalln("can not create serverEndInServer: ", err)
+				}
+				// direct out
+				serverEndOutClient, err := proxy.NewClient(confServer.Dial[0])
+				if err != nil {
+					log.Fatalln("can not create serverEndOutClient: ", err)
+				}
+				listenSer(serverEndInServer, serverEndOutClient, true)
+
+				allServers = append(allServers, serverEndInServer)
+				allClients = append(allClients, serverEndOutClient)
+
+			case 1:
+				clientEndInServer, err := proxy.NewServer(confClient.Listen[0])
+				if err != nil {
+					log.Fatalln("can not create clientEndInServer: ", err)
+				}
+				clientEndOutClient, err := proxy.NewClient(confClient.Dial[0])
+				if err != nil {
+					log.Fatalln("can not create clientEndOutClient: ", err)
+				}
+				listenSer(clientEndInServer, clientEndOutClient, true)
+
+				allServers = append(allServers, clientEndInServer)
+				allClients = append(allClients, clientEndOutClient)
+
+			}
+
+			fmt.Printf("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
+
 		case 1: //interactively generate
 
 			select0 := promptui.Select{
