@@ -43,6 +43,8 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
 
+const delimiter = "===============================\n"
+
 var Version string = "[version_undefined]" //版本号可由 -ldflags "-X 'main.Version=v1.x.x'" 指定, 本项目的Makefile就是用这种方式确定版本号
 
 func versionStr() string {
@@ -55,7 +57,6 @@ func printVersion_simple() {
 }
 
 func printVersion() {
-	const delimiter = "===============================\n"
 
 	fmt.Printf(delimiter)
 	printVersion_simple()

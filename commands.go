@@ -35,7 +35,7 @@ func init() {
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 
 	cliCmdList = append(cliCmdList, CliCmd{
-		"生成uuid", func() {
+		"生成一个随机的uuid供你参考", func() {
 			generateAndPrintUUID()
 		},
 	})

@@ -44,3 +44,23 @@ func AllSubSets_improve1[T comparable](set []T) (subsets [][]T) {
 	}
 	return subsets
 }
+
+func CopySlice[T any](a []T) (r []T) {
+	r = make([]T, len(a))
+	for i, v := range a {
+		r[i] = v
+	}
+	return
+}
+
+//会直接改动原slice数据
+func DeleteSliceItem[T any](a []T, deleteIndex int) []T {
+	j := 0
+	for idx, val := range a {
+		if idx != deleteIndex {
+			a[j] = val
+			j++
+		}
+	}
+	return a[:j]
+}

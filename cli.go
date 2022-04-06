@@ -15,12 +15,20 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+var cliCmdList []CliCmd
+
 func init() {
 	cliCmdList = append(cliCmdList, CliCmd{
 		"交互生成配置，超级强大", func() {
 			generateConfigFileInteractively()
 		},
 	})
+	cliCmdList = append(cliCmdList, CliCmd{
+		"热删除配置", func() {
+			hotRemoveServerOrClient()
+		},
+	})
+
 }
 
 type CliCmd struct {
@@ -32,11 +40,9 @@ func (cc CliCmd) String() string {
 	return cc.Name
 }
 
-var cliCmdList []CliCmd
-
 //交互式命令行用户界面
 //
-//阻塞，可按ctrl+C推出
+//阻塞，可按ctrl+C退出或回退到上一级
 func runCli() {
 	defer func() {
 		fmt.Printf("Interactive Mode exited. \n")
@@ -479,6 +485,7 @@ func generateConfigFileInteractively() {
 
 			var serverListenStruct proxy.ListenConf
 			serverListenStruct.CommonConf = clientDial.CommonConf
+			serverListenStruct.IP = "0.0.0.0"
 
 			confServer.Listen = append(confServer.Listen, &serverListenStruct)
 
@@ -541,4 +548,99 @@ func generateConfigFileInteractively() {
 
 		} // switch i case 1
 	} //for
+}
+
+func hotRemoveServerOrClient() {
+	fmt.Printf("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
+	fmt.Printf("【当前所有配置】为：\n")
+	fmt.Printf(delimiter)
+	printAllState(os.Stdout)
+
+	var items []string
+	if len(allServers) > 0 {
+		items = append(items, "listen")
+	}
+	if len(allClients) > 0 {
+		items = append(items, "dial")
+	}
+
+	Select := promptui.Select{
+		Label: "请选择你想删除的是dial还是listen",
+		Items: items,
+	}
+
+	i, result, err := Select.Run()
+
+	if err != nil {
+		fmt.Printf("Prompt failed %v\n", err)
+		return
+	}
+
+	var will_delete_listen, will_delete_dial bool
+
+	var will_delete_index int
+
+	fmt.Printf("你选择了 %q\n", result)
+	switch i {
+	case 0:
+		will_delete_listen = true
+	case 1:
+		will_delete_dial = true
+	}
+
+	var theInt int64
+
+	if (will_delete_dial && len(allClients) > 1) || (will_delete_listen && len(allServers) > 1) {
+
+		validatePort := func(input string) error {
+			theInt, err = strconv.ParseInt(input, 10, 64)
+			if err != nil || theInt < 0 {
+				return errors.New("Invalid number")
+			}
+
+			if will_delete_dial && int(theInt) >= len(allClients) {
+				return errors.New("must with in len of dial array")
+			}
+
+			if will_delete_listen && int(theInt) >= len(allServers) {
+				return errors.New("must with in len of listen array")
+			}
+
+			return nil
+		}
+
+		fmt.Printf("请输入你想删除的序号\n")
+
+		promptPort := promptui.Prompt{
+			Label:    "序号",
+			Validate: validatePort,
+		}
+
+		result, err = promptPort.Run()
+
+		if err != nil {
+			fmt.Printf("Prompt failed %v\n", err)
+			return
+		}
+
+		fmt.Printf("你输入了 %d\n", theInt)
+
+	}
+
+	will_delete_index = int(theInt)
+
+	if will_delete_dial {
+		allClients = utils.DeleteSliceItem(allClients, will_delete_index)
+	}
+	if will_delete_listen {
+		listenerArray[will_delete_index].Close()
+
+		allServers = utils.DeleteSliceItem(allServers, will_delete_index)
+		listenerArray = utils.DeleteSliceItem(listenerArray, will_delete_index)
+
+	}
+
+	fmt.Printf("删除成功！当前状态：\n")
+	fmt.Printf(delimiter)
+	printAllState(os.Stdout)
 }
