@@ -10,6 +10,9 @@ import (
 const (
 	MaxUDP_packetLen = 64 * 1024 // 关于 udp包数据长度，可参考 https://cloud.tencent.com/developer/article/1021196
 
+)
+
+var (
 	//udp不能无限监听, 否则每一个udp申请都对应打开了一个本地udp端口，一直监听的话时间一长，就会导致 too many open files
 	// 因为实际上udp在网页代理中主要用于dns请求, 所以不妨设的小一点。
 	// 放心，只要能持续不断地从远程服务器收到数据, 建立的udp连接就会持续地更新Deadline 而续命一段时间.

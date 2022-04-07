@@ -274,6 +274,7 @@ func (dm *DNSMachine) QueryType(domain string, dns_type uint16) (ip net.IP) {
 						break
 					}
 				}
+				//没备用的，那就只好保持 dm.defaultConn.Conn 的 nil状态, 下一次dns查询就会失败
 
 			}
 			dm.mutex.Unlock()

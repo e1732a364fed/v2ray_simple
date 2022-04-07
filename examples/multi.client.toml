@@ -22,7 +22,7 @@ servers = [
 	"udp://114.114.114.114:53",      # 如果把该url指向我们dokodemo监听的端口，就可以达到通过节点请求dns的目的.
 	#"udp://127.0.0.1:63782",      # 如这一行 就是通过我们节点请求dns
 	
-	{ addr = "udp://8.8.8.8:53", domain = [ "google.com" ] }	# 还可以为特定域名指定特定服务器
+	#{ addr = "udp://8.8.8.8:53", domain = [ "google.com" ] }	# 还可以为特定域名指定特定服务器
 ]
 
 [dns.hosts]     # 自己定义的dns解析
@@ -129,6 +129,10 @@ country = ["US"]
 # 其它分流匹配示例：
 # ip = ["0.0.0.0/8","10.0.0.0/8","fe80::/10","10.0.0.1"]
 
+# 关于ip中使用cidr匹配ipv6，可以参考 https://www.mediawiki.org/wiki/Help:Range_blocks/IPv6
+# 比如要想路由所有的ipv6地址，可用 ip = ["::/0"]
+
+
 # 域名匹配完全兼容 v2ray，请参考 https://www.v2fly.org/config/routing.html#ruleobject
 # 下面简单说一下:
 # 不包含冒号的项会使用字符串匹配方式 (MATCH), 而如果是 domain:的话，会依次尝试匹配其子域名; 如果是full:的话则会完整匹配该域名
@@ -141,9 +145,8 @@ country = ["US"]
 dialTag = "my_grpc"
 domain = ["geosite:cn"]
 
-# network = ["tcp","udp"]
-# inTag = ["tag1","tag2"]
-# country = ["CN"]
+# 其它匹配:
+# network = ["tcp","udp"]	#匹配传输层协议
+# inTag = ["tag1","tag2"]	#匹配来自哪一个 listen 
+# country = ["CN"]			# 匹配 geoip 以及 cn 顶级域名.
 
-# 关于ip中使用cidr匹配ipv6，可以参考 https://www.mediawiki.org/wiki/Help:Range_blocks/IPv6
-# 比如要想路由所有的ipv6地址，可用 ip = ["::/0"]

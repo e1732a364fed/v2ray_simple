@@ -11,12 +11,17 @@
 
 # default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
-#mycountry = "CN" #全局级的 国别分流配置, 见下面route的注释
+# mycountry = "CN" #全局级的 国别分流配置, 见下面route的注释
 
 # noreadv = true    
 
 # 也可以用命令行参数 -readv=false 来关闭 readv . readv开启 一般是会加速的, 但不排除减速可能.
 #  你可以在测速时开关一下readv看看测速的变化, 如果遇到了readv减速的话， 可以通过设置把它关闭。
+
+# 配置udp闲置连接的超时时间. 因为udp是无状态协议, 一旦拨号,是没法确定服务端何时关闭连接的
+# 这里单位为分钟，我们默认超时时间就为 3分钟. 如果你有特殊需求, 可以自行调节。
+# 不建议过大，因为过大的话, 会造成大量占用本地udp端口的情况, 可能会导致 too many open files 错误
+# udp_timeout = 3  
 
 [[listen]]
 tag = "my_socks5"   # 可选, 但不可与其他tag重复
@@ -61,7 +66,8 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 # path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好
 
 
-# route 是在我们代理界是分流的意思。 这一项是可选的,如果没给出的话,就不分流;
+# route 是在我们代理界是分流的意思。 
+# route 是可选的,如果没给出的话,就不分流;
 # 写了 country 后, 向该国家的ip发送的请求就会直连, 然后其他的过代理
 # country的字母必须是两个，而且必须大写。这个也会自动被用于顶级域名的国别分流
 # 同时，必须要一个 GeoLite2-Country.mmdb 文件 放在verysimple的相同目录下. 详情见 README.md

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
@@ -32,6 +33,8 @@ type AppConf struct {
 	NoReadV bool `toml:"noreadv"`
 
 	AdminPass string `toml:"admin_pass"`
+
+	UDP_timeout *int `toml:"udp_timeout"`
 }
 
 //标准配置。默认使用toml格式
@@ -121,6 +124,13 @@ func loadConfig() (err error) {
 				}
 				if appConf.NoReadV && !utils.IsFlagPassed("readv") {
 					netLayer.UseReadv = false
+				}
+
+				if appConf.UDP_timeout != nil {
+					minutes := *appConf.UDP_timeout
+					if minutes > 0 {
+						netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
+					}
 				}
 			}
 
