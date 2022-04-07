@@ -102,12 +102,6 @@ type ProxyCommon interface {
 	// 在IsHandleInitialLayers时可用， 用于 inServer
 	HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any)
 
-	// 在IsHandleInitialLayers时可用， 用于 outClient
-	DialCommonInitialLayerConnFunc() func(serverAddr *netLayer.Addr) any
-
-	// 在IsHandleInitialLayers时可用， 用于 outClient
-	DialSubConnFunc() func(any) (net.Conn, error)
-
 	/////////////////// TLS层 ///////////////////
 
 	SetUseTLS()
@@ -144,6 +138,11 @@ type ProxyCommon interface {
 
 	IsMux() bool //如果用了grpc则此方法返回true
 
+	GetQuic_Client() *quic.Client //for outClient
+	setQuic_Client(*quic.Client)
+
+	setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any))
+
 	/////////////////// 私有方法 ///////////////////
 
 	setCantRoute(bool)
@@ -156,8 +155,6 @@ type ProxyCommon interface {
 	setDialConf(*DialConf)     //for outClient
 
 	setPath(string)
-
-	setFunc(index int, thefunc any)
 }
 
 //use dc.Host, dc.Insecure, dc.Utls
@@ -167,6 +164,13 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 
 	switch com.AdvancedLayer() {
 	case "quic":
+		na, e := netLayer.NewAddr(com.AddrStr())
+		if e != nil {
+			if ce := utils.CanLogErr("prepareTLS_forClient,quic,netLayer.NewAddr failed"); ce != nil {
+				ce.Write(zap.Error(e))
+			}
+			return e
+		}
 
 		com.setNetwork("udp")
 		var useHysteria, hysteria_manual bool
@@ -204,29 +208,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			alpnList = quic.AlpnList
 		}
 
-		com.setFunc(proxyCommonStruct_setfunc_DialCommonInitialLayerConn, func(serverAddr *netLayer.Addr) any {
-
-			na, e := netLayer.NewAddr(com.AddrStr())
-			if e != nil {
-				if ce := utils.CanLogErr("prepareTLS_forClient,quic,netLayer.NewAddr failed"); ce != nil {
-					ce.Write(zap.Error(e))
-				}
-				return e
-			}
-			return quic.DialCommonInitialLayer(&na, tls.Config{
-				InsecureSkipVerify: dc.Insecure,
-				ServerName:         dc.Host,
-				NextProtos:         alpnList,
-				//实测quic的服务端和客户端必须指定alpn, 否则quic客户端会报错
-				// CRYPTO_ERROR (0x178): ALPN negotiation failed. Server didn't offer any protocols
-			}, useHysteria, maxbyteCount, hysteria_manual)
-		})
-
-		com.setFunc(proxyCommonStruct_setfunc_DialSubConn, func(t any) (net.Conn, error) {
-
-			return quic.DialSubConn(t)
-		})
-
+		com.setQuic_Client(quic.NewClient(&na, alpnList, dc.Host, dc.Insecure, useHysteria, maxbyteCount, hysteria_manual))
 		return nil //quic直接接管了tls，所以不执行下面步骤
 
 	case "grpc":
@@ -296,7 +278,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 		}
 
-		com.setFunc(proxyCommonStruct_setfunc_HandleInitialLayers, func() (newConnChan chan net.Conn, baseConn any) {
+		com.setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any) {
 
 			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
 
@@ -401,9 +383,13 @@ type ProxyCommonStruct struct {
 	grpc_s       *grpc.Server
 	FallbackAddr *netLayer.Addr
 
+	quic_c *quic.Client
+
 	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
-	dialCommonConnFunc   func(serverAddr *netLayer.Addr) any
-	dialSubConnFunc      func(any) (net.Conn, error)
+}
+
+func (pcs *ProxyCommonStruct) setListenCommonConnFunc(f func() (newConnChan chan net.Conn, baseConn any)) {
+	pcs.listenCommonConnFunc = f
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
@@ -482,38 +468,6 @@ func (s *ProxyCommonStruct) IsHandleInitialLayers() bool {
 	return s.AdvancedL == "quic"
 }
 
-//return nil. As a placeholder.
-func (s *ProxyCommonStruct) HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any) {
-	return s.listenCommonConnFunc
-}
-
-//return nil. As a placeholder.
-func (s *ProxyCommonStruct) DialCommonInitialLayerConnFunc() func(serverAddr *netLayer.Addr) any {
-	return s.dialCommonConnFunc
-}
-
-//return nil. As a placeholder.
-func (s *ProxyCommonStruct) DialSubConnFunc() func(any) (net.Conn, error) {
-	return s.dialSubConnFunc
-}
-
-const (
-	proxyCommonStruct_setfunc_HandleInitialLayers = iota
-	proxyCommonStruct_setfunc_DialCommonInitialLayerConn
-	proxyCommonStruct_setfunc_DialSubConn
-)
-
-func (s *ProxyCommonStruct) setFunc(index int, thefunc any) {
-	switch index {
-	case proxyCommonStruct_setfunc_HandleInitialLayers:
-		s.listenCommonConnFunc = thefunc.(func() (newConnChan chan net.Conn, baseConn any))
-	case proxyCommonStruct_setfunc_DialCommonInitialLayerConn:
-		s.dialCommonConnFunc = thefunc.(func(serverAddr *netLayer.Addr) any)
-	case proxyCommonStruct_setfunc_DialSubConn:
-		s.dialSubConnFunc = thefunc.(func(any) (net.Conn, error))
-	}
-}
-
 func (pcs *ProxyCommonStruct) setTLS_Server(s *tlsLayer.Server) {
 	pcs.tls_s = s
 }
@@ -547,6 +501,11 @@ func (s *ProxyCommonStruct) IsMux() bool {
 	return false
 }
 
+//return nil. As a placeholder.
+func (s *ProxyCommonStruct) HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any) {
+	return s.listenCommonConnFunc
+}
+
 func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
@@ -569,6 +528,14 @@ func (s *ProxyCommonStruct) GetListenConf() *ListenConf {
 }
 func (s *ProxyCommonStruct) GetDialConf() *DialConf {
 	return s.dialConf
+}
+
+func (s *ProxyCommonStruct) GetQuic_Client() *quic.Client {
+	return s.quic_c
+}
+
+func (s *ProxyCommonStruct) setQuic_Client(c *quic.Client) {
+	s.quic_c = c
 }
 
 //for outClient

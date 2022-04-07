@@ -38,54 +38,69 @@ func CloseSession(baseC any) {
 // 因为它是通过 StreamID 来识别连接. 不过session是有的。
 type StreamConn struct {
 	quic.Stream
-	laddr, raddr net.Addr
+	laddr, raddr        net.Addr
+	relatedSessionState *sessionState
+	isclosed            bool
 }
 
-func (qsc StreamConn) LocalAddr() net.Addr {
-	return qsc.laddr
+func (sc StreamConn) LocalAddr() net.Addr {
+	return sc.laddr
 }
-func (qsc StreamConn) RemoteAddr() net.Addr {
-	return qsc.raddr
+func (sc StreamConn) RemoteAddr() net.Addr {
+	return sc.raddr
 }
 
 //这里必须要同时调用 CancelRead 和 CancelWrite
 // 因为 quic-go这个设计的是双工的，调用Close实际上只是间接调用了 CancelWrite
 // 看 quic-go包中的 quic.SendStream 的注释就知道了.
-func (qsc StreamConn) Close() error {
-	qsc.CancelRead(quic.StreamErrorCode(quic.ConnectionRefused))
-	qsc.CancelWrite(quic.StreamErrorCode(quic.ConnectionRefused))
-	return qsc.Stream.Close()
+func (sc StreamConn) Close() error {
+	if sc.isclosed {
+		return nil
+	}
+	sc.isclosed = true
+	sc.CancelRead(quic.StreamErrorCode(quic.ConnectionRefused))
+	sc.CancelWrite(quic.StreamErrorCode(quic.ConnectionRefused))
+	if rss := sc.relatedSessionState; rss != nil {
+
+		rss.mutex.Lock()
+
+		rss.openedStreamCount--
+
+		rss.mutex.Unlock()
+	}
+	return sc.Stream.Close()
 }
 
 const (
-	our_maxidletimeout       = time.Hour * 2 //time.Second * 45	//idletimeout 设的时间越长越不容易断连.
-	our_HandshakeIdleTimeout = time.Second * 8
-	our_ConnectionIDLength   = 12
+	common_maxidletimeout             = time.Second * 45
+	common_HandshakeIdleTimeout       = time.Second * 8
+	common_ConnectionIDLength         = 12
+	server_maxStreamCountInOneSession = 4
 )
 
 var (
 	AlpnList = []string{"h3"}
 
-	our_ListenConfig = quic.Config{
-		ConnectionIDLength:    our_ConnectionIDLength,
-		HandshakeIdleTimeout:  our_HandshakeIdleTimeout,
-		MaxIdleTimeout:        our_maxidletimeout,
-		MaxIncomingStreams:    320, //32,	//没必要限制stream数搞多个session，我们直接单session, 更多stream
+	common_ListenConfig = quic.Config{
+		ConnectionIDLength:    common_ConnectionIDLength,
+		HandshakeIdleTimeout:  common_HandshakeIdleTimeout,
+		MaxIdleTimeout:        common_maxidletimeout,
+		MaxIncomingStreams:    server_maxStreamCountInOneSession,
 		MaxIncomingUniStreams: -1,
-		//KeepAlive:             true,
+		KeepAlive:             true,
 	}
 
-	our_DialConfig = quic.Config{
-		ConnectionIDLength:   our_ConnectionIDLength,
-		HandshakeIdleTimeout: our_HandshakeIdleTimeout,
-		MaxIdleTimeout:       our_maxidletimeout,
-		//KeepAlive:            true,
+	common_DialConfig = quic.Config{
+		ConnectionIDLength:   common_ConnectionIDLength,
+		HandshakeIdleTimeout: common_HandshakeIdleTimeout,
+		MaxIdleTimeout:       common_maxidletimeout,
+		KeepAlive:            true,
 	}
 )
 
 func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool) (newConnChan chan net.Conn, baseConn any) {
 
-	listener, err := quic.ListenAddr(addr, &tlsConf, &our_ListenConfig)
+	listener, err := quic.ListenAddr(addr, &tlsConf, &common_ListenConfig)
 	if err != nil {
 		if ce := utils.CanLogErr("quic listen"); ce != nil {
 			ce.Write(zap.Error(err))
@@ -145,7 +160,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 						}
 						break
 					}
-					theChan <- StreamConn{stream, session.LocalAddr(), session.RemoteAddr()}
+					theChan <- StreamConn{stream, session.LocalAddr(), session.RemoteAddr(), nil, false}
 				}
 			}()
 		}
@@ -154,11 +169,6 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 
 	return
 }
-
-var (
-	clientconnMap   = make(map[netLayer.HashableAddr]quic.Session)
-	clientconnMutex sync.RWMutex
-)
 
 func isActive(s quic.Session) bool {
 	select {
@@ -169,55 +179,153 @@ func isActive(s quic.Session) bool {
 	}
 }
 
-func DialCommonInitialLayer(serverAddr *netLayer.Addr, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool) any {
+type Client struct {
+	knownServerMaxStreamCount int
 
-	hash := serverAddr.GetHashable()
+	serverAddrStr string
 
-	clientconnMutex.RLock()
-	existSession, has := clientconnMap[hash]
-	clientconnMutex.RUnlock()
-	if has {
-		if isActive(existSession) {
-			return existSession
+	tlsConf                      tls.Config
+	useHysteria, hysteria_manual bool
+	maxbyteCount                 int
+
+	clientconns     map[[16]byte]*sessionState
+	clientconnMutex sync.RWMutex
+}
+
+type sessionState struct {
+	quic.Session
+	id [16]byte
+
+	mutex             sync.Mutex
+	openedStreamCount int
+}
+
+func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, useHysteria bool, maxbyteCount int, hysteria_manual bool) *Client {
+	return &Client{
+		serverAddrStr: addr.String(),
+		tlsConf: tls.Config{
+			InsecureSkipVerify: insecure,
+			ServerName:         host,
+			NextProtos:         alpnList,
+		},
+		useHysteria:     useHysteria,
+		hysteria_manual: hysteria_manual,
+		maxbyteCount:    maxbyteCount,
+	}
+}
+
+//trimSessions移除不Active的session, 并试图返回一个 最佳的可用于新stream的session
+func (c *Client) trimSessions(ss map[[16]byte]*sessionState) (s *sessionState) {
+	minSessionNum := 10000
+	for id, thisState := range ss {
+		if isActive(thisState) {
+
+			if c.knownServerMaxStreamCount == 0 {
+				s = thisState
+				return
+			} else {
+				osc := thisState.openedStreamCount
+
+				if osc < c.knownServerMaxStreamCount {
+
+					if osc < minSessionNum {
+						s = thisState
+						minSessionNum = osc
+
+					}
+				}
+			}
+
+		} else {
+			thisState.CloseWithError(0, "")
+			delete(ss, id)
 		}
 	}
 
-	session, err := quic.DialAddr(serverAddr.String(), &tlsConf, &our_DialConfig)
+	return
+}
+
+func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any {
+	//我们采用预先openStream的策略, 来试出哪些session已经满了, 哪些没满
+	// 已知的是, 一个session满了之后, 要等待 0～45秒 或以上的时间, 才能它才可能腾出空位
+
+	//我们对每一个session所打开过的stream进行计数，这样就可以探知 服务端 的 最大stream数设置.
+
+	if !openBecausePreviousFull {
+
+		c.clientconnMutex.Lock()
+		var theSession *sessionState
+		if len(c.clientconns) > 0 {
+			theSession = c.trimSessions(c.clientconns)
+		}
+		if len(c.clientconns) > 0 {
+			c.clientconnMutex.Unlock()
+			if theSession != nil {
+				return theSession
+
+			}
+		} else {
+			c.clientconns = make(map[[16]byte]*sessionState)
+			c.clientconnMutex.Unlock()
+		}
+	} else if previous != nil && c.knownServerMaxStreamCount == 0 {
+
+		ps := previous.(*sessionState)
+
+		c.knownServerMaxStreamCount = ps.openedStreamCount
+
+		if ce := utils.CanLogDebug("QUIC: knownServerMaxStreamCount"); ce != nil {
+			ce.Write(zap.Int("count", c.knownServerMaxStreamCount))
+		}
+
+	}
+
+	session, err := quic.DialAddr(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
 	if err != nil {
-		if ce := utils.CanLogErr("quic dial"); ce != nil {
+		if ce := utils.CanLogErr("QUIC:  dial failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return nil
 	}
 
-	if useHysteria {
-		if hysteriaMaxByteCount <= 0 {
-			hysteriaMaxByteCount = Default_hysteriaMaxByteCount
+	if c.useHysteria {
+		if c.maxbyteCount <= 0 {
+			c.maxbyteCount = Default_hysteriaMaxByteCount
 		}
 
-		if hysteria_manual {
-			bs := NewBrutalSender_M(congestion.ByteCount(hysteriaMaxByteCount))
+		if c.hysteria_manual {
+			bs := NewBrutalSender_M(congestion.ByteCount(c.maxbyteCount))
 			session.SetCongestionControl(bs)
 
 		} else {
-			bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
+			bs := NewBrutalSender(congestion.ByteCount(c.maxbyteCount))
 			session.SetCongestionControl(bs)
 
 		}
 	}
 
-	clientconnMutex.Lock()
-	clientconnMap[hash] = session
-	clientconnMutex.Unlock()
+	id := utils.GenerateUUID()
 
-	return session
+	var result = &sessionState{Session: session, id: id}
+	c.clientconnMutex.Lock()
+	c.clientconns[id] = result
+	c.clientconnMutex.Unlock()
+
+	return result
 }
 
-func DialSubConn(thing any) (net.Conn, error) {
-	session := thing.(quic.Session)
-	stream, err := session.OpenStreamSync(context.Background())
+func (c *Client) DialSubConn(thing any) (net.Conn, error) {
+	theState := thing.(*sessionState)
+	stream, err := theState.OpenStream()
 	if err != nil {
+
 		return nil, err
+
 	}
-	return StreamConn{stream, session.LocalAddr(), session.RemoteAddr()}, nil
+	theState.mutex.Lock()
+	theState.openedStreamCount++
+
+	theState.mutex.Unlock()
+
+	return StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedSessionState: theState}, nil
 }

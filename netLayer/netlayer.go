@@ -50,27 +50,28 @@ func HasIpv6Interface() bool {
 		return false
 	}
 
-	if utils.LogLevel == utils.Log_debug {
+	/*
+		if utils.LogLevel == utils.Log_debug {
 
-		log.Println("interfaces", len(addrs), addrs)
+			log.Println("interfaces", len(addrs), addrs)
 
-		for _, address := range addrs {
+			for _, address := range addrs {
 
-			if ipnet, ok := address.(*net.IPNet); ok {
+				if ipnet, ok := address.(*net.IPNet); ok {
 
-				isipv6 := false
+					isipv6 := false
 
-				if !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
-					if ipnet.IP.To4() == nil {
-						isipv6 = true
+					if !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
+						if ipnet.IP.To4() == nil {
+							isipv6 = true
+						}
 					}
+					log.Println(ipnet.IP.String(), isipv6)
+
 				}
-				log.Println(ipnet.IP.String(), isipv6)
 
 			}
-
-		}
-	}
+		}*/
 
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {

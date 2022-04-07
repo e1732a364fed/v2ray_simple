@@ -198,12 +198,13 @@ classic:
 // 返回从 wrc读取到的总字节长度（即下载流量）
 func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
 
-	if ce := utils.CanLogDebug("转发结束"); ce != nil {
+	if utils.LogLevel == utils.Log_debug {
+		rtaddrStr := realTargetAddr.String()
 		go func() {
 			n, e := TryCopy(wrc, wlc)
 
-			ce.Write(zap.String("direction", "本地->远程"),
-				zap.String("target", realTargetAddr.String()),
+			utils.CanLogDebug("转发结束").Write(zap.String("direction", "本地->远程"),
+				zap.String("target", rtaddrStr),
 				zap.Int64("bytes", n),
 				zap.Error(e),
 			)
@@ -215,9 +216,8 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
 
 		n, e := TryCopy(wlc, wrc)
 
-		ce2 := utils.CanLogDebug("转发结束")
-		ce2.Write(zap.String("direction", "远程->本地"),
-			zap.String("target", realTargetAddr.String()),
+		utils.CanLogDebug("转发结束").Write(zap.String("direction", "远程->本地"),
+			zap.String("target", rtaddrStr),
 			zap.Int64("bytes", n),
 			zap.Error(e),
 		)

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"strings"
 	"sync/atomic"
 	"syscall"
 
@@ -1090,7 +1091,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 		}
 	case "quic":
 		//quic这里并不是在tls层基础上进行dial，而是直接从传输层dial 或者获取之前已经存在的session
-		dailedCommonConn = client.DialCommonInitialLayerConnFunc()(&realTargetAddr)
+		dailedCommonConn = client.GetQuic_Client().DialCommonConn(false, nil)
 		if dailedCommonConn != nil {
 			//跳过tls阶段
 			goto advLayerStep
@@ -1176,14 +1177,39 @@ advLayerStep:
 	if adv := client.AdvancedLayer(); adv != "" {
 		switch adv {
 		case "quic":
-			clientConn, err = client.DialSubConnFunc()(dailedCommonConn)
+			qclient := client.GetQuic_Client()
+			clientConn, err = qclient.DialSubConn(dailedCommonConn)
 			if err != nil {
-				if ce := utils.CanLogErr("DialSubConnFunc failed"); ce != nil {
-					ce.Write(
-						zap.Error(err),
-					)
+				eStr := err.Error()
+				if strings.Contains(eStr, "too many") {
+
+					if ce := utils.CanLogDebug("DialSubConnFunc got full session, open another one"); ce != nil {
+						ce.Write(
+							zap.String("full reason", eStr),
+						)
+					}
+
+					//第一条连接已满，再开一条session
+					dailedCommonConn = qclient.DialCommonConn(true, dailedCommonConn)
+
+					clientConn, err = qclient.DialSubConn(dailedCommonConn)
+					if err != nil {
+						if ce := utils.CanLogErr("DialSubConnFunc failed with redial new session"); ce != nil {
+							ce.Write(
+								zap.Error(err),
+							)
+						}
+						return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
+					}
+				} else {
+					if ce := utils.CanLogErr("DialSubConnFunc failed"); ce != nil {
+						ce.Write(
+							zap.Error(err),
+						)
+					}
+					return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
 				}
-				return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
+
 			}
 		case "grpc":
 			if grpcClientConn == nil {

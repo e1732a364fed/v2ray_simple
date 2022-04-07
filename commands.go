@@ -59,15 +59,33 @@ func init() {
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成随机ssl证书", func() {
-			err := tlsLayer.GenerateRandomCertKeyFiles("yourcert.pem", "yourcert.key")
+			const certFn = "cert.pem"
+			const keyFn = "cert.key"
+			if utils.FileExist(certFn) {
+				fmt.Printf(certFn)
+				fmt.Printf(" 已存在！\n")
+				return
+			}
+
+			if utils.FileExist(keyFn) {
+				fmt.Printf(keyFn)
+				fmt.Printf(" 已存在！\n")
+				return
+			}
+
+			err := tlsLayer.GenerateRandomCertKeyFiles(certFn, keyFn)
 			if err == nil {
-				fmt.Printf("生成成功！请查看目录中的 yourcert.pem 和 yourcert.key")
+				fmt.Printf("生成成功！请查看目录中的 ")
+				fmt.Printf(certFn)
+				fmt.Printf(" 和 ")
+				fmt.Printf(keyFn)
+				fmt.Printf("\n")
 
 			} else {
 
-				log.Printf("生成失败,")
-				log.Printf(err.Error())
-				log.Printf("\n")
+				fmt.Printf("生成失败,")
+				fmt.Printf(err.Error())
+				fmt.Printf("\n")
 
 			}
 		},

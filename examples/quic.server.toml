@@ -13,7 +13,7 @@ advancedLayer = "quic"
 
 # hy_manual的意思是手动挡, 注意, 你要想提高下载速度，需要手动调节服务端的挡;
 #extra = { congestion_control = "hy", mbps = 100, hy_manual = true } 
-extra = { congestion_control = "hy", mbps = 100 } 
+#extra = { congestion_control = "hy", mbps = 3000 } 
 
 
 [[dial]]

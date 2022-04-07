@@ -465,7 +465,7 @@ func generateConfigFileInteractively() {
 
 			promptDomain := promptui.Prompt{
 				Label:    "域名",
-				Validate: utils.WrapFuncForPromptUI(govalidator.IsDNSName),
+				Validate: func(s string) error { return nil }, //允许不设域名
 			}
 
 			result, err = promptDomain.Run()
