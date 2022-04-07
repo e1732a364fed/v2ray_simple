@@ -1,6 +1,7 @@
 package netLayer
 
 import (
+	"crypto/tls"
 	"errors"
 	"math/rand"
 	"net"
@@ -230,6 +231,7 @@ func (a *Addr) GetNetIPAddr() (na netip.Addr) {
 	return
 }
 
+//a.Network == "udp", "udp4", "udp6"
 func (a *Addr) IsUDP() bool {
 	return IsStrUDP_network(a.Network)
 }
@@ -253,10 +255,18 @@ func (a *Addr) HostStr() string {
 
 func (addr *Addr) Dial() (net.Conn, error) {
 	//log.Println("Dial called", addr, addr.Network)
+	var istls bool
+	var resultConn net.Conn
+	var err error
 
 	switch addr.Network {
 	case "":
 		addr.Network = "tcp"
+		goto tcp
+	case "tcp", "tcp4", "tcp6":
+		goto tcp
+	case "tls": //此形式目前被用于dns配置中 的 dns over tls 的 url中
+		istls = true
 		goto tcp
 	case "udp", "udp4", "udp6":
 		ua := addr.ToUDPAddr()
@@ -267,36 +277,56 @@ func (addr *Addr) Dial() (net.Conn, error) {
 
 		return DialUDP(ua)
 	default:
-		if strings.HasPrefix(addr.Network, "tcp") {
-			goto tcp
-		}
+
 		goto defaultPart
 
 	}
 
 tcp:
+
 	if addr.IP != nil {
 		if addr.IP.To4() == nil {
 			if !machineCanConnectToIpv6 {
 				return nil, ErrMachineCantConnectToIpv6
 			} else {
 
-				return net.DialTCP("tcp6", nil, &net.TCPAddr{
+				resultConn, err = net.DialTCP("tcp6", nil, &net.TCPAddr{
 					IP:   addr.IP,
 					Port: addr.Port,
 				})
+				goto dialedPart
 			}
 		} else {
 
-			return net.DialTCP("tcp4", nil, &net.TCPAddr{
+			resultConn, err = net.DialTCP("tcp4", nil, &net.TCPAddr{
 				IP:   addr.IP,
 				Port: addr.Port,
 			})
+			goto dialedPart
 		}
 
 	}
+
 defaultPart:
-	return net.Dial(addr.Network, addr.String())
+	resultConn, err = net.Dial(addr.Network, addr.String())
+
+dialedPart:
+	if istls && err == nil {
+
+		conf := &tls.Config{}
+
+		if addr.Name != "" {
+			conf.ServerName = addr.Name
+		} else {
+			conf.InsecureSkipVerify = true
+		}
+
+		tlsconn := tls.Client(resultConn, conf)
+		err = tlsconn.Handshake()
+		return tlsconn, err
+	}
+	return resultConn, err
+
 }
 
 // 如果a的ip不为空，则会返回 AtypIP4 或 AtypIP6，否则会返回 AtypDomain

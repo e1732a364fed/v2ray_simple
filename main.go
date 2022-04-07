@@ -45,7 +45,7 @@ var (
 
 	confMode           int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
 	simpleConf         proxy.Simple
-	standardConf       proxy.Standard
+	standardConf       StandardConf
 	directClient, _, _ = proxy.ClientFromURL("direct://")
 	defaultOutClient   proxy.Client
 	default_uuid       string

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/quic"
@@ -60,7 +61,7 @@ func init() {
 					return
 				}
 
-				fmt.Printf("你选择了 %q\n", result)
+				fmt.Printf("你选择了 %s\n", result)
 
 				switch i {
 				case 0:
@@ -136,7 +137,7 @@ func runCli() {
 			return
 		}
 
-		fmt.Printf("你选择了 %q\n", result)
+		fmt.Printf("你选择了 %s\n", result)
 
 		if f := cliCmdList[i].F; f != nil {
 			f()
@@ -156,8 +157,8 @@ func generateConfigFileInteractively() {
 		"将此次生成的配置投入运行（热加载）",
 	}
 
-	confClient := proxy.Standard{}
-	confServer := proxy.Standard{}
+	confClient := StandardConf{}
+	confServer := StandardConf{}
 
 	var clientStr, serverStr string
 
@@ -174,16 +175,16 @@ func generateConfigFileInteractively() {
 			return
 		}
 
-		fmt.Printf("你选择了 %q\n", result)
+		fmt.Printf("你选择了 %s\n", result)
 
 		generateConfStr := func() {
 
-			confClient.Route = []*proxy.RuleConf{{
+			confClient.Route = []*netLayer.RuleConf{{
 				DialTag: "direct",
 				Domains: []string{"geosite:cn"},
 			}}
 
-			confClient.App = &proxy.AppConf{MyCountryISO_3166: "CN"}
+			confClient.App = &AppConf{MyCountryISO_3166: "CN"}
 
 			clientStr, err = utils.GetPurgedTomlStr(confClient)
 			if err != nil {
@@ -210,8 +211,8 @@ func generateConfigFileInteractively() {
 			fmt.Printf("\n")
 
 		case 2: //clear
-			confClient = proxy.Standard{}
-			confServer = proxy.Standard{}
+			confClient = StandardConf{}
+			confServer = StandardConf{}
 			clientStr = ""
 			serverStr = ""
 		case 3: //output
@@ -310,7 +311,7 @@ func generateConfigFileInteractively() {
 				return
 			}
 
-			fmt.Printf("你选择了 %q\n", result)
+			fmt.Printf("你选择了 %s\n", result)
 
 			if i2 < 2 {
 				confClient.Listen = append(confClient.Listen, &proxy.ListenConf{})
@@ -374,7 +375,7 @@ func generateConfigFileInteractively() {
 				return
 			}
 
-			fmt.Printf("你选择了 %q\n", result)
+			fmt.Printf("你选择了 %s\n", result)
 
 			confClient.Dial = append(confClient.Dial, &proxy.DialConf{})
 			clientDial := confClient.Dial[0]
@@ -543,6 +544,9 @@ func generateConfigFileInteractively() {
 				serverListen.TLSKey = "cert.key"
 				serverListen.Insecure = true
 				clientDial.Insecure = true
+
+				fmt.Printf("你选择了默认自签名证书, 这是不安全的, 我们不推荐. 所以自动生成证书这一步需要你一会再到交互模式里选择相应选项进行生成。 \n")
+
 			} else {
 				fmt.Printf("请输入 cert路径\n")
 
@@ -609,7 +613,7 @@ func interactively_hotRemoveServerOrClient() {
 
 	var will_delete_index int
 
-	fmt.Printf("你选择了 %q\n", result)
+	fmt.Printf("你选择了 %s\n", result)
 	switch i {
 	case 0:
 		will_delete_listen = true
@@ -707,7 +711,7 @@ func interactively_hotLoadConfigFile() {
 
 	fmt.Printf("你输入了 %s\n", fpath)
 
-	standardConf, err = proxy.LoadTomlConfFile(fpath)
+	standardConf, err = LoadTomlConfFile(fpath)
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)

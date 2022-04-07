@@ -19,7 +19,6 @@ import (
 
 var (
 	cmdPrintSupportedProtocols bool
-	//cmdGenerateUUID            bool
 
 	interactive_mode bool
 	nodownload       bool
@@ -28,7 +27,6 @@ var (
 
 func init() {
 	flag.BoolVar(&cmdPrintSupportedProtocols, "sp", false, "print supported protocols")
-	//flag.BoolVar(&cmdGenerateUUID, "gu", false, "generate a random valid uuid string")
 	flag.BoolVar(&interactive_mode, "i", false, "enable interactive commandline mode")
 	flag.BoolVar(&nodownload, "nd", false, "don't automatically download any extra data files")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
@@ -84,11 +82,6 @@ func runPreCommands() {
 		tryDownloadMMDB()
 
 	}
-
-	//if cmdGenerateUUID {
-	//	generateAndPrintUUID()
-
-	//}
 
 }
 
@@ -179,7 +172,7 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 protocol = "http"
 `
 
-		clientConf, err := proxy.LoadTomlConfStr(tempClientConfStr)
+		clientConf, err := LoadTomlConfStr(tempClientConfStr)
 		if err != nil {
 			fmt.Println("can not create LoadTomlConfStr: ", err)
 

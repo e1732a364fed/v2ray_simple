@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -13,7 +14,7 @@ import (
 type Simple struct {
 	Server_ThatListenPort_Url string                    `json:"listen"`
 	Client_ThatDialRemote_Url string                    `json:"dial"`
-	Route                     []*RuleConf               `json:"route" toml:"route"`
+	Route                     []*netLayer.RuleConf      `json:"route" toml:"route"`
 	Fallbacks                 []*httpLayer.FallbackConf `json:"fallbacks"`
 	MyCountryISO_3166         string                    `toml:"mycountry" json:"mycountry"`
 }

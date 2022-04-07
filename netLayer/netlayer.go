@@ -110,6 +110,7 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 	return nil
 }
 
+//"udp", "udp4", "udp6"
 func IsStrUDP_network(s string) bool {
 	switch s {
 	case "udp", "udp4", "udp6":
