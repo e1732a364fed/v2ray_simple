@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"io"
-	"log"
 	"net"
 	"strings"
 	"testing"
@@ -97,14 +96,16 @@ func BenchmarkReadVCopy(b *testing.B) {
 	listenAddr := GetRandLocalAddr()
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		log.Fatalln(err)
+		b.Log(err)
+		b.FailNow()
 	}
 
 	bigBytes := make([]byte, 10240) //10k
 
 	n, err := rand.Reader.Read(bigBytes)
 	if err != nil || n != 10240 {
-		log.Fatalln(n, err)
+		b.Log(n, err)
+		b.FailNow()
 	}
 
 	go func() {
@@ -134,13 +135,15 @@ func BenchmarkReadVCopy(b *testing.B) {
 
 	tcpConn, err := net.Dial("tcp", listenAddr)
 	if err != nil {
-		log.Fatalln(err)
+		b.Log(err)
+		b.FailNow()
 	}
 
 	for i := 0; i < transmitCount; i++ {
 		_, e := tcpConn.Write(bigBytes)
 		if e != nil {
-			log.Fatalln(err)
+			b.Log(err)
+			b.FailNow()
 		}
 	}
 	tcpConn.Close()
@@ -156,7 +159,8 @@ func BenchmarkClassicCopy(b *testing.B) {
 	listenAddr := GetRandLocalAddr()
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		log.Fatalln(err)
+		b.Log(err)
+		b.FailNow()
 	}
 
 	const bigBytesLen = 10240
@@ -165,7 +169,8 @@ func BenchmarkClassicCopy(b *testing.B) {
 
 	n, err := rand.Reader.Read(bigBytes)
 	if err != nil || n != bigBytesLen {
-		log.Fatalln(n, err)
+		b.Log(n, err)
+		b.FailNow()
 	}
 
 	go func() {
@@ -207,14 +212,16 @@ func BenchmarkClassicCopy(b *testing.B) {
 
 	tcpConn, err := net.Dial("tcp", listenAddr)
 	if err != nil {
-		log.Fatalln(err)
+		b.Log(err)
+		b.FailNow()
 	}
 	b.StartTimer()
 
 	for i := 0; i < transmitCount; i++ {
 		_, e := tcpConn.Write(bigBytes)
 		if e != nil {
-			log.Fatalln(err)
+			b.Log(err)
+			b.FailNow()
 		}
 	}
 	tcpConn.Close()
@@ -294,7 +301,6 @@ func BenchmarkClassicCopy_SimulateRealWorld(b *testing.B) {
 		for cursor := 0; cursor < bigBytesLen; cursor += unit {
 			_, e := tcpConn.Write(bigBytes[cursor : cursor+unit])
 			if e != nil {
-				//log.Fatalln(err)
 				b.Log(err)
 				b.FailNow()
 			}
@@ -368,7 +374,6 @@ func BenchmarkClassicCopy_SimulateRealWorld_ReadV(b *testing.B) {
 		for cursor := 0; cursor < bigBytesLen; cursor += unit {
 			_, e := tcpConn.Write(bigBytes[cursor : cursor+unit])
 			if e != nil {
-				//log.Fatalln(err)
 				b.Log(err)
 				b.FailNow()
 			}

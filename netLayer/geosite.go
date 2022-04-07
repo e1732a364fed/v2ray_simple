@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -151,7 +152,8 @@ func LoadGeositeFiles() (err error) {
 		return os.ErrNotExist
 	}
 	ref := make(map[string]*GeositeRawList)
-	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+
+	err = filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}

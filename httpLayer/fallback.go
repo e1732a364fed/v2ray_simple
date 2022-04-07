@@ -2,7 +2,6 @@ package httpLayer
 
 import (
 	"bytes"
-	"log"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -304,11 +303,12 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 	for _, fc := range fcl {
 		addr, err := netLayer.NewAddrFromAny(fc.Dest)
 		if err != nil {
-			if utils.ZapLogger != nil {
-				utils.ZapLogger.Fatal("NewClassicFallbackFromConfList, netLayer.NewAddrFromAny err", zap.Error(err))
-			} else {
-				log.Fatalln("NewClassicFallbackFromConfList, netLayer.NewAddrFromAny err", err)
+			if ce := utils.CanLogErr("NewClassicFallbackFromConfList failed"); ce != nil {
+				ce.Write(zap.String("netLayer.NewAddrFromAny err", err.Error()))
 			}
+
+			return nil
+
 		}
 		var aMask byte
 		if len(fc.Alpn) > 2 {

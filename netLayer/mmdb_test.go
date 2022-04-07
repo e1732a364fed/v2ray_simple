@@ -1,7 +1,6 @@
 package netLayer
 
 import (
-	"log"
 	"net"
 	"testing"
 
@@ -22,7 +21,8 @@ func BenchmarkCheckMMDB_country(b *testing.B) {
 	LoadMaxmindGeoipFile(utils.GetFilePath("../" + GeoipFileName))
 
 	if the_geoipdb == nil {
-		log.Fatalln("err load")
+		b.Log("err load")
+		b.FailNow()
 	}
 
 	theIP := net.ParseIP("1.22.233.44")

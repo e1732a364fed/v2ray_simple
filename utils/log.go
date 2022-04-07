@@ -101,7 +101,7 @@ func CanLogLevel(l int, msg string) *zapcore.CheckedEntry {
 }
 
 func CanLogErr(msg string) *zapcore.CheckedEntry {
-	if LogLevel > Log_error {
+	if LogLevel > Log_error || ZapLogger == nil {
 		return nil
 	}
 	return ZapLogger.Check(zap.ErrorLevel, msg)
@@ -109,28 +109,28 @@ func CanLogErr(msg string) *zapcore.CheckedEntry {
 }
 
 func CanLogInfo(msg string) *zapcore.CheckedEntry {
-	if LogLevel > Log_info {
+	if LogLevel > Log_info || ZapLogger == nil {
 		return nil
 	}
 	return ZapLogger.Check(zap.InfoLevel, msg)
 
 }
 func CanLogWarn(msg string) *zapcore.CheckedEntry {
-	if LogLevel > Log_warning {
+	if LogLevel > Log_warning || ZapLogger == nil {
 		return nil
 	}
 	return ZapLogger.Check(zap.WarnLevel, msg)
 
 }
 func CanLogDebug(msg string) *zapcore.CheckedEntry {
-	if LogLevel > Log_debug {
+	if LogLevel > Log_debug || ZapLogger == nil {
 		return nil
 	}
 	return ZapLogger.Check(zap.DebugLevel, msg)
 
 }
 func CanLogFatal(msg string) *zapcore.CheckedEntry {
-	if LogLevel > Log_fatal {
+	if LogLevel > Log_fatal || ZapLogger == nil {
 		return nil
 	}
 	return ZapLogger.Check(zap.FatalLevel, msg)

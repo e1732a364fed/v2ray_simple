@@ -120,6 +120,7 @@ func loadConfig() (err error) {
 
 				if appConf.LogLevel != nil && !utils.IsFlagPassed("ll") {
 					utils.LogLevel = *appConf.LogLevel
+					utils.InitLog()
 
 				}
 				if appConf.NoReadV && !utils.IsFlagPassed("readv") {

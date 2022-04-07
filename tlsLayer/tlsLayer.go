@@ -11,14 +11,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"log"
 	"math/big"
 	"net"
 	"os"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
-	"go.uber.org/zap"
 )
 
 func GenerateRandomeCert_Key() ([]byte, []byte) {
@@ -81,29 +79,22 @@ func GenerateRandomTLSCert() []tls.Certificate {
 
 }
 
-func GenerateRandomCertKeyFiles(cfn, kfn string) {
+func GenerateRandomCertKeyFiles(cfn, kfn string) error {
 
 	cb, kb := GenerateRandomeCert_Key()
 
 	certOut, err := os.Create(cfn)
 	if err != nil {
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal("failed to open file", zap.Error(err))
-		} else {
-			log.Fatalf("failed to open file %s", err)
 
-		}
+		return err
 	}
 
 	certOut.Write(cb)
 
 	kOut, err := os.Create(kfn)
 	if err != nil {
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal("failed to open file", zap.Error(err))
-		} else {
-			log.Fatalf("failed to open file %s", err)
-		}
+
+		return err
 	}
 
 	kOut.Write(kb)
@@ -111,6 +102,7 @@ func GenerateRandomCertKeyFiles(cfn, kfn string) {
 	certOut.Close()
 	kOut.Close()
 
+	return nil
 }
 
 //如 certFile, keyFile 有一项没给出，则会自动生成随机证书

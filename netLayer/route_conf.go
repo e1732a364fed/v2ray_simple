@@ -33,8 +33,9 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *RouteSet) {
 	if len(GeositeListMap) == 0 {
 		err := LoadGeositeFiles()
 		if err != nil {
-			if ce := utils.CanLogWarn("LoadGeositeFiles err"); ce != nil {
-				ce.Write(zap.Error(err))
+			if ce := utils.CanLogErr("LoadGeositeFiles failed"); ce != nil {
+				ce.Write(zap.Error(err), zap.String("Note", "You can use interactive-mode to download geosite files."))
+
 			}
 		}
 	}
@@ -71,6 +72,14 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *RouteSet) {
 				reg, err := regexp.Compile(d[colonIdx+1:])
 				if err == nil {
 					rs.Regex = append(rs.Regex, reg)
+				} else {
+					if ce := utils.CanLogErr("LoadRuleForRouteSet, regex illegal"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+				}
+			default:
+				if ce := utils.CanLogErr("LoadRuleForRouteSet, not supported"); ce != nil {
+					ce.Write(zap.String("item", d))
 				}
 			}
 
@@ -97,6 +106,10 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *RouteSet) {
 		na, e := netip.ParseAddr(ipStr)
 		if e == nil {
 			rs.IPs[na] = true
+		} else {
+			if ce := utils.CanLogErr("LoadRuleForRouteSet, parse ip failed"); ce != nil {
+				ce.Write(zap.String("ipStr", ipStr), zap.Error(e))
+			}
 		}
 	}
 

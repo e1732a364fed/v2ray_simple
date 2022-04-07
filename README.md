@@ -171,9 +171,27 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 电脑客户端的话直接自己到release下载就行。
 
+#### 客户端的 geoip和 geosite
+
 注意如果要geoip分流，而且要自己的mmdb文件的话（高玩情况），还要下载mmdb；
 
+
 默认第一次运行是会自动下载mmdb文件的，所以不用太担心。
+
+不过geosite的话，也是需要下载的，可以通过交互模式进行下载，或者通过如下命令下载
+
+```sh
+#在verysimple可执行文件所在目录
+git clone github.com/v2fly/domain-list-community
+mv domain-list-community geosite
+```
+
+通过git下载的好处是, 自己想要更新时，直接 `git pull` 即可;
+
+通过 交互模式进行下载的好处是, 如果你配置了配置文件, 并且有一个可用的节点, 则交互模式优先通过你的节点来下载geosite.
+
+这样可以避免github被墙的情况。
+
 
 ### 编译安装
 

@@ -45,7 +45,10 @@ func NewClient(dc *DialConf) (Client, error) {
 		if e != nil {
 			return nil, e
 		}
-		configCommonForClient(c, dc)
+		e = configCommonForClient(c, dc)
+		if e != nil {
+			return nil, e
+		}
 		if dc.TLS {
 			c.SetUseTLS()
 			e = prepareTLS_forClient(c, dc)
@@ -61,8 +64,10 @@ func NewClient(dc *DialConf) (Client, error) {
 			if err != nil {
 				return c, err
 			}
-			configCommonForClient(c, dc)
-
+			err = configCommonForClient(c, dc)
+			if err != nil {
+				return nil, err
+			}
 			c.SetUseTLS()
 			err = prepareTLS_forClient(c, dc)
 			return c, err
@@ -125,18 +130,17 @@ func NewServer(lc *ListenConf) (Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		configCommonForServer(ser, lc)
+		err = configCommonForServer(ser, lc)
+		if err != nil {
+			return nil, err
+		}
 
 		if lc.TLS {
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
-				if utils.ZapLogger != nil {
-					utils.ZapLogger.Fatal("prepareTLS failed", zap.Error(err))
-				} else {
-					log.Fatalf("prepareTLS error %s\n", err)
+				return nil, utils.ErrInErr{ErrDesc: "prepareTLS failed", ErrDetail: err}
 
-				}
 			}
 			return ser, nil
 		}
@@ -150,18 +154,15 @@ func NewServer(lc *ListenConf) (Server, error) {
 			if err != nil {
 				return nil, err
 			}
-			configCommonForServer(ser, lc)
+			err = configCommonForServer(ser, lc)
+			if err != nil {
+				return nil, err
+			}
 
 			ser.SetUseTLS()
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
-
-				if utils.ZapLogger != nil {
-					utils.ZapLogger.Fatal("prepareTLS failed", zap.Error(err))
-				} else {
-					log.Fatalf("prepareTLS error %s\n", err)
-
-				}
+				return nil, utils.ErrInErr{ErrDesc: "prepareTLS failed", ErrDetail: err}
 
 			}
 			return ser, nil
@@ -286,7 +287,7 @@ func configCommon(ser ProxyCommon, cc *CommonConf) {
 }
 
 //SetAddrStr, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon(setAdvancedLayer)
-func configCommonForClient(cli ProxyCommon, dc *DialConf) {
+func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 	cli.setNetwork(dc.Network)
 	cli.setIsDial(true)
 	cli.setDialConf(dc)
@@ -299,12 +300,13 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) {
 	configCommon(cli, &dc.CommonConf)
 
 	if dc.AdvancedLayer == "ws" {
-		cli.initWS_client()
+		return cli.initWS_client()
 	}
+	return nil
 }
 
 //SetAddrStr,setNetwork, setTag, setCantRoute,setListenConf(lc),setFallback, call configCommon
-func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
+func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	ser.setNetwork(lc.Network)
 	ser.setListenConf(lc)
@@ -314,10 +316,17 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 
 	switch lc.AdvancedLayer {
 	case "ws":
-		ser.initWS_server()
+		err := ser.initWS_server()
+		if err != nil {
+			return err
+		}
 
 	case "grpc":
-		ser.initGRPC_server()
+		err := ser.initGRPC_server()
+		if err != nil {
+			return err
+		}
+
 		//case "quic":
 
 		//因为quic接管了tls层, 而我们的configCommonForServer是在tls配置之前被调用的
@@ -331,15 +340,12 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) {
 		fa, err := netLayer.NewAddrFromAny(fallbackThing)
 
 		if err != nil {
-			if utils.ZapLogger != nil {
-				utils.ZapLogger.Fatal("configCommonURLQueryForServer failed", zap.Any("invalid fallback", fallbackThing))
-			} else {
-				log.Fatalln("invalid fallback", fallbackThing)
+			return utils.ErrInErr{ErrDesc: "configCommonURLQueryForServer failed", Data: fallbackThing}
 
-			}
 		}
 
 		ser.setFallback(fa)
 	}
 
+	return nil
 }

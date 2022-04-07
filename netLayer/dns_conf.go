@@ -1,7 +1,6 @@
 package netLayer
 
 import (
-	"log"
 	"net"
 	"net/netip"
 
@@ -20,21 +19,35 @@ type SpecialDnsServerConf struct {
 	Domains    []string `toml:"domain"` //指定哪些域名需要通过 该dns服务器进行查询
 }
 
-func loadSpecialDnsServerConf_fromTomlUnmarshaledMap(m map[string]any) *SpecialDnsServerConf {
+func loadSpecialDnsServerConf_fromTomlUnmarshalledMap(m map[string]any) *SpecialDnsServerConf {
 	addr := m["addr"]
 	if addr == nil {
+
+		if ce := utils.CanLogErr("LoadDnsMachine, addr required"); ce != nil {
+			ce.Write()
+		}
+
 		return nil
 	}
 	addrStr, ok := addr.(string)
 	if !ok {
+		if ce := utils.CanLogErr("LoadDnsMachine, addr not a string"); ce != nil {
+			ce.Write()
+		}
 		return nil
 	}
 	domains := m["domain"]
 	if domains == nil {
+		if ce := utils.CanLogErr("LoadDnsMachine, domain required"); ce != nil {
+			ce.Write()
+		}
 		return nil
 	}
 	domainsAnySlice, ok := domains.([]any)
 	if !ok {
+		if ce := utils.CanLogErr("LoadDnsMachine, domain not a list"); ce != nil {
+			ce.Write()
+		}
 		return nil
 	}
 	domainsSlice := []string{}
@@ -42,6 +55,9 @@ func loadSpecialDnsServerConf_fromTomlUnmarshaledMap(m map[string]any) *SpecialD
 	for _, anyD := range domainsAnySlice {
 		dstr, ok := anyD.(string)
 		if !ok {
+			if ce := utils.CanLogErr("LoadDnsMachine, domain list contains non-string item"); ce != nil {
+				ce.Write()
+			}
 			return nil
 		}
 		domainsSlice = append(domainsSlice, dstr)
@@ -59,7 +75,6 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 	var ok = false
 
 	if len(conf.Servers) > 0 {
-		//log.Println("conf.Servers", conf.Servers)
 		ok = true
 		servers := conf.Servers
 
@@ -70,6 +85,10 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 			case string:
 				ad, e := NewAddrByURL(server)
 				if e != nil {
+					if ce := utils.CanLogErr("LoadDnsMachine parse server url failed"); ce != nil {
+						ce.Write(zap.Error(e))
+					}
+
 					continue
 				}
 
@@ -77,21 +96,35 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 
 			case map[string]any:
 
-				realServer := loadSpecialDnsServerConf_fromTomlUnmarshaledMap(server)
+				realServer := loadSpecialDnsServerConf_fromTomlUnmarshalledMap(server)
 				if realServer == nil {
 					continue
 				}
 
 				if len(realServer.Domains) <= 0 { //既然是特殊dns服务器, 那么就必须指定哪些域名要使用该dns服务器进行查询
+					if ce := utils.CanLogErr("LoadDnsMachine, special domain list required"); ce != nil {
+						ce.Write()
+					}
+
 					continue
 				}
 
 				addr, e := NewAddrByURL(realServer.AddrUrlStr)
 				if e != nil {
+
+					if ce := utils.CanLogErr("LoadDnsMachine, server url invalid"); ce != nil {
+						ce.Write(zap.Error(e))
+					}
+
 					continue
 				}
 
 				if err := dm.AddNewServer(realServer.AddrUrlStr, &addr); err != nil {
+
+					if ce := utils.CanLogErr("LoadDnsMachine, AddNewServer failed"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+
 					continue
 				}
 
@@ -121,12 +154,12 @@ func LoadDnsMachine(conf *DnsConf) *DNSMachine {
 				for _, str := range value {
 					ad, err := NewAddrFromAny(str)
 					if err != nil {
-						if utils.ZapLogger != nil {
-							utils.ZapLogger.Fatal("LoadDnsMachine loading host err", zap.Error(err))
-						} else {
-							log.Fatalf("LoadDnsMachine loading host err %s\n", err)
 
+						if ce := utils.CanLogErr("LoadDnsMachine loading SpecialIP from list failed"); ce != nil {
+							ce.Write(zap.Error(err))
 						}
+
+						return nil
 					}
 
 					dm.SpecialIPPollicy[thishost] = append(dm.SpecialIPPollicy[thishost], ad.GetHashable().Addr())

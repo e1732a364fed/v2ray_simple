@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -32,11 +31,13 @@ func TestDNSLookup_CN(t *testing.T) {
 
 	r, _, err := c.Exchange(m, "114.114.114.114:53")
 	if r == nil {
-		log.Fatalln("*** error: ", err.Error())
+		t.Log("*** error: ", err.Error())
+		t.FailNow()
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
-		log.Fatalln("*** err2 ", r.Rcode, r)
+		t.Log("*** err2 ", r.Rcode, r)
+		t.FailNow()
 	}
 
 	for _, a := range r.Answer {
@@ -98,23 +99,28 @@ key = "cert.key"
 	//domodemo in
 	clientEndInServer, err := proxy.NewServer(clientConf.Listen[0])
 	if err != nil {
-		log.Fatalln("can not create clientEndInServer: ", err)
+		t.Log("can not create clientEndInServer: ", err)
+		t.FailNow()
+
 	}
 	// vless out
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
-		log.Fatalln("can not create clientEndOutClient: ", err)
+		t.Log("can not create clientEndOutClient: ", err)
+		t.FailNow()
 	}
 
 	//vless in
 	serverEndInServer, err := proxy.NewServer(serverConf.Listen[0])
 	if err != nil {
-		log.Fatalln("can not create serverEndInServer: ", err)
+		t.Log("can not create serverEndInServer: ", err)
+		t.FailNow()
 	}
 	// direct out
 	serverEndOutClient, err := proxy.NewClient(serverConf.Dial[0])
 	if err != nil {
-		log.Fatalln("can not create serverEndOutClient: ", err)
+		t.Log("can not create serverEndOutClient: ", err)
+		t.FailNow()
 	}
 
 	listenSer(clientEndInServer, clientEndOutClient, false)
@@ -126,11 +132,13 @@ key = "cert.key"
 
 	r, _, err := c.Exchange(m, "127.0.0.1:1080")
 	if r == nil {
-		log.Fatalln("error: ", err.Error())
+		t.Log("error: ", err.Error())
+		t.FailNow()
 	}
 
 	if r.Rcode != dns.RcodeSuccess {
-		log.Fatalln("err2 ", r.Rcode, r)
+		t.Log("err2 ", r.Rcode, r)
+		t.FailNow()
 	}
 
 	for _, a := range r.Answer {

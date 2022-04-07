@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -134,12 +135,12 @@ type ProxyCommon interface {
 	GetWS_Client() *ws.Client //for outClient
 	GetWS_Server() *ws.Server //for inServer
 
-	initWS_client() //for outClient
-	initWS_server() //for inServer
+	initWS_client() error //for outClient
+	initWS_server() error //for inServer
 
 	GetGRPC_Server() *grpc.Server
 
-	initGRPC_server()
+	initGRPC_server() error
 
 	IsMux() bool //如果用了grpc则此方法返回true
 
@@ -207,7 +208,10 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 
 			na, e := netLayer.NewAddr(com.AddrStr())
 			if e != nil {
-				log.Fatalln("prepareTLS_forClient,quic,netLayer.NewAddr err: ", e)
+				if ce := utils.CanLogErr("prepareTLS_forClient,quic,netLayer.NewAddr failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+				return e
 			}
 			return quic.DialCommonInitialLayer(&na, tls.Config{
 				InsecureSkipVerify: dc.Insecure,
@@ -297,7 +301,12 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
 
 			if err != nil {
-				log.Fatalf("can't create tls cert from file: %s, %s, %s\n", lc.TLSCert, lc.TLSKey, err)
+
+				if ce := utils.CanLogErr("can't create tls cert"); ce != nil {
+					ce.Write(zap.String("cert", lc.TLSCert), zap.String("key", lc.TLSKey), zap.Error(err))
+				}
+
+				return nil, nil
 			}
 
 			return quic.ListenInitialLayers(com.AddrStr(), tls.Config{
@@ -575,15 +584,9 @@ func (s *ProxyCommonStruct) GetGRPC_Server() *grpc.Server {
 }
 
 //for outClient
-func (s *ProxyCommonStruct) initWS_client() {
+func (s *ProxyCommonStruct) initWS_client() error {
 	if s.dialConf == nil {
-		const eStr = "initWS_client failed when no dialConf assigned"
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal(eStr)
-		} else {
-			log.Fatal(eStr)
-
-		}
+		return errors.New("initWS_client failed when no dialConf assigned")
 	}
 	path := s.dialConf.Path
 	if path == "" { // 至少Path需要为 "/"
@@ -602,29 +605,19 @@ func (s *ProxyCommonStruct) initWS_client() {
 	c, e := ws.NewClient(s.dialConf.GetAddrStr(), path)
 	if e != nil {
 
-		const eStr2 = "initWS_client failed"
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal(eStr2, zap.Error(e))
-		} else {
-			log.Fatal(eStr2, e)
-
-		}
+		return utils.ErrInErr{ErrDesc: "initWS_client failed", ErrDetail: e}
 
 	}
 	c.UseEarlyData = useEarlyData
 	s.ws_c = c
 
+	return nil
 }
 
-func (s *ProxyCommonStruct) initWS_server() {
+func (s *ProxyCommonStruct) initWS_server() error {
 	if s.listenConf == nil {
 
-		const eStr3 = "initWS_server failed when no listenConf assigned"
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal(eStr3)
-		} else {
-			log.Fatal(eStr3)
-		}
+		return errors.New("initWS_server failed when no listenConf assigned")
 
 	}
 	path := s.listenConf.Path
@@ -644,30 +637,24 @@ func (s *ProxyCommonStruct) initWS_server() {
 	wss.UseEarlyData = useEarlyData
 
 	s.ws_s = wss
+
+	return nil
 }
 
-func (s *ProxyCommonStruct) initGRPC_server() {
+func (s *ProxyCommonStruct) initGRPC_server() error {
 	if s.listenConf == nil {
 
-		const eStr1 = "initGRPC_server failed when no listenConf assigned"
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal(eStr1)
-		} else {
-			log.Fatal(eStr1)
-		}
+		return errors.New("initGRPC_server failed when no listenConf assigned")
 
 	}
 
 	serviceName := s.listenConf.Path
 	if serviceName == "" { //不能为空
 
-		const eStr2 = "initGRPC_server failed, path must be specified"
-		if utils.ZapLogger != nil {
-			utils.ZapLogger.Fatal(eStr2)
-		} else {
-			log.Fatal(eStr2)
-		}
+		return errors.New("initGRPC_server failed, path must be specified")
+
 	}
 
 	s.grpc_s = grpc.NewServer(serviceName)
+	return nil
 }

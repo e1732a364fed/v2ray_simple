@@ -100,6 +100,7 @@ func main() {
 		printVersion()
 
 	}
+	utils.InitLog()
 
 	if startPProf {
 		f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
@@ -125,8 +126,6 @@ func main() {
 	//Printf 纯 string 时 不会发生 escapes to heap 现象，所以我们此时尽量用 Printf
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
-
-	utils.InitLog()
 
 	runPreCommands()
 
@@ -174,7 +173,10 @@ func main() {
 
 			thisServer, err := proxy.NewServer(thisConf)
 			if err != nil {
-				log.Fatalln("can not create local server: ", err)
+				if ce := utils.CanLogErr("can not create local server:"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				continue
 			}
 
 			allServers = append(allServers, thisServer)
@@ -208,7 +210,10 @@ func main() {
 
 			thisClient, err := proxy.NewClient(thisConf)
 			if err != nil {
-				log.Fatalln("can not create remote client: ", err)
+				if ce := utils.CanLogErr("can not create remote client: "); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				continue
 			}
 			allClients = append(allClients, thisClient)
 
@@ -217,7 +222,13 @@ func main() {
 			}
 		}
 
-		defaultOutClient = allClients[0]
+		if len(allClients) > 0 {
+			defaultOutClient = allClients[0]
+
+		} else {
+			defaultOutClient = directClient
+		}
+
 	}
 
 	// 后台运行主代码，而main函数只监听中断信号
@@ -282,7 +293,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 
 		handleFunc := inServer.HandleInitialLayersFunc()
 		if handleFunc == nil {
-			utils.Fatal("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
+			panic("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
 		}
 
 		//baseConn可以为nil，quic就是如此
@@ -349,7 +360,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 
 	} else {
 		if err != nil {
-			utils.ZapLogger.Fatal(
+			utils.ZapLogger.Error(
 				"can not listen inServer on %s %s\n", zap.String("addr", inServer.AddrStr()), zap.Error(err))
 
 		}
@@ -647,7 +658,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		if iics.theFallbackFirstBuffer == nil {
 			//不应该，至少能读到1字节的。
 
-			utils.Fatal("No FirstBuffer")
+			panic("No FirstBuffer")
 
 		}
 	}

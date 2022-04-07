@@ -61,7 +61,7 @@ win10_arm:
 
 
 clean:
-	rm -f verysimple
-	rm -f verysimple.exe
+	rm -f ${prefix}
+	rm -f ${prefix}.exe
 	rm -f ${prefix}_*
 	rm -f *.tar.xz
