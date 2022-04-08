@@ -124,7 +124,6 @@ func main() {
 
 	netLayer.Prepare()
 
-	//Printf 纯 string 时 不会发生 escapes to heap 现象，所以我们此时尽量用 Printf
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
 
@@ -232,9 +231,6 @@ func main() {
 
 	}
 
-	// 后台运行主代码，而main函数只监听中断信号
-	// TODO: 未来main函数可以推出 交互模式，等未来推出动态增删用户、查询流量等功能时就有用;
-	//  或可用于交互生成自己想要的配置
 	configFileQualifiedToRun := false
 
 	if (defaultInServer != nil || len(allServers) > 0) && defaultOutClient != nil {
@@ -488,7 +484,6 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			// 我们直接循环监听然后分别用 新goroutine发向 handshakeInserver_and_passToOutClient
 
 			if ce := utils.CanLogDebug("start upgrade grpc"); ce != nil {
-				//log.Printf("start upgrade grpc\n")
 				ce.Write()
 			}
 
@@ -503,7 +498,6 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				newGConn, ok := <-grpcs.NewConnChan
 				if !ok {
 					if ce := utils.CanLogWarn("grpc getNewSubConn not ok"); ce != nil {
-						//log.Printf("\n")
 						ce.Write()
 					}
 
@@ -526,21 +520,17 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			re := rp.ReadAndParse(wrappedConn)
 			if re != nil {
 				if re == httpLayer.ErrNotHTTP_Request {
-					if ce := utils.CanLogErr("ws check err"); ce != nil {
+					if ce := utils.CanLogErr("WS check ErrNotHTTP_Request"); ce != nil {
 						ce.Write(
 							zap.String("handler", inServer.AddrStr()),
-							zap.String("reason", "got not http request"),
 						)
-						//log.Printf("ws: got not http request %s\n", inServer.AddrStr())
 					}
 
 				} else {
-					if ce := utils.CanLogErr("ws check err"); ce != nil {
-						//log.Printf("ws: handshake read error %s\n", inServer.AddrStr())
+					if ce := utils.CanLogErr("WS check handshake read failed"); ce != nil {
 
 						ce.Write(
 							zap.String("handler", inServer.AddrStr()),
-							zap.String("reason", "handshake read error"),
 						)
 					}
 				}
@@ -555,18 +545,15 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				iics.theRequestPath = rp.Path
 				iics.theFallbackFirstBuffer = rp.WholeRequestBuf
 
-				if ce := utils.CanLogDebug("ws check err"); ce != nil {
+				if ce := utils.CanLogDebug("WS check err"); ce != nil {
 
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
-						zap.String("reason", "path not match"),
-						zap.String("shouldbe", wss.Thepath),
+						zap.String("reason", "path/method not match"),
+						zap.String("validPath", wss.Thepath),
 						zap.String("gotMethod", rp.Method),
 						zap.String("gotPath", rp.Path),
 					)
-
-					//log.Printf("ws path not match %s %s should be: %s\n", rp.Method, rp.Path, wss.Thepath)
-
 				}
 
 				iics.shouldFallback = true
@@ -577,15 +564,12 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			//此时path和method都已经匹配了, 如果还不能通过那就说明后面的header等数据不满足ws的upgrade请求格式, 肯定是非法数据了,也不用再回落
 			wsConn, err := wss.Handshake(rp.WholeRequestBuf, wrappedConn)
 			if err != nil {
-				if ce := utils.CanLogErr("failed inServer ws handshake"); ce != nil {
+				if ce := utils.CanLogErr("InServer ws handshake failed"); ce != nil {
 
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
 						zap.Error(err),
 					)
-
-					//log.Printf("failed in inServer websocket handshake %s %s\n", inServer.AddrStr(), err)
-
 				}
 
 				wrappedConn.Close()
@@ -670,7 +654,7 @@ checkFallback:
 
 	if mainFallback != nil {
 
-		utils.Debug("checkFallback")
+		utils.Debug("Fallback check")
 
 		var thisFallbackType byte
 
@@ -714,9 +698,9 @@ checkFallback:
 
 		fbAddr := mainFallback.GetFallback(thisFallbackType, fallback_params...)
 
-		if ce := utils.CanLogDebug("checkFallback"); ce != nil {
+		if ce := utils.CanLogDebug("Fallback check"); ce != nil {
 			ce.Write(
-				zap.String("matched fallback", fbAddr.String()),
+				zap.String("matched", fbAddr.String()),
 			)
 		}
 		if fbAddr != nil {
@@ -755,7 +739,7 @@ afterLocalServerHandshake:
 
 	if !iics.forbidDNS_orRoute && dnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
 
-		if ce := utils.CanLogDebug("querying"); ce != nil {
+		if ce := utils.CanLogDebug("Dns querying"); ce != nil {
 			ce.Write(zap.String("domain", targetAddr.Name))
 		}
 
@@ -764,7 +748,7 @@ afterLocalServerHandshake:
 		if ip != nil {
 			targetAddr.IP = ip
 
-			if ce2 := utils.CanLogDebug("dns query result"); ce2 != nil {
+			if ce2 := utils.CanLogDebug("Dns result"); ce2 != nil {
 				ce2.Write(zap.String("domain", targetAddr.Name), zap.String("ip", ip.String()))
 			}
 		}
@@ -794,23 +778,22 @@ afterLocalServerHandshake:
 			iics.routedToDirect = true
 			routed = true
 
-			if ce := utils.CanLogInfo("routed to direct"); ce != nil {
+			if ce := utils.CanLogInfo("Route to direct"); ce != nil {
 				ce.Write(
 					zap.String("target", targetAddr.UrlString()),
 				)
 			}
 		} else {
-			//log.Println("outtag", outtag, clientsTagMap)
 
 			if tagC, ok := clientsTagMap[outtag]; ok {
 				client = tagC
 				routed = true
-				if ce := utils.CanLogInfo("routed"); ce != nil {
+				if ce := utils.CanLogInfo("Route"); ce != nil {
 					ce.Write(
-						zap.Any("source", desc),
 						zap.String("to outtag", outtag),
-						zap.String("P", proxy.GetFullName(client)),
-						zap.String("addr", client.AddrStr()),
+						zap.String("with addr", client.AddrStr()),
+						zap.String("and protocol", proxy.GetFullName(client)),
+						zap.Any("for source", desc),
 					)
 				}
 			}
@@ -818,7 +801,7 @@ afterLocalServerHandshake:
 	}
 
 	if !routed {
-		if ce := utils.CanLogDebug("not routed, using default"); ce != nil {
+		if ce := utils.CanLogDebug("Default Route"); ce != nil {
 			ce.Write(
 				zap.Any("source", targetAddr.String()),
 				zap.String("client", proxy.GetFullName(client)),

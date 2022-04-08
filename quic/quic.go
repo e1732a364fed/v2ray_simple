@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
@@ -62,11 +63,8 @@ func (sc StreamConn) Close() error {
 	sc.CancelWrite(quic.StreamErrorCode(quic.ConnectionRefused))
 	if rss := sc.relatedSessionState; rss != nil {
 
-		rss.mutex.Lock()
+		atomic.AddInt32(&rss.openedStreamCount, -1)
 
-		rss.openedStreamCount--
-
-		rss.mutex.Unlock()
 	}
 	return sc.Stream.Close()
 }
@@ -180,7 +178,7 @@ func isActive(s quic.Session) bool {
 }
 
 type Client struct {
-	knownServerMaxStreamCount int
+	knownServerMaxStreamCount int32
 
 	serverAddrStr string
 
@@ -189,15 +187,14 @@ type Client struct {
 	maxbyteCount                 int
 
 	clientconns     map[[16]byte]*sessionState
-	clientconnMutex sync.RWMutex
+	sessionMapMutex sync.RWMutex
 }
 
 type sessionState struct {
 	quic.Session
 	id [16]byte
 
-	mutex             sync.Mutex
-	openedStreamCount int
+	openedStreamCount int32
 }
 
 func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, useHysteria bool, maxbyteCount int, hysteria_manual bool) *Client {
@@ -224,9 +221,9 @@ func (c *Client) trimSessions(ss map[[16]byte]*sessionState) (s *sessionState) {
 				s = thisState
 				return
 			} else {
-				osc := thisState.openedStreamCount
+				osc := int(thisState.openedStreamCount)
 
-				if osc < c.knownServerMaxStreamCount {
+				if osc < int(c.knownServerMaxStreamCount) {
 
 					if osc < minSessionNum {
 						s = thisState
@@ -253,20 +250,20 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 	if !openBecausePreviousFull {
 
-		c.clientconnMutex.Lock()
+		c.sessionMapMutex.Lock()
 		var theSession *sessionState
 		if len(c.clientconns) > 0 {
 			theSession = c.trimSessions(c.clientconns)
 		}
 		if len(c.clientconns) > 0 {
-			c.clientconnMutex.Unlock()
+			c.sessionMapMutex.Unlock()
 			if theSession != nil {
 				return theSession
 
 			}
 		} else {
 			c.clientconns = make(map[[16]byte]*sessionState)
-			c.clientconnMutex.Unlock()
+			c.sessionMapMutex.Unlock()
 		}
 	} else if previous != nil && c.knownServerMaxStreamCount == 0 {
 
@@ -275,7 +272,7 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 		c.knownServerMaxStreamCount = ps.openedStreamCount
 
 		if ce := utils.CanLogDebug("QUIC: knownServerMaxStreamCount"); ce != nil {
-			ce.Write(zap.Int("count", c.knownServerMaxStreamCount))
+			ce.Write(zap.Int32("count", c.knownServerMaxStreamCount))
 		}
 
 	}
@@ -307,9 +304,9 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 	id := utils.GenerateUUID()
 
 	var result = &sessionState{Session: session, id: id}
-	c.clientconnMutex.Lock()
+	c.sessionMapMutex.Lock()
 	c.clientconns[id] = result
-	c.clientconnMutex.Unlock()
+	c.sessionMapMutex.Unlock()
 
 	return result
 }
@@ -322,10 +319,8 @@ func (c *Client) DialSubConn(thing any) (net.Conn, error) {
 		return nil, err
 
 	}
-	theState.mutex.Lock()
-	theState.openedStreamCount++
 
-	theState.mutex.Unlock()
+	atomic.AddInt32(&theState.openedStreamCount, 1)
 
 	return StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedSessionState: theState}, nil
 }

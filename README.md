@@ -200,23 +200,10 @@ git clone https://github.com/hahahrfool/v2ray_simple
 cd v2ray_simple && go build
 ```
 
-
-可选拷贝示例文件
-```sh
-#如果使用极简模式，则复制vs.json文件
-cp examples/vs.client.json client.json
-cp examples/vs.server.json server.json
-
-#如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
-cp examples/vlesss.client.toml client.toml
-cp examples/vlesss.server.toml server.toml
-```
-
-如果你不拷贝示例文件，也可以通过 [交互模式](#交互模式) 来生成自定义的配置。
-
 详细优化的编译参数请参考Makefile文件
 
-如果你是直接下载的可执行文件，则不需要 go build了，直接复制 示例文件即可
+如果你是直接下载的可执行文件，则不需要 go build
+
 
 #### 关于内嵌geoip 文件
 
@@ -240,6 +227,26 @@ cp examples/vlesss.server.toml server.toml
 ## 运行方式
 
 本作支持多种配置格式，方便不同需求的同学使用
+
+### 运行前的准备
+
+若为客户端，运行 `./verysimple -i` 进入交互模式，选择下载geosite文件
+
+第一次运行时还会自动下载geoip文件。
+
+可选拷贝示例文件
+```sh
+#如果使用极简模式，则复制vs.json文件
+cp examples/vs.client.json client.json
+cp examples/vs.server.json server.json
+
+#如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
+cp examples/vlesss.client.toml client.toml
+cp examples/vlesss.server.toml server.toml
+```
+
+如果你不拷贝示例文件，也可以通过 [交互模式](#交互模式) 来生成自定义的配置。
+
 ### 极简模式
 
 ```sh

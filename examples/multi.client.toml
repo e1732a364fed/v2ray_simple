@@ -22,7 +22,8 @@ servers = [
 	"udp://114.114.114.114:53",      # 如果把该url指向我们dokodemo监听的端口，就可以达到通过节点请求dns的目的.
 	#"udp://127.0.0.1:63782",      # 如这一行 就是通过我们节点请求dns
 	
-	#{ addr = "udp://8.8.8.8:53", domain = [ "google.com" ] }	# 还可以为特定域名指定特定服务器
+	#{ addr = "udp://8.8.8.8:53", domain = [ "google.com" ] },	# 还可以为特定域名指定特定服务器
+	#{ addr = "tls://223.5.5.5:853", domain = [ "twitter.com" ] }	# 还可以 用 dns over tls
 ]
 
 [dns.hosts]     # 自己定义的dns解析
@@ -33,6 +34,7 @@ servers = [
 protocol = "http"
 host = "127.0.0.1"
 port = 1080
+# noroute = true	# 如果设置了noroute，则从该listen接受到的数据绝对不会被分流.
 
 [[listen]]
 protocol = "socks5"
@@ -46,7 +48,7 @@ host = "127.0.0.1"
 port = 63782
 target = "udp://8.8.8.8:53"     #必须写这种url格式，前面是udp或者tcp，后面要加端口, 我们要转发到udp地址，所以用udp。
 
-# 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(1.1.1.1，即cloudflare的dns服务器)
+# 这个dokodemo 协议 在这一个示例中, 专门用于监听dns请求, 会通过我们的dial 来转发到 target(8.8.8.8，即google的dns服务器)
 
 # 我们电脑只要配置好dns服务器指向127.0.0.1:63782，就可以通过我们的节点去申请实际的udp的dns请求，这里就是通过我们的 my_vless1 这个节点转发。
 # 只要是定向的流量，如果某客户端可以自己指定地址，那么我们就可以用dokodemo进行转发
