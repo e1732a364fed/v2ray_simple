@@ -97,9 +97,14 @@ var (
 	}
 )
 
-func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool) (newConnChan chan net.Conn, baseConn any) {
+func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool, customMaxStreamCountInOneSession int64) (newConnChan chan net.Conn, baseConn any) {
 
-	listener, err := quic.ListenAddr(addr, &tlsConf, &common_ListenConfig)
+	thisConfig := common_ListenConfig
+	if customMaxStreamCountInOneSession > 0 {
+		thisConfig.MaxIncomingStreams = customMaxStreamCountInOneSession
+	}
+
+	listener, err := quic.ListenAddr(addr, &tlsConf, &thisConfig)
 	if err != nil {
 		if ce := utils.CanLogErr("quic listen"); ce != nil {
 			ce.Write(zap.Error(err))

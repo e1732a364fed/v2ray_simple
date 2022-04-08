@@ -103,8 +103,19 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 		var useHysteria bool
 		var hysteria_manual bool
 		var maxbyteCount int
+		var maxStreamCountInOneSession int64
 
 		if lc.Extra != nil {
+
+			if thing := lc.Extra["maxStreamCountInOneSession"]; thing != nil {
+				if count, ok := thing.(int64); ok && count > 0 {
+					log.Println("maxStreamCountInOneSession,", count)
+					maxStreamCountInOneSession = count
+
+				}
+
+			}
+
 			if thing := lc.Extra["congestion_control"]; thing != nil {
 				if use, ok := thing.(string); ok && use == "hy" {
 					useHysteria = true
@@ -153,7 +164,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 				ServerName:         lc.Host,
 				Certificates:       certArray,
 				NextProtos:         alpnList,
-			}, useHysteria, maxbyteCount, hysteria_manual)
+			}, useHysteria, maxbyteCount, hysteria_manual, maxStreamCountInOneSession)
 
 		})
 
