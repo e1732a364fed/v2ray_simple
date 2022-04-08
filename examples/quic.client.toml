@@ -16,6 +16,10 @@ advancedLayer = "quic"
 
 #alpn = ["asdfsadf"]    # 如果alpn没指定，则会自动使用 "h3"作为alpn，quic包的限制，导致必须指定一个alpn
 
+# 另外，你若想兼容现有其它 quic 客户端/服务端，你需要配置它们的 alpn 为 h3 或者这里配置的值才行
+
+# 比如v2ray/xray，你要配置 tlsSettings里的 alpn 为 h3 ，才能连上 verysimple 的 quic
+
 # 只要 advancedLayer 设成了quic，network 就会自动被配置为udp，所以不需手动指定udp
 
 # 同时，因为quic的限制，一旦  advancedLayer 设成了quic， 你就必须要保证tls是开启的状态，

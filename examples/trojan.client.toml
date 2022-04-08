@@ -6,9 +6,8 @@ port = 10800
 
 [[dial]]
 protocol = "trojans"
-uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # trojan的"password",我们填写到uuid项里. 实际上trojan这个password不要求格式, 所以你可以乱写，甚至可以写成一个中文字符串, 不过我们作为示例就统一用 示例的uuid了
 ip = "127.0.0.1"
-host = "your-domain-name.com"
+host = "your-domain-name.com"   #trojan-go 的服务端要求指定一个sni 并与服务端的配置相匹配, 否则会trojan-go 会拒绝连接
 port = 4434
-version = 0
 insecure = true
