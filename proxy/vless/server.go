@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/url"
 	"sync"
@@ -133,7 +134,7 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 func (s *Server) Name() string { return Name }
 
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
-func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, targetAddr netLayer.Addr, returnErr error) {
+func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
@@ -147,7 +148,6 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, target
 
 	readbs := utils.GetBytes(utils.StandardBytesLength)
 
-	//var auth [17]byte
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
 		returnErr = utils.ErrInErr{ErrDesc: "read err", ErrDetail: err, Data: wholeReadLen}
@@ -334,6 +334,7 @@ realPart:
 		_, err = readbuf.Read(ip_or_domain)
 
 		if err != nil {
+			utils.PutBytes(ip_or_domain)
 			returnErr = errors.New("fallback, reason 6")
 			return
 		}
@@ -352,16 +353,27 @@ realPart:
 		goto errorPart
 	}
 
-	return &UserConn{
-		Conn:              underlay,
-		optionalReader:    io.MultiReader(readbuf, underlay),
-		remainFirstBufLen: readbuf.Len(),
-		uuid:              thisUUIDBytes,
-		version:           int(version),
-		isUDP:             targetAddr.IsUDP(),
-		underlayIsBasic:   netLayer.IsBasicConn(underlay),
-		isServerEnd:       true,
-	}, targetAddr, nil
+	if targetAddr.IsUDP() {
+		log.Println("targetAddr", targetAddr.IP, targetAddr.Name)
+		return nil, &UDPConn{
+			Conn:              underlay,
+			version:           int(version),
+			raddr:             targetAddr,
+			optionalReader:    io.MultiReader(readbuf, underlay),
+			remainFirstBufLen: readbuf.Len(),
+		}, targetAddr, nil
+
+	} else {
+		return &UserTCPConn{
+			Conn:              underlay,
+			optionalReader:    io.MultiReader(readbuf, underlay),
+			remainFirstBufLen: readbuf.Len(),
+			uuid:              thisUUIDBytes,
+			version:           int(version),
+			underlayIsBasic:   netLayer.IsBasicConn(underlay),
+			isServerEnd:       true,
+		}, nil, targetAddr, nil
+	}
 
 }
 

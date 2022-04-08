@@ -73,7 +73,7 @@ func testTls(protocol string, port string, t *testing.T) {
 
 			t.Log("server pass tls handshake")
 
-			wlc, targetAddr, err := server.Handshake(lc)
+			wlc, _, targetAddr, err := server.Handshake(lc)
 			if err != nil {
 				t.Log("failed in handshake from ", server.AddrStr(), err)
 				t.Fail()

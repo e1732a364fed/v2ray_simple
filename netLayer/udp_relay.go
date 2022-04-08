@@ -22,28 +22,35 @@ var (
 //本文件内含 一些 转发 udp 数据的 接口与方法
 
 // 阻塞.
-func RelayUDP(putter UDP_Putter, extractor UDP_Extractor, dialFunc func(targetAddr Addr) (io.ReadWriter, error)) {
+func RelayUDP(conn1, conn2 MsgConn) {
 
 	go func() {
 		for {
-			raddr, bs, err := extractor.GetNewUDPRequest()
+			bs, raddr, err := conn1.ReadFrom()
 			if err != nil {
+				//log.Println("RelayUDP e1", err)
 				break
 			}
-			err = putter.WriteUDPRequest(raddr, bs, dialFunc)
+			err = conn2.WriteTo(bs, raddr)
 			if err != nil {
+				//log.Println("RelayUDP e2", err)
+
 				break
 			}
 		}
 	}()
 
 	for {
-		raddr, bs, err := putter.GetNewUDPResponse()
+		bs, raddr, err := conn2.ReadFrom()
 		if err != nil {
+			//log.Println("RelayUDP e3", err)
+
 			break
 		}
-		err = extractor.WriteUDPResponse(raddr, bs)
+		err = conn1.WriteTo(bs, raddr)
 		if err != nil {
+			//log.Println("RelayUDP e4", err)
+
 			break
 		}
 	}

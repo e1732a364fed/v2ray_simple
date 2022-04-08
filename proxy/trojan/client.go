@@ -1,6 +1,7 @@
 package trojan
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net"
@@ -38,20 +39,8 @@ type Client struct {
 func (c *Client) Name() string {
 	return name
 }
-func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
-	if target.Port <= 0 {
-		return nil, errors.New("Trojan Client Handshake failed, target port invalid")
 
-	}
-	buf := utils.GetBuf()
-	buf.Write(c.password_hexStringBytes)
-	buf.Write(crlf)
-	isudp := target.IsUDP()
-	if isudp {
-		buf.WriteByte(CmdUDPAssociate)
-	} else {
-		buf.WriteByte(CmdConnect)
-	}
+func WriteTargetToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 	if len(target.IP) > 0 {
 		if ip4 := target.IP.To4(); ip4 == nil {
 			buf.WriteByte(netLayer.AtypIP6)
@@ -64,21 +53,48 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 		buf.WriteByte(ATypDomain)
 		buf.WriteByte(byte(l))
 		buf.WriteString(target.Name)
-	} else {
-		return nil, errors.New("Trojan Client Handshake failed, target has no domain and ip at all.")
 	}
+
 	buf.WriteByte(byte(target.Port >> 8))
 	buf.WriteByte(byte(target.Port << 8 >> 8))
 	buf.Write(crlf)
+}
+
+func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
+	if target.Port <= 0 {
+		return nil, errors.New("Trojan Client Handshake failed, target port invalid")
+
+	}
+	buf := utils.GetBuf()
+	buf.Write(c.password_hexStringBytes)
+	buf.Write(crlf)
+	buf.WriteByte(CmdConnect)
+	WriteTargetToBuf(target, buf)
+
 	_, err := underlay.Write(buf.Bytes())
 	utils.PutBuf(buf)
 	if err != nil {
 		return nil, err
 	}
 
-	if isudp {
-		return UDPConn{underlay}, nil
-	} else {
-		return underlay, nil
+	return underlay, nil
+}
+
+func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
+	if target.Port <= 0 {
+		return nil, errors.New("Trojan Client Handshake failed, target port invalid")
+
 	}
+	buf := utils.GetBuf()
+	buf.Write(c.password_hexStringBytes)
+	buf.Write(crlf)
+	buf.WriteByte(CmdUDPAssociate)
+	WriteTargetToBuf(target, buf)
+	_, err := underlay.Write(buf.Bytes())
+	utils.PutBuf(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return UDPConn{underlay}, nil
 }

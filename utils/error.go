@@ -2,9 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 )
+
+var ErrNotImplemented = errors.New("not implemented")
 
 //没啥特殊的
 type NumErr struct {

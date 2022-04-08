@@ -49,13 +49,8 @@ func (d *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 }
 
-func (d *Client) GetNewUDP_Putter() netLayer.UDP_Putter {
-
-	//单单的pipe是无法做到转发的，它就像一个缓存一样;
-	// 一方是未知的,向 UDP_Putter 放入请求,
-	// 然后我们这边就要通过一个 goroutine 来不断提取请求然后转发到direct.
-
-	pipe := netLayer.NewUDP_Pipe()
-	go netLayer.RelayUDP_to_Direct(pipe)
-	return pipe
+//direct的Client的 EstablishUDPChannel 实际上就是直接拨号udp
+func (d *Client) EstablishUDPChannel(_ net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
+	conn, err := net.DialUDP("udp", nil, target.ToUDPAddr())
+	return &netLayer.UDPMsgConnWrapper{UDPConn: conn, IsClient: true, FirstAddr: target}, err
 }

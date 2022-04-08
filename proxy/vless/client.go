@@ -105,61 +105,10 @@ func (c *Client) GetUser() proxy.User {
 func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 	var err error
 
-	if underlay == nil {
-		underlay, err = target.Dial() //不建议传入underlay为nil，因为这里dial处于裸奔状态
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	port := target.Port
 	addr, atyp := target.AddressBytes()
 
-	cmd := CmdTCP
-	if target.Network == "udp" {
-		if c.version == 1 && !c.is_CRUMFURS_established {
-
-			//log.Println("尝试拨号 Cmd_CRUMFURS 信道")
-
-			//这段代码明显有问题，如果直接dial的话，那就是脱离tls的裸协议，所以这里以后需要处理一下
-			UMFURS_conn, err := target.Dial()
-			if err != nil {
-				if ce := utils.CanLogErr("尝试拨号 Cmd_CRUMFURS 信道时发生错误"); ce != nil {
-
-					//log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
-					ce.Write(zap.Error(err))
-				}
-				return nil, err
-			}
-			buf := c.getBufWithCmd(Cmd_CRUMFURS)
-
-			UMFURS_conn.Write(buf.Bytes())
-
-			utils.PutBuf(buf)
-
-			bs := []byte{0}
-			n, err := UMFURS_conn.Read(bs)
-			if err != nil || n == 0 || bs[0] != CRUMFURS_ESTABLISHED {
-				if ce := utils.CanLogErr("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误"); ce != nil {
-
-					//log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
-					ce.Write(zap.Error(err))
-				}
-				return nil, err
-			}
-
-			c.is_CRUMFURS_established = true
-
-			// 循环监听 UMFURS 信息
-			go c.handle_CRUMFURS(UMFURS_conn)
-
-		}
-
-		cmd = CmdUDP
-
-	}
-
-	buf := c.getBufWithCmd(cmd)
+	buf := c.getBufWithCmd(CmdTCP)
 
 	buf.WriteByte(byte(uint16(port) >> 8))
 	buf.WriteByte(byte(uint16(port) << 8 >> 8))
@@ -171,74 +120,75 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 	utils.PutBuf(buf)
 
-	return &UserConn{
-		Conn:            underlay,
-		uuid:            *c.user,
-		version:         c.version,
-		isUDP:           target.IsUDP(),
-		underlayIsBasic: netLayer.IsBasicConn(underlay),
-	}, err
-}
-
-func (u *Client) CloseUDPRequestWriter() {
-	//因为我们的vless的client是 【一个 outClient实例 处理 一切 dial 的udp连接】
-	// 所以不能直接close c.udpResponseChan
-}
-
-func (c *Client) GetNewUDPResponse() (net.UDPAddr, []byte, error) {
-	x := <-c.udpResponseChan //v1的话，由 handle_CRUMFURS 以及 WriteUDPRequest 中的 goroutine 填充；v0的话，由 WriteUDPRequest 填充
-	return x.Addr, x.Data, nil
-}
-
-//一般由socks5或者透明代理等地方 获取到 udp请求后，被传入这里
-func (c *Client) WriteUDPRequest(a net.UDPAddr, b []byte, dialFunc func(targetAddr netLayer.Addr) (io.ReadWriter, error)) (err error) {
-
-	astr := a.String()
-
-	c.mutex.RLock()
-	knownConn := c.knownUDPDestinations[astr]
-	c.mutex.RUnlock()
-
-	if knownConn == nil {
-
-		knownConn, err = dialFunc(netLayer.NewAddrFromUDPAddr(&a))
-		if err != nil || knownConn == nil {
-			return utils.ErrInErr{ErrDesc: "vless WriteUDPRequest, err when creating an underlay", ErrDetail: err}
-		}
-		//这里原来的代码是调用 c.Handshake，会自动帮我们拨号代理节点CmdUDP
-		// 但是有问题，因为不应该由client自己拨号vless，因为我们还有上层的tls;
-		// 自己拨号的话，那就是裸奔状态
-		// 最新代码采用dialFunc的方式解决
-
-		c.mutex.Lock()
-		c.knownUDPDestinations[astr] = knownConn
-		c.mutex.Unlock()
-
-		go func() {
-			bs := make([]byte, netLayer.MaxUDP_packetLen)
-			for {
-				n, err := knownConn.Read(bs)
-				//一般knownConn为tcp连接. 在远程节点的 udp的direct的Read一直读不到数据导致timeout后, 就会关闭对应的vless的tcp连接, 然后我们这里的Read就会收到通知
-				// 不过我们不用管 inServer的conn的关闭, 因为监听udp的conn是不需要关闭的, 它还要接着监听其它客户端发来的连接.
-				if err != nil {
-					break
-				}
-				if n <= 0 {
-					continue
-				}
-				msg := make([]byte, n)
-				copy(msg, bs[:n])
-
-				c.udpResponseChan <- netLayer.UDPAddrData{
-					Addr: a,
-					Data: msg,
-				}
-			}
-		}()
+	if c.version == 0 {
+		return &UserTCPConn{
+			Conn:            underlay,
+			uuid:            *c.user,
+			version:         c.version,
+			underlayIsBasic: netLayer.IsBasicConn(underlay),
+		}, err
+	} else {
+		return underlay, nil
 	}
 
-	_, err = knownConn.Write(b)
-	return
+}
+
+func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
+	var err error
+
+	if c.version == 1 && !c.is_CRUMFURS_established {
+
+		//log.Println("尝试拨号 Cmd_CRUMFURS 信道")
+
+		//这段代码明显有问题，如果直接dial的话，那就是脱离tls的裸协议，所以这里以后需要处理一下
+		UMFURS_conn, err := target.Dial()
+		if err != nil {
+			if ce := utils.CanLogErr("尝试拨号 Cmd_CRUMFURS 信道时发生错误"); ce != nil {
+
+				//log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
+				ce.Write(zap.Error(err))
+			}
+			return nil, err
+		}
+		buf := c.getBufWithCmd(Cmd_CRUMFURS)
+
+		UMFURS_conn.Write(buf.Bytes())
+
+		utils.PutBuf(buf)
+
+		bs := []byte{0}
+		n, err := UMFURS_conn.Read(bs)
+		if err != nil || n == 0 || bs[0] != CRUMFURS_ESTABLISHED {
+			if ce := utils.CanLogErr("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误"); ce != nil {
+
+				//log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
+				ce.Write(zap.Error(err))
+			}
+			return nil, err
+		}
+
+		c.is_CRUMFURS_established = true
+
+		// 循环监听 UMFURS 信息
+		go c.handle_CRUMFURS(UMFURS_conn)
+
+	}
+
+	buf := c.getBufWithCmd(CmdUDP)
+	port := target.Port
+
+	buf.WriteByte(byte(uint16(port) >> 8))
+	buf.WriteByte(byte(uint16(port) << 8 >> 8))
+	addr, atyp := target.AddressBytes()
+
+	buf.WriteByte(atyp)
+	buf.Write(addr)
+
+	_, err = underlay.Write(buf.Bytes())
+
+	utils.PutBuf(buf)
+
+	return &UDPConn{Conn: underlay, version: c.version, isClientEnd: true, raddr: target}, err
 }
 
 func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {

@@ -50,29 +50,6 @@ func HasIpv6Interface() bool {
 		return false
 	}
 
-	/*
-		if utils.LogLevel == utils.Log_debug {
-
-			log.Println("interfaces", len(addrs), addrs)
-
-			for _, address := range addrs {
-
-				if ipnet, ok := address.(*net.IPNet); ok {
-
-					isipv6 := false
-
-					if !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
-						if ipnet.IP.To4() == nil {
-							isipv6 = true
-						}
-					}
-					log.Println(ipnet.IP.String(), isipv6)
-
-				}
-
-			}
-		}*/
-
 	for _, address := range addrs {
 		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
 			// IsLinkLocalUnicast: something starts with fe80:
@@ -118,4 +95,43 @@ func IsStrUDP_network(s string) bool {
 		return true
 	}
 	return false
+}
+
+//使用Addr，是因为有可能申请的是域名，而不是ip
+type MsgConn interface {
+	ReadFrom() ([]byte, Addr, error)
+	WriteTo([]byte, Addr) error
+}
+
+type UDPMsgConnWrapper struct {
+	*net.UDPConn
+	IsClient  bool
+	FirstAddr Addr
+}
+
+func (u *UDPMsgConnWrapper) ReadFrom() ([]byte, Addr, error) {
+	bs := utils.GetPacket()
+	n, ad, err := u.UDPConn.ReadFromUDP(bs)
+	if err != nil {
+		return nil, Addr{}, err
+	}
+	return bs[:n], NewAddrFromUDPAddr(ad), err
+}
+
+func (u *UDPMsgConnWrapper) WriteTo(bs []byte, ad Addr) error {
+
+	if u.IsClient {
+		if ad.GetHashable() == u.FirstAddr.GetHashable() {
+			_, err := u.UDPConn.Write(bs)
+			return err
+		} else {
+
+			return utils.ErrNotImplemented
+		}
+	} else {
+		_, err := u.UDPConn.WriteTo(bs, ad.ToUDPAddr())
+		return err
+
+	}
+
 }

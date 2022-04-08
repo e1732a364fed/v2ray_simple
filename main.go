@@ -907,7 +907,7 @@ afterLocalServerHandshake:
 
 			if client.Name() == "direct" {
 
-				uc := wlc.(*vless.UserConn)
+				uc := wlc.(*vless.UserTCPConn)
 
 				if uc.GetProtocolVersion() < 1 {
 					break

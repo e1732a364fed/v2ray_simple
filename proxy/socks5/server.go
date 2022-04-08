@@ -11,7 +11,6 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
-	"go.uber.org/zap"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
@@ -46,8 +45,8 @@ func (s *Server) Name() string { return Name }
 //中文： https://aber.sh/articles/Socks5/
 // 参考 https://studygolang.com/articles/31404
 
-// 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn.StartReadRequest 处理
-func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, targetAddr netLayer.Addr, returnErr error) {
+// 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn 处理
+func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
@@ -179,7 +178,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, target
 			clientSupposedAddr: clientFutureAddr.ToUDPAddr(),
 			UDPConn:            udpRC,
 		}
-		return uc, clientFutureAddr, nil
+		return nil, uc, clientFutureAddr, nil
 
 	} else {
 
@@ -207,167 +206,125 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, target
 			Port: thePort,
 		}
 
-		return underlay, targetAddr, nil
+		return underlay, nil, targetAddr, nil
 	}
 
 }
 
+//用于socks5服务端的 udp连接, 实现 netLayer.MsgConn
 type UDPConn struct {
 	*net.UDPConn
 	clientSupposedAddr *net.UDPAddr //客户端指定的客户端自己未来将使用的公网UDP的Addr
 }
 
-// 阻塞
-// 从 udpPutter.GetNewUDPResponse 循环阅读 所有需要发送给客户端的 数据，然后通过 u.UDPConn.Write 发送给客户端
-//  这些响应数据是 在其它地方 写入 udpPutter 的, 本 u 是不管 谁、如何 把这个信息 放进去的。
-func (u *UDPConn) StartPushResponse(udpPutter netLayer.UDP_Putter) {
-	for {
-		raddr, bs, err := udpPutter.GetNewUDPResponse()
-		//log.Println("StartPushResponse got new response", raddr, string(bs), err)
-		if err != nil {
-			u.UDPConn.Close()
-			break
-		}
-		buf := &bytes.Buffer{}
-		buf.WriteByte(0) //rsv
-		buf.WriteByte(0) //rsv
-		buf.WriteByte(0) //frag
+//将远程地址发来的响应 传给客户端
+func (u *UDPConn) WriteTo(bs []byte, raddr netLayer.Addr) error {
 
-		var atyp byte = ATypIP4
-		if len(raddr.IP) > 4 {
-			atyp = ATypIP6
-		}
-		buf.WriteByte(atyp)
+	buf := &bytes.Buffer{}
+	buf.WriteByte(0) //rsv
+	buf.WriteByte(0) //rsv
+	buf.WriteByte(0) //frag
 
-		buf.Write(raddr.IP)
-		buf.WriteByte(byte(int16(raddr.Port) >> 8))
-		buf.WriteByte(byte(int16(raddr.Port) << 8 >> 8))
-		buf.Write(bs)
-
-		//必须要指明raddr
-		_, err = u.UDPConn.WriteToUDP(buf.Bytes(), u.clientSupposedAddr)
-
-		if err != nil {
-			if ce := utils.CanLogErr("socks5, StartPushResponse, write"); ce != nil {
-				//log.Println("socks5, StartPushResponse, write err ", err)
-				ce.Write(zap.Error(err))
-
-			}
-			break
-		}
-
+	var atyp byte = ATypIP4
+	if len(raddr.IP) > 4 {
+		atyp = ATypIP6
 	}
+	buf.WriteByte(atyp)
+
+	buf.Write(raddr.IP)
+	buf.WriteByte(byte(int16(raddr.Port) >> 8))
+	buf.WriteByte(byte(int16(raddr.Port) << 8 >> 8))
+	buf.Write(bs)
+
+	//必须要指明raddr
+	_, err := u.UDPConn.WriteToUDP(buf.Bytes(), u.clientSupposedAddr)
+
+	return err
+
 }
 
-// 阻塞
-// 监听 与客户端的udp连接 (u.UDPConn)；循环查看客户端发来的请求信息;
-// 然后将该请求 用 udpPutter.WriteUDPRequest 发送给 udpPutter
-//	至于fullcone与否它是不管的。
-// 如果客户端一开始没有指明自己连接本服务端的ip和端口, 则将第一个发来的正确的socks5请求视为该客户端,并记录。
-func (u *UDPConn) StartReadRequest(udpPutter netLayer.UDP_Putter, dialFunc func(targetAddr netLayer.Addr) (io.ReadWriter, error)) {
+//从 客户端读取 udp请求
+func (u *UDPConn) ReadFrom() ([]byte, netLayer.Addr, error) {
 
 	var clientSupposedAddrIsNothing bool
 	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
 		clientSupposedAddrIsNothing = true
 	}
 
-	bs := make([]byte, netLayer.MaxUDP_packetLen)
-	for {
+	bs := utils.GetPacket()
 
-		n, addr, err := u.UDPConn.ReadFromUDP(bs)
-		if err != nil {
+	n, addr, err := u.UDPConn.ReadFromUDP(bs)
+	if err != nil {
 
-			u.UDPConn.Close()
-			udpPutter.CloseUDPRequestWriter() //只要读udp发生致命错误，我们就关闭RequestWriter，这样 StartPushResponse 方法中调用的 udpPutter.GetNewUDPResponse 就应该同步退出了
-
-			if ce := utils.CanLogWarn("socks5 failed UDPConn read"); ce != nil {
-
-				ce.Write(zap.Error(err))
-			}
-
-			break
+		if n <= 0 {
+			return nil, netLayer.Addr{}, err
 		}
+		return bs[:n], netLayer.NewAddrFromUDPAddr(addr), err
+	}
 
-		if n < 6 {
-			if ce := utils.CanLogWarn("socks5 UDPConn short read"); ce != nil {
+	if n < 6 {
 
-				ce.Write(zap.Error(err))
-			}
-			continue
-		}
+		return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "socks5 UDPConn short read", Data: n}
+	}
 
-		if !clientSupposedAddrIsNothing {
+	if !clientSupposedAddrIsNothing {
 
-			if !addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port {
+		if !addr.IP.Equal(u.clientSupposedAddr.IP) || addr.Port != u.clientSupposedAddr.Port {
 
-				//just random attack message.
-				continue
-
-			}
-		}
-
-		atyp := bs[3]
-
-		l := 2   //supposed Minimum Remain Data Lenth
-		off := 4 //offset from which the addr data really starts
-
-		var theIP net.IP
-		switch atyp {
-		case ATypIP4:
-			l += net.IPv4len
-			theIP = make(net.IP, net.IPv4len)
-		case ATypIP6:
-			l += net.IPv6len
-			theIP = make(net.IP, net.IPv6len)
-		case ATypDomain:
-			l += int(bs[4])
-			off = 5
-		default:
-			if ce := utils.CanLogWarn("socks5 read UDPConn unknown address"); ce != nil {
-
-				ce.Write(zap.Uint8("atype", atyp))
-			}
-			continue
+			//just random attack message.
+			return nil, netLayer.Addr{}, errors.New("socks5 UDPConn random attack message")
 
 		}
+	}
 
-		if len(bs[off:]) < l {
-			if ce := utils.CanLogWarn("socks5 UDPConn short command request"); ce != nil {
+	atyp := bs[3]
 
-				ce.Write(zap.Uint8("atype", atyp))
-			}
-			continue
+	l := 2   //supposed Minimum Remain Data Lenth
+	off := 4 //offset from which the addr data really starts
 
-		}
+	var theIP net.IP
+	switch atyp {
+	case ATypIP4:
+		l += net.IPv4len
+		theIP = make(net.IP, net.IPv4len)
+	case ATypIP6:
+		l += net.IPv6len
+		theIP = make(net.IP, net.IPv6len)
+	case ATypDomain:
+		l += int(bs[4])
+		off = 5
+	default:
 
-		var theName string
-
-		if theIP != nil {
-			copy(theIP, bs[off:])
-		} else {
-			theName = string(bs[off : off+l-2])
-		}
-		var thePort int
-		thePort = int(bs[off+l-2])<<8 | int(bs[off+l-1])
-
-		newStart := off + l
-
-		//为了解析域名, 我们用 netLayer.Addr 作为中介.
-		requestAddr := &netLayer.Addr{
-			IP:      theIP,
-			Name:    theName,
-			Port:    thePort,
-			Network: "udp",
-		}
-
-		if clientSupposedAddrIsNothing {
-			clientSupposedAddrIsNothing = false
-			u.clientSupposedAddr = addr
-		}
-
-		//log.Println("socks5 server,StartReadRequest, got msg", thisaddr, string(bs[newStart:n]))
-
-		udpPutter.WriteUDPRequest(*requestAddr.ToUDPAddr(), bs[newStart:n], dialFunc)
+		return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "socks5 read UDPConn unknown atype", Data: atyp}
 
 	}
+
+	if len(bs[off:]) < l {
+
+		return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "socks5 UDPConn short command request", Data: atyp}
+
+	}
+
+	var theName string
+
+	if theIP != nil {
+		copy(theIP, bs[off:])
+	} else {
+		theName = string(bs[off : off+l-2])
+	}
+	var thePort int
+	thePort = int(bs[off+l-2])<<8 | int(bs[off+l-1])
+
+	newStart := off + l
+
+	if clientSupposedAddrIsNothing {
+		clientSupposedAddrIsNothing = false
+		u.clientSupposedAddr = addr
+	}
+	return bs[newStart:n], netLayer.Addr{
+		IP:      theIP,
+		Name:    theName,
+		Port:    thePort,
+		Network: "udp",
+	}, nil
 }

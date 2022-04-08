@@ -35,12 +35,15 @@ func PrintAllClientNames() {
 //服务端是一种 “泛目标”代理，所以我们客户端的 Handshake 要传入目标地址, 来告诉它 我们 想要到达的 目标地址.
 // 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
 // 一旦一个 Client 被完整定义，则它的数据的流向就被完整确定了.
+//
+// 然而, udp的转发则不一样. 一般来说, udp只handshake一次, 建立一个通道, 然后在这个通道上
+// 不断申请发送到 各个远程udp地址的连接。客户端也可以选择建立多个udp通道。
 type Client interface {
 	ProxyCommon
 
-	// Handshake的 underlay有可能传入nil，所以要求 所有的 Client 都要能够自己dial
-	// 不过目前暂时全在main函数里dial
 	Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error)
+
+	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
 }
 
 // Server 用于监听 客户端 的连接.
@@ -50,7 +53,8 @@ type Client interface {
 type Server interface {
 	ProxyCommon
 
-	Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.Addr, error)
+	//ReadWriteCloser 为请求地址为tcp的情况, net.PacketConn 为 请求建立的udp通道
+	Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.MsgConn, netLayer.Addr, error)
 }
 
 // FullName 可以完整表示 一个 代理的 VSI 层级.

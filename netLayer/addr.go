@@ -84,6 +84,7 @@ func NewAddrByHostPort(hostPortStr string) (Addr, error) {
 
 	a := Addr{Port: port}
 	if ip := net.ParseIP(host); ip != nil {
+
 		a.IP = ip
 	} else {
 		a.Name = host
@@ -184,7 +185,12 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 }
 
 func (a *Addr) GetHashable() (ha HashableAddr) {
-	ip, _ := netip.AddrFromSlice(a.IP)
+	theip := a.IP
+	if i4 := a.IP.To4(); i4 != nil {
+		theip = i4 //能转成ipv4则必须转，否则虽然是同一个ip，但是如果被表示成了ipv6的形式，相等比较还是会失败
+	}
+	ip, _ := netip.AddrFromSlice(theip)
+
 	ha.AddrPort = netip.AddrPortFrom(ip, uint16(a.Port))
 	ha.Network = a.Network
 	ha.Name = a.Name

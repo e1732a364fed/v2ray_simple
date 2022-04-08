@@ -48,7 +48,7 @@ func (_ Server) Name() string {
 	return name
 }
 
-func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, targetAddr netLayer.Addr, err error) {
+func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	var b = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
 	//因为要储存为 firstdata，所以也无法直接放回
 

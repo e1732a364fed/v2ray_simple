@@ -83,7 +83,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
 			// 很明显，目前我们只支持vless所以才可这么操作，以后再说。
 
-			wrcVless := wrc.(*vless.UserConn)
+			wrcVless := wrc.(*vless.UserTCPConn)
 			tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
 			rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
 

@@ -82,6 +82,7 @@ func NewServer() (proxy.Server, error) {
 }
 func (d *Server) Name() string { return name }
 
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.Addr, error) {
-	return underlay, s.targetAddr, nil
+//因为dokodemo的单目标性质, 不会建立任何udp通道.
+func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.MsgConn, netLayer.Addr, error) {
+	return underlay, nil, s.targetAddr, nil
 }

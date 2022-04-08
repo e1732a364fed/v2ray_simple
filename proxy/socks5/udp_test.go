@@ -1,7 +1,6 @@
 package socks5_test
 
 import (
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -38,44 +37,46 @@ func TestUDP(t *testing.T) {
 				t.Fail()
 			}
 			t.Log("socks5 server got new conn")
-			wlc, targetAddr, err := s.Handshake(lc)
+			_, wlc, targetAddr, err := s.Handshake(lc)
 			if targetAddr.IsUDP() {
 				t.Log("socks5 server got udp associate")
 			}
 			//此时wlc返回的是socks5新监听的 conn
 
-			udpConn := wlc.(*socks5.UDPConn)
+			go func() {
+				for {
+					t.Log("socks5 server start read udp channel")
 
-			dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
-				return targetAddr.Dial()
-			}
+					bs, addr, err := wlc.ReadFrom()
+					if err != nil {
+						t.Log("socks5 server read udp channel err,", err)
 
-			if putter, ok := direct.(netLayer.UDP_Putter); ok {
+						break
+					}
 
-				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
+					t.Log("socks5 server got udp msg")
 
-				//因为UDP Associate后，就会保证以后的向 wlc 的 所有请求数据都是udp请求，所以可以在这里直接循环转发了。
-
-				go udpConn.StartPushResponse(putter)
-
-				udpConn.StartReadRequest(putter, dialFunc)
-
-			} else if pc, ok := direct.(netLayer.UDP_Putter_Generator); ok {
-
-				// direct 通过 UDP_Pipe和 RelayUDP_to_Direct函数 实现了 UDP_Putter_Generator
-
-				putter := pc.GetNewUDP_Putter()
-				if putter != nil {
-					go udpConn.StartPushResponse(putter)
-
-					udpConn.StartReadRequest(putter, dialFunc)
+					msgConn, err := direct.EstablishUDPChannel(nil, addr)
+					if err != nil {
+						t.Fail()
+						return
+					}
+					err = msgConn.WriteTo(bs, addr)
+					if err != nil {
+						t.Log("socks5 server Write To direct failed,", len(bs), err)
+					}
+					go func() {
+						for {
+							rbs, raddr, err := msgConn.ReadFrom()
+							if err != nil {
+								break
+							}
+							wlc.WriteTo(rbs, raddr)
+						}
+					}()
 				}
-			} else {
+			}()
 
-				t.Log("socks5 server -> client for udp, but client didn't implement netLayer.UDP_Putter", direct.Name())
-				t.Fail()
-				return
-			}
 		}
 	}()
 

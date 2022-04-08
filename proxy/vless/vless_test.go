@@ -55,7 +55,7 @@ func testVLess(version int, port string, t *testing.T) {
 			t.Log("vless server got new conn")
 			go func() {
 				defer lc.Close()
-				wlc, targetAddr, err := server.Handshake(lc)
+				wlc, _, targetAddr, err := server.Handshake(lc)
 				if err != nil {
 					t.Logf("failed in handshake form %v: %v", server.AddrStr(), err)
 					t.Fail()
@@ -141,6 +141,8 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	thePort := netLayer.RandPort()
 
+	t.Log("fake remote udp server port is ", thePort)
+
 	fakeRealUDPServerListener, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
 		Port: thePort,
@@ -201,7 +203,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	targetStr_forFakeUDPServer := "127.0.0.1:" + strconv.Itoa(thePort)
 	targetStruct_forFakeUDPServer := netLayer.Addr{
-		Name:    "127.0.0.1",
+		IP:      net.IPv4(127, 0, 0, 1),
 		Port:    thePort,
 		Network: "udp",
 	}
@@ -222,7 +224,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 			}
 			go func() {
 				defer lc.Close()
-				wlc, targetAddr, err := fakeServerEndLocalServer.Handshake(lc)
+				_, wlc, targetAddr, err := fakeServerEndLocalServer.Handshake(lc)
 				if err != nil {
 					t.Logf("failed in handshake form %v: %v", fakeServerEndLocalServer.AddrStr(), err)
 					t.Fail()
@@ -230,12 +232,30 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				}
 
 				remoteAddrStr := targetAddr.String()
+				t.Log("vless server got new wlc", remoteAddrStr)
 
 				if remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.Network != "udp" {
-					t.Log("remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.IsUDP == false ")
+					t.Log("remoteAddrStr != targetStr_forFakeUDPServer || targetAddr.IsUDP == false ", remoteAddrStr, targetStr_forFakeUDPServer, targetAddr.Network)
 					t.Fail()
 					return
 				}
+
+				//这里的测试是，第一个发来的包必须是 hello，然后传递到目标udp服务器中
+
+				//发现既可能读取 firstbuf，也可能读取 wlc，随机发生？
+
+				t.Log("vless read from wlc")
+				bs, raddr, _ := wlc.ReadFrom()
+
+				t.Log("vless got wlc", bs)
+
+				if !bytes.Equal(bs, hellodata) {
+					t.Log("!bytes.Equal(hello[:], hellodata)")
+					t.Fail()
+					return
+				}
+
+				t.Log("vless got wlc with right hello data")
 
 				rc, err := net.Dial("udp", remoteAddrStr)
 				if err != nil {
@@ -244,33 +264,27 @@ func testVLessUDP(version int, port string, t *testing.T) {
 					return
 				}
 
-				//这里的测试是，第一个发来的包必须是 hello，然后传递到目标udp服务器中
+				t.Log("vless server dialed remote udp server", remoteAddrStr)
 
-				var hello [5]byte
-				//发现既可能读取 firstbuf，也可能读取 wlc，随机发生？
+				na, _ := netLayer.NewAddr(remoteAddrStr)
+				na.Network = "udp"
 
-				t.Log("read from wlc")
-				io.ReadFull(wlc, hello[:])
+				wrc := &netLayer.UDPMsgConnWrapper{UDPConn: rc.(*net.UDPConn), IsClient: true, FirstAddr: na}
 
-				if !bytes.Equal(hello[:], hellodata) {
-					t.Log("!bytes.Equal(hello[:], hellodata)")
-					t.Fail()
-					return
-				}
-				_, err = rc.Write(hello[:])
+				_, err = rc.Write(bs)
 				if err != nil {
 					t.Logf("failed to write to FakeUDPServer : %v", err)
 					t.Fail()
 					return
 				}
-				_, err = io.ReadFull(rc, hello[:])
+				_, err = io.ReadFull(rc, bs)
 				if err != nil {
 					t.Logf("failed io.ReadFull(rc, hello[:]) : %v", err)
 					t.Fail()
 					return
 				}
 
-				_, err = wlc.Write(hello[:])
+				err = wlc.WriteTo(bs, raddr)
 				if err != nil {
 					t.Logf("failed wlc.Write(hello[:]) : %v", err)
 					t.Fail()
@@ -278,8 +292,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				}
 
 				// 之后转发所有流量，不再特定限制数据
-				go io.Copy(rc, wlc)
-				_, err = io.Copy(wlc, rc)
+				netLayer.RelayUDP(wlc, wrc)
 
 				t.Log("Copy End?!", err)
 			}()
@@ -292,7 +305,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	t.Log("client Dial success")
 
-	wrc, err := fakeClientEndRemoteClient.Handshake(rc, targetStruct_forFakeUDPServer)
+	wrc, err := fakeClientEndRemoteClient.EstablishUDPChannel(rc, targetStruct_forFakeUDPServer)
 	if err != nil {
 		log.Printf("failed in handshake to %v: %v", fakeServerEndLocalServer.AddrStr(), err)
 		t.FailNow()
@@ -300,7 +313,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	t.Log("client vless handshake success")
 
-	_, err = wrc.Write(hellodata)
+	err = wrc.WriteTo(hellodata, targetStruct_forFakeUDPServer)
 	if err != nil {
 		t.Log("failed in write to ", fakeServerEndLocalServer.AddrStr(), err)
 		t.FailNow()
@@ -308,10 +321,9 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	t.Log("client write hello success")
 
-	var world [5]byte
-	io.ReadFull(wrc, world[:])
-	if !bytes.Equal(world[:], replydata) {
-		t.Log("!bytes.Equal(world[:], replydata) ", world[:], replydata)
+	bs, _, _ := wrc.ReadFrom()
+	if !bytes.Equal(bs, replydata) {
+		t.Log("!bytes.Equal(world[:], replydata) ", bs, replydata)
 		t.FailNow()
 	}
 	t.Log("读到正确reply！")
@@ -330,7 +342,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 		t.Log("rand generated", len(longbs))
 
-		_, err = wrc.Write(longbs)
+		err = wrc.WriteTo(longbs, targetStruct_forFakeUDPServer)
 		if err != nil {
 			t.Log("failed in write long data to ", fakeServerEndLocalServer.AddrStr(), err)
 			t.FailNow()
@@ -338,17 +350,16 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 		t.Log("data written")
 
-		var world [5]byte
-		n, err := io.ReadFull(wrc, world[:])
+		bs, _, _ := wrc.ReadFrom()
 		if err != nil {
-			t.Log("ReadFull err ", n, err)
+			t.Log("ReadFull err ", err)
 			t.FailNow()
 		}
 
 		t.Log("data read complete")
 
-		if !bytes.Equal(world[:], replydata) {
-			t.Log("reply not equal ", string(replydata), string(world[:]))
+		if !bytes.Equal(bs, replydata) {
+			t.Log("reply not equal ", string(replydata), string(bs))
 			t.FailNow()
 		}
 		t.Log("compare success")
