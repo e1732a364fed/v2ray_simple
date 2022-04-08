@@ -148,7 +148,7 @@ dialTag = "my_grpc"
 domain = ["geosite:cn"]
 
 # 其它匹配:
-# network = ["tcp","udp"]	#匹配传输层协议
-# inTag = ["tag1","tag2"]	#匹配来自哪一个 listen 
+# network = ["tcp","udp"]	# 匹配 实际客户数据的 传输层协议
+# inTag = ["tag1","tag2"]	# 匹配 来自哪一个 listen tag
 # country = ["CN"]			# 匹配 geoip 以及 cn 顶级域名.
 

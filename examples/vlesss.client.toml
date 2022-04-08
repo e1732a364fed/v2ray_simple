@@ -39,7 +39,7 @@ host = "127.0.0.1"     # 同listen对应配置, 可填ip或域名；如果 netwo
 # network 目前支持 tcp,udp 和unix;如果不给出则默认为 tcp; dial和listen都可配置此项
 # network和用什么协议无关.比如我们可以硬把一个 ss协议的数据通过 unix socket来传输.
 # 如果用udp的话，传输vless 时即可理解为 udp over udp 或者 tcp over udp, 底层用udp来传输tcp/udp的承载数据.
-# 总之我们verysimple的理念就是 代理协议是什么协议 与 网络层使用什么协议是无关的
+# 总之我们verysimple的理念就是 代理协议是什么协议 与 传输层使用什么协议是无关的
 
 # ip = "127.0.0.1" 
 
@@ -62,8 +62,8 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 # 如果要使用 websocket/grpc ，则 客户端和服务端 都要配置 advancedLayer 和 path
 
-# advancedLayer = "ws"  # 也可为grpc
-# path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好
+# advancedLayer = "ws"  # 也可为 grpc 或 quic
+# path = "/ohmygod_verysimple_is_very_simple" # ws的path和 grpc的serviceName 都在这个path里填写, 为了防探测这里越长越随机越好
 
 
 # route 是在我们代理界是分流的意思。 
@@ -76,4 +76,5 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 [[route]]
 country = ["CN"]
+domain = ["geosite:cn"]
 dialTag = "direct"

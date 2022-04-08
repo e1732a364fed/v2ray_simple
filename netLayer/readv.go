@@ -9,11 +9,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//v2ray里还使用了动态分配的方式，我们为了简便就固定长度. 另外v2ray单个缓存长度是是2k，我们单个是MTU.
-// 实测16个buf已经完全够用，平时也就偶尔遇到5个buf的情况, 极速测速时会占用更多；
-// 16个1500那就是 24000, 23.4375 KB, 不算小了;
-// 而且我们还使用了Pool来进行缓存,减轻了内存负担, 所以也没必要为了解决内存分配而频繁调整长度.
-
 //经过测试，网速越快、延迟越小，越不需要readv, 此时首包buf越大越好, 因为一次系统底层读取就会读到一大块数据, 此时再用readv分散写入 实际上就是反效果; readv的数量则不需要太多
 
 //在内网单机自己连自己测速时,readv会导致降速.
@@ -102,7 +97,7 @@ func (rm *readvMem) destroy() {
 本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
 
 小贴士：将该 [][]byte 写入io.Writer的话，只需使用 net.Buffers.WriteTo方法, 即可自动适配writev。
-不过实测writev没什么太大效果，还会造成不稳定。
+不过实测writev没什么太大效果，还会造成不稳定。因为 WriteTo会篡改cap
 
 TryCopy函数使用到了本函数 来进行readv相关操作。
 */
@@ -134,9 +129,9 @@ func readvFrom(rawReadConn syscall.RawConn, rm *readvMem) ([][]byte, error) {
 
 	nBuf := utils.ShrinkBuffers(allocedBuffers, int(nBytes), ReadvSingleBufLen)
 	/*
-		if utils.CanLogDebug() {
+		if ce:=utils.CanLogDebug("release buf");ce!=nil {
 			// 可用于查看到底用了几个buf, 便于我们调整buf最大长度
-			log.Println("release buf", len(allocedBuffers)-nBuf)
+			ce.Write( zap.Int("count",len(allocedBuffers)-nBuf))
 		}
 	*/
 

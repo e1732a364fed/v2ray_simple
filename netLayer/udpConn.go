@@ -13,8 +13,9 @@ var (
 	ErrTimeout = errors.New("timeout")
 )
 
-//UDPConn 实现了 net.Conn 和 net.PacketConn
-type UDPConn struct {
+//Uni_UDPConn将一个udp连接包装成一个 只能向单一目标发送数据的 连接。
+//Uni_UDPConn 实现了 net.Conn 和 net.PacketConn
+type Uni_UDPConn struct {
 	peerAddr *net.UDPAddr
 	realConn *net.UDPConn
 
@@ -35,7 +36,7 @@ type UDPConn struct {
 // 主动设置了 内层udp连接的 read的 timeout为 UDP_timeout。
 // 你依然可以设置 DialUDP 所返回的 net.Conn 的 Deadline, 这属于外层的Deadline,
 // 不会影响底层 udp所强制设置的 deadline.
-func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
+func DialUDP(raddr *net.UDPAddr) (*Uni_UDPConn, error) {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
 		return nil, err
@@ -45,9 +46,9 @@ func DialUDP(raddr *net.UDPAddr) (net.Conn, error) {
 
 //如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的。
 // 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
-func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
+func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *Uni_UDPConn {
 	inDataChan := make(chan []byte, 20)
-	theUDPConn := &UDPConn{raddr, conn, inDataChan, false, MakePipeDeadline(),
+	theUDPConn := &Uni_UDPConn{raddr, conn, inDataChan, false, MakePipeDeadline(),
 		MakePipeDeadline(), make(chan int), false, []byte{}, isClient}
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
@@ -86,7 +87,7 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	return theUDPConn
 }
 
-func (uc *UDPConn) ReadMsg() (b []byte, err error) {
+func (uc *Uni_UDPConn) ReadMsg() (b []byte, err error) {
 
 	select {
 	case msg, ok := <-uc.inMsgChan:
@@ -100,8 +101,8 @@ func (uc *UDPConn) ReadMsg() (b []byte, err error) {
 	}
 }
 
-//实现 net.PacketConn， 可以与 miekg/dns 配合
-func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+//实现 net.PacketConn， 可以与 miekg/dns 配合。返回的 addr 只可能为 之前预先配置的远程目标地址
+func (uc *Uni_UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	select {
 	case msg, ok := <-uc.inMsgChan:
 		if !ok {
@@ -115,17 +116,17 @@ func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	}
 }
 
-//实现 net.PacketConn， 可以与 miekg/dns 配合
-func (uc *UDPConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+//实现 net.PacketConn， 可以与 miekg/dns 配合。会无视传入的地址, 而使用 之前预先配置的远程目标地址
+func (uc *Uni_UDPConn) WriteTo(p []byte, _ net.Addr) (n int, err error) {
 	return uc.Write(p)
 
 }
 
-func (uc *UDPConn) GetReadChan() chan []byte {
+func (uc *Uni_UDPConn) GetReadChan() chan []byte {
 	return uc.inMsgChan
 }
 
-func (uc *UDPConn) Read(buf []byte) (n int, err error) {
+func (uc *Uni_UDPConn) Read(buf []byte) (n int, err error) {
 	if len(uc.unread) > 0 {
 		n = copy(buf, uc.unread)
 		uc.unread = uc.unread[n:]
@@ -151,7 +152,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 	return
 }
 
-func (uc *UDPConn) Write(buf []byte) (n int, err error) {
+func (uc *Uni_UDPConn) Write(buf []byte) (n int, err error) {
 	select {
 	case <-uc.writeDeadline.Wait():
 		return 0, ErrTimeout
@@ -188,7 +189,7 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 	}
 }
 
-func (uc *UDPConn) CloseMsgChan() {
+func (uc *Uni_UDPConn) CloseMsgChan() {
 	if uc.isClient {
 		if !uc.clientFirstWriteChanClosed {
 			uc.clientFirstWriteChanClosed = true
@@ -197,7 +198,7 @@ func (uc *UDPConn) CloseMsgChan() {
 	}
 }
 
-func (uc *UDPConn) Close() error {
+func (uc *Uni_UDPConn) Close() error {
 	if uc.isClient {
 		uc.CloseMsgChan()
 		return uc.realConn.Close()
@@ -205,19 +206,19 @@ func (uc *UDPConn) Close() error {
 	return nil
 }
 
-func (b *UDPConn) LocalAddr() net.Addr         { return b.realConn.LocalAddr() }
-func (b *UDPConn) RemoteAddr() net.Addr        { return b.peerAddr }
-func (b *UDPConn) RemoteUDPAddr() *net.UDPAddr { return b.peerAddr }
+func (b *Uni_UDPConn) LocalAddr() net.Addr         { return b.realConn.LocalAddr() }
+func (b *Uni_UDPConn) RemoteAddr() net.Addr        { return b.peerAddr }
+func (b *Uni_UDPConn) RemoteUDPAddr() *net.UDPAddr { return b.peerAddr }
 
-func (b *UDPConn) SetWriteDeadline(t time.Time) error {
+func (b *Uni_UDPConn) SetWriteDeadline(t time.Time) error {
 	b.writeDeadline.Set(t)
 	return nil
 }
-func (b *UDPConn) SetReadDeadline(t time.Time) error {
+func (b *Uni_UDPConn) SetReadDeadline(t time.Time) error {
 	b.readDeadline.Set(t)
 	return nil
 }
-func (b *UDPConn) SetDeadline(t time.Time) error {
+func (b *Uni_UDPConn) SetDeadline(t time.Time) error {
 	b.readDeadline.Set(t)
 	b.writeDeadline.Set(t)
 	return nil
