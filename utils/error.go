@@ -8,6 +8,9 @@ import (
 )
 
 var ErrNotImplemented = errors.New("not implemented")
+var ErrNilParameter = errors.New("nil parameter")
+var ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
+var ErrWrongParameter = errors.New("wrong parameter")
 
 //没啥特殊的
 type NumErr struct {

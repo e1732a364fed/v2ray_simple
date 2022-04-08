@@ -97,41 +97,7 @@ func IsStrUDP_network(s string) bool {
 	return false
 }
 
-//使用Addr，是因为有可能申请的是域名，而不是ip
-type MsgConn interface {
-	ReadFrom() ([]byte, Addr, error)
-	WriteTo([]byte, Addr) error
-}
-
-type UDPMsgConnWrapper struct {
-	*net.UDPConn
-	IsClient  bool
-	FirstAddr Addr
-}
-
-func (u *UDPMsgConnWrapper) ReadFrom() ([]byte, Addr, error) {
-	bs := utils.GetPacket()
-	n, ad, err := u.UDPConn.ReadFromUDP(bs)
-	if err != nil {
-		return nil, Addr{}, err
-	}
-	return bs[:n], NewAddrFromUDPAddr(ad), err
-}
-
-func (u *UDPMsgConnWrapper) WriteTo(bs []byte, ad Addr) error {
-
-	if u.IsClient {
-		if ad.GetHashable() == u.FirstAddr.GetHashable() {
-			_, err := u.UDPConn.Write(bs)
-			return err
-		} else {
-
-			return utils.ErrNotImplemented
-		}
-	} else {
-		_, err := u.UDPConn.WriteTo(bs, ad.ToUDPAddr())
-		return err
-
-	}
-
+type UDPAddrData struct {
+	Addr net.UDPAddr
+	Data []byte
 }

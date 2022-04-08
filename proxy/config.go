@@ -84,5 +84,6 @@ type ListenConf struct {
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为拨号地址与端口
 type DialConf struct {
 	CommonConf
-	Utls bool `toml:"utls"`
+	Utls     bool `toml:"utls"`
+	Fullcone bool `toml:"fullcone"` //在direct会用到, fullcone的话因为不能关闭udp连接, 所以可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
 }

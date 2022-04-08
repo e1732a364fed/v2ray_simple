@@ -257,27 +257,22 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 				t.Log("vless got wlc with right hello data")
 
-				rc, err := net.Dial("udp", remoteAddrStr)
-				if err != nil {
-					t.Logf("failed to connect FakeUDPServer : %v", err)
-					t.Fail()
-					return
-				}
-
 				t.Log("vless server dialed remote udp server", remoteAddrStr)
 
 				na, _ := netLayer.NewAddr(remoteAddrStr)
 				na.Network = "udp"
 
-				wrc := &netLayer.UDPMsgConnWrapper{UDPConn: rc.(*net.UDPConn), IsClient: true, FirstAddr: na}
+				wrc := netLayer.NewUDPMsgConnClientWrapper(nil, false, false)
 
-				_, err = rc.Write(bs)
+				err = wrc.WriteTo(bs, na)
 				if err != nil {
 					t.Logf("failed to write to FakeUDPServer : %v", err)
 					t.Fail()
 					return
 				}
-				_, err = io.ReadFull(rc, bs)
+
+				bs, _, err = wrc.ReadFrom()
+
 				if err != nil {
 					t.Logf("failed io.ReadFull(rc, hello[:]) : %v", err)
 					t.Fail()
@@ -293,8 +288,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 				// 之后转发所有流量，不再特定限制数据
 				netLayer.RelayUDP(wlc, wrc)
-
-				t.Log("Copy End?!", err)
+				//t.Log("Copy End?!", )
 			}()
 		}
 	}()

@@ -19,21 +19,20 @@ func init() {
 //实现了 proxy.Client, netLayer.UDP_Putter_Generator
 type Client struct {
 	proxy.ProxyCommonStruct
+	isfullcone bool
 }
 
 type ClientCreator struct{}
 
-func NewClient() (proxy.Client, error) {
+func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
 	d := &Client{}
 	return d, nil
 }
 
-func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
-	return NewClient()
-}
-
-func (_ ClientCreator) NewClient(*proxy.DialConf) (proxy.Client, error) {
-	return NewClient()
+func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+	d := &Client{}
+	d.isfullcone = dc.Fullcone
+	return d, nil
 }
 
 func (d *Client) Name() string { return name }
@@ -49,8 +48,8 @@ func (d *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 }
 
-//direct的Client的 EstablishUDPChannel 实际上就是直接拨号udp
+//direct的Client的 EstablishUDPChannel 实际上就是直接 监听一个udp端口。
 func (d *Client) EstablishUDPChannel(_ net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
-	conn, err := net.DialUDP("udp", nil, target.ToUDPAddr())
-	return &netLayer.UDPMsgConnWrapper{UDPConn: conn, IsClient: true, FirstAddr: target}, err
+
+	return netLayer.NewUDPMsgConnClientWrapper(nil, d.isfullcone, false), nil
 }

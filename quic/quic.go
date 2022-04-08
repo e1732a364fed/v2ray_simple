@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -267,7 +268,13 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 		}
 	} else if previous != nil && c.knownServerMaxStreamCount == 0 {
 
-		ps := previous.(*sessionState)
+		ps, ok := previous.(*sessionState)
+		if !ok {
+			if ce := utils.CanLogDebug("QUIC: 'previous' parameter was given but with wrong type  "); ce != nil {
+				ce.Write(zap.String("type", reflect.TypeOf(previous).String()))
+			}
+			return nil
+		}
 
 		c.knownServerMaxStreamCount = ps.openedStreamCount
 
@@ -312,7 +319,10 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 }
 
 func (c *Client) DialSubConn(thing any) (net.Conn, error) {
-	theState := thing.(*sessionState)
+	theState, ok := thing.(*sessionState)
+	if !ok {
+		return nil, utils.ErrNilOrWrongParameter
+	}
 	stream, err := theState.OpenStream()
 	if err != nil {
 

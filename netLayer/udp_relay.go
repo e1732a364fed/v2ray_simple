@@ -1,10 +1,11 @@
 package netLayer
 
 import (
-	"io"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 const (
@@ -21,382 +22,259 @@ var (
 
 //本文件内含 一些 转发 udp 数据的 接口与方法
 
-// 阻塞.
-func RelayUDP(conn1, conn2 MsgConn) {
+//MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装
+//
+//使用Addr，是因为有可能申请的是域名，而不是ip
+type MsgConn interface {
+	ReadFrom() ([]byte, Addr, error)
+	WriteTo([]byte, Addr) error
+	CloseConnWithRaddr(raddr Addr) error //关闭特定连接
+	Close() error                        //关闭所有连接
+	Fullcone() bool                      //若Fullcone, 则在转发因另一端关闭而结束后, RelayUDP函数不会Close它.
+}
+
+// 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.
+func RelayUDP(rc, lc MsgConn) int {
+
+	//在转发时, 有可能有多种情况
+	/*
+		1. dokodemo 监听udp 定向 导向到 direct 的远程udp实际地址
+			此时因为是定向的, 所以肯定不是fullcone
+
+			dokodemo 用的是 UniTargetMsgConn, underlay 是 netLayer.UDPConn, 其已经设置了UDP_timeout
+
+			在 netLayer.UDPConn 超时后, ReadFrom 就会解放, 并触发双向Close, 来关闭我们的 direct的udp连接。
+
+		1.5. 比较少见的情况, dokodemo监听tcp, 然后发送到 direct 的udp. 此时客户应用程序可以手动关闭tcp连接来帮我们触发 udp连接 的 close
+
+		2. socks5监听 udp, 导向到 direct 的远程udp实际地址
+
+			socks5端只用一个udp连接来监听所有信息, 所以不能关闭, 所以没有设置超时
+
+			此时我们需要对 每一个 direct的udp连接 设置超时, 否则就会一直占用端口
+
+		3. socks5 监听udp, 导向到 trojan, 然后 服务端的 trojan 再导向 direct
+
+			trojan 也是用一个信道来接收udp的所有请求的, 所以trojan的连接也不能关.
+
+			所以依然需要在服务端 的 direct上面 加Read 时限
+
+			否则 rc.ReadFrom() 会卡住而不返回.
+
+			因为direct 使用 UDPMsgConnWrapper，而我们已经在 UDPMsgConnWrapper里加了这个逻辑, 所以可以放心了.
+
+		4. fullcone, 此时不能对整个监听端口进行close，会影响其它外部链接发来的连接。
+
+	*/
 
 	go func() {
 		for {
-			bs, raddr, err := conn1.ReadFrom()
+			bs, raddr, err := lc.ReadFrom()
 			if err != nil {
-				//log.Println("RelayUDP e1", err)
 				break
 			}
-			err = conn2.WriteTo(bs, raddr)
+			err = rc.WriteTo(bs, raddr)
 			if err != nil {
-				//log.Println("RelayUDP e2", err)
 
 				break
 			}
 		}
+		if !rc.Fullcone() {
+			rc.Close()
+		}
+
+		if !lc.Fullcone() {
+			lc.Close()
+		}
+
 	}()
 
-	for {
-		bs, raddr, err := conn2.ReadFrom()
-		if err != nil {
-			//log.Println("RelayUDP e3", err)
-
-			break
-		}
-		err = conn1.WriteTo(bs, raddr)
-		if err != nil {
-			//log.Println("RelayUDP e4", err)
-
-			break
-		}
-	}
-}
-
-//////////////////// 接口 ////////////////////
-
-type UDPRequestReader interface {
-	GetNewUDPRequest() (net.UDPAddr, []byte, error)
-}
-
-type UDPResponseWriter interface {
-	WriteUDPResponse(net.UDPAddr, []byte) error
-}
-
-// UDP_Extractor, 用于从一个虚拟的协议中提取出 udp请求
-//
-// 从一个未知协议中读取UDP请求，然后试图得到该请求的回应(大概率是直接通过direct发出) 并写回
-type UDP_Extractor interface {
-	UDPRequestReader
-	UDPResponseWriter
-}
-
-// 写入一个UDP请求; 可以包裹成任意协议。
-// 因为有时该地址从来没申请过，所以此时就要用dialFunc创建一个新连接
-type UDPRequestWriter interface {
-	WriteUDPRequest(target net.UDPAddr, request []byte, dialFunc func(targetAddr Addr) (io.ReadWriter, error)) error
-	CloseUDPRequestWriter() //如果read端失败,则一定需要close Write端. CloseUDPRequestWriter就是这个用途.
-}
-
-//拉取一个新的 UDP 响应
-type UDPResponseReader interface {
-	GetNewUDPResponse() (net.UDPAddr, []byte, error)
-}
-
-// UDP_Putter, 用于把 udp请求转换成 虚拟的协议
-//
-// 向一个特定的协议 写入 UDP请求，然后试图读取 该请求的回应. 比如vless.Client就实现了它
-type UDP_Putter interface {
-	UDPRequestWriter
-	UDPResponseReader
-}
-
-type UDP_Putter_Generator interface {
-	GetNewUDP_Putter() UDP_Putter
-}
-
-//////////////////// 具体实现 ////////////////////
-
-// 最简单的 UDP_Putter，用于客户端; 不处理内部数据，直接认为要 发送给服务端的信息 要发送到一个特定的地址
-//	如果指定的地址不是 默认的地址，则发送到 unknownRemoteAddrMsgWriter
-//
-// 对于 vless v1来说, unknownRemoteAddrMsgWriter 要做的 就是 新建一个与服务端的 请求udp的连接，
-//  然后这个新连接就变成了新的 UniUDP_Putter
-type UniUDP_Putter struct {
-	targetAddr net.UDPAddr
-	io.ReadWriter
-
-	unknownRemoteAddrMsgWriter UDPRequestWriter
-}
-
-//
-func (e *UniUDP_Putter) GetNewUDPResponse() (net.UDPAddr, []byte, error) {
-	bs := make([]byte, MaxUDP_packetLen)
-	n, err := e.ReadWriter.Read(bs)
-	if err != nil {
-		return e.targetAddr, nil, err
-	}
-	return e.targetAddr, bs[:n], nil
-}
-
-func (e *UniUDP_Putter) WriteUDPRequest(addr net.UDPAddr, bs []byte, dialFunc func(targetAddr Addr) (io.ReadWriter, error)) (err error) {
-
-	if addr.String() == e.targetAddr.String() {
-		_, err = e.ReadWriter.Write(bs)
-
-		return
-	} else {
-		if e.unknownRemoteAddrMsgWriter == nil {
-			return
-		}
-		// 普通的 WriteUDPRequest需要调用 dialFunc来拨号新链接，而我们这里 直接就传递给 unknownRemoteAddrMsgWriter 了
-
-		return e.unknownRemoteAddrMsgWriter.WriteUDPRequest(addr, bs, dialFunc)
-	}
-
-}
-
-// 最简单的 UDP_Extractor，用于服务端; 不处理内部数据，直接认为客户端传来的内部数据的目标为一个特定值。
-//	收到的响应数据的来源 如果和 targetAddr 相同的话，直接写入传入的 ReadWriter
-//  收到的外界数据的来源 如果和 targetAddr 不同的话，那肯定就是使用了fullcone，那么要传入 unknownRemoteAddrMsgWriter； 如果New时传入unknownRemoteAddrMsgWriter的 是nil的话，那么意思就是不支持fullcone，将直接舍弃这一部分数据。
-type UniUDP_Extractor struct {
-	targetAddr net.UDPAddr
-	io.ReadWriter
-
-	unknownRemoteAddrMsgWriter UDPResponseWriter
-}
-
-// 新建，unknownRemoteAddrMsgWriter 用于写入 未知来源响应，rw 用于普通的客户请求的目标的响应
-func NewUniUDP_Extractor(addr net.UDPAddr, rw io.ReadWriter, unknownRemoteAddrMsgWriter UDPResponseWriter) *UniUDP_Extractor {
-	return &UniUDP_Extractor{
-		targetAddr:                 addr,
-		ReadWriter:                 rw,
-		unknownRemoteAddrMsgWriter: unknownRemoteAddrMsgWriter,
-	}
-}
-
-// 从客户端连接中 提取出 它的 UDP请求，就是直接读取数据。然后搭配上之前设置好的地址
-func (e *UniUDP_Extractor) GetNewUDPRequest() (net.UDPAddr, []byte, error) {
-	bs := make([]byte, MaxUDP_packetLen)
-	n, err := e.ReadWriter.Read(bs)
-	if err != nil {
-		return e.targetAddr, nil, err
-	}
-	return e.targetAddr, bs[:n], nil
-}
-
-// WriteUDPResponse 写入远程服务器的响应；要分情况讨论。
-// 因为是单一目标extractor，所以正常情况下 传入的response 的源地址 也 应和 e.targetAddr 相同，
-//  如果地址不同的话，那肯定就是使用了fullcone，那么要传入 unknownRemoteAddrMsgWriter
-func (e *UniUDP_Extractor) WriteUDPResponse(addr net.UDPAddr, bs []byte) (err error) {
-
-	if addr.String() == e.targetAddr.String() {
-		_, err = e.ReadWriter.Write(bs)
-
-		return
-	} else {
-		//如果未配置 unknownRemoteAddrMsgWriter， 则说明不支持fullcone。这并不是错误，而是可选的。看你想不想要fullcone
-		if e.unknownRemoteAddrMsgWriter == nil {
-			return
-		}
-
-		return e.unknownRemoteAddrMsgWriter.WriteUDPResponse(addr, bs)
-	}
-
-}
-
-type UDPAddrData struct {
-	Addr net.UDPAddr
-	Data []byte
-}
-
-//一种简单的本地 UDP_Extractor + UDP_Putter
-type UDP_Pipe struct {
-	requestChan, responseChan             chan UDPAddrData
-	requestChanClosed, responseChanClosed bool
-}
-
-func (u *UDP_Pipe) IsInvalid() bool {
-	return u.requestChanClosed || u.responseChanClosed
-}
-
-func (u *UDP_Pipe) closeRequestChan() {
-	if !u.requestChanClosed {
-		close(u.requestChan)
-		u.requestChanClosed = true
-	}
-}
-func (u *UDP_Pipe) closeResponseChan() {
-	if !u.responseChanClosed {
-		close(u.responseChan)
-		u.responseChanClosed = true
-	}
-}
-
-func (u *UDP_Pipe) Close() {
-	u.closeRequestChan()
-	u.closeResponseChan()
-
-}
-
-func NewUDP_Pipe() *UDP_Pipe {
-	return &UDP_Pipe{
-		requestChan:  make(chan UDPAddrData, 10),
-		responseChan: make(chan UDPAddrData, 10),
-	}
-}
-
-func (u *UDP_Pipe) CloseUDPRequestWriter() {
-	u.closeRequestChan()
-}
-
-func (u *UDP_Pipe) GetNewUDPRequest() (net.UDPAddr, []byte, error) {
-
-	d, ok := <-u.requestChan
-	if ok {
-		return d.Addr, d.Data, nil
-
-	} else {
-		//如果requestChan被关闭了，就要同时关闭 responseChan
-		u.closeResponseChan()
-		return net.UDPAddr{}, nil, io.EOF
-	}
-}
-
-func (u *UDP_Pipe) GetNewUDPResponse() (net.UDPAddr, []byte, error) {
-	d, ok := <-u.responseChan
-	if ok {
-		return d.Addr, d.Data, nil
-
-	} else {
-		//如果 responseChan 被关闭了，就要同时关闭 requestChan
-		u.closeRequestChan()
-		return net.UDPAddr{}, nil, io.EOF
-	}
-
-}
-
-// 会保存bs的副本，不必担心数据被改变的问题。
-func (u *UDP_Pipe) WriteUDPResponse(addr net.UDPAddr, bs []byte) error {
-	bsCopy := make([]byte, len(bs))
-	copy(bsCopy, bs)
-
-	u.responseChan <- UDPAddrData{
-		Addr: addr,
-		Data: bsCopy,
-	}
-	return nil
-}
-
-// 会保存bs的副本，不必担心数据被改变的问题。
-func (u *UDP_Pipe) WriteUDPRequest(addr net.UDPAddr, bs []byte, dialFunc func(targetAddr Addr) (io.ReadWriter, error)) error {
-	bsCopy := make([]byte, len(bs))
-	copy(bsCopy, bs)
-
-	u.requestChan <- UDPAddrData{
-		Addr: addr,
-		Data: bsCopy,
-	}
-	return nil
-}
-
-// RelayUDP_to_Direct 用于 从一个未知协议读取 udp请求，然后通过 直接的udp连接 发送到 远程udp 地址。
-// 该函数是阻塞的。而且实现了fullcone; 本函数会直接处理 对外新udp 的dial
-//
-// RelayUDP_to_Direct 与 RelayTCP 函数 的区别是，已经建立的udpConn是可以向其它目的地址发送信息的
-// 服务端可以向 客户端发送 非客户端发送过数据 的地址 发来的信息
-// 原理是，客户端请求第一次后，就会在服务端开放一个端口，然后其它远程主机就会发现这个端口并试图向客户端发送数据
-//	而由于fullcone，所以如果客户端要请求一个 不同的udp地址的话，如果这个udp地址是之前发送来过信息，那么就要用之前建立过的udp连接，这样才能保证端口一致；
-//
-func RelayUDP_to_Direct(extractor UDP_Extractor) {
-
-	type connState struct {
-		conn     *net.UDPConn
-		raddrMap map[string]bool //所有与thisconn关联的 raddr
-	}
-
-	//具体实现： 每当有对新远程udp地址的请求发生时，就会同时 监听 “用于发送该请求到远程udp主机的本地udp端口”，接受一切发往 该端口的数据
-
-	var dialedUDPConnMap = make(map[string]*connState)
-
-	var mutex sync.RWMutex
+	count := 0
 
 	for {
-
-		raddr, requestData, err := extractor.GetNewUDPRequest()
+		bs, raddr, err := rc.ReadFrom()
 		if err != nil {
+
 			break
 		}
+		err = lc.WriteTo(bs, raddr)
+		if err != nil {
 
-		first_raddrStr := raddr.String()
+			break
+		}
+		count += len(bs)
+	}
+	if !rc.Fullcone() {
+		rc.Close()
+	}
 
-		mutex.RLock()
-		oldConn := dialedUDPConnMap[first_raddrStr]
-		mutex.RUnlock()
+	if !lc.Fullcone() {
+		lc.Close()
+	}
+	return count
+}
 
-		if oldConn != nil {
+// symmetric, proxy/dokodemo 有用到.
+type UniTargetMsgConn struct {
+	net.Conn
+	target Addr
+}
 
-			oldConn.conn.Write(requestData)
+func (u UniTargetMsgConn) Fullcone() bool {
+	return false
+}
+
+func (u UniTargetMsgConn) ReadFrom() ([]byte, Addr, error) {
+	bs := utils.GetPacket()
+
+	n, err := u.Conn.Read(bs)
+	if err != nil {
+		return nil, Addr{}, err
+	}
+	return bs[:n], u.target, err
+}
+
+func (u UniTargetMsgConn) WriteTo(bs []byte, _ Addr) error {
+	_, err := u.Conn.Write(bs)
+	return err
+}
+
+func (u UniTargetMsgConn) CloseConnWithRaddr(raddr Addr) error {
+	return u.Conn.Close()
+}
+
+func (u UniTargetMsgConn) Close() error {
+	return u.Conn.Close()
+}
+
+//可满足fullcone, 由 Fullcone 的值决定. 在proxy/direct 被用到.
+//
+type UDPMsgConnWrapper struct {
+	conn     *net.UDPConn
+	IsServer bool
+	fullcone bool
+
+	symmetricMap      map[HashableAddr]*net.UDPConn
+	symmetricMapMutex sync.RWMutex
+}
+
+//使用传入的laddr监听udp; 若未给出laddr, 使用一个随机端口监听
+func NewUDPMsgConnClientWrapper(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConnWrapper {
+	uc := new(UDPMsgConnWrapper)
+
+	//if laddr == nil {
+	//	laddr, _ = net.ResolveUDPAddr("udp", ":"+RandPortStr())
+	//}
+
+	udpConn, _ := net.ListenUDP("udp", laddr)
+
+	uc.conn = udpConn
+	uc.fullcone = fullcone
+	uc.IsServer = isserver
+	if !fullcone {
+		uc.symmetricMap = make(map[HashableAddr]*net.UDPConn)
+	}
+	return uc
+}
+
+func (u *UDPMsgConnWrapper) Fullcone() bool {
+	return u.fullcone
+}
+
+func (u *UDPMsgConnWrapper) ReadFrom() ([]byte, Addr, error) {
+	bs := utils.GetPacket()
+
+	if !u.fullcone {
+		//如果不是fullcone, 则我们需要限时关闭
+
+		u.conn.SetReadDeadline(time.Now().Add(UDP_timeout))
+	}
+
+	n, ad, err := u.conn.ReadFromUDP(bs)
+	if err != nil {
+		return nil, Addr{}, err
+	}
+	if !u.fullcone {
+		//既然读到了, 那么就取消限时
+		u.conn.SetReadDeadline(time.Time{})
+	}
+
+	return bs[:n], NewAddrFromUDPAddr(ad), nil
+}
+
+func (u *UDPMsgConnWrapper) WriteTo(bs []byte, raddr Addr) error {
+
+	if !u.fullcone && !u.IsServer {
+		//非fullcone时,  强制 symmetryc, 对每个远程地址 都使用一个 对应的新laddr
+
+		thishash := raddr.GetHashable()
+
+		if len(u.symmetricMap) == 0 {
+
+			_, err := u.conn.WriteTo(bs, raddr.ToUDPAddr())
+			if err == nil {
+				u.symmetricMapMutex.Lock()
+				u.symmetricMap[thishash] = u.conn
+				u.symmetricMapMutex.Unlock()
+			}
+			return err
+		}
+
+		u.symmetricMapMutex.RLock()
+		theConn := u.symmetricMap[thishash]
+		u.symmetricMapMutex.RUnlock()
+
+		if theConn == nil {
+			var e error
+			theConn, e = net.ListenUDP("udp", nil)
+			if e != nil {
+				return e
+			}
+
+			u.symmetricMapMutex.Lock()
+			u.symmetricMap[thishash] = theConn
+			u.symmetricMapMutex.Unlock()
+		}
+
+		_, err := theConn.WriteTo(bs, raddr.ToUDPAddr())
+		return err
+
+	} else {
+		_, err := u.conn.WriteTo(bs, raddr.ToUDPAddr())
+		return err
+
+	}
+}
+
+func (u *UDPMsgConnWrapper) CloseConnWithRaddr(raddr Addr) error {
+	if !u.IsServer {
+		if u.fullcone {
+			u.conn.SetReadDeadline(time.Now())
 
 		} else {
+			u.symmetricMapMutex.Lock()
 
-			newConn, err := net.DialUDP("udp", nil, &raddr)
-			if err != nil {
+			thehash := raddr.GetHashable()
+			theConn := u.symmetricMap[thehash]
 
-				break
+			if theConn != nil {
+				delete(u.symmetricMap, thehash)
+				theConn.Close()
+
 			}
 
-			_, err = newConn.Write(requestData)
-			if err != nil {
-				break
-			}
-
-			first_cs := &connState{
-				conn:     newConn,
-				raddrMap: make(map[string]bool),
-			}
-			first_cs.raddrMap[first_raddrStr] = true
-
-			mutex.Lock()
-			dialedUDPConnMap[first_raddrStr] = first_cs
-			mutex.Unlock()
-
-			//监听所有发往 newConn的 远程任意主机 发来的消息。
-			go func(thisconn *net.UDPConn, supposedRemoteAddr net.UDPAddr) {
-				bs := make([]byte, MaxUDP_packetLen)
-				for {
-					thisconn.SetDeadline(time.Now().Add(UDP_timeout))
-
-					//log.Println("redirect udp, start read", supposedRemoteAddr)
-					n, raddr, err := thisconn.ReadFromUDP(bs)
-					if err != nil {
-
-						//timeout后，就会删掉第一个拨号的raddr,以及因为fullcone而产生的其它raddr
-						//然后关闭此udp端口
-
-						mutex.Lock()
-
-						delete(dialedUDPConnMap, first_raddrStr)
-
-						for anotherRaddr := range first_cs.raddrMap {
-							delete(dialedUDPConnMap, anotherRaddr)
-						}
-						mutex.Unlock()
-
-						thisconn.Close()
-						break
-					}
-
-					// 这个远程 地址 无论是新的还是旧的， 都是要 和 newConn关联的，下一次向 这个远程地址发消息时，也要用 newConn来发，而不是新dial一个。
-
-					hasThisRaddr := false
-					this_raddr_str := raddr.String()
-					mutex.RLock()
-					_, hasThisRaddr = dialedUDPConnMap[this_raddr_str]
-					mutex.RUnlock()
-
-					if !hasThisRaddr {
-
-						mutex.Lock()
-						dialedUDPConnMap[this_raddr_str] = first_cs
-						first_cs.raddrMap[this_raddr_str] = true
-						mutex.Unlock()
-					}
-
-					//log.Println("redirect udp, will write to extractor", string(bs[:n]))
-
-					err = extractor.WriteUDPResponse(*raddr, bs[:n])
-					if err != nil {
-						break
-					}
-
-				}
-			}(newConn, raddr)
+			u.symmetricMapMutex.Unlock()
 		}
-
 	}
+	return nil
+}
 
+func (u *UDPMsgConnWrapper) Close() error {
+	if !u.IsServer && u.fullcone {
+		//Close一般只用于关闭客户端、非fullcone的情况, 因为只有这种情况下，才会有 一个 u仅与一个 raddr对话 的清醒.
+
+		return u.conn.Close()
+	} else {
+		return nil
+	}
 }

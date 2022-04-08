@@ -24,6 +24,13 @@ type UDPConn struct {
 	raddr    netLayer.Addr
 }
 
+func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+	return u.Close()
+}
+func (u *UDPConn) Fullcone() bool {
+	return u.version != 0
+}
+
 func (u *UDPConn) WriteTo(p []byte, raddr netLayer.Addr) error {
 
 	//v0很垃圾，不支持fullcone，无视raddr，始终向最开始的raddr发送。

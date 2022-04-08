@@ -217,6 +217,14 @@ type UDPConn struct {
 	clientSupposedAddr *net.UDPAddr //客户端指定的客户端自己未来将使用的公网UDP的Addr
 }
 
+func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+	return u.Close()
+}
+
+func (u *UDPConn) Fullcone() bool {
+	return true
+}
+
 //将远程地址发来的响应 传给客户端
 func (u *UDPConn) WriteTo(bs []byte, raddr netLayer.Addr) error {
 

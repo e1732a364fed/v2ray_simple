@@ -25,7 +25,6 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 
 	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
@@ -598,6 +597,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	inServer := iics.inServer
 
 	var wlc io.ReadWriteCloser
+	var udp_wlc netLayer.MsgConn
+
 	var targetAddr netLayer.Addr
 	var err error
 
@@ -605,7 +606,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		goto checkFallback
 	}
 
-	wlc, targetAddr, err = inServer.Handshake(wrappedConn)
+	wlc, udp_wlc, targetAddr, err = inServer.Handshake(wrappedConn)
+
 	if err == nil {
 		//log.Println("inServer handshake passed")
 		//无错误时直接跳过回落, 直接执行下一个步骤
@@ -617,6 +619,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	//下面代码查看是否支持fallback; wlc先设为nil, 当所有fallback都不满足时,可以判断nil然后关闭连接
 
 	wlc = nil
+	udp_wlc = nil
 
 	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
 		ce.Write(
@@ -722,7 +725,7 @@ checkFallback:
 
 afterLocalServerHandshake:
 
-	if wlc == nil {
+	if wlc == nil && udp_wlc == nil {
 		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接return
 		utils.Debug("invalid request and no matched fallback, hung up")
 		wrappedConn.Close()
@@ -873,8 +876,8 @@ afterLocalServerHandshake:
 		case "socks5":
 			// UDP Associate：
 			// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
+			// 但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
 			// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
-			//但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
 		default:
 			iics.shouldCloseInSerBaseConnWhenFinish = true
 
@@ -896,101 +899,10 @@ afterLocalServerHandshake:
 
 	}
 
-	// 下面一段代码 单独处理 udp承载数据的特殊转发。
-	//
-	// 这里只处理 vless v1 的CRUMFURS  转发到direct的情况 以及 socks5 的udp associate 转发 的情况;
-	// 如果条件不符合则会跳过这段代码 并进入下一阶段
-	if targetAddr.IsUDP() {
-
-		switch inServer.Name() {
-		case "vless":
-
-			if client.Name() == "direct" {
-
-				uc := wlc.(*vless.UserTCPConn)
-
-				if uc.GetProtocolVersion() < 1 {
-					break
-				}
-
-				// 根据 vless_v1的讨论，vless_v1 的udp转发的 通信方式 也是与tcp连接类似的分离信道方式
-				//	上面已经把 CRUMFURS 的情况过滤掉了，所以现在这里就是普通的udp请求
-				//
-				// 因为direct使用 proxy.RelayUDP_to_Direct 函数 直接实现了fullcone
-				// 那么我们只需要传入一个  UDP_Extractor 即可
-				// 我们通过 netLayer.UniUDP_Extractor 达到此目的
-
-				//unknownRemoteAddrMsgWriter 在 vless v1中的实现就是 theCRUMFURS （vless v0就是mux）
-
-				id := uc.GetIdentityStr()
-
-				vlessServer := inServer.(*vless.Server)
-
-				theCRUMFURS := vlessServer.Get_CRUMFURS(id)
-				var unknownRemoteAddrMsgWriter netLayer.UDPResponseWriter
-
-				unknownRemoteAddrMsgWriter = theCRUMFURS
-
-				uniExtractor := netLayer.NewUniUDP_Extractor(*targetAddr.ToUDPAddr(), wlc, unknownRemoteAddrMsgWriter)
-
-				netLayer.RelayUDP_to_Direct(uniExtractor) //阻塞
-
-				return
-			}
-
-		case "socks5":
-			// 此时socks5包已经帮我们dial好了一个udp连接，即wlc，但是还未读取到客户端想要访问的东西
-			udpConn := wlc.(*socks5.UDPConn)
-
-			dialFunc := func(targetAddr netLayer.Addr) (io.ReadWriter, error) {
-				rw, ne := dialClient(incomingInserverConnState{}, targetAddr, client, false, nil, true)
-				if ne != (utils.NumErr{}) {
-					return rw, ne
-				}
-				return rw, nil
-			}
-
-			if putter, ok := client.(netLayer.UDP_Putter); ok {
-
-				// 将 outClient 视为 UDP_Putter ，就可以转发udp信息了
-				// vless.Client 实现了 UDP_Putter, 新连接的Handshake过程会在 dialFunc 被调用 时发生
-
-				//UDP_Putter 不使用传统的Handshake过程，因为Handshake是用于第一次数据，然后后面接着的双向传输都不再需要额外信息；而 UDP_Putter 每一次数据传输都是需要传输 目标地址的，所以每一次都需要一些额外数据，这就是我们 UDP_Putter 接口去解决的事情。
-
-				//因为UDP Associate后，就会保证以后的向 wlc 的 所有请求数据都是udp请求，所以可以在这里直接循环转发了。
-
-				go udpConn.StartPushResponse(putter)
-
-				udpConn.StartReadRequest(putter, dialFunc)
-
-			} else if pc, ok := client.(netLayer.UDP_Putter_Generator); ok {
-
-				// direct 实现了 UDP_Putter_Generator
-
-				putter := pc.GetNewUDP_Putter()
-				if putter != nil {
-					go udpConn.StartPushResponse(putter)
-
-					udpConn.StartReadRequest(putter, dialFunc)
-				}
-			} else {
-				if ce := utils.CanLogErr("socks5 udp err"); ce != nil {
-					ce.Write(
-						zap.String("detail", "server -> client for udp, but client didn't implement netLayer.UDP_Putter or UDP_Putter_Generator"),
-						zap.String("client", client.Name()),
-					)
-				}
-			}
-			return
-
-		}
-
-	}
-
 	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	//log.Println("will dial", client)
-	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, false)
+	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc, false)
 }
 
 // dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手，
@@ -999,7 +911,9 @@ afterLocalServerHandshake:
 //client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
 // noCopy是为了让其它调用者自行处理 转发 时使用。
-func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, noCopy bool) (io.ReadWriter, utils.NumErr) {
+func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, noCopy bool) {
+
+	isudp := targetAddr.IsUDP()
 
 	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
 		if iics.baseLocalConn != nil {
@@ -1027,7 +941,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 				zap.String("request", targetAddr.String()),
 				zap.String("uniqueTestDomain", uniqueTestDomain),
 			)
-			return nil, utils.NumErr{N: 1, Prefix: "dialClient err, "}
+			return
 
 		}
 	}
@@ -1049,7 +963,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			if ce := utils.CanLogErr("dial client convert addr err"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
-			return nil, utils.NumErr{N: 15, Prefix: "dial client convert addr err "}
+			return
 		}
 		realTargetAddr.Network = client.Network()
 	}
@@ -1081,7 +995,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 		} else {
 			//dail失败, 直接return掉
 
-			return nil, utils.NumErr{N: 13, Prefix: "dial quic Client err"}
+			return
 		}
 	}
 
@@ -1106,7 +1020,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			}
 		}
 
-		return nil, utils.NumErr{N: 2, Prefix: "dialClient err, "}
+		return
 	}
 
 	defer clientConn.Close()
@@ -1130,7 +1044,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 				}
 
-				return nil, utils.NumErr{N: 3, Prefix: "dialClient err, "}
+				return
 
 			} else {
 				clientEndRemoteClientTlsRawReadRecorder = tlsLayer.NewRecorder()
@@ -1146,7 +1060,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
 			}
 
-			return nil, utils.NumErr{N: 4, Prefix: "dialClient err, "}
+			return
 		}
 
 		clientConn = tlsConn
@@ -1174,6 +1088,10 @@ advLayerStep:
 
 					//第一条连接已满，再开一条session
 					dailedCommonConn = qclient.DialCommonConn(true, dailedCommonConn)
+					if dailedCommonConn == nil {
+						//再dial还是nil，也许是暂时性的网络错误, 先关闭
+						return
+					}
 
 					clientConn, err = qclient.DialSubConn(dailedCommonConn)
 					if err != nil {
@@ -1182,7 +1100,7 @@ advLayerStep:
 								zap.Error(err),
 							)
 						}
-						return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
+						return
 					}
 				} else {
 					if ce := utils.CanLogErr("DialSubConnFunc failed"); ce != nil {
@@ -1190,7 +1108,7 @@ advLayerStep:
 							zap.Error(err),
 						)
 					}
-					return nil, utils.NumErr{N: 14, Prefix: "DialSubConnFunc err, "}
+					return
 				}
 
 			}
@@ -1206,7 +1124,7 @@ advLayerStep:
 						iics.baseLocalConn.Close()
 
 					}
-					return nil, utils.NumErr{N: 5, Prefix: "dialClient err, "}
+					return
 				}
 
 			}
@@ -1224,7 +1142,7 @@ advLayerStep:
 				if iics.baseLocalConn != nil {
 					iics.baseLocalConn.Close()
 				}
-				return nil, utils.NumErr{N: 6, Prefix: "dialClient err, "}
+				return
 			}
 
 		case "ws":
@@ -1241,7 +1159,7 @@ advLayerStep:
 					if ce := utils.CanLogErr("failed to read ws early data"); ce != nil {
 						ce.Write(zap.Error(e))
 					}
-					return nil, utils.NumErr{N: 7, Prefix: "dialClient err, "}
+					return
 				}
 				ed = edBuf[:n]
 				//log.Println("will send early data", n, ed)
@@ -1269,7 +1187,7 @@ advLayerStep:
 						zap.Error(err),
 					)
 				}
-				return nil, utils.NumErr{N: 8, Prefix: "dialClient err, "}
+				return
 			}
 
 			clientConn = wc
@@ -1278,63 +1196,99 @@ advLayerStep:
 
 	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
 
-	wrc, err := client.Handshake(clientConn, targetAddr)
-	if err != nil {
-		if ce := utils.CanLogErr("failed in handshake"); ce != nil {
-			ce.Write(
-				zap.String("target", targetAddr.String()),
-				zap.Error(err),
-			)
+	if !isudp {
+
+		wrc, err := client.Handshake(clientConn, targetAddr)
+		if err != nil {
+			if ce := utils.CanLogErr("Handshake client failed"); ce != nil {
+				ce.Write(
+					zap.String("target", targetAddr.String()),
+					zap.Error(err),
+				)
+			}
+			return
 		}
-		return nil, utils.NumErr{N: 9, Prefix: "dialClient err, "}
-	}
-	//log.Println("all handshake finished")
+		//log.Println("all handshake finished")
 
-	////////////////////////////// 实际转发阶段 /////////////////////////////////////
+		////////////////////////////// 实际转发阶段 /////////////////////////////////////
 
-	if noCopy {
-		return wrc, utils.NumErr{}
-	}
+		if noCopy {
+			return
+		}
 
-	if !iics.routedToDirect && tls_lazy_encrypt {
+		if tls_lazy_encrypt && !iics.routedToDirect {
 
-		// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
-		if isTlsLazy_clientEnd {
+			// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
+			if isTlsLazy_clientEnd {
 
-			if client.IsUseTLS() {
-				//必须是 UserClient
-				if userClient := client.(proxy.UserClient); userClient != nil {
-					tryTlsLazyRawCopy(false, userClient, nil, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
-					return nil, utils.NumErr{N: 11, Prefix: "dialClient err, "}
+				if client.IsUseTLS() {
+					//必须是 UserClient
+					if userClient := client.(proxy.UserClient); userClient != nil {
+						tryTlsLazyRawCopy(false, userClient, nil, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+						return
+					}
 				}
-			}
 
-		} else if iics.isTlsLazyServerEnd {
+			} else if iics.isTlsLazyServerEnd {
 
-			// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
-			// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
+				// 最新代码已经确认，使用uuid 作为 “特殊指令”，所以要求Server必须是一个 proxy.UserServer
+				// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
-			if userServer, ok := iics.inServer.(proxy.UserServer); ok {
-				tryTlsLazyRawCopy(false, nil, userServer, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
-				return nil, utils.NumErr{N: 12, Prefix: "dialClient err, "}
+				if userServer, ok := iics.inServer.(proxy.UserServer); ok {
+					tryTlsLazyRawCopy(false, nil, userServer, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
+					return
+				}
+
 			}
 
 		}
 
+		if iics.theFallbackFirstBuffer != nil {
+			//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
+			wrc.Write(iics.theFallbackFirstBuffer.Bytes())
+			utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
+		}
+
+		atomic.AddInt32(&activeConnectionCount, 1)
+
+		downloadBytes := netLayer.Relay(&realTargetAddr, wrc, wlc)
+
+		atomic.AddInt32(&activeConnectionCount, -1)
+		atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
+
+		return
+
+	} else {
+		udp_wrc, err := client.EstablishUDPChannel(clientConn, targetAddr)
+		if err != nil {
+			if ce := utils.CanLogErr("EstablishUDPChannel failed"); ce != nil {
+				ce.Write(
+					zap.String("target", targetAddr.String()),
+					zap.Error(err),
+				)
+			}
+			return
+		}
+
+		if noCopy {
+			return
+		}
+
+		if iics.theFallbackFirstBuffer != nil {
+
+			udp_wrc.WriteTo(iics.theFallbackFirstBuffer.Bytes(), targetAddr)
+			utils.PutBytes(iics.theFallbackFirstBuffer.Bytes())
+
+		}
+
+		atomic.AddInt32(&activeConnectionCount, 1)
+
+		downloadBytes := netLayer.RelayUDP(udp_wrc, udp_wlc)
+
+		atomic.AddInt32(&activeConnectionCount, -1)
+		atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
+
+		return
 	}
 
-	if iics.theFallbackFirstBuffer != nil {
-		//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-		wrc.Write(iics.theFallbackFirstBuffer.Bytes())
-		utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
-	}
-
-	atomic.AddInt32(&activeConnectionCount, 1)
-
-	downloadBytes := netLayer.Relay(&realTargetAddr, wlc, wrc)
-
-	atomic.AddInt32(&activeConnectionCount, -1)
-	atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
-
-	return wrc, utils.NumErr{}
 }

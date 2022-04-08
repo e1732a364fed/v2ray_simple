@@ -27,7 +27,7 @@ func TestUDP(t *testing.T) {
 		t.FailNow()
 	}
 
-	direct, _ := direct.NewClient()
+	direct := &direct.Client{}
 
 	go func() {
 		for {
