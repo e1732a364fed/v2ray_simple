@@ -17,6 +17,11 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
+type ByteReader interface {
+	ReadByte() (byte, error)
+	Read(p []byte) (n int, err error)
+}
+
 func IsFlagPassed(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {

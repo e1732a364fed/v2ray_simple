@@ -12,12 +12,16 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+func init() {
+	proxy.RegisterClient(Name, ClientCreator{})
+}
+
 //作为对照，可以参考 https://github.com/p4gefau1t/trojan-go/blob/master/tunnel/trojan/client.go
 
 type ClientCreator struct{}
 
 func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
-	return nil, errors.New("not implemented")
+	return nil, utils.ErrNotImplemented
 }
 
 func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
@@ -37,10 +41,10 @@ type Client struct {
 }
 
 func (c *Client) Name() string {
-	return name
+	return Name
 }
 
-func WriteTargetToBuf(target netLayer.Addr, buf *bytes.Buffer) {
+func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 	if len(target.IP) > 0 {
 		if ip4 := target.IP.To4(); ip4 == nil {
 			buf.WriteByte(netLayer.AtypIP6)
@@ -69,7 +73,7 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	buf.Write(c.password_hexStringBytes)
 	buf.Write(crlf)
 	buf.WriteByte(CmdConnect)
-	WriteTargetToBuf(target, buf)
+	WriteAddrToBuf(target, buf)
 
 	_, err := underlay.Write(buf.Bytes())
 	utils.PutBuf(buf)
@@ -89,12 +93,12 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 	buf.Write(c.password_hexStringBytes)
 	buf.Write(crlf)
 	buf.WriteByte(CmdUDPAssociate)
-	WriteTargetToBuf(target, buf)
+	WriteAddrToBuf(target, buf)
 	_, err := underlay.Write(buf.Bytes())
 	utils.PutBuf(buf)
 	if err != nil {
 		return nil, err
 	}
 
-	return UDPConn{underlay}, nil
+	return NewUDPConn(underlay, nil), nil
 }

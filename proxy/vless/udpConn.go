@@ -70,7 +70,6 @@ func (u *UDPConn) WriteTo(p []byte, raddr netLayer.Addr) error {
 
 }
 
-//从 客户端读取 udp请求
 func (u *UDPConn) ReadFrom() ([]byte, netLayer.Addr, error) {
 
 	var from io.Reader = u.Conn

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/url"
 	"sync"
@@ -354,7 +353,6 @@ realPart:
 	}
 
 	if targetAddr.IsUDP() {
-		log.Println("targetAddr", targetAddr.IP, targetAddr.Name)
 		return nil, &UDPConn{
 			Conn:              underlay,
 			version:           int(version),

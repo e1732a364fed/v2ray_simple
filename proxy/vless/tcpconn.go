@@ -88,9 +88,6 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 		//本作的 ws.Conn 实现了 utils.MultiWriter
 
 		if c.underlayIsBasic {
-			//如果是基本Conn，则不用担心 WriteTo篡改buffers的问题, 因为它会直接调用底层 writev
-			//nb := net.Buffers(buffers)
-			//return nb.WriteTo(c.Conn)	//发现它还是会篡改？？什么鬼
 			return utils.BuffersWriteTo(buffers, c.Conn)
 
 		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {

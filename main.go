@@ -30,6 +30,8 @@ import (
 	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/dokodemo"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/socks5"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/trojan"
 )
 
 const (

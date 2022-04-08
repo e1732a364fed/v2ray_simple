@@ -338,6 +338,7 @@ dialedPart:
 // 如果a的ip不为空，则会返回 AtypIP4 或 AtypIP6，否则会返回 AtypDomain
 // Return address bytes and type
 // 如果atyp类型是 域名，则 第一字节为该域名的总长度, 其余字节为域名内容。
+// 如果类型是ip，则会拷贝出该ip的数据的副本。
 func (a *Addr) AddressBytes() ([]byte, byte) {
 	var addr []byte
 	var atyp byte
