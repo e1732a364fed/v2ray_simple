@@ -144,18 +144,19 @@ realPart:
 		return nil, NewUDPConn(underlay, io.MultiReader(readbuf, underlay)), targetAddr, nil
 
 	} else {
-		if readbuf.Len() == 0 {
-			return underlay, nil, targetAddr, nil
-		} else {
-			return &UserTCPConn{
-				Conn:              underlay,
-				optionalReader:    io.MultiReader(readbuf, underlay),
-				remainFirstBufLen: readbuf.Len(),
-				hash:              hashStr,
-				underlayIsBasic:   netLayer.IsBasicConn(underlay),
-				isServerEnd:       true,
-			}, nil, targetAddr, nil
-		}
+		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
+		//if readbuf.Len() == 0 {
+		//	return underlay, nil, targetAddr, nil
+		//} else {
+		return &UserTCPConn{
+			Conn:              underlay,
+			optionalReader:    io.MultiReader(readbuf, underlay),
+			remainFirstBufLen: readbuf.Len(),
+			hash:              hashStr,
+			underlayIsBasic:   netLayer.IsBasicConn(underlay),
+			isServerEnd:       true,
+		}, nil, targetAddr, nil
+		//}
 
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 //trojan比较简洁，这个 UserTCPConn 只是用于读取握手读取时读到的剩余的缓存
@@ -52,7 +53,7 @@ func (c *UserTCPConn) EverPossibleToSplice() bool {
 }
 
 func (c *UserTCPConn) CanSplice() (r bool, conn net.Conn) {
-	if c.remainFirstBufLen > 0 {
+	if !c.isServerEnd && c.remainFirstBufLen > 0 {
 		return false, nil
 	}
 
@@ -65,4 +66,34 @@ func (c *UserTCPConn) CanSplice() (r bool, conn net.Conn) {
 	}
 
 	return
+}
+func (c *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
+
+	return netLayer.TryReadFrom_withSplice(c, c.Conn, r, func() bool { return c.isServerEnd || c.remainFirstBufLen <= 0 })
+}
+
+func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
+
+	if c.isServerEnd || c.remainFirstBufLen <= 0 {
+
+		//底层连接可以是 ws，或者 tls，或者 基本连接; tls 我们暂不支持 utils.MultiWriter
+		// 理论上tls是可以支持的，但是要我们魔改tls库
+
+		//本作的 ws.Conn 实现了 utils.MultiWriter
+
+		if c.underlayIsBasic {
+			return utils.BuffersWriteTo(buffers, c.Conn)
+
+		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
+			return mr.WriteBuffers(buffers)
+		}
+	}
+
+	bigbs, dup := utils.MergeBuffers(buffers)
+	n, e := c.Write(bigbs)
+	if dup {
+		utils.PutPacket(bigbs)
+	}
+	return int64(n), e
+
 }
