@@ -183,7 +183,6 @@ func (c *Conn) ReadFrom(r io.Reader) (written int64, err error) {
 // 若底层是tls，那我们也合并再发出，这样能少些很多头部,也能减少Write次数
 func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 
-	//nb := net.Buffers(buffers)
 	if c.underlayIsBasic {
 		allLen := utils.BuffersLen(buffers)
 
@@ -218,8 +217,6 @@ func (c *Conn) WriteBuffers(buffers [][]byte) (int64, error) {
 				return 0, e
 			}
 			return utils.BuffersWriteTo(buffers, c.Conn)
-			//return ((*net.Buffers)(&buffers)).WriteTo(c.Conn)
-
 			/*
 				实测使用writev并没有太大速度提升，反到速度不稳定, 而我们自己的函数是非常稳定的
 				net.Buffers.WriteTo  (writev)

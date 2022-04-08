@@ -162,10 +162,6 @@ type UDPMsgConnWrapper struct {
 func NewUDPMsgConnClientWrapper(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConnWrapper {
 	uc := new(UDPMsgConnWrapper)
 
-	//if laddr == nil {
-	//	laddr, _ = net.ResolveUDPAddr("udp", ":"+RandPortStr())
-	//}
-
 	udpConn, _ := net.ListenUDP("udp", laddr)
 
 	uc.conn = udpConn

@@ -1,7 +1,6 @@
 package trojan
 
 import (
-	"bufio"
 	"io"
 	"net"
 
@@ -19,11 +18,7 @@ type UserTCPConn struct {
 	underlayIsBasic bool
 
 	hash        string
-	isServerEnd bool //for v0
-
-	bufr            *bufio.Reader //for udp
-	isntFirstPacket bool          //for v0
-
+	isServerEnd bool
 }
 
 func (uc *UserTCPConn) Read(p []byte) (int, error) {
@@ -88,6 +83,8 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 			return mr.WriteBuffers(buffers)
 		}
 	}
+
+	//发现用tls时，下面的 MergeBuffers然后一起写入的方式，能提供巨大的性能提升
 
 	bigbs, dup := utils.MergeBuffers(buffers)
 	n, e := c.Write(bigbs)

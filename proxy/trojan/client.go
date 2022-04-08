@@ -81,7 +81,13 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 		return nil, err
 	}
 
-	return underlay, nil
+	// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
+	//return underlay, nil
+
+	return &UserTCPConn{
+		Conn:            underlay,
+		underlayIsBasic: netLayer.IsBasicConn(underlay),
+	}, nil
 }
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {

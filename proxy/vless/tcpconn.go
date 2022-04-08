@@ -94,6 +94,8 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 			return mr.WriteBuffers(buffers)
 		}
 	}
+	//发现用tls时，下面的 MergeBuffers然后一起写入的方式，能提供巨大的性能提升
+	// 应该是因为, 每一次调用tls.Write 都会有一定的开销, 如果能合在一起再写入，就能避免多次写入的开销
 
 	bigbs, dup := utils.MergeBuffers(buffers)
 	n, e := c.Write(bigbs)
