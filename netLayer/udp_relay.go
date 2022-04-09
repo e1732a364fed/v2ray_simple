@@ -22,12 +22,16 @@ var (
 
 //本文件内含 一些 转发 udp 数据的 接口与方法
 
-//MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装
+//MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装.
+// 实现 MsgConn接口 的类型 可以被用于 RelayUDP 进行转发
 //
-//使用Addr，是因为有可能申请的是域名，而不是ip
+//ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝
+//
+//使用Addr，是因为有可能请求地址是个域名，而不是ip; 而且通过Addr, MsgConn实际上有可能支持通用的情况,
+// 即可以用于 客户端 一会 请求tcp，一会又请求udp，一会又请求什么其它网络层 这种奇葩情况.
 type MsgConn interface {
-	ReadFrom() ([]byte, Addr, error)
-	WriteTo([]byte, Addr) error
+	ReadMsgFrom() ([]byte, Addr, error)
+	WriteMsgTo([]byte, Addr) error
 	CloseConnWithRaddr(raddr Addr) error //关闭特定连接
 	Close() error                        //关闭所有连接
 	Fullcone() bool                      //若Fullcone, 则在转发因另一端关闭而结束后, RelayUDP函数不会Close它.
@@ -69,11 +73,11 @@ func RelayUDP(rc, lc MsgConn) int {
 
 	go func() {
 		for {
-			bs, raddr, err := lc.ReadFrom()
+			bs, raddr, err := lc.ReadMsgFrom()
 			if err != nil {
 				break
 			}
-			err = rc.WriteTo(bs, raddr)
+			err = rc.WriteMsgTo(bs, raddr)
 			if err != nil {
 
 				break
@@ -92,12 +96,12 @@ func RelayUDP(rc, lc MsgConn) int {
 	count := 0
 
 	for {
-		bs, raddr, err := rc.ReadFrom()
+		bs, raddr, err := rc.ReadMsgFrom()
 		if err != nil {
 
 			break
 		}
-		err = lc.WriteTo(bs, raddr)
+		err = lc.WriteMsgTo(bs, raddr)
 		if err != nil {
 
 			break
@@ -124,7 +128,7 @@ func (u UniTargetMsgConn) Fullcone() bool {
 	return false
 }
 
-func (u UniTargetMsgConn) ReadFrom() ([]byte, Addr, error) {
+func (u UniTargetMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
 	bs := utils.GetPacket()
 
 	n, err := u.Conn.Read(bs)
@@ -134,7 +138,7 @@ func (u UniTargetMsgConn) ReadFrom() ([]byte, Addr, error) {
 	return bs[:n], u.target, err
 }
 
-func (u UniTargetMsgConn) WriteTo(bs []byte, _ Addr) error {
+func (u UniTargetMsgConn) WriteMsgTo(bs []byte, _ Addr) error {
 	_, err := u.Conn.Write(bs)
 	return err
 }
@@ -177,7 +181,7 @@ func (u *UDPMsgConnWrapper) Fullcone() bool {
 	return u.fullcone
 }
 
-func (u *UDPMsgConnWrapper) ReadFrom() ([]byte, Addr, error) {
+func (u *UDPMsgConnWrapper) ReadMsgFrom() ([]byte, Addr, error) {
 	bs := utils.GetPacket()
 
 	if !u.fullcone {
@@ -198,7 +202,7 @@ func (u *UDPMsgConnWrapper) ReadFrom() ([]byte, Addr, error) {
 	return bs[:n], NewAddrFromUDPAddr(ad), nil
 }
 
-func (u *UDPMsgConnWrapper) WriteTo(bs []byte, raddr Addr) error {
+func (u *UDPMsgConnWrapper) WriteMsgTo(bs []byte, raddr Addr) error {
 
 	if !u.fullcone && !u.IsServer {
 		//非fullcone时,  强制 symmetryc, 对每个远程地址 都使用一个 对应的新laddr

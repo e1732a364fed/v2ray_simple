@@ -1,7 +1,6 @@
 package netLayer
 
 import (
-	"errors"
 	"io"
 	"net"
 	"time"
@@ -9,17 +8,20 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-var (
-	ErrTimeout = errors.New("timeout")
-)
+type UDPAddrData struct {
+	Addr net.UDPAddr
+	Data []byte
+}
 
-//Uni_UDPConn将一个udp连接包装成一个 只能向单一目标发送数据的 连接。
-//Uni_UDPConn 实现了 net.Conn 和 net.PacketConn
-type Uni_UDPConn struct {
+//UDPConn将一个udp连接包装成一个 只能向单一目标发送数据的 连接。
+// 还是有能力接收来自其它目标的数据，并有能力向其它目标发送数据。
+// 如果用 DialUDP 函数初始化的 UDPConn, 则无法使用 WriteMsgTo方法向其它地址发消息.
+//UDPConn 实现了 net.Conn , net.PacketConn , MsgConn
+type UDPConn struct {
 	peerAddr *net.UDPAddr
 	realConn *net.UDPConn
 
-	inMsgChan       chan []byte
+	inMsgChan       chan UDPAddrData
 	inMsgChanClosed bool
 
 	readDeadline  PipeDeadline
@@ -29,14 +31,14 @@ type Uni_UDPConn struct {
 	clientFirstWriteChanClosed bool
 
 	unread   []byte
-	isClient bool
+	isClient bool //如果realConn是用 net.DialUDP 产生的, 则为 client，否则认为是server
 }
 
 //我们这里为了保证udp连接不会一直滞留导致 too many open files的情况,
 // 主动设置了 内层udp连接的 read的 timeout为 UDP_timeout。
 // 你依然可以设置 DialUDP 所返回的 net.Conn 的 Deadline, 这属于外层的Deadline,
 // 不会影响底层 udp所强制设置的 deadline.
-func DialUDP(raddr *net.UDPAddr) (*Uni_UDPConn, error) {
+func DialUDP(raddr *net.UDPAddr) (*UDPConn, error) {
 	conn, err := net.DialUDP("udp", nil, raddr)
 	if err != nil {
 		return nil, err
@@ -46,9 +48,9 @@ func DialUDP(raddr *net.UDPAddr) (*Uni_UDPConn, error) {
 
 //如果isClient为true，则本函数返回后，必须要调用一次 Write，才能在Read读到数据. 这是udp的原理所决定的。
 // 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
-func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *Uni_UDPConn {
-	inDataChan := make(chan []byte, 20)
-	theUDPConn := &Uni_UDPConn{raddr, conn, inDataChan, false, MakePipeDeadline(),
+func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
+	inDataChan := make(chan UDPAddrData, 20)
+	theUDPConn := &UDPConn{raddr, conn, inDataChan, false, MakePipeDeadline(),
 		MakePipeDeadline(), make(chan int), false, []byte{}, isClient}
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
@@ -67,13 +69,13 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *Uni_UDPCo
 				buf := utils.GetPacket()
 
 				conn.SetReadDeadline(time.Now().Add(UDP_timeout))
-				n, _, err := conn.ReadFromUDP(buf)
+				n, raddr, err := conn.ReadFromUDP(buf)
 
 				//这里默认认为每个客户端都是在NAT后的,不怕遇到其它raddr,
 				// 即默认认为只可能读到 我们服务器发来的数据.
 
 				if n > 0 {
-					inDataChan <- buf[:n] //该数据会被ReadMsg和 Read读到
+					inDataChan <- UDPAddrData{Addr: *raddr, Data: buf[:n]} //该数据会被ReadMsg和 Read读到
 				}
 
 				if err != nil {
@@ -87,14 +89,27 @@ func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *Uni_UDPCo
 	return theUDPConn
 }
 
-func (uc *Uni_UDPConn) ReadMsg() (b []byte, err error) {
+func (uc *UDPConn) ReadMsgFrom() ([]byte, Addr, error) {
+	select {
+	case msg, ok := <-uc.inMsgChan:
+		if !ok {
+			return nil, Addr{}, io.EOF
+		}
+		return msg.Data, NewAddrFromUDPAddr(&msg.Addr), nil
+
+	case <-uc.readDeadline.Wait():
+		return nil, Addr{}, ErrTimeout
+	}
+}
+
+func (uc *UDPConn) ReadMsg() (b []byte, err error) {
 
 	select {
 	case msg, ok := <-uc.inMsgChan:
 		if !ok {
 			return nil, io.EOF
 		}
-		return msg, nil
+		return msg.Data, nil
 
 	case <-uc.readDeadline.Wait():
 		return nil, ErrTimeout
@@ -102,13 +117,13 @@ func (uc *Uni_UDPConn) ReadMsg() (b []byte, err error) {
 }
 
 //实现 net.PacketConn， 可以与 miekg/dns 配合。返回的 addr 只可能为 之前预先配置的远程目标地址
-func (uc *Uni_UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 	select {
 	case msg, ok := <-uc.inMsgChan:
 		if !ok {
 			return 0, uc.peerAddr, io.EOF
 		}
-		n = copy(msg, p)
+		n = copy(msg.Data, p)
 		return n, uc.peerAddr, io.EOF
 
 	case <-uc.readDeadline.Wait():
@@ -117,16 +132,16 @@ func (uc *Uni_UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 }
 
 //实现 net.PacketConn， 可以与 miekg/dns 配合。会无视传入的地址, 而使用 之前预先配置的远程目标地址
-func (uc *Uni_UDPConn) WriteTo(p []byte, _ net.Addr) (n int, err error) {
+func (uc *UDPConn) WriteTo(p []byte, _ net.Addr) (n int, err error) {
 	return uc.Write(p)
 
 }
 
-func (uc *Uni_UDPConn) GetReadChan() chan []byte {
+func (uc *UDPConn) GetReadChan() chan UDPAddrData {
 	return uc.inMsgChan
 }
 
-func (uc *Uni_UDPConn) Read(buf []byte) (n int, err error) {
+func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 	if len(uc.unread) > 0 {
 		n = copy(buf, uc.unread)
 		uc.unread = uc.unread[n:]
@@ -152,7 +167,31 @@ func (uc *Uni_UDPConn) Read(buf []byte) (n int, err error) {
 	return
 }
 
-func (uc *Uni_UDPConn) Write(buf []byte) (n int, err error) {
+func (uc *UDPConn) WriteMsgTo(buf []byte, addr Addr) error {
+	select {
+	case <-uc.writeDeadline.Wait():
+		return ErrTimeout
+	default:
+		if uc.isClient {
+			time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
+
+			if !uc.clientFirstWriteChanClosed {
+				defer func() {
+					close(uc.clientFirstWriteChan)
+					uc.clientFirstWriteChanClosed = true
+				}()
+			}
+			_, err := uc.realConn.Write(buf)
+			return err
+		} else {
+			_, err := uc.realConn.WriteToUDP(buf, addr.ToUDPAddr())
+			return err
+		}
+
+	}
+}
+
+func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 	select {
 	case <-uc.writeDeadline.Wait():
 		return 0, ErrTimeout
@@ -189,7 +228,7 @@ func (uc *Uni_UDPConn) Write(buf []byte) (n int, err error) {
 	}
 }
 
-func (uc *Uni_UDPConn) CloseMsgChan() {
+func (uc *UDPConn) CloseMsgChan() {
 	if uc.isClient {
 		if !uc.clientFirstWriteChanClosed {
 			uc.clientFirstWriteChanClosed = true
@@ -198,7 +237,7 @@ func (uc *Uni_UDPConn) CloseMsgChan() {
 	}
 }
 
-func (uc *Uni_UDPConn) Close() error {
+func (uc *UDPConn) Close() error {
 	if uc.isClient {
 		uc.CloseMsgChan()
 		return uc.realConn.Close()
@@ -206,19 +245,24 @@ func (uc *Uni_UDPConn) Close() error {
 	return nil
 }
 
-func (b *Uni_UDPConn) LocalAddr() net.Addr         { return b.realConn.LocalAddr() }
-func (b *Uni_UDPConn) RemoteAddr() net.Addr        { return b.peerAddr }
-func (b *Uni_UDPConn) RemoteUDPAddr() *net.UDPAddr { return b.peerAddr }
+func (u *UDPConn) CloseConnWithRaddr(_ Addr) error {
+	return u.Close()
 
-func (b *Uni_UDPConn) SetWriteDeadline(t time.Time) error {
+}
+
+func (b *UDPConn) LocalAddr() net.Addr         { return b.realConn.LocalAddr() }
+func (b *UDPConn) RemoteAddr() net.Addr        { return b.peerAddr }
+func (b *UDPConn) RemoteUDPAddr() *net.UDPAddr { return b.peerAddr }
+
+func (b *UDPConn) SetWriteDeadline(t time.Time) error {
 	b.writeDeadline.Set(t)
 	return nil
 }
-func (b *Uni_UDPConn) SetReadDeadline(t time.Time) error {
+func (b *UDPConn) SetReadDeadline(t time.Time) error {
 	b.readDeadline.Set(t)
 	return nil
 }
-func (b *Uni_UDPConn) SetDeadline(t time.Time) error {
+func (b *UDPConn) SetDeadline(t time.Time) error {
 	b.readDeadline.Set(t)
 	b.writeDeadline.Set(t)
 	return nil

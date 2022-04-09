@@ -17,8 +17,8 @@ import (
 type UDPListener struct {
 	conn *net.UDPConn
 
-	newConnChan chan *Uni_UDPConn
-	connMap     map[netip.AddrPort]*Uni_UDPConn
+	newConnChan chan *UDPConn
+	connMap     map[netip.AddrPort]*UDPConn
 	mux         sync.RWMutex
 	isclosed    bool
 }
@@ -35,20 +35,20 @@ func NewUDPListener(laddr *net.UDPAddr) (*UDPListener, error) {
 func NewUDPListenerConn(conn *net.UDPConn) (*UDPListener, error) {
 	ul := new(UDPListener)
 	ul.conn = conn
-	ul.connMap = make(map[netip.AddrPort]*Uni_UDPConn)
-	ul.newConnChan = make(chan *Uni_UDPConn, 100)
+	ul.connMap = make(map[netip.AddrPort]*UDPConn)
+	ul.newConnChan = make(chan *UDPConn, 100)
 	go ul.run()
 
 	return ul, nil
 }
 
 //It can be used to dial a remote udp
-func (ul *UDPListener) NewConn(raddr *net.UDPAddr) *Uni_UDPConn {
+func (ul *UDPListener) NewConn(raddr *net.UDPAddr) *UDPConn {
 	return ul.newConn(raddr, UDPAddr2AddrPort(raddr))
 }
 
 //newConn 创建一个新的 UDPConn,并存储在 ul.connMap 中
-func (ul *UDPListener) newConn(raddr *net.UDPAddr, addrport netip.AddrPort) *Uni_UDPConn {
+func (ul *UDPListener) newConn(raddr *net.UDPAddr, addrport netip.AddrPort) *UDPConn {
 	newC := NewUDPConn(raddr, ul.conn, false)
 	ul.mux.Lock()
 	ul.connMap[addrport] = newC
@@ -101,7 +101,7 @@ func (ul *UDPListener) closeClients() error {
 	for _, c := range ul.connMap {
 		close(c.inMsgChan)
 	}
-	ul.connMap = make(map[netip.AddrPort]*Uni_UDPConn)
+	ul.connMap = make(map[netip.AddrPort]*UDPConn)
 	ul.mux.Unlock()
 
 	return nil
@@ -120,7 +120,7 @@ func (ul *UDPListener) run() {
 
 		go func(theraddr *net.UDPAddr, thebuf []byte) {
 			addrport := UDPAddr2AddrPort(theraddr)
-			var oldConn *Uni_UDPConn
+			var oldConn *UDPConn
 
 			ul.mux.RLock()
 			oldConn = ul.connMap[addrport]
@@ -132,7 +132,7 @@ func (ul *UDPListener) run() {
 				ul.newConnChan <- oldConn //此时 ul 的 Accept的调用者就会收到一个新Conn
 			}
 
-			oldConn.inMsgChan <- thebuf[:n]
+			oldConn.inMsgChan <- UDPAddrData{Addr: *theraddr, Data: thebuf[:n]}
 
 		}(raddr, buf)
 

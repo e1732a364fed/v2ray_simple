@@ -34,7 +34,7 @@ func (u UDPConn) Fullcone() bool {
 func (u UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
-func (u UDPConn) ReadFrom() ([]byte, netLayer.Addr, error) {
+func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 	addr, err := GetAddrFromReader(u.bufr)
 	if err != nil {
 		return nil, addr, err
@@ -78,7 +78,7 @@ func (u UDPConn) ReadFrom() ([]byte, netLayer.Addr, error) {
 	return bs[:n], addr, nil
 }
 
-func (u UDPConn) WriteTo(bs []byte, addr netLayer.Addr) error {
+func (u UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
 
 	abs, atype := addr.AddressBytes()
 	buf := utils.GetBuf()

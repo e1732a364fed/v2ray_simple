@@ -245,7 +245,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				//发现既可能读取 firstbuf，也可能读取 wlc，随机发生？
 
 				t.Log("vless read from wlc")
-				bs, raddr, _ := wlc.ReadFrom()
+				bs, raddr, _ := wlc.ReadMsgFrom()
 
 				t.Log("vless got wlc", bs)
 
@@ -264,14 +264,14 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 				wrc := netLayer.NewUDPMsgConnClientWrapper(nil, false, false)
 
-				err = wrc.WriteTo(bs, na)
+				err = wrc.WriteMsgTo(bs, na)
 				if err != nil {
 					t.Logf("failed to write to FakeUDPServer : %v", err)
 					t.Fail()
 					return
 				}
 
-				bs, _, err = wrc.ReadFrom()
+				bs, _, err = wrc.ReadMsgFrom()
 
 				if err != nil {
 					t.Logf("failed io.ReadFull(rc, hello[:]) : %v", err)
@@ -279,7 +279,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 					return
 				}
 
-				err = wlc.WriteTo(bs, raddr)
+				err = wlc.WriteMsgTo(bs, raddr)
 				if err != nil {
 					t.Logf("failed wlc.Write(hello[:]) : %v", err)
 					t.Fail()
@@ -307,7 +307,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	t.Log("client vless handshake success")
 
-	err = wrc.WriteTo(hellodata, targetStruct_forFakeUDPServer)
+	err = wrc.WriteMsgTo(hellodata, targetStruct_forFakeUDPServer)
 	if err != nil {
 		t.Log("failed in write to ", fakeServerEndLocalServer.AddrStr(), err)
 		t.FailNow()
@@ -315,7 +315,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	t.Log("client write hello success")
 
-	bs, _, _ := wrc.ReadFrom()
+	bs, _, _ := wrc.ReadMsgFrom()
 	if !bytes.Equal(bs, replydata) {
 		t.Log("!bytes.Equal(world[:], replydata) ", bs, replydata)
 		t.FailNow()
@@ -336,7 +336,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 		t.Log("rand generated", len(longbs))
 
-		err = wrc.WriteTo(longbs, targetStruct_forFakeUDPServer)
+		err = wrc.WriteMsgTo(longbs, targetStruct_forFakeUDPServer)
 		if err != nil {
 			t.Log("failed in write long data to ", fakeServerEndLocalServer.AddrStr(), err)
 			t.FailNow()
@@ -344,7 +344,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 		t.Log("data written")
 
-		bs, _, _ := wrc.ReadFrom()
+		bs, _, _ := wrc.ReadMsgFrom()
 		if err != nil {
 			t.Log("ReadFull err ", err)
 			t.FailNow()

@@ -9,6 +9,7 @@ Package netLayer contains definitions in network layer AND transport layer.
 package netLayer
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -23,7 +24,8 @@ var (
 	// 避免打印过多错误输出
 	machineCanConnectToIpv6 bool
 
-	ErrMachineCantConnectToIpv6 = utils.NumErr{Prefix: "ErrMachineCanConnectToIpv6"}
+	ErrMachineCantConnectToIpv6 = errors.New("ErrMachineCanConnectToIpv6")
+	ErrTimeout                  = errors.New("timeout")
 )
 
 //做一些网络层的资料准备工作, 可以优化本包其它函数的调用。
@@ -56,6 +58,9 @@ func HasIpv6Interface() bool {
 			// According to godoc, If ip is not an IPv4 address, To4 returns nil.
 			// This means it's ipv6
 			if ipnet.IP.To4() == nil {
+				if utils.LogLevel == utils.Log_debug {
+					log.Println("Has Ipv6Interface!")
+				}
 				return true
 			}
 		}
@@ -95,9 +100,4 @@ func IsStrUDP_network(s string) bool {
 		return true
 	}
 	return false
-}
-
-type UDPAddrData struct {
-	Addr net.UDPAddr
-	Data []byte
 }

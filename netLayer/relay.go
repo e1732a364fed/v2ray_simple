@@ -102,12 +102,8 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 				//然而经实测,writev会篡改我们的buffers，会导致问题. 而且writev也毫无性能优势,
 				//所以这里统一使用我们自己的函数
 
-				//thisWriteNum, writeErr = buffers.WriteTo(writeConn)
-				//} else {
-
 				thisWriteNum, writeErr = utils.BuffersWriteTo(buffers, writeConn)
 
-				//}
 			}
 
 			allnum += thisWriteNum
@@ -122,7 +118,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	}
 classic:
 	if ce := utils.CanLogDebug("copying with classic method"); ce != nil {
-		//log.Println("copying with classic method")
 		ce.Write()
 	}
 copy:

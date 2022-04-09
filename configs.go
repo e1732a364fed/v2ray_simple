@@ -118,12 +118,12 @@ func loadConfig() (err error) {
 			if appConf := standardConf.App; appConf != nil {
 				default_uuid = appConf.DefaultUUID
 
-				if appConf.LogLevel != nil && !utils.IsFlagPassed("ll") {
+				if appConf.LogLevel != nil && !utils.IsFlagGiven("ll") {
 					utils.LogLevel = *appConf.LogLevel
 					utils.InitLog()
 
 				}
-				if appConf.NoReadV && !utils.IsFlagPassed("readv") {
+				if appConf.NoReadV && !utils.IsFlagGiven("readv") {
 					netLayer.UseReadv = false
 				}
 

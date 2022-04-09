@@ -47,7 +47,7 @@ func TestUDP(t *testing.T) {
 				for {
 					t.Log("socks5 server start read udp channel")
 
-					bs, addr, err := wlc.ReadFrom()
+					bs, addr, err := wlc.ReadMsgFrom()
 					if err != nil {
 						t.Log("socks5 server read udp channel err,", err)
 
@@ -61,17 +61,17 @@ func TestUDP(t *testing.T) {
 						t.Fail()
 						return
 					}
-					err = msgConn.WriteTo(bs, addr)
+					err = msgConn.WriteMsgTo(bs, addr)
 					if err != nil {
 						t.Log("socks5 server Write To direct failed,", len(bs), err)
 					}
 					go func() {
 						for {
-							rbs, raddr, err := msgConn.ReadFrom()
+							rbs, raddr, err := msgConn.ReadMsgFrom()
 							if err != nil {
 								break
 							}
-							wlc.WriteTo(rbs, raddr)
+							wlc.WriteMsgTo(rbs, raddr)
 						}
 					}()
 				}

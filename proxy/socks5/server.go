@@ -226,7 +226,7 @@ func (u *UDPConn) Fullcone() bool {
 }
 
 //将远程地址发来的响应 传给客户端
-func (u *UDPConn) WriteTo(bs []byte, raddr netLayer.Addr) error {
+func (u *UDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 
 	buf := &bytes.Buffer{}
 	buf.WriteByte(0) //rsv
@@ -252,7 +252,7 @@ func (u *UDPConn) WriteTo(bs []byte, raddr netLayer.Addr) error {
 }
 
 //从 客户端读取 udp请求
-func (u *UDPConn) ReadFrom() ([]byte, netLayer.Addr, error) {
+func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	var clientSupposedAddrIsNothing bool
 	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {

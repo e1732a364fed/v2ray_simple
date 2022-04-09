@@ -31,7 +31,7 @@ func (u *UDPConn) Fullcone() bool {
 	return u.version != 0
 }
 
-func (u *UDPConn) WriteTo(p []byte, raddr netLayer.Addr) error {
+func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
 
 	//v0很垃圾，不支持fullcone，无视raddr，始终向最开始的raddr发送。
 	if u.version == 0 {
@@ -70,7 +70,7 @@ func (u *UDPConn) WriteTo(p []byte, raddr netLayer.Addr) error {
 
 }
 
-func (u *UDPConn) ReadFrom() ([]byte, netLayer.Addr, error) {
+func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	var from io.Reader = u.Conn
 	if u.optionalReader != nil {

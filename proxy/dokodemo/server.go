@@ -35,13 +35,13 @@ https://www.40huo.cn/blog/wireguard-over-vless.html
 package dokodemo
 
 import (
-	"errors"
 	"io"
 	"net"
 	"net/url"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 const name = "dokodemo"
@@ -54,8 +54,9 @@ type ServerCreator struct{}
 
 // NewServerFromURL returns "Not implemented".
 //因为 tcp:// 这种url没法轻易放在 url的query里，还需转义，所以不实用
+// 不过实际上不需要用url方式, 可以用network=tcp&target=127.0.0.1&target_port=80
 func (_ ServerCreator) NewServerFromURL(*url.URL) (proxy.Server, error) {
-	return nil, errors.New("Not implemented")
+	return nil, utils.ErrNotImplemented
 }
 
 // use lc.TargetAddr

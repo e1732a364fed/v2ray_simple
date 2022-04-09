@@ -904,7 +904,7 @@ afterLocalServerHandshake:
 	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
 	//log.Println("will dial", client)
-	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc, false)
+	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc)
 }
 
 // dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手，
@@ -913,11 +913,11 @@ afterLocalServerHandshake:
 //client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
 // noCopy是为了让其它调用者自行处理 转发 时使用。
-func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, noCopy bool) {
+func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn) {
 
 	isudp := targetAddr.IsUDP()
 
-	if iics.shouldCloseInSerBaseConnWhenFinish && !noCopy {
+	if iics.shouldCloseInSerBaseConnWhenFinish {
 		if iics.baseLocalConn != nil {
 			defer iics.baseLocalConn.Close()
 		}
@@ -1214,10 +1214,6 @@ advLayerStep:
 
 		////////////////////////////// 实际转发阶段 /////////////////////////////////////
 
-		if noCopy {
-			return
-		}
-
 		if tls_lazy_encrypt && !iics.routedToDirect {
 
 			// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
@@ -1272,13 +1268,9 @@ advLayerStep:
 			return
 		}
 
-		if noCopy {
-			return
-		}
-
 		if iics.theFallbackFirstBuffer != nil {
 
-			udp_wrc.WriteTo(iics.theFallbackFirstBuffer.Bytes(), targetAddr)
+			udp_wrc.WriteMsgTo(iics.theFallbackFirstBuffer.Bytes(), targetAddr)
 			utils.PutBytes(iics.theFallbackFirstBuffer.Bytes())
 
 		}
