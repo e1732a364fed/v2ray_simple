@@ -17,6 +17,7 @@ func init() {
 	rand.Seed(time.Now().Unix())
 }
 
+// bufio.Reader 和 bytes.Buffer 都实现了 ByteReader
 type ByteReader interface {
 	ReadByte() (byte, error)
 	Read(p []byte) (n int, err error)

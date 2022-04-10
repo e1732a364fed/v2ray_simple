@@ -42,6 +42,12 @@ func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
 //
 // 非阻塞，在自己的goroutine中监听.
 func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener net.Listener, err error) {
+	if addr == "" || acceptFunc == nil {
+		return nil, utils.ErrNilParameter
+	}
+	if network == "" {
+		network = "tcp"
+	}
 	switch network {
 	case "udp", "udp4", "udp6":
 		var ua *net.UDPAddr
@@ -67,7 +73,6 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener 
 		if utils.FileExist(addr) {
 
 			if ce := utils.CanLogDebug("unix file exist"); ce != nil {
-				//log.Println("unix file exist, deleting", addr)
 				ce.Write(zap.String("deleting", addr))
 			}
 			err = os.Remove(addr)
@@ -79,9 +84,7 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener 
 		}
 		fallthrough
 	default:
-		if network == "" {
-			network = "tcp"
-		}
+
 		listener, err = net.Listen(network, addr)
 		if err != nil {
 			return

@@ -45,15 +45,13 @@ func AllSubSets_improve1[T comparable](set []T) (subsets [][]T) {
 	return subsets
 }
 
-func CopySlice[T any](a []T) (r []T) {
+func DuplicateSlice[T any](a []T) (r []T) {
 	r = make([]T, len(a))
-	for i, v := range a {
-		r[i] = v
-	}
+	copy(r, a)
 	return
 }
 
-//会直接改动原slice数据
+// TrimSlice 从一个slice中移除一个元素, 会直接改动原slice数据
 func TrimSlice[T any](a []T, deleteIndex int) []T {
 	j := 0
 	for idx, val := range a {

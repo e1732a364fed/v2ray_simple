@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 
 	"github.com/hahahrfool/v2ray_simple/grpc"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
@@ -58,7 +59,8 @@ type Server interface {
 }
 
 // FullName 可以完整表示 一个 代理的 VSI 层级.
-// 这里认为, tcp/udp/kcp/raw_socket 是FirstName，具体的协议名称是 LastName, 中间层是 MiddleName
+// 这里认为, tcp/udp/kcp/raw_socket 是FirstName，具体的协议名称是 LastName, 中间层是 MiddleName。
+//
 // An Example of a full name:  tcp+tls+ws+vless
 func GetFullName(pc ProxyCommon) string {
 	return pc.Network() + pc.MiddleName() + pc.Name()
@@ -135,14 +137,14 @@ type ProxyCommon interface {
 
 	initGRPC_server() error
 
-	IsMux() bool //如果用了grpc则此方法返回true
+	IsMux() bool //如果用了grpc或者quic, 则此方法返回true
 
 	GetQuic_Client() *quic.Client //for outClient
 	setQuic_Client(*quic.Client)
 
 	setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any))
 
-	/////////////////// 私有方法 ///////////////////
+	/////////////////// 其它私有方法 ///////////////////
 
 	setCantRoute(bool)
 	setTag(string)
@@ -214,14 +216,18 @@ func (pcs *ProxyCommonStruct) setFallback(a netLayer.Addr) {
 }
 
 func (pcs *ProxyCommonStruct) MiddleName() string {
-	str := ""
+	var sb strings.Builder
+	sb.WriteString("")
+
 	if pcs.TLS {
-		str += "+tls"
+		sb.WriteString("+tls")
 	}
 	if pcs.AdvancedL != "" {
-		str += "+" + pcs.AdvancedL
+		sb.WriteString("+")
+		sb.WriteString(pcs.AdvancedL)
 	}
-	return str + "+"
+	sb.WriteString("+")
+	return sb.String()
 }
 
 func (pcs *ProxyCommonStruct) CantRoute() bool {
@@ -235,12 +241,12 @@ func (pcs *ProxyCommonStruct) GetTag() string {
 func (pcs *ProxyCommonStruct) setTag(tag string) {
 	pcs.Tag = tag
 }
-func (pcs *ProxyCommonStruct) setNetwork(net string) {
-	if net == "" {
+func (pcs *ProxyCommonStruct) setNetwork(network string) {
+	if network == "" {
 		pcs.network = "tcp"
 
 	} else {
-		pcs.network = net
+		pcs.network = network
 
 	}
 }

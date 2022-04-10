@@ -663,10 +663,12 @@ func interactively_hotRemoveServerOrClient() {
 	will_delete_index = int(theInt)
 
 	if will_delete_dial {
+		allClients[will_delete_index].Stop()
 		allClients = utils.TrimSlice(allClients, will_delete_index)
 	}
 	if will_delete_listen {
 		listenerArray[will_delete_index].Close()
+		allServers[will_delete_index].Stop()
 
 		allServers = utils.TrimSlice(allServers, will_delete_index)
 		listenerArray = utils.TrimSlice(listenerArray, will_delete_index)
