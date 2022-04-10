@@ -7,12 +7,12 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hahahrfool/v2ray_simple/grpc"
+	"github.com/hahahrfool/v2ray_simple/advLayer/grpc"
+	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
+	"github.com/hahahrfool/v2ray_simple/advLayer/ws"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
-	"github.com/hahahrfool/v2ray_simple/ws"
 )
 
 func PrintAllServerNames() {

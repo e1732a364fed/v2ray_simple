@@ -9,10 +9,10 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
+	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
-	"github.com/hahahrfool/v2ray_simple/quic"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )

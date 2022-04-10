@@ -43,6 +43,8 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 ### 创新之外的已实现的有用特性
 
+支持trojan协议, 而且经过测速，比trojan-go快。（速度差距和本作的vless与v2ray的vless的差距基本一致，所以就不放出测速文件了，参考vless即可）
+
 在没有mmdb文件时，自动下载mmdb
 
 使用readv 进行加速
