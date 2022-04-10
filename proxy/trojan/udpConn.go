@@ -35,10 +35,12 @@ func (u UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
 func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+
 	addr, err := GetAddrFrom(u.bufr)
 	if err != nil {
 		return nil, addr, err
 	}
+
 	addr.Network = "udp"
 
 	lb1, err := u.bufr.ReadByte()
@@ -79,11 +81,16 @@ func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 }
 
 func (u UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
-
 	abs, atype := addr.AddressBytes()
+
+	atype = netLayer.ATypeToSocks5Standard(atype)
 	buf := utils.GetBuf()
 	buf.WriteByte(atype)
 	buf.Write(abs)
+
+	buf.WriteByte(byte(addr.Port >> 8))
+	buf.WriteByte(byte(addr.Port << 8 >> 8))
+
 	buf.WriteByte(byte(len(bs) >> 8))
 	buf.WriteByte(byte(len(bs) << 8 >> 8))
 	buf.Write(crlf)

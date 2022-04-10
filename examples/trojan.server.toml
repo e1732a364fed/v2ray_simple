@@ -11,3 +11,4 @@ key = "cert.key"
 
 [[dial]]
 protocol = "direct"
+# fullcone = true # 默认的fullcone是关闭状态, 可以取消注释以打开. trojan的udp是可以做到fullcone的.

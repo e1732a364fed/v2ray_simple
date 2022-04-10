@@ -1,4 +1,4 @@
-//package trojan implements proxy.Client and proxy.Server with trojan protocol for.
+//package trojan implements proxy.Client and proxy.Server with trojan protocol.
 //
 //See https://trojan-gfw.github.io/trojan/protocol .
 package trojan
@@ -25,6 +25,7 @@ const (
 const (
 	CmdConnect      = 0x01
 	CmdUDPAssociate = 0x03
+	CmdMux          = 0x7f //trojan-gfw 那个文档里并没有提及Mux, 这个定义作者似乎没有在任何文档中提及，所以是在go文件中找到的。
 )
 
 var (
@@ -53,10 +54,12 @@ func SHA224_hexStringBytes(password string) []byte {
 //依照trojan协议的格式读取 地址的域名、ip、port信息
 func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	var b1 byte
+
 	b1, err = buf.ReadByte()
 	if err != nil {
 		return
 	}
+
 	switch b1 {
 	case ATypDomain:
 		var b2 byte
@@ -64,25 +67,30 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 		if err != nil {
 			return
 		}
+
 		if b2 == 0 {
 			err = errors.New("got ATypDomain but domain lenth is marked to be 0")
 			return
 		}
+
 		bs := utils.GetBytes(int(b2))
 		var n int
 		n, err = buf.Read(bs)
 		if err != nil {
 			return
 		}
+
 		if n != int(b2) {
 			err = utils.ErrShortRead
 			return
 		}
 		addr.Name = string(bs[:n])
+
 	case ATypIP4:
 		bs := make([]byte, 4)
 		var n int
 		n, err = buf.Read(bs)
+
 		if err != nil {
 			return
 		}
@@ -112,16 +120,19 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	if err != nil {
 		return
 	}
+
 	pb2, err := buf.ReadByte()
 	if err != nil {
 		return
 	}
+
 	port := uint16(pb1)<<8 + uint16(pb2)
 	if port == 0 {
 		err = utils.ErrInvalidData
 		return
 	}
 	addr.Port = int(port)
+
 	return
 }
 

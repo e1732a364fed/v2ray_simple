@@ -74,7 +74,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgCon
 
 errorPart:
 
-	//所返回的buffer必须包含所有数据，而Buffer不支持回退，所以只能重新New
+	//所返回的 buffer 必须包含所有数据，而 bytes.Buffer 是不支持回退的，所以只能重新 New
 	returnErr = &utils.ErrFirstBuffer{
 		Err:   returnErr,
 		First: bytes.NewBuffer(readbs[:wholeReadLen]),
@@ -115,6 +115,12 @@ realPart:
 
 	case CmdUDPAssociate:
 		isudp = true
+
+	case CmdMux:
+		//trojan-gfw 那个文档里并没有提及Mux, 这个定义作者似乎没有在任何文档中提及，所以是在go文件中找到的。
+		// 根据 tunnel/trojan/server.go, 如果申请的域名是 MUX_CONN, 则 就算是CmdConnect 也会被认为是mux
+
+		//关于 trojan实现多路复用的方式，可参考 https://p4gefau1t.github.io/trojan-go/developer/mux/
 	}
 
 	targetAddr, err = GetAddrFrom(readbuf)

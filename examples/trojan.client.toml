@@ -5,10 +5,12 @@ port = 10800
 
 
 [[dial]]
-protocol = "trojans"    #还是，为了简便，直接加了尾缀s 表示使用tls
+protocol = "trojans"    # 还是，为了简便，直接加了尾缀s 表示使用tls. 虽然trojan强制tls, 但是我们很灵活, 自行可以选择是否开启tls.
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # trojan的"password",我们填写到uuid项里. 实际上trojan这个password不要求格式, 所以你可以乱写，甚至可以写成一个中文字符串, 不过我们作为示例就统一用 示例的uuid了
 ip = "127.0.0.1"
-host = "your-domain-name.com"   #trojan-go 的服务端要求指定一个sni 并与服务端的配置相匹配, 否则会trojan-go 会拒绝连接
+host = "your-domain-name.com"   # trojan-go 的服务端要求指定一个sni 并与服务端的配置相匹配, 否则会trojan-go 会拒绝连接
 port = 4434
 insecure = true
 utls = true
+
+# 备注： trojan 也是一样可以应用 ws/grpc/quic 的，具体你只要参考对应示例文件即可，然后把 vlesss 改成 trojans 即可.

@@ -85,7 +85,7 @@ func (d *Server) Name() string { return name }
 
 func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.MsgConn, netLayer.Addr, error) {
 	if s.targetAddr.IsUDP() {
-		return nil, netLayer.UniTargetMsgConn{Conn: underlay}, s.targetAddr, nil
+		return nil, netLayer.UniTargetMsgConn{Conn: underlay, Target: s.targetAddr}, s.targetAddr, nil
 	} else {
 		return underlay, nil, s.targetAddr, nil
 

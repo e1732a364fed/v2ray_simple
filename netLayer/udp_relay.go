@@ -121,7 +121,7 @@ func RelayUDP(rc, lc MsgConn) int {
 // symmetric, proxy/dokodemo 有用到.
 type UniTargetMsgConn struct {
 	net.Conn
-	target Addr
+	Target Addr
 }
 
 func (u UniTargetMsgConn) Fullcone() bool {
@@ -135,7 +135,7 @@ func (u UniTargetMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
 	if err != nil {
 		return nil, Addr{}, err
 	}
-	return bs[:n], u.target, err
+	return bs[:n], u.Target, err
 }
 
 func (u UniTargetMsgConn) WriteMsgTo(bs []byte, _ Addr) error {

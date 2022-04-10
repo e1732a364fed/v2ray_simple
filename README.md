@@ -9,13 +9,13 @@
 
 # verysimple
 
-verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 
+verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
 
 verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
 
 而且 verysimple 还研发了一些新技术，详情见下文。
 
-只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。
+只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。本作过于极简，极简得连logo也没有.
 
 规定，编译出的文件名必须以 verysimple 开头.
 
@@ -54,7 +54,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持trojan协议, 而且经过测速，比trojan-go快。（速度差距和本作的vless与v2ray的vless的差距基本一致，所以就不放出测速文件了，参考vless即可）
 
-不过目前trojan的服务端暂时没实现 smux。以后会加上。
+不过目前trojan的服务端暂时没实现 smux。以后会加上。另外 lazy特性是不支持trojan的。这种不稳定不安全的特性还是专用在一个协议上比较好。
 
 在没有mmdb文件时，自动下载mmdb
 

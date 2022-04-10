@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -47,10 +48,19 @@ func TestDNSLookup_CN(t *testing.T) {
 */
 
 //经实测，dokodemo->vless->udp 来请求dns是毫无问题的。
-func TestUDP_dokodemo(t *testing.T) {
+func TestUDP_dokodemo_vless(t *testing.T) {
+	testUDP_dokodemo_protocol("vless", t)
+}
+
+func TestUDP_dokodemo_trojan(t *testing.T) {
+	testUDP_dokodemo_protocol("trojan", t)
+}
+
+func testUDP_dokodemo_protocol(protocol string, t *testing.T) {
+	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
-	const testClientConfStr = `
+	const testClientConfFormatStr = `
 [[listen]]
 protocol = "dokodemo"
 network = "udp"
@@ -60,7 +70,7 @@ target = "udp://8.8.8.8:53"
 
 
 [[dial]]
-protocol = "vless"
+protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
 port = 4433
@@ -68,12 +78,14 @@ version = 0
 insecure = true
 `
 
-	const testServerConfStr = `
+	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, protocol)
+
+	const testServerConfFormatStr = `
 [[dial]]
 protocol = "direct"
 
 [[listen]]
-protocol = "vless"
+protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
 port = 4433
@@ -82,6 +94,8 @@ insecure = true
 cert = "cert.pem"
 key = "cert.key"
 `
+
+	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol)
 
 	clientConf, err := LoadTomlConfStr(testClientConfStr)
 	if err != nil {

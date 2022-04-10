@@ -67,8 +67,8 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 [[dial]]
 tag = "mydirect"
-protocol = "direct" # direct 是不需要特地写出的, 程序会自动创建一个 tag 为 direct 的 dial. 不过也许需要控制一下fullcone, 此时就要写出来, 而且tag需要定义为 不为 "direct" 的其它值。
-# fullcone = true   # 默认的fullcone是关闭状态, 可以取消注释以打开.
+protocol = "direct" # direct 是不需要特地写出的, 程序会自动创建一个 tag 为 direct 的 dial. 不过如果是需要控制一下fullcone 的话, 此时就要写出来, 而且tag需要定义为 不为 "direct" 的其它值。
+# fullcone = true    # 默认的fullcone是关闭状态, 可以取消注释以打开.
 
 
 # route 是在我们代理界是分流的意思。 

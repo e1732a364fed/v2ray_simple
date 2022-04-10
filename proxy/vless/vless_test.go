@@ -167,7 +167,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 			readNum, remoteAddr, err := fakeRealUDPServerListener.ReadFromUDP(readbuf)
 			if err != nil {
 				if strings.Contains(err.Error(), "use of closed network connection") {
-					t.Log("udp server read connection closed")
+					//t.Log("udp server read connection closed")
 					return
 				} else {
 					t.Log("udp server 读取数据失败!", err)
