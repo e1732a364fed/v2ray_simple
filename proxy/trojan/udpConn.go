@@ -35,7 +35,7 @@ func (u UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
 func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
-	addr, err := GetAddrFromReader(u.bufr)
+	addr, err := GetAddrFrom(u.bufr)
 	if err != nil {
 		return nil, addr, err
 	}

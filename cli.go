@@ -12,6 +12,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/proxy/trojan"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
@@ -242,11 +243,15 @@ func generateConfigFileInteractively() {
 			if len(confClient.Dial) > 0 {
 
 				fmt.Println("生成的分享链接如下：")
-				d := confClient.Dial[0]
-				switch d.Protocol {
-				case "vless":
-					fmt.Println(vless.GenerateXrayShareURL(d))
 
+				for _, d := range confClient.Dial {
+					switch d.Protocol {
+					case vless.Name:
+						fmt.Println(vless.GenerateXrayShareURL(d))
+
+					case trojan.Name:
+						fmt.Println(trojan.GenerateOfficialDraftShareURL(d))
+					}
 				}
 
 			} else {
@@ -366,6 +371,7 @@ func generateConfigFileInteractively() {
 				Label: "请选择你客户端想拨号的协议(与服务端监听协议相同)",
 				Items: []string{
 					"vless",
+					"trojan",
 				},
 			}
 			i3, result, err := select3.Run()
@@ -376,6 +382,7 @@ func generateConfigFileInteractively() {
 			}
 
 			fmt.Printf("你选择了 %s\n", result)
+			theProtocol := result
 
 			confClient.Dial = append(confClient.Dial, &proxy.DialConf{})
 			clientDial := confClient.Dial[0]
@@ -393,9 +400,9 @@ func generateConfigFileInteractively() {
 			fmt.Printf("你输入了 %d\n", theInt)
 
 			clientDial.Port = int(theInt)
-			clientDial.Protocol = "vless"
+			clientDial.Protocol = theProtocol
 			clientDial.TLS = true
-			clientDial.Tag = "my_vless"
+			clientDial.Tag = "my_proxy"
 			clientDial.Utls = true
 
 			select4 := promptui.Select{

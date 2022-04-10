@@ -117,7 +117,7 @@ realPart:
 		isudp = true
 	}
 
-	targetAddr, err = GetAddrFromReader(readbuf)
+	targetAddr, err = GetAddrFrom(readbuf)
 	if err != nil {
 		returnErr = err
 		goto errorPart

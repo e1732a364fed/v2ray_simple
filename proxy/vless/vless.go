@@ -32,7 +32,7 @@ func GenerateXrayShareURL(dialconf *proxy.DialConf) string {
 
 	var u url.URL
 
-	u.Scheme = "vless"
+	u.Scheme = Name
 	u.User = url.User(dialconf.Uuid)
 	if dialconf.IP != "" {
 		u.Host = dialconf.IP + ":" + strconv.Itoa(dialconf.Port)
@@ -84,6 +84,10 @@ func GenerateXrayShareURL(dialconf *proxy.DialConf) string {
 	}
 
 	u.RawQuery = q.Encode()
+	if dialconf.Tag != "" {
+		u.Fragment = dialconf.Tag
+
+	}
 
 	return u.String()
 }

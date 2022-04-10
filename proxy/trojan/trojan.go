@@ -8,8 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/url"
+	"strconv"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -48,7 +51,7 @@ func SHA224_hexStringBytes(password string) []byte {
 }
 
 //依照trojan协议的格式读取 地址的域名、ip、port信息
-func GetAddrFromReader(buf utils.ByteReader) (addr netLayer.Addr, err error) {
+func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	var b1 byte
 	b1, err = buf.ReadByte()
 	if err != nil {
@@ -120,4 +123,58 @@ func GetAddrFromReader(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	}
 	addr.Port = int(port)
 	return
+}
+
+//https://p4gefau1t.github.io/trojan-go/developer/url/
+func GenerateOfficialDraftShareURL(dialconf *proxy.DialConf) string {
+
+	var u url.URL
+
+	u.Scheme = Name
+	u.User = url.User(dialconf.Uuid)
+	if dialconf.IP != "" {
+		u.Host = dialconf.IP + ":" + strconv.Itoa(dialconf.Port)
+	} else {
+		u.Host = dialconf.Host + ":" + strconv.Itoa(dialconf.Port)
+
+	}
+	q := u.Query()
+	if dialconf.TLS {
+		q.Add("security", "tls")
+		if dialconf.Host != "" {
+			q.Add("sni", dialconf.Host)
+
+		}
+
+	}
+	if dialconf.AdvancedLayer != "" {
+		q.Add("type", dialconf.AdvancedLayer)
+
+		switch dialconf.AdvancedLayer {
+		case "ws":
+			if dialconf.Path != "" {
+				q.Add("path", dialconf.Path)
+			}
+			if dialconf.Host != "" {
+				q.Add("host", dialconf.Host)
+
+			}
+		case "grpc":
+
+			//该草案并没有提及grpc, 所以实际上不完美。本作trojan也是可以支持grpc、quic的
+			//我们参照vless的url提案进行配置 serviceName项。
+
+			if dialconf.Path != "" {
+				q.Add("serviceName", dialconf.Path)
+			}
+
+		}
+	}
+
+	u.RawQuery = q.Encode()
+	if dialconf.Tag != "" {
+		u.Fragment = dialconf.Tag
+
+	}
+	return u.String()
 }
