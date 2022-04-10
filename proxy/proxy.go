@@ -16,17 +16,17 @@ import (
 )
 
 func PrintAllServerNames() {
-	fmt.Printf("===============================\nSupported Server protocols:\n")
-	for v := range serverCreatorMap {
+	fmt.Printf("===============================\nSupported Proxy Listen protocols:\n")
+	for _, v := range utils.GetMapSortedKeySlice(serverCreatorMap) {
 		fmt.Print(v)
 		fmt.Print("\n")
 	}
 }
 
 func PrintAllClientNames() {
-	fmt.Printf("===============================\nSupported client protocols:\n")
+	fmt.Printf("===============================\nSupported Proxy Dial protocols:\n")
 
-	for v := range clientCreatorMap {
+	for _, v := range utils.GetMapSortedKeySlice(clientCreatorMap) {
 		fmt.Print(v)
 		fmt.Print("\n")
 	}

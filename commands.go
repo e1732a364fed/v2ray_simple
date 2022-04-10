@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/hahahrfool/v2ray_simple/advLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
@@ -121,6 +122,7 @@ func printSupportedProtocols() {
 
 	proxy.PrintAllServerNames()
 	proxy.PrintAllClientNames()
+	advLayer.PrintAllProtocolNames()
 }
 
 func tryDownloadMMDB() {

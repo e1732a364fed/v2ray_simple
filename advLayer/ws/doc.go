@@ -34,3 +34,9 @@ https://tonybai.com/2019/09/28/how-to-build-websockets-in-go/
 总之 gobwas/ws 是最好的库. 本包使用 gobwas/ws
 */
 package ws
+
+import advlayer "github.com/hahahrfool/v2ray_simple/advLayer"
+
+func init() {
+	advlayer.ProtocolsMap["ws"] = true
+}

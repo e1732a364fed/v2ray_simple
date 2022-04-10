@@ -10,12 +10,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	advlayer "github.com/hahahrfool/v2ray_simple/advLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/congestion"
 	"go.uber.org/zap"
 )
+
+func init() {
+	advlayer.ProtocolsMap["quic"] = true
+}
 
 //quic的包装太简单了
 

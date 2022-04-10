@@ -1,6 +1,11 @@
 package utils
 
-//Combinatorics
+import (
+	"golang.org/x/exp/constraints"
+	"golang.org/x/exp/slices"
+)
+
+//Combinatorics ////////////////////////////////////////////////////////////////
 
 //func AllSubSets edited from https://github.com/mxschmitt/golang-combinations with MIT License
 // All returns all combinations for a given T array.
@@ -45,10 +50,14 @@ func AllSubSets_improve1[T comparable](set []T) (subsets [][]T) {
 	return subsets
 }
 
-func DuplicateSlice[T any](a []T) (r []T) {
+// generics ////////////////////////////////////////////////////////////////
+
+func CloneSlice[T any](a []T) (r []T) {
 	r = make([]T, len(a))
 	copy(r, a)
 	return
+
+	//实际上 golang.org/x/exp/slices 的 Clone 函数也可以, 不过我还是觉得我自己的好理解一些
 }
 
 // TrimSlice 从一个slice中移除一个元素, 会直接改动原slice数据
@@ -61,4 +70,20 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 		}
 	}
 	return a[:j]
+
+	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以, 不过我还是觉得我自己的好理解一些
+}
+
+func GetMapSortedKeySlice[T constraints.Ordered, V any](flags map[T]V) []T {
+	result := make([]T, len(flags))
+
+	i := 0
+	for f := range flags {
+		result[i] = f
+		i++
+	}
+
+	slices.Sort(result)
+
+	return result
 }

@@ -14,6 +14,7 @@ require (
 	github.com/refraction-networking/utls v1.0.0
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/zap v1.21.0
+	golang.org/x/exp v0.0.0-20220407100705-7b9b53b0aca4
 	gonum.org/v1/gonum v0.11.0
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.28.0
@@ -35,7 +36,7 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
-	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/mod v0.6.0-dev.0.20211013180041-c96bc1413d57 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
 	golang.org/x/sys v0.0.0-20220315194320-039c03cc5b86 // indirect
 	golang.org/x/text v0.3.7 // indirect

@@ -23,3 +23,9 @@ https://github.com/v2fly/v2ray-core/pull/757
 实测名称是不影响的， 一样兼容xray/v2ray的 grpc。因为 我们自定义实际的 ServiceDesc
 */
 package grpc
+
+import advlayer "github.com/hahahrfool/v2ray_simple/advLayer"
+
+func init() {
+	advlayer.ProtocolsMap["grpc"] = true
+}
