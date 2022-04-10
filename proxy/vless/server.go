@@ -290,7 +290,7 @@ realPart:
 			targetAddr.Network = "udp"
 		}
 
-		var ip_or_domain_bytesLength byte = 0
+		var ip_or_domain_bytesLength byte
 
 		addrTypeByte, err := readbuf.ReadByte()
 

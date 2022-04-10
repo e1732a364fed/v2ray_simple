@@ -656,7 +656,7 @@ func interactively_hotRemoveServerOrClient() {
 			Validate: validateFunc,
 		}
 
-		result, err = promptIdx.Run()
+		_, err = promptIdx.Run()
 
 		if err != nil {
 			fmt.Printf("Prompt failed %v\n", err)

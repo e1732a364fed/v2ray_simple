@@ -1,3 +1,12 @@
+[![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] 
+
+[1]: https://godoc.org/github.com/hahahrfool/v2ray_simple?status.svg
+[2]: https://godoc.org/github.com/hahahrfool/v2ray_simple
+[3]: https://img.shields.io/badge/license-MIT-blue.svg
+[4]: LICENSE
+[5]: https://goreportcard.com/badge/github.com/hahahrfool/v2ray_simple
+[6]: https://goreportcard.com/report/github.com/hahahrfool/v2ray_simple
+
 # verysimple
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 
@@ -542,3 +551,6 @@ github.com/manifoldco/promptui
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/hahahrfool/v2ray_simple.svg)](https://starchart.cc/hahahrfool/v2ray_simple)

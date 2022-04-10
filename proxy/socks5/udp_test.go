@@ -33,11 +33,16 @@ func TestUDP(t *testing.T) {
 		for {
 			lc, err := listener.Accept()
 			if err != nil {
-				t.Logf("failed in accept: %v", err)
+				t.Logf("failed in accept: %s", err.Error())
 				t.Fail()
 			}
 			t.Log("socks5 server got new conn")
 			_, wlc, targetAddr, err := s.Handshake(lc)
+
+			if err != nil {
+				t.Logf("failed in Handshake: %s", err.Error())
+				t.Fail()
+			}
 			if targetAddr.IsUDP() {
 				t.Log("socks5 server got udp associate")
 			}
