@@ -183,7 +183,7 @@ realPart:
 	version := auth[0]
 	if version > 1 {
 
-		returnErr = utils.ErrInErr{ErrDesc: "Vless invalid version ", Data: version}
+		returnErr = utils.ErrInErr{ErrDesc: "invalid version ", ErrDetail: utils.ErrInvalidData, Data: version}
 		goto errorPart
 
 	}
@@ -198,7 +198,7 @@ realPart:
 		s.mux4Hashes.RUnlock()
 	} else {
 		s.mux4Hashes.RUnlock()
-		returnErr = errors.New("invalid user")
+		returnErr = utils.ErrInErr{ErrDesc: "invalid user ", ErrDetail: utils.ErrInvalidData, Data: utils.UUIDToStr(thisUUIDBytes)}
 		goto errorPart
 	}
 
@@ -213,17 +213,9 @@ realPart:
 			//v2ray的vless中没有对应的任何处理。
 			//v2ray 的 vless 虽然有一个没用的Flow，但是 EncodeBodyAddons里根本没向里写任何数据。所以理论上正常这部分始终应该为0
 			if ce := utils.CanLogWarn("potential illegal client"); ce != nil {
-
-				//log.Println("potential illegal client", addonLenByte)
 				ce.Write(zap.Uint8("addonLenByte", addonLenByte))
 			}
 
-			//读一下然后直接舍弃
-			/*
-				tmpBuf := utils.GetBytes(int(addonLenByte))
-				underlay.Read(tmpBuf)
-				utils.PutBytes(tmpBuf)
-			*/
 			if tmpbs := readbuf.Next(int(addonLenByte)); len(tmpbs) != int(addonLenByte) {
 				returnErr = errors.New("vless short read in addon")
 				return
@@ -235,7 +227,7 @@ realPart:
 
 	if err != nil {
 
-		returnErr = errors.New("fallback, reason 2")
+		returnErr = utils.ErrInErr{ErrDesc: "read commandByte failed ", ErrDetail: err}
 		goto errorPart
 	}
 
@@ -348,7 +340,7 @@ realPart:
 
 	default:
 
-		returnErr = errors.New("invalid vless command")
+		returnErr = utils.ErrInErr{ErrDesc: "invalid command ", ErrDetail: utils.ErrInvalidData, Data: commandByte}
 		goto errorPart
 	}
 
@@ -364,10 +356,10 @@ realPart:
 	} else {
 		return &UserTCPConn{
 			Conn:              underlay,
+			version:           int(version),
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
 			uuid:              thisUUIDBytes,
-			version:           int(version),
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),
 			isServerEnd:       true,
 		}, nil, targetAddr, nil

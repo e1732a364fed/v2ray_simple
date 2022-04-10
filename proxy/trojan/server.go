@@ -2,7 +2,6 @@ package trojan
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"net"
 	"net/url"
@@ -45,6 +44,7 @@ func (s *Server) Name() string {
 	return Name
 }
 
+//若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
 func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
@@ -56,7 +56,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgCon
 
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {
-		returnErr = utils.ErrInErr{ErrDesc: "read err", ErrDetail: err, Data: wholeReadLen}
+		returnErr = utils.ErrInErr{ErrDesc: "read underlay failed", ErrDetail: err, Data: wholeReadLen}
 		return
 	}
 
@@ -84,7 +84,7 @@ errorPart:
 realPart:
 
 	if wholeReadLen < 56+8+1 {
-		returnErr = utils.ErrInvalidData
+		returnErr = utils.ErrInErr{ErrDesc: "handshake len too short", ErrDetail: utils.ErrInvalidData, Data: wholeReadLen}
 		goto errorPart
 	}
 
@@ -93,14 +93,14 @@ realPart:
 	hash := readbuf.Next(56)
 	hashStr := string(hash)
 	if !s.userHashes[hashStr] {
-		returnErr = errors.New("hash not match")
+		returnErr = utils.ErrInErr{ErrDesc: "hash not match", ErrDetail: utils.ErrInvalidData, Data: hashStr}
 		goto errorPart
 	}
 
 	crb, _ := readbuf.ReadByte()
 	lfb, _ := readbuf.ReadByte()
 	if crb != crlf[0] || lfb != crlf[1] {
-		returnErr = utils.ErrInvalidData
+		returnErr = utils.ErrInErr{ErrDesc: "crlf wrong", ErrDetail: utils.ErrInvalidData, Data: int(crb)<<8 + int(lfb)}
 		goto errorPart
 	}
 
@@ -109,7 +109,7 @@ realPart:
 	var isudp bool
 	switch cmdb {
 	default:
-		returnErr = utils.ErrInvalidData
+		returnErr = utils.ErrInErr{ErrDesc: "cmd byte wrong", ErrDetail: utils.ErrInvalidData, Data: cmdb}
 		goto errorPart
 	case CmdConnect:
 
@@ -142,7 +142,7 @@ realPart:
 		goto errorPart
 	}
 	if crb != crlf[0] || lfb != crlf[1] {
-		returnErr = utils.ErrInvalidData
+		returnErr = utils.ErrInErr{ErrDesc: "crlf wrong", ErrDetail: utils.ErrInvalidData, Data: int(crb)<<8 + int(lfb)}
 		goto errorPart
 	}
 

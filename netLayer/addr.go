@@ -22,6 +22,16 @@ const (
 	AtypIP6    byte = 3
 )
 
+//默认netLayer的 AType (AtypIP4,AtypIP6,AtypDomain) 遵循v2ray标准的定义;
+// 如果需要符合 socks5/trojan标准, 需要用本函数转换一下。
+// 即从 123 转换到 134
+func ATypeToSocks5Standard(atype byte) byte {
+	if atype == 1 {
+		return 1
+	}
+	return atype + 1
+}
+
 // Addr represents a address that you want to access by proxy. Either Name or IP is used exclusively.
 // Addr完整地表示了一个 传输层的目标，同时用 Network 字段 来记录网络层协议名
 // Addr 还可以用Dial 方法直接进行拨号
@@ -335,23 +345,11 @@ dialedPart:
 
 }
 
-func ATypeToSocks5Standard(atype byte) byte {
-	if atype == 2 {
-		return 3
-	}
-	if atype == 3 {
-		return 4
-	}
-	return atype
-}
-
-// 如果a的ip不为空，则会返回 AtypIP4 或 AtypIP6，否则会返回 AtypDomain
+// 如果a的ip不为空，则会返回 AtypIP4 或 AtypIP6, 否则会返回 AtypDomain
 // Return address bytes and type
 // 如果atyp类型是 域名，则 第一字节为该域名的总长度, 其余字节为域名内容。
 // 如果类型是ip，则会拷贝出该ip的数据的副本。
-func (a *Addr) AddressBytes() ([]byte, byte) {
-	var addr []byte
-	var atyp byte
+func (a *Addr) AddressBytes() (addr []byte, atyp byte) {
 
 	if a.IP != nil {
 		if ip4 := a.IP.To4(); ip4 != nil {
@@ -373,7 +371,7 @@ func (a *Addr) AddressBytes() ([]byte, byte) {
 		copy(addr[1:], a.Name)
 	}
 
-	return addr, atyp
+	return
 }
 
 // ParseAddr 分析字符串，并按照特定方式返回 地址类型 atyp,地址数据 addr []byte,以及端口号,

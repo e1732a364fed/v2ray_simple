@@ -77,6 +77,10 @@ func (e ErrInErr) Unwarp() error {
 	return e.ErrDetail
 }
 
+func (e ErrInErr) Is(err error) bool {
+	return e.ErrDetail == err
+}
+
 func (e ErrInErr) String() string {
 
 	if e.Data != nil {

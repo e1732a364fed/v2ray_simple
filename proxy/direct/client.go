@@ -24,8 +24,14 @@ type Client struct {
 
 type ClientCreator struct{}
 
-func (_ ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
+func (_ ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	d := &Client{}
+
+	nStr := url.Query().Get("fullcone")
+	if nStr == "true" || nStr == "1" {
+		d.isfullcone = true
+	}
+
 	return d, nil
 }
 

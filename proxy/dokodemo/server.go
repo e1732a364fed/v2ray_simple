@@ -38,6 +38,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"strconv"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
@@ -52,11 +53,40 @@ func init() {
 
 type ServerCreator struct{}
 
-// NewServerFromURL returns "Not implemented".
-//因为 tcp:// 这种url没法轻易放在 url的query里，还需转义，所以不实用
-// 不过实际上不需要用url方式, 可以用network=tcp&target=127.0.0.1&target_port=80
-func (_ ServerCreator) NewServerFromURL(*url.URL) (proxy.Server, error) {
-	return nil, utils.ErrNotImplemented
+// 用如下参数形式： network=tcp&target=127.0.0.1&target_port=80
+func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
+
+	nStr := url.Query().Get("network")
+	if nStr == "" {
+		return nil, utils.ErrNilParameter
+	}
+	targetStr := url.Query().Get("target")
+	if targetStr == "" {
+		return nil, utils.ErrNilParameter
+	}
+	ip := net.ParseIP(targetStr)
+	name := ""
+	if ip == nil {
+		name = targetStr
+	}
+
+	target_portStr := url.Query().Get("target_port")
+	if target_portStr == "" {
+		return nil, utils.ErrNilParameter
+	}
+	port, err := strconv.Atoi(targetStr)
+	if err != nil || port <= 0 || port > 65535 {
+		return nil, utils.ErrWrongParameter
+	}
+	s := &Server{
+		targetAddr: netLayer.Addr{
+			Network: nStr,
+			IP:      ip,
+			Name:    name,
+			Port:    port,
+		},
+	}
+	return s, nil
 }
 
 // use lc.TargetAddr

@@ -21,8 +21,8 @@ func init() {
 
 type ServerCreator struct{}
 
-//只有地址和port需要配置，非常简单
 func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+	//只有地址和port需要配置，非常简单, 而且都是在通用部分 ProxyCommonStruct 被配置过了, 不需再记录
 
 	// TODO: Support Basic Auth
 
