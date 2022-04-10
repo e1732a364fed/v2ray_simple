@@ -12,8 +12,10 @@
 
 # 现在该Makefile文件不用来编译发布包，所以这里版本可以随便自己填了,我们也不用每更新一个官方版本就改动一次文件.
 #  很棒吧.
-# 现在这个Makefile文件是你自己的了，随便改.
-BUILD_VERSION   := myversion1
+# 现在这个Makefile文件是你自己的了，随便改. 
+# 不过 现在 BUILD_VERSION  默认会获取当前git 的 commit id, 你可以自行改成任何值, 比如注释掉第二行, 用第一行
+# BUILD_VERSION   :=myversion
+BUILD_VERSION   := $(shell git rev-parse HEAD)
 
 prefix          :=verysimple
 
@@ -54,6 +56,9 @@ endif
 
 
 all: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
+
+getver:
+	@echo $(BUILD_VERSION)
 
 #注意调用参数时，逗号前后不能留空格
 

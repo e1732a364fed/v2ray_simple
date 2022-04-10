@@ -74,14 +74,16 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以, 不过我还是觉得我自己的好理解一些
 }
 
-func GetMapSortedKeySlice[T constraints.Ordered, V any](flags map[T]V) []T {
-	result := make([]T, len(flags))
+func GetMapSortedKeySlice[K constraints.Ordered, V any](flags map[K]V) []K {
+	result := make([]K, len(flags))
 
 	i := 0
 	for f := range flags {
 		result[i] = f
 		i++
 	}
+	// 为何 泛型sort比 interface{} sort 快:
+	// https://eli.thegreenplace.net/2022/faster-sorting-with-go-generics/
 
 	slices.Sort(result)
 
