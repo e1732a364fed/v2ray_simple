@@ -45,7 +45,7 @@ func (cc *CommonConf) GetAddrStr() string {
 
 }
 
-//和 GetAddr的区别是，它优先使用ip，其次再使用host
+//若为unix, 返回Host，否则返回 ip:port / host:port; 和 GetAddr的区别是，它优先使用ip，其次再使用host
 func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 	switch cc.Network {
 	case "unix":

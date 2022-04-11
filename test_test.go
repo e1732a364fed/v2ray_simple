@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"testing"
 
 	"github.com/BurntSushi/toml"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/miekg/dns"
 )
@@ -73,7 +75,9 @@ func testUDP_dokodemo_protocol(protocol string, version int, network string, mul
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
-	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 vless v1的udp_multi的情况
+	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 vless v1的udp_multi的dialfunc情况
+	//不过还是不行，需要单一 client 拨号多个raddr 才能触发dialfunc
+
 	var testClientConfFormatStr = `
 [[listen]]
 protocol = "dokodemo"
@@ -88,6 +92,11 @@ network = "udp"
 host = "127.0.0.1"
 port = %s
 target = "udp://114.114.114.114:53"
+
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10801
 
 [[dial]]
 protocol = "%s"
@@ -153,6 +162,12 @@ network = "%s"
 		t.FailNow()
 	}
 
+	clientEndInServer3, err := proxy.NewServer(clientConf.Listen[2])
+	if err != nil {
+		t.Log("can not create clientEndInServer: ", err)
+		t.FailNow()
+	}
+
 	// vless out
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
@@ -175,12 +190,14 @@ network = "%s"
 
 	listenSer(clientEndInServer, clientEndOutClient, false)
 	listenSer(clientEndInServer2, clientEndOutClient, false)
+	listenSer(clientEndInServer3, clientEndOutClient, false)
 	listenSer(serverEndInServer, serverEndOutClient, false)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)
 	c := new(dns.Client)
 
+	// server 1 测试 /////////////////////////////////////////
 	r, _, err := c.Exchange(m, "127.0.0.1:"+clientListenPort)
 	if r == nil {
 		t.Log("error: ", err.Error())
@@ -202,6 +219,8 @@ network = "%s"
 		}
 	}
 
+	// server 2 测试 /////////////////////////////////////////
+
 	r, _, err = c.Exchange(m, "127.0.0.1:"+clientListen2Port)
 	if r == nil {
 		t.Log("test2, error: ", err.Error())
@@ -220,6 +239,75 @@ network = "%s"
 
 		if aa, ok := a.(*dns.A); ok {
 			t.Log("test2, arecord is ", aa.A)
+		}
+	}
+
+	// server 3 socks5 udp 测试 /////////////////////////////////////////
+	//向不同地址写入两次，以测试 vless v1 udp multi
+
+	socks5ClientConn := &socks5.ClientUDPConn{
+		ServerAddr: &net.TCPAddr{
+			IP:   net.IPv4(127, 0, 0, 1),
+			Port: 10801,
+		},
+		WriteUDP_Target: &net.UDPAddr{
+			IP:   net.IPv4(8, 8, 8, 8),
+			Port: 53,
+		},
+	}
+	err = socks5ClientConn.Associate()
+	if err != nil {
+		t.Log("test3, Associate error: ", err.Error())
+		t.FailNow()
+	}
+
+	r, _, err = c.ExchangeWithConn(m, &dns.Conn{
+		Conn: socks5ClientConn,
+	})
+
+	if r == nil {
+		t.Log("test3, error: ", err.Error())
+		t.FailNow()
+	}
+
+	if r.Rcode != dns.RcodeSuccess {
+		t.Log("test3, err2 ", r.Rcode, r)
+		t.FailNow()
+	}
+
+	for _, a := range r.Answer {
+		t.Log("test3, header is", a.Header())
+		t.Log("test3, string is", a.String())
+		t.Log("test3, a is ", a)
+
+		if aa, ok := a.(*dns.A); ok {
+			t.Log("test3, arecord is ", aa.A)
+		}
+	}
+
+	socks5ClientConn.WriteUDP_Target.IP = net.IPv4(114, 114, 114, 114)
+
+	r, _, err = c.ExchangeWithConn(m, &dns.Conn{
+		Conn: socks5ClientConn,
+	})
+
+	if r == nil {
+		t.Log("test3_2, error: ", err.Error())
+		t.FailNow()
+	}
+
+	if r.Rcode != dns.RcodeSuccess {
+		t.Log("test3_2, err2 ", r.Rcode, r)
+		t.FailNow()
+	}
+
+	for _, a := range r.Answer {
+		t.Log("test3_2, header is", a.Header())
+		t.Log("test3_2, string is", a.String())
+		t.Log("test3_2, a is ", a)
+
+		if aa, ok := a.(*dns.A); ok {
+			t.Log("test3_2, arecord is ", aa.A)
 		}
 	}
 }

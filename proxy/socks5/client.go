@@ -3,14 +3,196 @@ package socks5
 import (
 	"bytes"
 	"errors"
+	"io"
 	"net"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 //为了安全, 我们不支持socks5作为 proxy.Client;
 // 不过为了测试 udp associate 需要我们需要模拟一下socks5请求
+
+type Client struct {
+	proxy.ProxyCommonStruct
+}
+
+func (c *Client) Name() string {
+	return Name
+}
+
+//ErrNotImplemented
+func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
+
+	return nil, utils.ErrNotImplemented
+
+}
+
+func (c *Client) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLayer.MsgConn, error) {
+	var err error
+	serverPort := 0
+	serverPort, err = Client_EstablishUDPAssociate(underlay)
+	if err != nil {
+		return nil, err
+	}
+
+	ua, err := net.ResolveUDPAddr("udp", c.Addr)
+	if err != nil {
+		return nil, err
+	}
+	cpc := ClientUDPConn{
+		associated:          true,
+		ServerUDPPort_forMe: serverPort,
+		ServerAddr: &net.TCPAddr{
+			IP: ua.IP,
+		},
+	}
+	cpc.UDPConn, err = net.DialUDP("udp", nil, ua)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cpc, nil
+}
+
+// 实现 net.PacketConn , net.Conn 和 netLayer.MsgConn
+type ClientUDPConn struct {
+	*net.UDPConn
+
+	associated bool
+
+	ServerAddr          *net.TCPAddr //用于建立 udp associate的 服务器地址
+	ServerUDPPort_forMe int          //socks5服务会为每一个socks5客户端留一个专用的udp端口
+
+	WriteUDP_Target *net.UDPAddr
+}
+
+func (cpc *ClientUDPConn) Associate() (err error) {
+	if !cpc.associated {
+		var tc *net.TCPConn
+		tc, err = net.DialTCP("tcp", nil, cpc.ServerAddr)
+		if err != nil {
+			return
+		}
+		cpc.ServerUDPPort_forMe, err = Client_EstablishUDPAssociate(tc)
+		if err != nil {
+			return
+		}
+
+		ua := net.UDPAddr{
+			IP:   cpc.ServerAddr.IP,
+			Port: cpc.ServerUDPPort_forMe,
+		}
+		cpc.UDPConn, err = net.DialUDP("udp", nil, &ua)
+		if err != nil {
+			return
+		}
+
+		cpc.associated = true
+
+	}
+	return
+}
+
+func (cpc *ClientUDPConn) Write(p []byte) (n int, err error) {
+	err = cpc.Associate()
+	if err != nil {
+		return
+	}
+	if cpc.WriteUDP_Target == nil {
+		err = errors.New("cpc.WriteUDP_Target == nil")
+		return
+	}
+
+	err = Client_RequestUDP(cpc.UDPConn, &netLayer.Addr{
+		IP:   cpc.WriteUDP_Target.IP,
+		Port: cpc.WriteUDP_Target.Port,
+	}, p)
+	if err == nil {
+		n = len(p)
+	}
+	return
+}
+
+func (cpc *ClientUDPConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+
+	err = cpc.Associate()
+	if err != nil {
+		return
+	}
+
+	raddr, ok := addr.(*net.UDPAddr)
+	if !ok {
+		err = utils.ErrWrongParameter
+		return
+	}
+
+	err = Client_RequestUDP(cpc.UDPConn, &netLayer.Addr{
+		IP:   raddr.IP,
+		Port: raddr.Port,
+	}, p)
+	if err == nil {
+		n = len(p)
+	}
+	return
+}
+
+func (cpc *ClientUDPConn) Read(p []byte) (n int, err error) {
+	n, _, err = cpc.ReadFrom(p)
+	return
+}
+
+func (cpc *ClientUDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	var data []byte
+	var target netLayer.Addr
+	data, target, err = cpc.ReadMsgFrom()
+	if err != nil {
+		return
+	}
+	addr = &net.UDPAddr{
+		IP:   target.IP,
+		Port: target.Port,
+	}
+	n = copy(p, data)
+	return
+}
+
+func (cpc *ClientUDPConn) ReadMsgFrom() (data []byte, target netLayer.Addr, err error) {
+	err = cpc.Associate()
+	if err != nil {
+		return
+	}
+	ua := &net.UDPAddr{
+		IP:   cpc.ServerAddr.IP,
+		Port: cpc.ServerUDPPort_forMe,
+	}
+
+	target, data, err = Client_ReadUDPResponse(cpc.UDPConn, ua)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (cpc *ClientUDPConn) WriteMsgTo(p []byte, addr netLayer.Addr) (err error) {
+
+	err = cpc.Associate()
+	if err != nil {
+		return
+	}
+
+	err = Client_RequestUDP(cpc.UDPConn, &addr, p)
+
+	return
+}
+func (cpc *ClientUDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+	return cpc.Close()
+}
+
+func (cpc *ClientUDPConn) Fullcone() bool {
+	return true
+}
 
 //传入 conn必须非nil，否则panic
 func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
@@ -78,7 +260,7 @@ func Client_EstablishUDPAssociate(conn net.Conn) (port int, err error) {
 // 另外的备忘是, 服务器返回的数据使用了相同的结构。
 //
 //传入 conn必须非nil，否则panic
-func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte) {
+func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte) error {
 
 	if udpConn == nil {
 		panic("Client_RequestUDP, nil udpConn is not allowed")
@@ -90,9 +272,13 @@ func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte)
 	buf.WriteByte(0)
 
 	abs, atype := target.AddressBytes()
+
+	//log.Println("request", target, abs, atype)
+
 	switch atype {
 	case 0:
 		//无效地址
+		return utils.ErrWrongParameter
 
 	case netLayer.AtypIP4:
 		buf.WriteByte(ATypIP4)
@@ -112,7 +298,8 @@ func Client_RequestUDP(udpConn *net.UDPConn, target *netLayer.Addr, data []byte)
 
 	buf.Write(data)
 
-	udpConn.Write(buf.Bytes())
+	_, err := udpConn.Write(buf.Bytes())
+	return err
 }
 
 //从 一个 socks5服务器的udp端口 读取一次 udp回应。
@@ -136,10 +323,13 @@ func Client_ReadUDPResponse(udpConn *net.UDPConn, supposedServerAddr *net.UDPAdd
 		return
 	}
 
-	if !(addr.IP.Equal(supposedServerAddr.IP) && addr.Port == supposedServerAddr.Port) {
-		e = utils.ErrInErr{ErrDesc: "socks5 Client_ReadUDPResponse , got data from unknown source", Data: addr}
-		return
+	if supposedServerAddr != nil {
+		if !(addr.IP.Equal(supposedServerAddr.IP) && addr.Port == supposedServerAddr.Port) {
+			e = utils.ErrInErr{ErrDesc: "socks5 Client_ReadUDPResponse , got data from unknown source", Data: addr}
+			return
+		}
 	}
+
 	if buf[0] != 0 || buf[1] != 0 || buf[2] != 0 {
 		e = utils.NumErr{Prefix: "EstablishUDPAssociate,protocol err", N: 1}
 		return

@@ -109,36 +109,11 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 
 	}()
 
-	var count uint64
-
-	for {
-		bs, raddr, err := rc.ReadMsgFrom()
-		if err != nil {
-
-			break
-		}
-		err = lc.WriteMsgTo(bs, raddr)
-		if err != nil {
-
-			break
-		}
-		count += uint64(len(bs))
-	}
-	if !rc.Fullcone() {
-		rc.Close()
-	}
-
-	if !lc.Fullcone() {
-		lc.Close()
-	}
-
-	if downloadByteCount != nil {
-		atomic.AddUint64(downloadByteCount, count)
-	}
-
-	return count
+	return relayUDP_rc_toLC(rc, lc, downloadByteCount)
 }
 
+//循环从rc读取数据，并写入lc，直到错误发生。若 downloadByteCount 给出，会更新 下载总字节数。
+// 返回此次所下载的字节数。
 func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64) uint64 {
 	var count uint64
 	for {
@@ -170,12 +145,16 @@ func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64) uint64 {
 }
 
 // RelayUDP_separate 对 lc 读到的每一个新raddr地址 都新拨号一次. 这样就避开了经典的udp多路复用转发的效率低下问题.
+// separate含义就是 【分离信道】。
 // 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.
-func RelayUDP_separate(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64, dialfunc func(raddr Addr) MsgConn) uint64 {
+func RelayUDP_separate(rc, lc MsgConn, firstAddr *Addr, downloadByteCount, uploadByteCount *uint64, dialfunc func(raddr Addr) MsgConn) uint64 {
 	go func() {
 		var count uint64
 
 		rc_raddrMap := make(map[HashableAddr]MsgConn)
+		if firstAddr != nil {
+			rc_raddrMap[firstAddr.GetHashable()] = rc
+		}
 
 		for {
 			bs, raddr, err := lc.ReadMsgFrom()

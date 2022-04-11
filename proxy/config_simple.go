@@ -10,7 +10,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//极简配置模式；不支持 ws/grpc
+//极简配置模式；
 type Simple struct {
 	Server_ThatListenPort_Url string                    `json:"listen"`
 	Client_ThatDialRemote_Url string                    `json:"dial"`

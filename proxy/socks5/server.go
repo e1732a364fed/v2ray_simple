@@ -174,7 +174,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpCha
 		}
 
 		//这里为了解析域名, 就用了 netLayer.Addr 作为中介的方式
-		uc := &UDPConn{
+		uc := &ServerUDPConn{
 			clientSupposedAddr: clientFutureAddr.ToUDPAddr(),
 			UDPConn:            udpRC,
 		}
@@ -212,21 +212,21 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpCha
 }
 
 //用于socks5服务端的 udp连接, 实现 netLayer.MsgConn
-type UDPConn struct {
+type ServerUDPConn struct {
 	*net.UDPConn
 	clientSupposedAddr *net.UDPAddr //客户端指定的客户端自己未来将使用的公网UDP的Addr
 }
 
-func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+func (u *ServerUDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
 
-func (u *UDPConn) Fullcone() bool {
+func (u *ServerUDPConn) Fullcone() bool {
 	return true
 }
 
 //将远程地址发来的响应 传给客户端
-func (u *UDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
+func (u *ServerUDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 
 	buf := &bytes.Buffer{}
 	buf.WriteByte(0) //rsv
@@ -252,7 +252,7 @@ func (u *UDPConn) WriteMsgTo(bs []byte, raddr netLayer.Addr) error {
 }
 
 //从 客户端读取 udp请求
-func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	var clientSupposedAddrIsNothing bool
 	if len(u.clientSupposedAddr.IP) < 3 || u.clientSupposedAddr.IP.IsUnspecified() {
@@ -329,6 +329,7 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 		//clientSupposedAddrIsNothing = false
 		u.clientSupposedAddr = addr
 	}
+
 	return bs[newStart:n], netLayer.Addr{
 		IP:      theIP,
 		Name:    theName,

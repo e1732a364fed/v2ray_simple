@@ -26,6 +26,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/direct"
+	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 
 	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
@@ -620,6 +621,26 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	if err == nil {
 		//log.Println("inServer handshake passed")
+
+		if udp_wlc != nil && inServer.Name() == socks5.Name {
+			// socks5的 udp associate返回的是 clientFutureAddr, 而不是实际客户的第一个请求.
+
+			firstSocks5RequestData, firstSocks5RequestAddr, err := udp_wlc.ReadMsgFrom()
+			if err != nil {
+				if ce := utils.CanLogWarn("failed in socks5 read"); ce != nil {
+					ce.Write(
+						zap.String("handler", inServer.AddrStr()),
+						zap.Error(err),
+					)
+				}
+				return
+			}
+
+			iics.theFallbackFirstBuffer = bytes.NewBuffer(firstSocks5RequestData)
+
+			targetAddr = firstSocks5RequestAddr
+		}
+
 		//无错误时直接跳过回落, 直接执行下一个步骤
 		goto afterLocalServerHandshake
 	}
@@ -1329,8 +1350,15 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		if client.IsUDP_MultiChannel() {
 			utils.Debug("Relaying UDP with MultiChannel")
 
-			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
-				_, udp_wrc, _, _, result := dialClient(targetAddr, client, iics.baseLocalConn, nil, "", false)
+			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &allDownloadBytesSinceStart, &allUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
+				utils.Debug("Relaying UDP with MultiChannel,dialfunc called")
+
+				_, udp_wrc, _, _, result := dialClient(raddr, client, iics.baseLocalConn, nil, "", false)
+
+				if ce := utils.CanLogDebug("Relaying UDP with MultiChannel, dialfunc call returned"); ce != nil {
+					ce.Write(zap.Int("result", result))
+				}
+
 				if result == 0 {
 					return udp_wrc
 

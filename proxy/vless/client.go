@@ -157,6 +157,8 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
 	var err error
 
+	//log.Println("vless EstablishUDPChannel called", target)
+
 	buf := c.getBufWithCmd(CmdUDP)
 	port := target.Port
 

@@ -259,7 +259,7 @@ realPart:
 		targetAddr, err = GetAddrFrom(readbuf)
 		if err != nil {
 
-			returnErr = errors.New("fallback, reason 4")
+			returnErr = utils.ErrInErr{ErrDesc: "fallback, reason 4", ErrDetail: err}
 			goto errorPart
 		}
 
