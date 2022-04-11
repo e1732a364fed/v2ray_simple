@@ -33,7 +33,7 @@ func (u *UDPConn) Fullcone() bool {
 
 func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
 
-	//v0很垃圾，不支持fullcone，无视raddr，始终向最开始的raddr发送。
+	//v0很垃圾，不支持fullcone，而是无视raddr，始终向最开始的raddr发送。
 	if u.version == 0 {
 		writeBuf := utils.GetBuf()
 
@@ -64,6 +64,13 @@ func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
 		return nil
 
 	} else {
+		if !u.isClientEnd {
+			//判断raddr是否与 u.raddr相同, 如果不相同, 则要传输crumfurs信息
+			// crumfurs信息将会提示客户端 去建立一个新的 udp信道.
+
+		} else {
+
+		}
 
 	}
 	return nil

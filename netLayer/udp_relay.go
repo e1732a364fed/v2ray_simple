@@ -3,6 +3,7 @@ package netLayer
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -38,7 +39,7 @@ type MsgConn interface {
 }
 
 // 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.
-func RelayUDP(rc, lc MsgConn) int {
+func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64 {
 
 	//在转发时, 有可能有多种情况
 	/*
@@ -69,9 +70,18 @@ func RelayUDP(rc, lc MsgConn) int {
 
 		4. fullcone, 此时不能对整个监听端口进行close，会影响其它外部链接发来的连接。
 
+		5. vless v1 的 crumfurs 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
+			如果是未知的, 则不会再使用原来的rc，而是要拨号新通道
+
+			也就是说，lc是有且仅有一个的, 因为是socks5 或者dokodemo都是采用的单信道的方式,
+
+			而在 vless v1时, udp的rc的拨号可以采用多信道方式。
+
 	*/
 
 	go func() {
+		var count uint64
+
 		for {
 			bs, raddr, err := lc.ReadMsgFrom()
 			if err != nil {
@@ -82,6 +92,8 @@ func RelayUDP(rc, lc MsgConn) int {
 
 				break
 			}
+
+			count += uint64(len(bs))
 		}
 		if !rc.Fullcone() {
 			rc.Close()
@@ -91,9 +103,13 @@ func RelayUDP(rc, lc MsgConn) int {
 			lc.Close()
 		}
 
+		if uploadByteCount != nil {
+			atomic.AddUint64(uploadByteCount, count)
+		}
+
 	}()
 
-	count := 0
+	var count uint64
 
 	for {
 		bs, raddr, err := rc.ReadMsgFrom()
@@ -106,7 +122,7 @@ func RelayUDP(rc, lc MsgConn) int {
 
 			break
 		}
-		count += len(bs)
+		count += uint64(len(bs))
 	}
 	if !rc.Fullcone() {
 		rc.Close()
@@ -115,6 +131,11 @@ func RelayUDP(rc, lc MsgConn) int {
 	if !lc.Fullcone() {
 		lc.Close()
 	}
+
+	if downloadByteCount != nil {
+		atomic.AddUint64(downloadByteCount, count)
+	}
+
 	return count
 }
 
@@ -151,8 +172,7 @@ func (u UniTargetMsgConn) Close() error {
 	return u.Conn.Close()
 }
 
-//UDPMsgConn 实现 MsgConn。 可满足fullcone, 由 Fullcone 的值决定. 在proxy/direct 被用到.
-//
+//UDPMsgConn 实现 MsgConn。 可满足fullcone/symmetric. 在proxy/direct 被用到.
 type UDPMsgConn struct {
 	conn     *net.UDPConn
 	IsServer bool
@@ -164,6 +184,8 @@ type UDPMsgConn struct {
 
 // NewUDPMsgConn 创建一个 UDPMsgConn 并使用传入的 laddr 监听udp; 若未给出laddr, 将使用一个随机可用的端口监听.
 // 如果是普通的单目标的客户端，用 (nil,false,false) 即可.
+//
+// 满足fullcone/symmetric, 由 fullcone 的值决定.
 func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConn {
 	uc := new(UDPMsgConn)
 

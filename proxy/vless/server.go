@@ -24,9 +24,9 @@ func init() {
 //实现 proxy.UserServer 以及 tlsLayer.UserHaser
 type Server struct {
 	proxy.ProxyCommonStruct
-	userHashes   map[[16]byte]*proxy.V2rayUser
-	userCRUMFURS map[[16]byte]*CRUMFURS
-	mux4Hashes   sync.RWMutex
+	userHashes map[[16]byte]*proxy.V2rayUser
+	//userCRUMFURS map[[16]byte]*CRUMFURS
+	mux4Hashes sync.RWMutex
 }
 
 type ServerCreator struct{}
@@ -38,8 +38,8 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		userHashes:   make(map[[16]byte]*proxy.V2rayUser),
-		userCRUMFURS: make(map[[16]byte]*CRUMFURS),
+		userHashes: make(map[[16]byte]*proxy.V2rayUser),
+		//userCRUMFURS: make(map[[16]byte]*CRUMFURS),
 	}
 
 	s.addV2User(id)
@@ -58,8 +58,8 @@ func NewServer(url *url.URL) (proxy.Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		userHashes:   make(map[[16]byte]*proxy.V2rayUser),
-		userCRUMFURS: make(map[[16]byte]*CRUMFURS),
+		userHashes: make(map[[16]byte]*proxy.V2rayUser),
+		//userCRUMFURS: make(map[[16]byte]*CRUMFURS),
 	}
 
 	s.addV2User(id)
@@ -243,35 +243,6 @@ realPart:
 		}
 
 		//v1我们将采用 smux
-
-	case Cmd_CRUMFURS:
-		if version != 1 {
-
-			returnErr = errors.New("在vless的vesion不为1时使用了 CRUMFURS 命令")
-			goto errorPart
-
-		}
-
-		_, err = underlay.Write([]byte{CRUMFURS_ESTABLISHED})
-		if err != nil {
-
-			returnErr = utils.ErrInErr{ErrDesc: "write to crumfurs err", ErrDetail: err}
-			goto errorPart
-		}
-
-		targetAddr.Name = CRUMFURS_Established_Str // 使用这个特殊的办法来告诉调用者，预留了 CRUMFURS 信道，防止其关闭上层连接导致 CRUMFURS 信道 被关闭。
-
-		theCRUMFURS := &CRUMFURS{
-			Conn: underlay,
-		}
-
-		s.mux4Hashes.Lock()
-
-		s.userCRUMFURS[thisUUIDBytes] = theCRUMFURS
-
-		s.mux4Hashes.Unlock()
-
-		return
 
 	case CmdTCP, CmdUDP:
 

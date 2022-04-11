@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/miekg/dns"
@@ -69,21 +70,22 @@ func testUDP_dokodemo_protocol(protocol string, network string, t *testing.T) {
 protocol = "dokodemo"
 network = "udp"
 host = "127.0.0.1"
-port = 1080
+port = %s
 target = "udp://8.8.8.8:53"
-
 
 [[dial]]
 protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
-port = 4433
+port = %s
 version = 0
 insecure = true
 network = "%s"
 `
+	clientListenPort := netLayer.RandPortStr()
+	clientDialPort := netLayer.RandPortStr()
 
-	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, protocol, network)
+	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort, protocol, clientDialPort, network)
 
 	const testServerConfFormatStr = `
 [[dial]]
@@ -93,7 +95,7 @@ protocol = "direct"
 protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
-port = 4433
+port = %s
 version = 0
 insecure = true
 cert = "cert.pem"
@@ -101,7 +103,7 @@ key = "cert.key"
 network = "%s"
 `
 
-	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, network)
+	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, network)
 
 	clientConf, err := LoadTomlConfStr(testClientConfStr)
 	if err != nil {
@@ -121,8 +123,8 @@ network = "%s"
 	if err != nil {
 		t.Log("can not create clientEndInServer: ", err)
 		t.FailNow()
-
 	}
+
 	// vless out
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
@@ -150,7 +152,7 @@ network = "%s"
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)
 	c := new(dns.Client)
 
-	r, _, err := c.Exchange(m, "127.0.0.1:1080")
+	r, _, err := c.Exchange(m, "127.0.0.1:"+clientListenPort)
 	if r == nil {
 		t.Log("error: ", err.Error())
 		t.FailNow()

@@ -12,7 +12,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
-	"go.uber.org/zap"
 )
 
 func init() {
@@ -29,7 +28,7 @@ type Client struct {
 
 	user *proxy.V2rayUser
 
-	is_CRUMFURS_established bool
+	//is_CRUMFURS_established bool
 
 	mutex                sync.RWMutex
 	knownUDPDestinations map[string]io.ReadWriter
@@ -136,44 +135,6 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
 	var err error
 
-	if c.version == 1 && !c.is_CRUMFURS_established {
-
-		//log.Println("尝试拨号 Cmd_CRUMFURS 信道")
-
-		//这段代码明显有问题，如果直接dial的话，那就是脱离tls的裸协议，所以这里以后需要处理一下
-		UMFURS_conn, err := target.Dial()
-		if err != nil {
-			if ce := utils.CanLogErr("尝试拨号 Cmd_CRUMFURS 信道时发生错误"); ce != nil {
-
-				//log.Println("尝试拨号 Cmd_CRUMFURS 信道时发生错误")
-				ce.Write(zap.Error(err))
-			}
-			return nil, err
-		}
-		buf := c.getBufWithCmd(Cmd_CRUMFURS)
-
-		UMFURS_conn.Write(buf.Bytes())
-
-		utils.PutBuf(buf)
-
-		bs := []byte{0}
-		n, err := UMFURS_conn.Read(bs)
-		if err != nil || n == 0 || bs[0] != CRUMFURS_ESTABLISHED {
-			if ce := utils.CanLogErr("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误"); ce != nil {
-
-				//log.Println("尝试读取 Cmd_CRUMFURS 信道返回值 时发生错误")
-				ce.Write(zap.Error(err))
-			}
-			return nil, err
-		}
-
-		c.is_CRUMFURS_established = true
-
-		// 循环监听 UMFURS 信息
-		go c.handle_CRUMFURS(UMFURS_conn)
-
-	}
-
 	buf := c.getBufWithCmd(CmdUDP)
 	port := target.Port
 
@@ -189,6 +150,9 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 	utils.PutBuf(buf)
 
 	return &UDPConn{Conn: underlay, version: c.version, isClientEnd: true, raddr: target}, err
+
+	//在vless v1中, 不使用 单独udp信道来传输所有raddr方向的数据
+	// 所以在v1中，我们不应用 EstablishUDPChannel 函数
 }
 
 func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {

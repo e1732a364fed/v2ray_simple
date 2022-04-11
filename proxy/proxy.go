@@ -44,7 +44,14 @@ type Client interface {
 
 	Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error)
 
+	//建立一个通道, 然后在这个通道上 不断申请发送到 各个远程udp地址的连接。
 	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
+
+	//udp的拨号是否使用了多信道方式
+	IsUDP_MultiChannel() bool
+
+	// 传递一个 dialfunc, 这样在udp 多信道模式时, client可以自行启用新信道
+	SetUDPDialFunc(func() net.Conn)
 }
 
 // Server 用于监听 客户端 的连接.
@@ -196,6 +203,8 @@ type ProxyCommonStruct struct {
 	quic_c *quic.Client
 
 	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
+
+	udp_dialfunc func() net.Conn
 }
 
 func (pcs *ProxyCommonStruct) setListenCommonConnFunc(f func() (newConnChan chan net.Conn, baseConn any)) {
@@ -237,6 +246,16 @@ func (pcs *ProxyCommonStruct) MiddleName() string {
 
 func (pcs *ProxyCommonStruct) CantRoute() bool {
 	return pcs.cantRoute
+}
+
+//return false
+func (pcs *ProxyCommonStruct) IsUDP_MultiChannel() bool {
+	return false
+}
+
+// 传递一个 dialfunc, 这样如果客户端决定在任意时候拨号新 信道时, 可以自行启用新信道
+func (pcs *ProxyCommonStruct) SetUDPDialFunc(f func() net.Conn) {
+	pcs.udp_dialfunc = f
 }
 
 func (pcs *ProxyCommonStruct) GetTag() string {

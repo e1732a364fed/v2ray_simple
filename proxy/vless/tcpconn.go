@@ -137,7 +137,7 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 		if writeBuf != nil {
 			writeBuf.Write(p)
 
-			_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+			_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个调用返回的长度n” 是错的，因为写入长度只能小于等于len(p)
 
 			utils.PutBuf(writeBuf)
 

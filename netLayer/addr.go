@@ -207,7 +207,8 @@ func (a *Addr) GetHashable() (ha HashableAddr) {
 	return
 }
 
-// Return host:port string
+// Return host:port string. 若网络为unix，直接返回 a.Name.
+// 若有Name而没有ip，则返回 a.Name:a.Port . 否则返回 a.IP: a.Port;
 func (a *Addr) String() string {
 	if a.Network == "unix" {
 		return a.Name

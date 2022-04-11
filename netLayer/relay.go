@@ -4,6 +4,7 @@ import (
 	"io"
 	"net"
 	"reflect"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -190,8 +191,9 @@ classic:
 // 会自动优选 splice，readv，不行则使用经典拷贝.
 //
 //拷贝完成后会主动关闭双方连接.
-// 返回从 wrc读取到的总字节长度（即下载流量）
-func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
+// 返回从 wrc读取到的总字节长度（即下载流量）. 如果 downloadByteCount, uploadByteCount 给出,
+// 则会 更新上传和下载的总字节数
+func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount, uploadByteCount *uint64) int64 {
 
 	if utils.LogLevel == utils.Log_debug {
 		rtaddrStr := realTargetAddr.String()
@@ -207,6 +209,10 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
 			wlc.Close()
 			wrc.Close()
 
+			if uploadByteCount != nil {
+				atomic.AddUint64(uploadByteCount, uint64(n))
+			}
+
 		}()
 
 		n, e := TryCopy(wlc, wrc)
@@ -219,13 +225,21 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
 
 		wlc.Close()
 		wrc.Close()
+
+		if downloadByteCount != nil {
+			atomic.AddUint64(downloadByteCount, uint64(n))
+		}
 		return n
 	} else {
 		go func() {
-			TryCopy(wrc, wlc)
+			n, _ := TryCopy(wrc, wlc)
 
 			wlc.Close()
 			wrc.Close()
+
+			if uploadByteCount != nil {
+				atomic.AddUint64(uploadByteCount, uint64(n))
+			}
 
 		}()
 
@@ -233,6 +247,10 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser) int64 {
 
 		wlc.Close()
 		wrc.Close()
+
+		if downloadByteCount != nil {
+			atomic.AddUint64(downloadByteCount, uint64(n))
+		}
 		return n
 	}
 

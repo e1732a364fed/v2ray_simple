@@ -360,7 +360,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 	} else {
 		if err != nil {
 			utils.ZapLogger.Error(
-				"can not listen inServer on %s %s\n", zap.String("addr", inServer.AddrStr()), zap.Error(err))
+				"can not listen inServer on", zap.String("addr", inServer.AddrStr()), zap.Error(err))
 
 		}
 	}
@@ -904,37 +904,32 @@ afterLocalServerHandshake:
 
 	////////////////////////////// 拨号阶段 /////////////////////////////////////
 
-	//log.Println("will dial", client)
-	dialClient(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc)
+	dialClient_andRelay(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc)
 }
 
-// dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手，
-// 然后 进行实际转发(Copy)。
-// targetAddr为用户所请求的地址。
-//client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
-// wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
-// noCopy是为了让其它调用者自行处理 转发 时使用。
-func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn) {
+//dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手
+// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功并处理了转发阶段(用于lazy )
+func dialClient(targetAddr netLayer.Addr,
+	client proxy.Client,
+	baseLocalConn,
+	wlc io.ReadWriteCloser,
+	cachedRemoteAddr string,
+	isTlsLazy_clientEnd bool) (
 
-	isudp := targetAddr.IsUDP()
-
-	if iics.shouldCloseInSerBaseConnWhenFinish {
-		if iics.baseLocalConn != nil {
-			defer iics.baseLocalConn.Close()
-		}
-	}
-	if wlc != nil {
-		defer wlc.Close()
-
-	}
+	//return values:
+	wrc io.ReadWriteCloser,
+	udp_wrc netLayer.MsgConn,
+	realTargetAddr netLayer.Addr,
+	clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder,
+	result int) {
 
 	var err error
-
 	//先确认拨号地址
+	isudp := targetAddr.IsUDP()
 
 	//direct的话自己是没有目的地址的，直接使用 请求的地址
 	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
-	var realTargetAddr netLayer.Addr = targetAddr
+	realTargetAddr = targetAddr
 
 	if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
 
@@ -944,6 +939,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 				zap.String("request", targetAddr.String()),
 				zap.String("uniqueTestDomain", uniqueTestDomain),
 			)
+			result = -1
 			return
 
 		}
@@ -952,7 +948,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	if ce := utils.CanLogInfo("Request"); ce != nil {
 
 		ce.Write(
-			zap.String("from", iics.cachedRemoteAddr),
+			zap.String("from", cachedRemoteAddr),
 			zap.String("target", targetAddr.UrlString()),
 			zap.String("through", proxy.GetVSI_url(client)),
 		)
@@ -966,12 +962,11 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			if ce := utils.CanLogErr("dial client convert addr err"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
+			result = -1
 			return
 		}
 		realTargetAddr.Network = client.Network()
 	}
-	var clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder
-
 	var clientConn net.Conn
 
 	var grpcClientConn grpc.ClientConn
@@ -979,7 +974,9 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 	dialHere := !(client.Name() == direct.Name && isudp)
 
-	// direct 的udp 是自己拨号的,因为要考虑到fullcone。不是direct的udp的话，也要分情况:
+	// direct 的udp 是自己拨号的,因为要考虑到fullcone。
+	//
+	// 不是direct的udp的话，也要分情况:
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
 	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接
 
@@ -1003,6 +1000,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			} else {
 				//dail失败, 直接return掉
 
+				result = -1
 				return
 			}
 		}
@@ -1028,11 +1026,10 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 					)
 				}
 			}
-
+			result = -1
 			return
 		}
 
-		defer clientConn.Close()
 	}
 
 	//log.Println("dial real addr ok", realTargetAddr)
@@ -1054,6 +1051,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 
 				}
 
+				result = 1
 				return
 
 			} else {
@@ -1064,12 +1062,13 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 			}
 		}
 
-		tlsConn, err := client.GetTLS_Client().Handshake(clientConn)
-		if err != nil {
+		tlsConn, err2 := client.GetTLS_Client().Handshake(clientConn)
+		if err2 != nil {
 			if ce := utils.CanLogErr("failed in handshake outClient tls"); ce != nil {
 				ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
 			}
 
+			result = -1
 			return
 		}
 
@@ -1100,6 +1099,7 @@ advLayerStep:
 					dailedCommonConn = qclient.DialCommonConn(true, dailedCommonConn)
 					if dailedCommonConn == nil {
 						//再dial还是nil，也许是暂时性的网络错误, 先退出
+						result = -1
 						return
 					}
 
@@ -1110,6 +1110,7 @@ advLayerStep:
 								zap.Error(err),
 							)
 						}
+						result = -1
 						return
 					}
 				} else {
@@ -1118,6 +1119,7 @@ advLayerStep:
 							zap.Error(err),
 						)
 					}
+					result = -1
 					return
 				}
 
@@ -1130,10 +1132,11 @@ advLayerStep:
 						ce.Write(zap.Error(err))
 
 					}
-					if iics.baseLocalConn != nil {
-						iics.baseLocalConn.Close()
+					if baseLocalConn != nil {
+						baseLocalConn.Close()
 
 					}
+					result = -1
 					return
 				}
 
@@ -1149,9 +1152,10 @@ advLayerStep:
 					// rpc error: code = Unavailable desc = connection error: desc = "transport: failed to write client preface: tls: use of closed connection"
 
 				}
-				if iics.baseLocalConn != nil {
-					iics.baseLocalConn.Close()
+				if baseLocalConn != nil {
+					baseLocalConn.Close()
 				}
+				result = -1
 				return
 			}
 
@@ -1169,6 +1173,7 @@ advLayerStep:
 					if ce := utils.CanLogErr("failed to read ws early data"); ce != nil {
 						ce.Write(zap.Error(e))
 					}
+					result = -1
 					return
 				}
 				ed = edBuf[:n]
@@ -1197,6 +1202,7 @@ advLayerStep:
 						zap.Error(err),
 					)
 				}
+				result = -1
 				return
 			}
 
@@ -1207,8 +1213,7 @@ advLayerStep:
 	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
 
 	if !isudp {
-
-		wrc, err := client.Handshake(clientConn, targetAddr)
+		wrc, err = client.Handshake(clientConn, targetAddr)
 		if err != nil {
 			if ce := utils.CanLogErr("Handshake client failed"); ce != nil {
 				ce.Write(
@@ -1216,11 +1221,53 @@ advLayerStep:
 					zap.Error(err),
 				)
 			}
-			return
 		}
-		//log.Println("all handshake finished")
 
-		////////////////////////////// 实际转发阶段 /////////////////////////////////////
+	} else {
+		udp_wrc, err = client.EstablishUDPChannel(clientConn, targetAddr)
+		if err != nil {
+			if ce := utils.CanLogErr("EstablishUDPChannel failed"); ce != nil {
+				ce.Write(
+					zap.String("target", targetAddr.String()),
+					zap.Error(err),
+				)
+			}
+		}
+	}
+
+	return
+}
+
+// dialClient_andRelay
+// 然后 进行实际转发(Copy)。
+// targetAddr为用户所请求的地址。
+//client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
+// wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
+// noCopy是为了让其它调用者自行处理 转发 时使用。
+func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn) {
+
+	isudp := targetAddr.IsUDP()
+
+	if iics.shouldCloseInSerBaseConnWhenFinish {
+		if iics.baseLocalConn != nil {
+			defer iics.baseLocalConn.Close()
+		}
+	}
+	if wlc != nil {
+		defer wlc.Close()
+
+	}
+
+	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
+	if result != 0 {
+		return
+	}
+
+	////////////////////////////// 实际转发阶段 /////////////////////////////////////
+
+	if !isudp {
+
+		//log.Println("all handshake finished")
 
 		if tls_lazy_encrypt && !iics.routedToDirect {
 
@@ -1257,24 +1304,13 @@ advLayerStep:
 
 		atomic.AddInt32(&activeConnectionCount, 1)
 
-		downloadBytes := netLayer.Relay(&realTargetAddr, wrc, wlc)
+		netLayer.Relay(&realTargetAddr, wrc, wlc, &allDownloadBytesSinceStart, nil)
 
 		atomic.AddInt32(&activeConnectionCount, -1)
-		atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
 
 		return
 
 	} else {
-		udp_wrc, err := client.EstablishUDPChannel(clientConn, targetAddr)
-		if err != nil {
-			if ce := utils.CanLogErr("EstablishUDPChannel failed"); ce != nil {
-				ce.Write(
-					zap.String("target", targetAddr.String()),
-					zap.Error(err),
-				)
-			}
-			return
-		}
 
 		if iics.theFallbackFirstBuffer != nil {
 
@@ -1285,10 +1321,9 @@ advLayerStep:
 
 		atomic.AddInt32(&activeConnectionCount, 1)
 
-		downloadBytes := netLayer.RelayUDP(udp_wrc, udp_wlc)
+		netLayer.RelayUDP(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, nil)
 
 		atomic.AddInt32(&activeConnectionCount, -1)
-		atomic.AddUint64(&allDownloadBytesSinceStart, uint64(downloadBytes))
 
 		return
 	}

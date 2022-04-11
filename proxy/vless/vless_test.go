@@ -287,7 +287,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				}
 
 				// 之后转发所有流量，不再特定限制数据
-				netLayer.RelayUDP(wlc, wrc)
+				netLayer.RelayUDP(wlc, wrc, nil, nil)
 				//t.Log("Copy End?!", )
 			}()
 		}
