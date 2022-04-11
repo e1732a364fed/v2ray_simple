@@ -15,6 +15,6 @@ insecure = true
 utls = true
 extra = { vless1_udp_multi = true } 
 
-# 用vless1_udp_multi开启vless v1的 分离信道传输udp功能. udp分离信道发送 性能会比默认的 多路复用 发送性能要高。
-# 性能比较可以参考 大流量tcp下载时 普通tls+vless 与 tls+vless+grpc 直接的差距. 因为grpc也是多路复用的, 所以遇到大流量多线程下载时，grpc就性能很差了。 我们udp也是同理。 使用【分离信道】的话，更适合 bt下载这种 多线程udp下载的情况。
+# 用 vless1_udp_multi 选项 开启vless v1的 分离信道传输udp功能. udp分离信道发送 性能会比默认的 多路复用 发送性能要高。
+# 在有大量向不同 远程地址发送的 udp链接 存在时，才会体现出优势 , 比如一些 实时游戏 或者 多人视频会议。
 # 分离信道 又可以叫 【多信道】，因此我们在这里 用 multi 来表示。

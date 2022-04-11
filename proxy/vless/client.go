@@ -109,6 +109,9 @@ func (c *Client) Name() string {
 		return Name
 	}
 	return Name + "_" + strconv.Itoa(c.version)
+
+	// 根据 https://forum.golangbridge.org/t/fmt-sprintf-vs-string-concatenation/23006
+	// 直接 + 比 fmt.Sprintf 快不少.
 }
 func (c *Client) Version() int { return c.version }
 func (c *Client) GetUser() proxy.User {
