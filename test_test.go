@@ -47,16 +47,20 @@ func TestDNSLookup_CN(t *testing.T) {
 }
 */
 
-//经实测，dokodemo->vless->udp 来请求dns是毫无问题的。
 func TestUDP_dokodemo_vless(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", t)
+	testUDP_dokodemo_protocol("vless", "tcp", t)
 }
 
 func TestUDP_dokodemo_trojan(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", t)
+	testUDP_dokodemo_protocol("trojan", "tcp", t)
 }
 
-func testUDP_dokodemo_protocol(protocol string, t *testing.T) {
+func TestUDP_dokodemo_trojan_through_udp(t *testing.T) {
+	testUDP_dokodemo_protocol("trojan", "udp", t)
+}
+
+//经实测，udp dokodemo->vless/trojan (tcp/udp)->udp direct 来请求dns 是毫无问题的。
+func testUDP_dokodemo_protocol(protocol string, network string, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
@@ -76,9 +80,10 @@ host = "127.0.0.1"
 port = 4433
 version = 0
 insecure = true
+network = "%s"
 `
 
-	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, protocol)
+	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, protocol, network)
 
 	const testServerConfFormatStr = `
 [[dial]]
@@ -93,9 +98,10 @@ version = 0
 insecure = true
 cert = "cert.pem"
 key = "cert.key"
+network = "%s"
 `
 
-	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol)
+	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, network)
 
 	clientConf, err := LoadTomlConfStr(testClientConfStr)
 	if err != nil {

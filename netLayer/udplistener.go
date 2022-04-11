@@ -10,8 +10,9 @@ import (
 )
 
 // UDPListener 实现了 net.Listener.
-// UDPListener 监听 UDPAddr，并不断对新远程地址 创建 新UDPConn并提供给Accept;
-// 然后读到的信息缓存到 UDPConn 中，让它能在Read时读到.
+// UDPListener 监听 UDPAddr，不断读取请求，对新远程地址 创建 新UDPConn并提供给 Accept;
+//  记录遇到过的所有地址 以及 对应的 UDPConn.
+// 将读到的信息缓存到 UDPConn 的 chan 中，让它能在Read时读到.
 //
 //UDPListener can also dial a remote host by calling NewConn.
 type UDPListener struct {

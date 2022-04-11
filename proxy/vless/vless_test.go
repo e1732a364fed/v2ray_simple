@@ -262,7 +262,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				na, _ := netLayer.NewAddr(remoteAddrStr)
 				na.Network = "udp"
 
-				wrc := netLayer.NewUDPMsgConnClientWrapper(nil, false, false)
+				wrc := netLayer.NewUDPMsgConn(nil, false, false)
 
 				err = wrc.WriteMsgTo(bs, na)
 				if err != nil {

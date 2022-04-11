@@ -118,7 +118,7 @@ func RelayUDP(rc, lc MsgConn) int {
 	return count
 }
 
-// symmetric, proxy/dokodemo 有用到.
+// symmetric, proxy/dokodemo 有用到. 实现 MsgConn
 type UniTargetMsgConn struct {
 	net.Conn
 	Target Addr
@@ -151,9 +151,9 @@ func (u UniTargetMsgConn) Close() error {
 	return u.Conn.Close()
 }
 
-//可满足fullcone, 由 Fullcone 的值决定. 在proxy/direct 被用到.
+//UDPMsgConn 实现 MsgConn。 可满足fullcone, 由 Fullcone 的值决定. 在proxy/direct 被用到.
 //
-type UDPMsgConnWrapper struct {
+type UDPMsgConn struct {
 	conn     *net.UDPConn
 	IsServer bool
 	fullcone bool
@@ -162,9 +162,10 @@ type UDPMsgConnWrapper struct {
 	symmetricMapMutex sync.RWMutex
 }
 
-//使用传入的laddr监听udp; 若未给出laddr, 使用一个随机端口监听
-func NewUDPMsgConnClientWrapper(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConnWrapper {
-	uc := new(UDPMsgConnWrapper)
+// NewUDPMsgConn 创建一个 UDPMsgConn 并使用传入的 laddr 监听udp; 若未给出laddr, 将使用一个随机可用的端口监听.
+// 如果是普通的单目标的客户端，用 (nil,false,false) 即可.
+func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConn {
+	uc := new(UDPMsgConn)
 
 	udpConn, _ := net.ListenUDP("udp", laddr)
 
@@ -177,16 +178,14 @@ func NewUDPMsgConnClientWrapper(laddr *net.UDPAddr, fullcone bool, isserver bool
 	return uc
 }
 
-func (u *UDPMsgConnWrapper) Fullcone() bool {
+func (u *UDPMsgConn) Fullcone() bool {
 	return u.fullcone
 }
 
-func (u *UDPMsgConnWrapper) ReadMsgFrom() ([]byte, Addr, error) {
+func (u *UDPMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
 	bs := utils.GetPacket()
 
 	if !u.fullcone {
-		//如果不是fullcone, 则我们需要限时关闭
-
 		u.conn.SetReadDeadline(time.Now().Add(UDP_timeout))
 	}
 
@@ -195,17 +194,18 @@ func (u *UDPMsgConnWrapper) ReadMsgFrom() ([]byte, Addr, error) {
 		return nil, Addr{}, err
 	}
 	if !u.fullcone {
-		//既然读到了, 那么就取消限时
 		u.conn.SetReadDeadline(time.Time{})
 	}
 
 	return bs[:n], NewAddrFromUDPAddr(ad), nil
 }
 
-func (u *UDPMsgConnWrapper) WriteMsgTo(bs []byte, raddr Addr) error {
+func (u *UDPMsgConn) WriteMsgTo(bs []byte, raddr Addr) error {
+
+	var theConn *net.UDPConn
 
 	if !u.fullcone && !u.IsServer {
-		//非fullcone时,  强制 symmetryc, 对每个远程地址 都使用一个 对应的新laddr
+		//非fullcone时,  强制 symmetric, 对每个远程地址 都使用一个 对应的新laddr
 
 		thishash := raddr.GetHashable()
 
@@ -221,7 +221,7 @@ func (u *UDPMsgConnWrapper) WriteMsgTo(bs []byte, raddr Addr) error {
 		}
 
 		u.symmetricMapMutex.RLock()
-		theConn := u.symmetricMap[thishash]
+		theConn = u.symmetricMap[thishash]
 		u.symmetricMapMutex.RUnlock()
 
 		if theConn == nil {
@@ -236,20 +236,18 @@ func (u *UDPMsgConnWrapper) WriteMsgTo(bs []byte, raddr Addr) error {
 			u.symmetricMapMutex.Unlock()
 		}
 
-		_, err := theConn.WriteTo(bs, raddr.ToUDPAddr())
-		return err
-
 	} else {
-		_, err := u.conn.WriteTo(bs, raddr.ToUDPAddr())
-		return err
-
+		theConn = u.conn
 	}
+
+	_, err := theConn.WriteTo(bs, raddr.ToUDPAddr())
+	return err
 }
 
-func (u *UDPMsgConnWrapper) CloseConnWithRaddr(raddr Addr) error {
+func (u *UDPMsgConn) CloseConnWithRaddr(raddr Addr) error {
 	if !u.IsServer {
 		if u.fullcone {
-			u.conn.SetReadDeadline(time.Now())
+			//u.conn.SetReadDeadline(time.Now())
 
 		} else {
 			u.symmetricMapMutex.Lock()
@@ -269,12 +267,8 @@ func (u *UDPMsgConnWrapper) CloseConnWithRaddr(raddr Addr) error {
 	return nil
 }
 
-func (u *UDPMsgConnWrapper) Close() error {
-	if !u.IsServer && u.fullcone {
-		//Close一般只用于关闭客户端、非fullcone的情况, 因为只有这种情况下，才会有 一个 u仅与一个 raddr对话 的清醒.
+func (u *UDPMsgConn) Close() error {
 
-		return u.conn.Close()
-	} else {
-		return nil
-	}
+	return u.conn.Close()
+
 }

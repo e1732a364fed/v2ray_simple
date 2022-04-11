@@ -63,7 +63,12 @@ type Server interface {
 //
 // An Example of a full name:  tcp+tls+ws+vless
 func GetFullName(pc ProxyCommon) string {
-	return pc.Network() + pc.MiddleName() + pc.Name()
+	if n := pc.Name(); n == "direct" {
+		return n
+	} else {
+		return pc.Network() + pc.MiddleName() + n
+
+	}
 }
 
 // return GetFullName(pc) + "://" + pc.AddrStr()

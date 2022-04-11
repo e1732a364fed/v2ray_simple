@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/proxy/direct"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 
 	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
@@ -976,62 +977,69 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr, client
 	var grpcClientConn grpc.ClientConn
 	var dailedCommonConn any
 
+	dialHere := !(client.Name() == direct.Name && isudp)
+
+	// direct 的udp 是自己拨号的,因为要考虑到fullcone。不是direct的udp的话，也要分情况:
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
 	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接
 
-	switch client.AdvancedLayer() {
-	case "grpc":
+	if dialHere {
 
-		grpcClientConn = grpc.GetEstablishedConnFor(&realTargetAddr)
+		switch client.AdvancedLayer() {
+		case "grpc":
 
-		if grpcClientConn != nil {
-			//如果有已经建立好的连接，则跳过拨号阶段
-			goto advLayerStep
+			grpcClientConn = grpc.GetEstablishedConnFor(&realTargetAddr)
+
+			if grpcClientConn != nil {
+				//如果有已经建立好的连接，则跳过拨号阶段
+				goto advLayerStep
+			}
+		case "quic":
+			//quic这里并不是在tls层基础上进行dial，而是直接从传输层dial 或者获取之前已经存在的session
+			dailedCommonConn = client.GetQuic_Client().DialCommonConn(false, nil)
+			if dailedCommonConn != nil {
+				//跳过tls阶段
+				goto advLayerStep
+			} else {
+				//dail失败, 直接return掉
+
+				return
+			}
 		}
-	case "quic":
-		//quic这里并不是在tls层基础上进行dial，而是直接从传输层dial 或者获取之前已经存在的session
-		dailedCommonConn = client.GetQuic_Client().DialCommonConn(false, nil)
-		if dailedCommonConn != nil {
-			//跳过tls阶段
-			goto advLayerStep
-		} else {
-			//dail失败, 直接return掉
+
+		clientConn, err = realTargetAddr.Dial()
+
+		if err != nil {
+			if err == netLayer.ErrMachineCantConnectToIpv6 {
+				//如果一开始就知道机器没有ipv6地址，那么该错误就不是error等级，而是warning等级
+
+				if ce := utils.CanLogWarn("Machine HasNo ipv6 but got ipv6 request"); ce != nil {
+					ce.Write(
+						zap.String("target", realTargetAddr.String()),
+					)
+				}
+
+			} else {
+				//虽然拨号失败,但是不能认为我们一定有错误, 因为很可能申请的ip本身就是不可达的, 所以不是error等级而是warn等级
+				if ce := utils.CanLogWarn("failed dialing"); ce != nil {
+					ce.Write(
+						zap.String("target", realTargetAddr.String()),
+						zap.Error(err),
+					)
+				}
+			}
 
 			return
 		}
+
+		defer clientConn.Close()
 	}
-
-	clientConn, err = realTargetAddr.Dial()
-	if err != nil {
-		if err == netLayer.ErrMachineCantConnectToIpv6 {
-			//如果一开始就知道机器没有ipv6地址，那么该错误就不是error等级，而是warning等级
-
-			if ce := utils.CanLogWarn("Machine HasNo ipv6 but got ipv6 request"); ce != nil {
-				ce.Write(
-					zap.String("target", realTargetAddr.String()),
-				)
-			}
-
-		} else {
-			//虽然拨号失败,但是不能认为我们一定有错误, 因为很可能申请的ip本身就是不可达的, 所以不是error等级而是warn等级
-			if ce := utils.CanLogWarn("failed dialing"); ce != nil {
-				ce.Write(
-					zap.String("target", realTargetAddr.String()),
-					zap.Error(err),
-				)
-			}
-		}
-
-		return
-	}
-
-	defer clientConn.Close()
 
 	//log.Println("dial real addr ok", realTargetAddr)
 
 	////////////////////////////// tls握手阶段 /////////////////////////////////////
 
-	if client.IsUseTLS() { //即客户端
+	if client.IsUseTLS() {
 
 		if isTlsLazy_clientEnd {
 
@@ -1082,7 +1090,7 @@ advLayerStep:
 				eStr := err.Error()
 				if strings.Contains(eStr, "too many") {
 
-					if ce := utils.CanLogDebug("DialSubConnFunc got full session, open another one"); ce != nil {
+					if ce := utils.CanLogDebug("DialSubConn got full session, open another one"); ce != nil {
 						ce.Write(
 							zap.String("full reason", eStr),
 						)
@@ -1091,13 +1099,13 @@ advLayerStep:
 					//第一条连接已满，再开一条session
 					dailedCommonConn = qclient.DialCommonConn(true, dailedCommonConn)
 					if dailedCommonConn == nil {
-						//再dial还是nil，也许是暂时性的网络错误, 先关闭
+						//再dial还是nil，也许是暂时性的网络错误, 先退出
 						return
 					}
 
 					clientConn, err = qclient.DialSubConn(dailedCommonConn)
 					if err != nil {
-						if ce := utils.CanLogErr("DialSubConnFunc failed with redial new session"); ce != nil {
+						if ce := utils.CanLogErr("DialSubConn failed after redialed new session"); ce != nil {
 							ce.Write(
 								zap.Error(err),
 							)

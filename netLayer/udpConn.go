@@ -13,9 +13,12 @@ type UDPAddrData struct {
 	Data []byte
 }
 
-//UDPConn将一个udp连接包装成一个 只能向单一目标发送数据的 连接。
-// 还是有能力接收来自其它目标的数据，并有能力向其它目标发送数据。
+//UDPConn 将一个udp连接包装成一个 向单一目标发送数据的 连接。
+// UDPConn 主要服务于 UDPListener。如果有udp客户端需求, 最好使用 UDPMsgConn, 以更好地支持 fullcone或symmetric.
+//
+// UDPConn 也有能力接收来自其它目标的数据，以及向其它目标发送数据。然而, 本结构并没有记录链接端口, 所以无法实现 symmetric.
 // 如果用 DialUDP 函数初始化的 UDPConn, 则无法使用 WriteMsgTo方法向其它地址发消息.
+//
 //UDPConn 实现了 net.Conn , net.PacketConn , MsgConn
 type UDPConn struct {
 	peerAddr *net.UDPAddr
@@ -172,8 +175,8 @@ func (uc *UDPConn) WriteMsgTo(buf []byte, addr Addr) error {
 	case <-uc.writeDeadline.Wait():
 		return ErrTimeout
 	default:
+		time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 		if uc.isClient {
-			time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 
 			if !uc.clientFirstWriteChanClosed {
 				defer func() {
@@ -196,8 +199,8 @@ func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 	case <-uc.writeDeadline.Wait():
 		return 0, ErrTimeout
 	default:
+		time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 		if uc.isClient {
-			time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 
 			/*
 				一些常见的丢包后出现的错误：

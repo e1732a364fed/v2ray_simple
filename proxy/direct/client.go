@@ -10,10 +10,10 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
-const name = "direct"
+const Name = "direct"
 
 func init() {
-	proxy.RegisterClient(name, &ClientCreator{})
+	proxy.RegisterClient(Name, &ClientCreator{})
 }
 
 //实现了 proxy.Client, netLayer.UDP_Putter_Generator
@@ -41,9 +41,9 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	return d, nil
 }
 
-func (d *Client) Name() string { return name }
+func (d *Client) Name() string { return Name }
 
-//若 underlay 为nil，则我们会自动对target进行拨号。
+//若 underlay 为nil，则我们会自动对target进行拨号, 否则直接返回underlay。
 func (d *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 
 	if underlay == nil {
@@ -54,8 +54,8 @@ func (d *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 }
 
-//direct的Client的 EstablishUDPChannel 实际上就是直接 监听一个udp端口。
+//direct的Client的 EstablishUDPChannel 实际上就是直接 监听一个udp端口。会无视传入的net.Conn.
 func (d *Client) EstablishUDPChannel(_ net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
 
-	return netLayer.NewUDPMsgConnClientWrapper(nil, d.isfullcone, false), nil
+	return netLayer.NewUDPMsgConn(nil, d.isfullcone, false), nil
 }

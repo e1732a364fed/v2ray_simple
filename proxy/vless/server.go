@@ -2,9 +2,7 @@ package vless
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -22,6 +20,7 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
+//Server 同时支持vless v0 和 v1
 //实现 proxy.UserServer 以及 tlsLayer.UserHaser
 type Server struct {
 	proxy.ProxyCommonStruct
@@ -232,10 +231,18 @@ realPart:
 	}
 
 	switch commandByte {
-	case CmdMux: //实际目前verysimple 暂时还未实现mux，先这么写
+	case CmdMux:
 
-		targetAddr.Port = 0
-		targetAddr.Name = "v1.mux.cool"
+		//实际目前verysimple 还未实现mux, 不过因为 v2ray的 mux.cool 有很多问题, 本作不会继续支持v0 的mux
+
+		//targetAddr.Port = 0
+		//targetAddr.Name = "v1.mux.cool"
+		if version == 0 {
+			returnErr = errors.New("mux not supported by verysimple for vless v0")
+			goto errorPart
+		}
+
+		//v1我们将采用 smux
 
 	case Cmd_CRUMFURS:
 		if version != 1 {
@@ -268,75 +275,16 @@ realPart:
 
 	case CmdTCP, CmdUDP:
 
-		portbs := readbuf.Next(2)
-
-		if err != nil || len(portbs) != 2 {
-
-			returnErr = errors.New("fallback, reason 3")
-			goto errorPart
-		}
-
-		targetAddr.Port = int(binary.BigEndian.Uint16(portbs))
-
-		if commandByte == CmdUDP {
-			targetAddr.Network = "udp"
-		}
-
-		var ip_or_domain_bytesLength byte
-
-		addrTypeByte, err := readbuf.ReadByte()
-
+		targetAddr, err = GetAddrFrom(readbuf)
 		if err != nil {
 
 			returnErr = errors.New("fallback, reason 4")
 			goto errorPart
 		}
 
-		switch addrTypeByte {
-		case netLayer.AtypIP4:
-
-			ip_or_domain_bytesLength = net.IPv4len
-			targetAddr.IP = utils.GetBytes(net.IPv4len)
-
-		case netLayer.AtypDomain:
-			// 解码域名的长度
-
-			domainNameLenByte, err := readbuf.ReadByte()
-
-			if err != nil {
-
-				returnErr = errors.New("fallback, reason 5")
-				goto errorPart
-			}
-
-			ip_or_domain_bytesLength = domainNameLenByte
-		case netLayer.AtypIP6:
-
-			ip_or_domain_bytesLength = net.IPv6len
-			targetAddr.IP = utils.GetBytes(net.IPv6len)
-		default:
-
-			returnErr = fmt.Errorf("unknown address type %v", addrTypeByte)
-			goto errorPart
+		if commandByte == CmdUDP {
+			targetAddr.Network = "udp"
 		}
-
-		ip_or_domain := utils.GetBytes(int(ip_or_domain_bytesLength))
-
-		_, err = readbuf.Read(ip_or_domain)
-
-		if err != nil {
-			utils.PutBytes(ip_or_domain)
-			returnErr = errors.New("fallback, reason 6")
-			return
-		}
-
-		if targetAddr.IP != nil {
-			copy(targetAddr.IP, ip_or_domain)
-		} else {
-			targetAddr.Name = string(ip_or_domain)
-		}
-
-		utils.PutBytes(ip_or_domain)
 
 	default:
 
@@ -365,43 +313,4 @@ realPart:
 		}, nil, targetAddr, nil
 	}
 
-}
-
-func (s *Server) Get_CRUMFURS(id string) *CRUMFURS {
-	bs, err := utils.StrToUUID(id)
-	if err != nil {
-		return nil
-	}
-	return s.userCRUMFURS[bs]
-}
-
-type CRUMFURS struct {
-	net.Conn
-	hasAdvancedLayer bool //在用ws或grpc时，这个开关保持打开
-}
-
-func (c *CRUMFURS) WriteUDPResponse(a net.UDPAddr, b []byte) (err error) {
-	atype := netLayer.AtypIP4
-	if len(a.IP) > 4 {
-		atype = netLayer.AtypIP6
-	}
-	buf := utils.GetBuf()
-
-	buf.WriteByte(atype)
-	buf.Write(a.IP)
-	buf.WriteByte(byte(int16(a.Port) >> 8))
-	buf.WriteByte(byte(int16(a.Port) << 8 >> 8))
-
-	if !c.hasAdvancedLayer {
-		lb := int16(len(b))
-
-		buf.WriteByte(byte(lb >> 8))
-		buf.WriteByte(byte(lb << 8 >> 8))
-	}
-	buf.Write(b)
-
-	_, err = c.Write(buf.Bytes())
-
-	utils.PutBuf(buf)
-	return
 }
