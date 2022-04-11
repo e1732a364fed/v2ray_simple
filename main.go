@@ -1326,7 +1326,22 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		atomic.AddInt32(&activeConnectionCount, 1)
 
-		netLayer.RelayUDP(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
+		if client.IsUDP_MultiChannel() {
+			utils.Debug("Relaying UDP with MultiChannel")
+
+			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
+				_, udp_wrc, _, _, result := dialClient(targetAddr, client, iics.baseLocalConn, nil, "", false)
+				if result == 0 {
+					return udp_wrc
+
+				}
+				return nil
+			})
+
+		} else {
+			netLayer.RelayUDP(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
+
+		}
 
 		atomic.AddInt32(&activeConnectionCount, -1)
 

@@ -38,47 +38,46 @@ type MsgConn interface {
 	Fullcone() bool                      //若Fullcone, 则在转发因另一端关闭而结束后, RelayUDP函数不会Close它.
 }
 
+//在转发时, 有可能有多种情况
+/*
+	1. dokodemo 监听udp 定向 导向到 direct 的远程udp实际地址
+		此时因为是定向的, 所以肯定不是fullcone
+
+		dokodemo 用的是 UniTargetMsgConn, underlay 是 netLayer.UDPConn, 其已经设置了UDP_timeout
+
+		在 netLayer.UDPConn 超时后, ReadFrom 就会解放, 并触发双向Close, 来关闭我们的 direct的udp连接。
+
+	1.5. 比较少见的情况, dokodemo监听tcp, 然后发送到 direct 的udp. 此时客户应用程序可以手动关闭tcp连接来帮我们触发 udp连接 的 close
+
+	2. socks5监听 udp, 导向到 direct 的远程udp实际地址
+
+		socks5端只用一个udp连接来监听所有信息, 所以不能关闭, 所以没有设置超时
+
+		此时我们需要对 每一个 direct的udp连接 设置超时, 否则就会一直占用端口
+
+	3. socks5 监听udp, 导向到 trojan, 然后 服务端的 trojan 再导向 direct
+
+		trojan 也是用一个信道来接收udp的所有请求的, 所以trojan的连接也不能关.
+
+		所以依然需要在服务端 的 direct上面 加Read 时限
+
+		否则 rc.ReadFrom() 会卡住而不返回.
+
+		因为direct 使用 UDPMsgConnWrapper，而我们已经在 UDPMsgConnWrapper里加了这个逻辑, 所以可以放心了.
+
+	4. fullcone, 此时不能对整个监听端口进行close，会影响其它外部链接发来的连接。
+
+	5. vless v1 的 crumfurs 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
+		如果是未知的, 则不会再使用原来的rc，而是要拨号新通道
+
+		也就是说，lc是有且仅有一个的, 因为是socks5 或者dokodemo都是采用的单信道的方式,
+
+		而在 vless v1时, udp的rc的拨号可以采用多信道方式。
+
+*/
+
 // 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.
 func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64 {
-
-	//在转发时, 有可能有多种情况
-	/*
-		1. dokodemo 监听udp 定向 导向到 direct 的远程udp实际地址
-			此时因为是定向的, 所以肯定不是fullcone
-
-			dokodemo 用的是 UniTargetMsgConn, underlay 是 netLayer.UDPConn, 其已经设置了UDP_timeout
-
-			在 netLayer.UDPConn 超时后, ReadFrom 就会解放, 并触发双向Close, 来关闭我们的 direct的udp连接。
-
-		1.5. 比较少见的情况, dokodemo监听tcp, 然后发送到 direct 的udp. 此时客户应用程序可以手动关闭tcp连接来帮我们触发 udp连接 的 close
-
-		2. socks5监听 udp, 导向到 direct 的远程udp实际地址
-
-			socks5端只用一个udp连接来监听所有信息, 所以不能关闭, 所以没有设置超时
-
-			此时我们需要对 每一个 direct的udp连接 设置超时, 否则就会一直占用端口
-
-		3. socks5 监听udp, 导向到 trojan, 然后 服务端的 trojan 再导向 direct
-
-			trojan 也是用一个信道来接收udp的所有请求的, 所以trojan的连接也不能关.
-
-			所以依然需要在服务端 的 direct上面 加Read 时限
-
-			否则 rc.ReadFrom() 会卡住而不返回.
-
-			因为direct 使用 UDPMsgConnWrapper，而我们已经在 UDPMsgConnWrapper里加了这个逻辑, 所以可以放心了.
-
-		4. fullcone, 此时不能对整个监听端口进行close，会影响其它外部链接发来的连接。
-
-		5. vless v1 的 crumfurs 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
-			如果是未知的, 则不会再使用原来的rc，而是要拨号新通道
-
-			也就是说，lc是有且仅有一个的, 因为是socks5 或者dokodemo都是采用的单信道的方式,
-
-			而在 vless v1时, udp的rc的拨号可以采用多信道方式。
-
-	*/
-
 	go func() {
 		var count uint64
 
@@ -87,6 +86,7 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 			if err != nil {
 				break
 			}
+
 			err = rc.WriteMsgTo(bs, raddr)
 			if err != nil {
 
@@ -137,6 +137,94 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 	}
 
 	return count
+}
+
+func relayUDP_rc_toLC(rc, lc MsgConn, downloadByteCount *uint64) uint64 {
+	var count uint64
+	for {
+		bs, raddr, err := rc.ReadMsgFrom()
+		if err != nil {
+
+			break
+		}
+		err = lc.WriteMsgTo(bs, raddr)
+		if err != nil {
+
+			break
+		}
+		count += uint64(len(bs))
+	}
+	if !rc.Fullcone() {
+		rc.Close()
+	}
+
+	if !lc.Fullcone() {
+		lc.Close()
+	}
+
+	if downloadByteCount != nil {
+		atomic.AddUint64(downloadByteCount, count)
+	}
+
+	return count
+}
+
+// RelayUDP_separate 对 lc 读到的每一个新raddr地址 都新拨号一次. 这样就避开了经典的udp多路复用转发的效率低下问题.
+// 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.
+func RelayUDP_separate(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64, dialfunc func(raddr Addr) MsgConn) uint64 {
+	go func() {
+		var count uint64
+
+		rc_raddrMap := make(map[HashableAddr]MsgConn)
+
+		for {
+			bs, raddr, err := lc.ReadMsgFrom()
+			if err != nil {
+				break
+			}
+			hash := raddr.GetHashable()
+			if len(rc_raddrMap) == 0 {
+				rc_raddrMap[hash] = rc
+			} else {
+				oldrc := rc_raddrMap[hash]
+				if oldrc != nil {
+					rc = oldrc
+				} else {
+					rc = dialfunc(raddr)
+					if rc == nil {
+						continue
+					}
+					rc_raddrMap[hash] = rc
+
+					go relayUDP_rc_toLC(rc, lc, downloadByteCount)
+				}
+			}
+			err = rc.WriteMsgTo(bs, raddr)
+			if err != nil {
+
+				break
+			}
+
+			count += uint64(len(bs))
+		}
+		if !rc.Fullcone() {
+			for _, thisrc := range rc_raddrMap {
+				thisrc.Close()
+			}
+
+		}
+
+		if !lc.Fullcone() {
+			lc.Close()
+		}
+
+		if uploadByteCount != nil {
+			atomic.AddUint64(uploadByteCount, count)
+		}
+
+	}()
+
+	return relayUDP_rc_toLC(rc, lc, downloadByteCount)
 }
 
 // symmetric, proxy/dokodemo 有用到. 实现 MsgConn
@@ -190,6 +278,8 @@ func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConn
 	uc := new(UDPMsgConn)
 
 	udpConn, _ := net.ListenUDP("udp", laddr)
+	udpConn.SetReadBuffer(MaxUDP_packetLen)
+	udpConn.SetWriteBuffer(MaxUDP_packetLen)
 
 	uc.conn = udpConn
 	uc.fullcone = fullcone
@@ -212,6 +302,7 @@ func (u *UDPMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
 	}
 
 	n, ad, err := u.conn.ReadFromUDP(bs)
+
 	if err != nil {
 		return nil, Addr{}, err
 	}
@@ -230,6 +321,7 @@ func (u *UDPMsgConn) WriteMsgTo(bs []byte, raddr Addr) error {
 		//非fullcone时,  强制 symmetric, 对每个远程地址 都使用一个 对应的新laddr
 
 		thishash := raddr.GetHashable()
+		thishash.Network = "udp" //有可能调用者忘配置Network项了.
 
 		if len(u.symmetricMap) == 0 {
 

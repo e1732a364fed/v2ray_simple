@@ -23,6 +23,12 @@ type ByteReader interface {
 	Read(p []byte) (n int, err error)
 }
 
+// bytes.Buffer 实现了 ByteReader
+type ByteWriter interface {
+	WriteByte(byte) error
+	Write(p []byte) (n int, err error)
+}
+
 func IsFlagGiven(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {

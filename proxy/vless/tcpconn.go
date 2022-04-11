@@ -156,34 +156,6 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 		}
 
 	} else {
-		/*
-			if uc.isUDP && !uc.hasAdvancedLayer {
-
-				// 这里暂时认为包裹它的连接是 tcp或者tls，而不是udp，如果udp的话，就不需要考虑粘包问题了，比如socks5的实现
-				// 我们目前认为只有tls是最防墙的，而且 魔改tls是有毒的，所以反推过来，这里udp就必须加长度头。
-
-				// 目前是这个样子。之后verysimple实现了websocket和grpc后，会添加判断，如果连接是websocket或者grpc连接，则不再加长度头
-
-				// tls和tcp都是基于流的，可以分开写两次，不需要buf存在；如果连接是websocket或者grpc的话，直接传输。
-
-				l := int16(len(p))
-				var lenBytes []byte
-
-				if l <= 255 {
-					lenBytes = []byte{0, byte(l)}
-				}
-
-				lenBytes = []byte{byte(l >> 8), byte(l << 8 >> 8)}
-
-				_, err := uc.Conn.Write(lenBytes)
-				if err != nil {
-					return 0, err
-				}
-
-				return uc.Conn.Write(p)
-
-			}
-		*/
 		return uc.Conn.Write(p)
 
 	}
@@ -226,21 +198,6 @@ func (uc *UserTCPConn) Read(p []byte) (int, error) {
 		return from.Read(p)
 
 	} else {
-		/*
-			if uc.isUDP && !uc.hasAdvancedLayer {
-
-				if len(uc.udpUnreadPart) > 0 {
-					copiedN := copy(p, uc.udpUnreadPart)
-					if copiedN < len(uc.udpUnreadPart) {
-						uc.udpUnreadPart = uc.udpUnreadPart[copiedN:]
-					} else {
-						uc.udpUnreadPart = nil
-					}
-					return copiedN, nil
-				}
-
-				return uc.readudp_withLenthHead(p)
-			}*/
 		return from.Read(p)
 
 	}

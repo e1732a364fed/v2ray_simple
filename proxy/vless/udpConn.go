@@ -2,6 +2,7 @@ package vless
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"net"
 
@@ -16,6 +17,7 @@ type UDPConn struct {
 	remainFirstBufLen int
 
 	version     int
+	udp_multi   bool
 	isClientEnd bool
 
 	bufr *bufio.Reader
@@ -32,10 +34,11 @@ func (u *UDPConn) Fullcone() bool {
 }
 
 func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
+	writeBuf := utils.GetBuf()
+	defer utils.PutBuf(writeBuf)
 
 	//v0很垃圾，不支持fullcone，而是无视raddr，始终向最开始的raddr发送。
 	if u.version == 0 {
-		writeBuf := utils.GetBuf()
 
 		if !u.isClientEnd && !u.notFirst {
 			u.notFirst = true
@@ -47,38 +50,80 @@ func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
 
 		}
 
-		l := int16(len(p))
+		return u.writeDataTo(writeBuf, p)
 
-		writeBuf.WriteByte(byte(l >> 8))
-		writeBuf.WriteByte(byte(l << 8 >> 8))
+	} else { // v1
 
-		writeBuf.Write(p)
+		if u.udp_multi {
+			if u.isClientEnd {
+				//如果是客户端，则不存在raddr与初始地址不同的情况，因为这种情况已经在 netLayer.RelayUDP_separate 里过滤掉了
 
-		_, err := u.Conn.Write(writeBuf.Bytes()) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+				return u.writeDataTo(writeBuf, p)
 
-		utils.PutBuf(writeBuf)
+			} else {
+				//判断raddr是否与 u.raddr相同, 如果不相同, 则要传输umfurs信息
+				// umfurs信息将会提示客户端 下一次发送到此地址时，拨号一个新的 udp信道.
 
-		if err != nil {
-			return err
-		}
-		return nil
+				if u.raddr.GetHashable() == raddr.GetHashable() {
+					writeBuf.WriteByte(0)
+					return u.writeDataTo(writeBuf, p)
 
-	} else {
-		if !u.isClientEnd {
-			//判断raddr是否与 u.raddr相同, 如果不相同, 则要传输crumfurs信息
-			// crumfurs信息将会提示客户端 去建立一个新的 udp信道.
+				} else {
+					writeBuf.WriteByte(1)
+					WriteAddrTo(writeBuf, raddr)
+					return u.writeDataTo(writeBuf, p)
 
+				}
+			}
 		} else {
-
+			WriteAddrTo(writeBuf, raddr)
+			return u.writeDataTo(writeBuf, p)
 		}
 
 	}
-	return nil
+	//return nil
+
+}
+
+func (uc *UDPConn) readData_with_len() ([]byte, error) {
+
+	b1, err := uc.bufr.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+
+	b2, err := uc.bufr.ReadByte()
+	if err != nil {
+		return nil, err
+	}
+
+	l := int(int16(b1)<<8 + int16(b2))
+
+	bs := utils.GetBytes(l)
+	n, err := io.ReadFull(uc.bufr, bs)
+
+	if err != nil {
+		return nil, err
+	}
+	return bs[:n], nil
+
+}
+
+func (u *UDPConn) writeDataTo(writeBuf *bytes.Buffer, p []byte) error {
+	writeBuf.WriteByte(byte(len(p) >> 8))
+	writeBuf.WriteByte(byte(len(p) << 8 >> 8))
+	_, err := u.Conn.Write(writeBuf.Bytes())
+
+	if err != nil {
+		return err
+	} else {
+		_, err := u.Conn.Write(p)
+		return err
+	}
 
 }
 
 func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
-
 	var from io.Reader = u.Conn
 	if u.optionalReader != nil {
 		from = u.optionalReader
@@ -109,34 +154,44 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 			}
 		}
-		bs, err := u.read_with_v0_Head()
+		bs, err := u.readData_with_len()
 		return bs, u.raddr, err
 	} else {
 
+		if u.bufr == nil {
+			u.bufr = bufio.NewReader(from)
+		}
+
+		if u.udp_multi {
+			if u.isClientEnd {
+				//判断是否是 umfurs信息
+				// umfurs信息将会提示客户端 下一次发送到此地址时，拨号一个新的 udp信道.
+				b1, err := u.bufr.ReadByte()
+				if err != nil {
+					return nil, netLayer.Addr{}, err
+				}
+				switch b1 {
+				default:
+					return nil, netLayer.Addr{}, utils.ErrInErr{ErrDesc: "udp_multi client read first byte unexpected", ErrDetail: utils.ErrInvalidData, Data: b1}
+				case 0:
+					bs, err := u.readData_with_len()
+					return bs, u.raddr, err
+				case 1:
+					raddr, err := GetAddrFrom(u.bufr)
+					bs, err := u.readData_with_len()
+					return bs, raddr, err
+				}
+
+			} else {
+				bs, err := u.readData_with_len()
+				return bs, u.raddr, err
+			}
+		} else {
+			raddr, err := GetAddrFrom(u.bufr)
+			bs, err := u.readData_with_len()
+
+			return bs, raddr, err
+		}
 	}
-	return nil, netLayer.Addr{}, nil
-}
-
-func (uc *UDPConn) read_with_v0_Head() ([]byte, error) {
-
-	b1, err := uc.bufr.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-
-	b2, err := uc.bufr.ReadByte()
-	if err != nil {
-		return nil, err
-	}
-
-	l := int(int16(b1)<<8 + int16(b2))
-
-	bs := utils.GetBytes(l)
-	n, err := io.ReadFull(uc.bufr, bs)
-
-	if err != nil {
-		return nil, err
-	}
-	return bs[:n], nil
-
+	//return nil, netLayer.Addr{}, nil
 }

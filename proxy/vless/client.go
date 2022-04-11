@@ -1,13 +1,11 @@
 package vless
 
 import (
-	"bufio"
 	"bytes"
 	"io"
 	"net"
 	"net/url"
 	"strconv"
-	"sync"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
@@ -22,18 +20,11 @@ func init() {
 type Client struct {
 	proxy.ProxyCommonStruct
 
-	udpResponseChan chan netLayer.UDPAddrData
-
 	version int
 
 	user *proxy.V2rayUser
 
-	//is_CRUMFURS_established bool
-
-	mutex                sync.RWMutex
-	knownUDPDestinations map[string]io.ReadWriter
-
-	crumfursBuf *bufio.Reader //在不使用ws或者grpc时，需要一个缓存 来读取 CRUMFURS
+	udp_multi bool
 }
 
 type ClientCreator struct{}
@@ -53,9 +44,6 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	c := Client{
 		user: id,
 	}
-
-	c.knownUDPDestinations = make(map[string]io.ReadWriter)
-	c.udpResponseChan = make(chan netLayer.UDPAddrData, 20)
 
 	v := dc.Version
 	if v >= 0 {
@@ -79,9 +67,6 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	c := Client{
 		user: id,
 	}
-	c.knownUDPDestinations = make(map[string]io.ReadWriter)
-	c.udpResponseChan = make(chan netLayer.UDPAddrData, 20)
-
 	vStr := url.Query().Get("version")
 	if vStr != "" {
 		v, err := strconv.Atoi(vStr)
@@ -95,10 +80,20 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	return &c, nil
 }
 
-func (c *Client) Name() string { return Name }
+func (c *Client) Name() string {
+	if c.version == 0 {
+		return Name
+	}
+	return Name + "_" + strconv.Itoa(c.version)
+}
 func (c *Client) Version() int { return c.version }
 func (c *Client) GetUser() proxy.User {
 	return c.user
+}
+
+func (c *Client) IsUDP_MultiChannel() bool {
+
+	return c.udp_multi
 }
 
 func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
@@ -151,17 +146,23 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 
 	return &UDPConn{Conn: underlay, version: c.version, isClientEnd: true, raddr: target}, err
 
-	//在vless v1中, 不使用 单独udp信道来传输所有raddr方向的数据
-	// 所以在v1中，我们不应用 EstablishUDPChannel 函数
 }
 
 func (c *Client) getBufWithCmd(cmd byte) *bytes.Buffer {
 	v := c.version
 	buf := utils.GetBuf()
-	buf.WriteByte(byte(v)) //version
+	buf.WriteByte(byte(c.version)) //version
 	buf.Write(c.user[:])
 	if v == 0 {
 		buf.WriteByte(0) //addon length
+	} else {
+		switch {
+		default:
+			buf.WriteByte(0) //no addon
+		case c.udp_multi:
+			buf.WriteByte(addon_udp_multi_flag)
+		}
+
 	}
 	buf.WriteByte(cmd) // cmd
 	return buf

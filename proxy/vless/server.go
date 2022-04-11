@@ -161,6 +161,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgCon
 	}
 
 	readbuf := bytes.NewBuffer(readbs[:wholeReadLen])
+	var use_udp_multi bool
 
 	goto realPart
 
@@ -191,7 +192,7 @@ realPart:
 
 	s.mux4Hashes.RLock()
 
-	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&idBytes[0])) //下面crumfurs也有用到
+	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&idBytes[0]))
 
 	if user := s.userHashes[thisUUIDBytes]; user != nil {
 		s.mux4Hashes.RUnlock()
@@ -205,7 +206,7 @@ realPart:
 
 		addonLenByte, err := readbuf.ReadByte()
 		if err != nil {
-			returnErr = err //凡是和的层Read相关的错误，一律不再返回Fallback信息，因为连接已然不可用
+			returnErr = err
 			return
 		}
 		if addonLenByte != 0 {
@@ -220,6 +221,18 @@ realPart:
 				return
 			}
 		}
+	} else {
+		addonFlagByte, err := readbuf.ReadByte()
+		if err != nil {
+			returnErr = err
+			return
+		}
+
+		switch addonFlagByte {
+		case addon_udp_multi_flag:
+			use_udp_multi = true
+		}
+
 	}
 
 	commandByte, err := readbuf.ReadByte()
@@ -270,6 +283,7 @@ realPart:
 			raddr:             targetAddr,
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
+			udp_multi:         use_udp_multi,
 		}, targetAddr, nil
 
 	} else {

@@ -19,6 +19,8 @@ const (
 	CRUMFURS_ESTABLISHED byte = 20
 
 	CRUMFURS_Established_Str = "CRUMFURS_Established"
+
+	addon_udp_multi_flag = 1
 )
 
 // CMD types, for vless and vmess
@@ -115,6 +117,16 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 	}
 
 	return
+}
+
+//依照 vless 协议的格式 依次写入 地址的 port, 域名/ip 信息
+func WriteAddrTo(writeBuf utils.ByteWriter, raddr netLayer.Addr) {
+	writeBuf.WriteByte(byte(raddr.Port >> 8))
+	writeBuf.WriteByte(byte(raddr.Port << 8 >> 8))
+	abs, atyp := raddr.AddressBytes()
+	writeBuf.WriteByte(atyp)
+	writeBuf.Write(abs)
+
 }
 
 //https://github.com/XTLS/Xray-core/discussions/716

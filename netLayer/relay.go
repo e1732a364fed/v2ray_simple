@@ -185,9 +185,9 @@ classic:
 	return int64(n), e
 }
 
-// 从 wrc 读取 写入到 wlc ，并同时从 wlc 读取写入 wrc
-// 阻塞
-// UseReadv==true 时 内部使用 TryCopy 进行拷贝
+// 从 wrc 读取 写入到 wlc ，并同时从 wlc 读取写入 wrc.
+// 阻塞.
+// UseReadv==true 时 内部使用 TryCopy 进行拷贝,
 // 会自动优选 splice，readv，不行则使用经典拷贝.
 //
 //拷贝完成后会主动关闭双方连接.

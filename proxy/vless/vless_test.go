@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
@@ -118,13 +119,12 @@ func TestVLess0_udp(t *testing.T) {
 	testVLessUDP(0, netLayer.RandPortStr(), t)
 }
 
-//func TestVLess1_udp(t *testing.T) {
-//testVLessUDP(1, "9738", t)	//无法使用 testVLessUDP，见其注释
-//}
+func TestVLess1_udp(t *testing.T) {
+	testVLessUDP(1, "9738", t) //无法使用 testVLessUDP，见其注释
+}
 
-// 完整模拟整个 vless v0 的udp请求 过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
+// 完整模拟整个 vless 的udp请求 过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
 // 其他tcp测试因为比较简单，不需要第二步测试，而这里需要
-//  不过实测，这个test暂时只能使用v0版本，因为 v1版本具有 独特信道，不能直接使用下面代码。
 func testVLessUDP(version int, port string, t *testing.T) {
 	url := "vless://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?version=" + strconv.Itoa(version)
 	fakeServerEndLocalServer, hase, errx := proxy.ServerFromURL(url)
@@ -189,6 +189,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 			// 发送数据
 
+			time.Sleep(time.Millisecond)
 			_, err = fakeRealUDPServerListener.WriteToUDP(replydata, remoteAddr)
 			if err != nil {
 				t.Log("udp write back err:", err)
@@ -266,7 +267,7 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 				err = wrc.WriteMsgTo(bs, na)
 				if err != nil {
-					t.Logf("failed to write to FakeUDPServer : %v", err)
+					t.Logf("failed wrc.WriteMsgTo : %v", err)
 					t.Fail()
 					return
 				}
@@ -274,21 +275,21 @@ func testVLessUDP(version int, port string, t *testing.T) {
 				bs, _, err = wrc.ReadMsgFrom()
 
 				if err != nil {
-					t.Logf("failed io.ReadFull(rc, hello[:]) : %v", err)
+					t.Logf("failed wrc.ReadMsgFrom : %v", err)
 					t.Fail()
 					return
 				}
 
 				err = wlc.WriteMsgTo(bs, raddr)
 				if err != nil {
-					t.Logf("failed wlc.Write(hello[:]) : %v", err)
+					t.Logf("failed wlc.WriteMsgTo : %v", err)
 					t.Fail()
 					return
 				}
 
 				// 之后转发所有流量，不再特定限制数据
-				netLayer.RelayUDP(wlc, wrc, nil, nil)
-				//t.Log("Copy End?!", )
+				netLayer.RelayUDP(wrc, wlc, nil, nil)
+				//t.Log("Copy End?!")
 			}()
 		}
 	}()
@@ -315,14 +316,14 @@ func testVLessUDP(version int, port string, t *testing.T) {
 
 	t.Log("client write hello success")
 
-	bs, _, _ := wrc.ReadMsgFrom()
+	bs, _, err := wrc.ReadMsgFrom()
 	if !bytes.Equal(bs, replydata) {
-		t.Log("!bytes.Equal(world[:], replydata) ", bs, replydata)
+		t.Log("!bytes.Equal(world[:], replydata) ", bs, replydata, err)
 		t.FailNow()
 	}
 	t.Log("读到正确reply！")
 
-	//再试图发送长信息，确保 vless v0 的实现没有问题
+	//再尝试 发送 长信息，确保 vless v0 的实现没有问题
 
 	for i := 0; i < 10; i++ {
 		longbs := make([]byte, 9*1024)

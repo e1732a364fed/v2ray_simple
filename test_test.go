@@ -49,19 +49,23 @@ func TestDNSLookup_CN(t *testing.T) {
 */
 
 func TestUDP_dokodemo_vless(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", "tcp", t)
+	testUDP_dokodemo_protocol("vless", 0, "tcp", t)
+}
+
+func TestUDP_dokodemo_vless_v1(t *testing.T) {
+	testUDP_dokodemo_protocol("vless", 1, "tcp", t)
 }
 
 func TestUDP_dokodemo_trojan(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", "tcp", t)
+	testUDP_dokodemo_protocol("trojan", 0, "tcp", t)
 }
 
 func TestUDP_dokodemo_trojan_through_udp(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", "udp", t)
+	testUDP_dokodemo_protocol("trojan", 0, "udp", t)
 }
 
 //经实测，udp dokodemo->vless/trojan (tcp/udp)->udp direct 来请求dns 是毫无问题的。
-func testUDP_dokodemo_protocol(protocol string, network string, t *testing.T) {
+func testUDP_dokodemo_protocol(protocol string, version int, network string, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
@@ -78,14 +82,14 @@ protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
 port = %s
-version = 0
+version = %d
 insecure = true
 network = "%s"
 `
 	clientListenPort := netLayer.RandPortStr()
 	clientDialPort := netLayer.RandPortStr()
 
-	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort, protocol, clientDialPort, network)
+	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort, protocol, clientDialPort, version, network)
 
 	const testServerConfFormatStr = `
 [[dial]]
@@ -96,14 +100,14 @@ protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 host = "127.0.0.1"
 port = %s
-version = 0
+version = %d
 insecure = true
 cert = "cert.pem"
 key = "cert.key"
 network = "%s"
 `
 
-	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, network)
+	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, version, network)
 
 	clientConf, err := LoadTomlConfStr(testClientConfStr)
 	if err != nil {
