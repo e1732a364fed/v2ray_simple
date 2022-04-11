@@ -41,6 +41,13 @@ const (
 	v2rayCompatibleMode
 )
 
+//统计数据
+var (
+	activeConnectionCount      int32
+	allDownloadBytesSinceStart uint64
+	allUploadBytesSinceStart   uint64
+)
+
 var (
 	configFileName string
 
@@ -1238,12 +1245,10 @@ advLayerStep:
 	return
 }
 
-// dialClient_andRelay
-// 然后 进行实际转发(Copy)。
+// dialClient_andRelay 进行实际转发(Copy)。
 // targetAddr为用户所请求的地址。
-//client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
-// wlc为调用者所提供的 此请求的 来源 链接。wlc主要用于 Copy阶段.
-// noCopy是为了让其它调用者自行处理 转发 时使用。
+// client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
+// wlc为调用者所提供的 此请求的 来源 链接
 func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Addr, client proxy.Client, isTlsLazy_clientEnd bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn) {
 
 	isudp := targetAddr.IsUDP()
@@ -1304,7 +1309,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		atomic.AddInt32(&activeConnectionCount, 1)
 
-		netLayer.Relay(&realTargetAddr, wrc, wlc, &allDownloadBytesSinceStart, nil)
+		netLayer.Relay(&realTargetAddr, wrc, wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
 
 		atomic.AddInt32(&activeConnectionCount, -1)
 
@@ -1321,7 +1326,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		atomic.AddInt32(&activeConnectionCount, 1)
 
-		netLayer.RelayUDP(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, nil)
+		netLayer.RelayUDP(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
 
 		atomic.AddInt32(&activeConnectionCount, -1)
 

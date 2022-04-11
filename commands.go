@@ -167,6 +167,7 @@ func tryDownloadMMDB() {
 func printAllState(w io.Writer) {
 	fmt.Fprintln(w, "activeConnectionCount", activeConnectionCount)
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", allDownloadBytesSinceStart)
+	fmt.Fprintln(w, "allUploadBytesSinceStart", allUploadBytesSinceStart)
 
 	for i, s := range allServers {
 		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())

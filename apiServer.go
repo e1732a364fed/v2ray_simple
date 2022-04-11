@@ -18,12 +18,6 @@ var (
 	apiServerPathPrefix string
 )
 
-//统计数据
-var (
-	activeConnectionCount      int32
-	allDownloadBytesSinceStart uint64
-)
-
 func init() {
 	flag.BoolVar(&enableApiServer, "ea", false, "enable api server")
 	flag.StringVar(&apiServerPathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
