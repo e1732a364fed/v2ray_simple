@@ -81,13 +81,13 @@ api服务器。
 ## 技术详情
 ### 关于vless v1
 
-这里的v1是我自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)
+这里的v1是 verysimple 自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)
 
 在客户端的 配置url中，添加 `?version=1` 即可生效。
 
 总之，强制tls，简单修订了一下协议格式，然后重点完善了fullcone。
 
-我 实现了 一种独创的 非mux型“隔离信道”方法的 udp over tcp 的fullcone
+verysimple 实现了 一种独创的 非mux型“分离信道”方法的 udp over tcp 的fullcone
 
 测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 verysimple vless v1 + direct 的服务端。
 
@@ -171,10 +171,6 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/hahahrfool/v2ray_simple/discussions/2
 
 在不使用新协议时，lazy只能通过不lazy tls1.2的方式来解决此问题, 即裸奔转发 tls1.3、加密转发 tls1.2. 
-
-### ws/grpc/quic
-
-目前最新代码已经支持了ws/grpc/quic，并且对于ws/grpc/quic，我设计的vless v1协议将会针对它们 有专门的udp优化。
 
 ## 安装方式：
 

@@ -1,0 +1,20 @@
+[[listen]]
+tag = "my_vlesss1"
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "0.0.0.0"
+port = 4433
+version = 1
+insecure = true
+fallback = ":80" 
+cert = "cert.pem"
+key = "cert.key"
+
+[[dial]]
+tag = "mydirect"
+protocol = "direct"
+# fullcone = true   # 默认的fullcone是关闭状态, 可以取消注释以打开
+
+[[route]]
+inTag = ["my_vlesss1"]
+dialTag = "mydirect"

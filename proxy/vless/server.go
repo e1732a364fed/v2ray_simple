@@ -25,7 +25,6 @@ func init() {
 type Server struct {
 	proxy.ProxyCommonStruct
 	userHashes map[[16]byte]*proxy.V2rayUser
-	//userCRUMFURS map[[16]byte]*CRUMFURS
 	mux4Hashes sync.RWMutex
 }
 
@@ -39,7 +38,6 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	}
 	s := &Server{
 		userHashes: make(map[[16]byte]*proxy.V2rayUser),
-		//userCRUMFURS: make(map[[16]byte]*CRUMFURS),
 	}
 
 	s.addV2User(id)
@@ -59,7 +57,6 @@ func NewServer(url *url.URL) (proxy.Server, error) {
 	}
 	s := &Server{
 		userHashes: make(map[[16]byte]*proxy.V2rayUser),
-		//userCRUMFURS: make(map[[16]byte]*CRUMFURS),
 	}
 
 	s.addV2User(id)

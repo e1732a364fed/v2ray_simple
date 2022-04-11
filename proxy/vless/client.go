@@ -46,10 +46,20 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	}
 
 	v := dc.Version
-	if v >= 0 {
+	if v > 0 {
 
 		if v == 1 {
 			c.version = 1
+
+			if dc.Extra != nil {
+				if thing := dc.Extra["vless1_udp_multi"]; thing != nil {
+					if udp_multi, ok := thing.(bool); ok && udp_multi {
+						c.udp_multi = true
+					}
+				}
+			}
+		} else {
+			return nil, utils.ErrInErr{ErrDesc: "given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
 		}
 
 	}
@@ -71,8 +81,22 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	if vStr != "" {
 		v, err := strconv.Atoi(vStr)
 		if err == nil {
-			if v == 1 {
+			if v == 0 {
+
+			} else if v == 1 {
 				c.version = 1
+
+				vless1_udp_multiStr := url.Query().Get("vless1_udp_multi")
+
+				if vless1_udp_multiStr == "true" || vless1_udp_multiStr == "1" {
+					if ce := utils.CanLogDebug("vless v1 using udp multi"); ce != nil {
+						ce.Write()
+					}
+					c.udp_multi = true
+				}
+
+			} else {
+				return nil, utils.ErrInErr{ErrDesc: "given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
 			}
 		}
 	}
@@ -143,8 +167,15 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 	_, err = underlay.Write(buf.Bytes())
 
 	utils.PutBuf(buf)
+	target.Network = "udp"
 
-	return &UDPConn{Conn: underlay, version: c.version, isClientEnd: true, raddr: target}, err
+	return &UDPConn{
+		Conn:        underlay,
+		version:     c.version,
+		isClientEnd: true,
+		raddr:       target,
+		udp_multi:   c.udp_multi,
+	}, err
 
 }
 

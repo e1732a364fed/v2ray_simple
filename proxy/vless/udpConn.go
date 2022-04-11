@@ -97,7 +97,7 @@ func (uc *UDPConn) readData_with_len() ([]byte, error) {
 		return nil, err
 	}
 
-	l := int(int16(b1)<<8 + int16(b2))
+	l := int(uint16(b1)<<8 + uint16(b2))
 
 	bs := utils.GetBytes(l)
 	n, err := io.ReadFull(uc.bufr, bs)

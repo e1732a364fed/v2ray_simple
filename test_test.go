@@ -49,33 +49,45 @@ func TestDNSLookup_CN(t *testing.T) {
 */
 
 func TestUDP_dokodemo_vless(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", 0, "tcp", t)
+	testUDP_dokodemo_protocol("vless", 0, "tcp", false, t)
 }
 
 func TestUDP_dokodemo_vless_v1(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", 1, "tcp", t)
+	testUDP_dokodemo_protocol("vless", 1, "tcp", false, t)
+}
+
+func TestUDP_dokodemo_vless_v1_udpMulti(t *testing.T) {
+	testUDP_dokodemo_protocol("vless", 1, "tcp", true, t)
 }
 
 func TestUDP_dokodemo_trojan(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", 0, "tcp", t)
+	testUDP_dokodemo_protocol("trojan", 0, "tcp", false, t)
 }
 
 func TestUDP_dokodemo_trojan_through_udp(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", 0, "udp", t)
+	testUDP_dokodemo_protocol("trojan", 0, "udp", false, t)
 }
 
 //经实测，udp dokodemo->vless/trojan (tcp/udp)->udp direct 来请求dns 是毫无问题的。
-func testUDP_dokodemo_protocol(protocol string, version int, network string, t *testing.T) {
+func testUDP_dokodemo_protocol(protocol string, version int, network string, multi bool, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
-	const testClientConfFormatStr = `
+	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 vless v1的udp_multi的情况
+	var testClientConfFormatStr = `
 [[listen]]
 protocol = "dokodemo"
 network = "udp"
 host = "127.0.0.1"
 port = %s
 target = "udp://8.8.8.8:53"
+
+[[listen]]
+protocol = "dokodemo"
+network = "udp"
+host = "127.0.0.1"
+port = %s
+target = "udp://114.114.114.114:53"
 
 [[dial]]
 protocol = "%s"
@@ -86,10 +98,16 @@ version = %d
 insecure = true
 network = "%s"
 `
+	if multi {
+		testClientConfFormatStr += "\nextra = { vless1_udp_multi = true }"
+	}
+
 	clientListenPort := netLayer.RandPortStr()
+	clientListen2Port := netLayer.RandPortStr()
 	clientDialPort := netLayer.RandPortStr()
 
-	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort, protocol, clientDialPort, version, network)
+	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort,
+		clientListen2Port, protocol, clientDialPort, version, network)
 
 	const testServerConfFormatStr = `
 [[dial]]
@@ -129,6 +147,12 @@ network = "%s"
 		t.FailNow()
 	}
 
+	clientEndInServer2, err := proxy.NewServer(clientConf.Listen[1])
+	if err != nil {
+		t.Log("can not create clientEndInServer: ", err)
+		t.FailNow()
+	}
+
 	// vless out
 	clientEndOutClient, err := proxy.NewClient(clientConf.Dial[0])
 	if err != nil {
@@ -150,6 +174,7 @@ network = "%s"
 	}
 
 	listenSer(clientEndInServer, clientEndOutClient, false)
+	listenSer(clientEndInServer2, clientEndOutClient, false)
 	listenSer(serverEndInServer, serverEndOutClient, false)
 
 	m := new(dns.Msg)
@@ -174,6 +199,27 @@ network = "%s"
 
 		if aa, ok := a.(*dns.A); ok {
 			t.Log("arecord is ", aa.A)
+		}
+	}
+
+	r, _, err = c.Exchange(m, "127.0.0.1:"+clientListen2Port)
+	if r == nil {
+		t.Log("test2, error: ", err.Error())
+		t.FailNow()
+	}
+
+	if r.Rcode != dns.RcodeSuccess {
+		t.Log("test2, err2 ", r.Rcode, r)
+		t.FailNow()
+	}
+
+	for _, a := range r.Answer {
+		t.Log("test2, header is", a.Header())
+		t.Log("test2, string is", a.String())
+		t.Log("test2, a is ", a)
+
+		if aa, ok := a.(*dns.A); ok {
+			t.Log("test2, arecord is ", aa.A)
 		}
 	}
 }

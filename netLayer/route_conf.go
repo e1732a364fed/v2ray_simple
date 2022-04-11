@@ -3,6 +3,7 @@ package netLayer
 import (
 	"net"
 	"net/netip"
+	"reflect"
 	"regexp"
 	"strings"
 
@@ -46,6 +47,18 @@ func LoadRuleForRouteSet(rule *RuleConf) (rs *RouteSet) {
 		rs.OutTag = value
 	case []string:
 		rs.OutTags = value
+	case []any:
+		list := make([]string, 0, len(value))
+		for i, v := range value {
+			if s, ok := v.(string); ok {
+				list = append(list, s)
+			} else {
+				if ce := utils.CanLogErr("Route outTags list has not string type"); ce != nil {
+					ce.Write(zap.Int("index", i), zap.String("type", reflect.TypeOf(v).String()), zap.Any("value", v))
+				}
+			}
+		}
+		rs.OutTags = list
 	}
 
 	for _, c := range rule.Countries {
