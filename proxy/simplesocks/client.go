@@ -1,4 +1,4 @@
-package trojan
+package simplesocks
 
 import (
 	"bytes"
@@ -20,29 +20,18 @@ func init() {
 
 type ClientCreator struct{}
 
-func (_ ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
-	uuidStr := url.User.Username()
-	c := Client{
-		password_hexStringBytes: SHA224_hexStringBytes(uuidStr),
-	}
+func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
 
-	return &c, nil
+	return &Client{}, nil
 }
 
 func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
-	uuidStr := dc.Uuid
-
-	c := Client{
-		password_hexStringBytes: SHA224_hexStringBytes(uuidStr),
-	}
-
-	return &c, nil
+	return &Client{}, nil
 }
 
 type Client struct {
 	proxy.ProxyCommonStruct
-	password_hexStringBytes []byte
 }
 
 func (c *Client) Name() string {
@@ -66,7 +55,6 @@ func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 
 	buf.WriteByte(byte(target.Port >> 8))
 	buf.WriteByte(byte(target.Port << 8 >> 8))
-	buf.Write(crlf)
 }
 
 func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
@@ -75,9 +63,7 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 	}
 	buf := utils.GetBuf()
-	buf.Write(c.password_hexStringBytes)
-	buf.Write(crlf)
-	buf.WriteByte(CmdConnect)
+	buf.WriteByte(CmdTCP)
 	WriteAddrToBuf(target, buf)
 
 	_, err := underlay.Write(buf.Bytes())
@@ -85,9 +71,6 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	if err != nil {
 		return nil, err
 	}
-
-	// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
-	//return underlay, nil
 
 	return &UserTCPConn{
 		Conn:            underlay,
@@ -97,13 +80,11 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
 	if target.Port <= 0 {
-		return nil, errors.New("Trojan Client EstablishUDPChannel failed, target port invalid")
+		return nil, errors.New("simplesocks Client EstablishUDPChannel failed, target port invalid")
 
 	}
 	buf := utils.GetBuf()
-	buf.Write(c.password_hexStringBytes)
-	buf.Write(crlf)
-	buf.WriteByte(CmdUDPAssociate)
+	buf.WriteByte(CmdUDP)
 	WriteAddrToBuf(target, buf)
 	_, err := underlay.Write(buf.Bytes())
 	utils.PutBuf(buf)

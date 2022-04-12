@@ -153,6 +153,12 @@ type ProxyCommon interface {
 
 	setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any))
 
+	/////////////////// 内层mux层 ///////////////////
+
+	//0 为不会有 innermux, 1 为有可能有 innermux, 2 为总是使用 innerMux;
+	// string 为 innermux内部的 代理 协议 名称
+	HasInnerMux() (int, string)
+
 	/////////////////// 其它私有方法 ///////////////////
 
 	setCantRoute(bool)
@@ -241,6 +247,11 @@ func (pcs *ProxyCommonStruct) MiddleName() string {
 
 func (pcs *ProxyCommonStruct) CantRoute() bool {
 	return pcs.cantRoute
+}
+
+//placeholder
+func (pcs *ProxyCommonStruct) HasInnerMux() (int, string) {
+	return 0, ""
 }
 
 //return false

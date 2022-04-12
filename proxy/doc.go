@@ -21,12 +21,19 @@ New Model - VSI 新的VSI 模型
 
 第九层为 承载数据层，承载的为 另一大串 第四层的数据.
 
-不过有时比如 trojan 的 smux 和 v2ray 的 mux.cool ，实际上属于 高级层，那么它们就是 代理层里面又包了一层高级层
+不过有时比如 trojan 的 smux 和 v2ray 的 mux.cool ，实际上属于 高级层，那么它们就是 代理层里面又包了一层高级层.
+
+一般来说，如果内层高级层是普通的协议的话，实际上是透明的, 不必单列出一个层级.
+
+这里的关键地方是【内层多路复用】. 因为在内层多路复用时，一个连接会被抽象出多个子连接，在流量的走向方面开始分叉，所以确实有实质性不同。
+
+内层多路复用的性质是，多路复用分离出一个个子协议后，子协议又是代理层。
 
 我们verysimple实际上就是 基于 “层” 的架构，或称 可分层结构.
 
-
-	9 ｜ [client real tcp/udp data]     or   [inner advanced Layer]
+	10｜                                     （inner proxy layer)
+	--------------------------------------------------------------------------------
+	9 ｜ [client real tcp/udp data]     or   [inner mux Layer]
 	--------------------------------------------------------------------------------
 	8 ｜      vless/trojan/socks5       ｜     proxy layer
 	--------------------------------------------------------------------------------
@@ -57,15 +64,18 @@ New Model - VSI 新的VSI 模型
 			"headers":{}
 		},
 		"layer7_settings": {	//或者叫 advancedLayer_settings
-			"ws":{}
+			"ws":{},
+			"grpc":{},
+			"quic":{},
 		},
 		"layer8_settings": {	//或者叫 proxy_settings
 			"vless":{}
 			"trojan":{}
 		},
-		"layer9_settings": {	//或者叫 inner_advancedLayer_settings
-			"vless":{}
-			"trojan":{}
+		"layer9_settings": {	//或者叫 inner_mux_settings
+			"smux":{
+				"simplesocks":{}
+			}
 		},
 	}
 

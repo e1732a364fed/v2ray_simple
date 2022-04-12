@@ -1,4 +1,4 @@
-package trojan
+package simplesocks
 
 import (
 	"bytes"
@@ -18,32 +18,18 @@ func init() {
 
 type Server struct {
 	proxy.ProxyCommonStruct
-
-	userHashes map[string]bool
-
-	//mux4Hashes sync.RWMutex
 }
 type ServerCreator struct{}
 
 func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-	uuidStr := lc.Uuid
 
-	s := &Server{
-		userHashes: make(map[string]bool),
-	}
-
-	s.userHashes[string(SHA224_hexStringBytes(uuidStr))] = true
+	s := &Server{}
 
 	return s, nil
 }
 
-func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
-	uuidStr := url.User.Username()
-	s := &Server{
-		userHashes: make(map[string]bool),
-	}
-
-	s.userHashes[string(SHA224_hexStringBytes(uuidStr))] = true
+func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+	s := &Server{}
 
 	return s, nil
 }
@@ -67,10 +53,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgCon
 		return
 	}
 
-	if wholeReadLen < 17 {
-		//根据下面回答，HTTP的最小长度恰好是16字节，但是是0.9版本。1.0是18字节，1.1还要更长。总之我们可以直接不返回fallback地址
-		//https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
-
+	if wholeReadLen < 4 {
 		returnErr = utils.ErrInErr{ErrDesc: "fallback, msg too short", Data: wholeReadLen}
 		return
 	}
@@ -90,26 +73,7 @@ errorPart:
 
 realPart:
 
-	if wholeReadLen < 56+8+1 {
-		returnErr = utils.ErrInErr{ErrDesc: "handshake len too short", ErrDetail: utils.ErrInvalidData, Data: wholeReadLen}
-		goto errorPart
-	}
-
 	//可参考 https://github.com/p4gefau1t/trojan-go/blob/master/tunnel/trojan/server.go
-
-	hash := readbuf.Next(56)
-	hashStr := string(hash)
-	if !s.userHashes[hashStr] {
-		returnErr = utils.ErrInErr{ErrDesc: "hash not match", ErrDetail: utils.ErrInvalidData, Data: hashStr}
-		goto errorPart
-	}
-
-	crb, _ := readbuf.ReadByte()
-	lfb, _ := readbuf.ReadByte()
-	if crb != crlf[0] || lfb != crlf[1] {
-		returnErr = utils.ErrInErr{ErrDesc: "crlf wrong", ErrDetail: utils.ErrInvalidData, Data: int(crb)<<8 + int(lfb)}
-		goto errorPart
-	}
 
 	cmdb, _ := readbuf.ReadByte()
 
@@ -118,16 +82,11 @@ realPart:
 	default:
 		returnErr = utils.ErrInErr{ErrDesc: "cmd byte wrong", ErrDetail: utils.ErrInvalidData, Data: cmdb}
 		goto errorPart
-	case CmdConnect:
+	case CmdTCP:
 
-	case CmdUDPAssociate:
+	case CmdUDP:
 		isudp = true
 
-	case CmdMux:
-		//trojan-gfw 那个文档里并没有提及Mux, 这个定义作者似乎没有在任何文档中提及，所以是在go文件中找到的。
-		// 根据 tunnel/trojan/server.go, 如果申请的域名是 MUX_CONN, 则 就算是CmdConnect 也会被认为是mux
-
-		//关于 trojan实现多路复用的方式，可参考 https://p4gefau1t.github.io/trojan-go/developer/mux/
 	}
 
 	targetAddr, err = GetAddrFrom(readbuf)
@@ -138,38 +97,18 @@ realPart:
 	if isudp {
 		targetAddr.Network = "udp"
 	}
-	crb, err = readbuf.ReadByte()
-	if err != nil {
-		returnErr = err
-		goto errorPart
-	}
-	lfb, err = readbuf.ReadByte()
-	if err != nil {
-		returnErr = err
-		goto errorPart
-	}
-	if crb != crlf[0] || lfb != crlf[1] {
-		returnErr = utils.ErrInErr{ErrDesc: "crlf wrong", ErrDetail: utils.ErrInvalidData, Data: int(crb)<<8 + int(lfb)}
-		goto errorPart
-	}
 
 	if isudp {
 		return nil, NewUDPConn(underlay, io.MultiReader(readbuf, underlay)), targetAddr, nil
 
 	} else {
-		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
-		//if readbuf.Len() == 0 {
-		//	return underlay, nil, targetAddr, nil
-		//} else {
 		return &UserTCPConn{
 			Conn:              underlay,
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
-			hash:              hashStr,
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),
 			isServerEnd:       true,
 		}, nil, targetAddr, nil
-		//}
 
 	}
 }

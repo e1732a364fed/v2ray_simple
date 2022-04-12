@@ -1,4 +1,4 @@
-package trojan
+package simplesocks
 
 import (
 	"bufio"
@@ -36,6 +36,12 @@ func (u UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 }
 func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
+	//simplesocks 文档里并没有提及udp如何传输，而在trojan-go的代码里, 发现simplesocks完全使用trojan的udp格式。
+	// https://github.com/p4gefau1t/trojan-go/blob/2dc60f52e79ff8b910e78e444f1e80678e936450/tunnel/simplesocks/conn.go#L41
+	// https://github.com/p4gefau1t/trojan-go/blob/2dc60f52e79ff8b910e78e444f1e80678e936450/tunnel/trojan/packet.go#L34
+	//可以看到和trojan协议一样，长度后面要跟随 crlf
+	//主要是本以为simplesocks能更加simple的，去掉crlf，结果还是差强人意。。。
+
 	addr, err := GetAddrFrom(u.bufr)
 	if err != nil {
 		return nil, addr, err
@@ -69,8 +75,7 @@ func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 	}
 
 	bs := utils.GetBytes(int(lenth))
-	n, err := io.ReadFull(u.bufr, bs) //如果不用 io.ReadFull, 一次最多读取到 4085 字节
-
+	n, err := io.ReadFull(u.bufr, bs)
 	if err != nil {
 		if n > 0 {
 			return bs[:n], addr, err
