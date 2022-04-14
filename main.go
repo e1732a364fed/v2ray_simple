@@ -384,7 +384,7 @@ type incomingInserverConnState struct {
 	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
 
-	//这里说的多路复用基本指的就是grpc/quic; 如果是 vless内嵌 mux.cool 的话不属于这种情况.
+	//这里说的多路复用指的是grpc/quic 这种包在代理层外部的;  vless内嵌 mux.cool 或者trojan内嵌smux+simplesocks 则不属于这种情况, 它们属于 innerMux
 
 	// 要区分 多路复用的包装 是在 vless等代理的握手验证 的外部 还是 内部
 

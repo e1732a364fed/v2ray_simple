@@ -49,6 +49,10 @@ func (c *Client) Name() string {
 	return Name
 }
 
+func (*Client) HasInnerMux() (int, string) {
+	return 1, "simplesocks"
+}
+
 func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 	if len(target.IP) > 0 {
 		if ip4 := target.IP.To4(); ip4 == nil {

@@ -5,7 +5,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/BurntSushi/toml"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
@@ -50,33 +49,39 @@ func TestDNSLookup_CN(t *testing.T) {
 }
 */
 
-func TestUDP_dokodemo_vless(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", 0, "tcp", false, t)
+func TestUDP_vless(t *testing.T) {
+	testUDP("vless", 0, "tcp", false, false, t)
 }
 
-func TestUDP_dokodemo_vless_v1(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", 1, "tcp", false, t)
+//v0 没有fullcone
+
+func TestUDP_vless_v1(t *testing.T) {
+	testUDP("vless", 1, "tcp", false, false, t)
 }
 
-func TestUDP_dokodemo_vless_v1_udpMulti(t *testing.T) {
-	testUDP_dokodemo_protocol("vless", 1, "tcp", true, t)
+func TestUDP_vless_v1_fullcone(t *testing.T) {
+	testUDP("vless", 1, "tcp", false, true, t)
 }
 
-func TestUDP_dokodemo_trojan(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", 0, "tcp", false, t)
+func TestUDP_vless_v1_udpMulti(t *testing.T) {
+	testUDP("vless", 1, "tcp", true, false, t)
 }
 
-func TestUDP_dokodemo_trojan_through_udp(t *testing.T) {
-	testUDP_dokodemo_protocol("trojan", 0, "udp", false, t)
+func TestUDP_trojan(t *testing.T) {
+	testUDP("trojan", 0, "tcp", false, false, t)
 }
 
-//经实测，udp dokodemo->vless/trojan (tcp/udp)->udp direct 来请求dns 是毫无问题的。
-func testUDP_dokodemo_protocol(protocol string, version int, network string, multi bool, t *testing.T) {
+func TestUDP_trojan_through_udp(t *testing.T) {
+	testUDP("trojan", 0, "udp", false, false, t)
+}
+
+//经实测，udp dokodemo/socks5->vless/trojan (tcp/udp)->udp direct 来请求dns 是毫无问题的。
+func testUDP(protocol string, version int, network string, multi bool, fullcone bool, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
-	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 vless v1的udp_multi的dialfunc情况
-	//不过还是不行，需要单一 client 拨号多个raddr 才能触发dialfunc
+	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 情况
+	//vless v1的udp_multi的dialfunc 需要单一 client 拨号多个raddr 才能被触发, 所以还要使用socks5测试两次
 
 	var testClientConfFormatStr = `
 [[listen]]
@@ -96,7 +101,7 @@ target = "udp://114.114.114.114:53"
 [[listen]]
 protocol = "socks5"
 host = "127.0.0.1"
-port = 10801
+port = %s
 
 [[dial]]
 protocol = "%s"
@@ -114,14 +119,12 @@ network = "%s"
 	clientListenPort := netLayer.RandPortStr()
 	clientListen2Port := netLayer.RandPortStr()
 	clientDialPort := netLayer.RandPortStr()
+	socks5Port, socks5PortStr := netLayer.RandPort_andStr()
 
 	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort,
-		clientListen2Port, protocol, clientDialPort, version, network)
+		clientListen2Port, socks5PortStr, protocol, clientDialPort, version, network)
 
-	const testServerConfFormatStr = `
-[[dial]]
-protocol = "direct"
-
+	var testServerConfFormatStr = `
 [[listen]]
 protocol = "%s"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
@@ -132,7 +135,15 @@ insecure = true
 cert = "cert.pem"
 key = "cert.key"
 network = "%s"
+
+[[dial]]
+protocol = "direct"
+
 `
+	if fullcone {
+		testServerConfFormatStr += "fullcone = true"
+
+	}
 
 	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, version, network)
 
@@ -156,12 +167,14 @@ network = "%s"
 		t.FailNow()
 	}
 
+	//domodemo in2
 	clientEndInServer2, err := proxy.NewServer(clientConf.Listen[1])
 	if err != nil {
 		t.Log("can not create clientEndInServer: ", err)
 		t.FailNow()
 	}
 
+	//socks5 in
 	clientEndInServer3, err := proxy.NewServer(clientConf.Listen[2])
 	if err != nil {
 		t.Log("can not create clientEndInServer: ", err)
@@ -248,7 +261,7 @@ network = "%s"
 	socks5ClientConn := &socks5.ClientUDPConn{
 		ServerAddr: &net.TCPAddr{
 			IP:   net.IPv4(127, 0, 0, 1),
-			Port: 10801,
+			Port: socks5Port,
 		},
 		WriteUDP_Target: &net.UDPAddr{
 			IP:   net.IPv4(8, 8, 8, 8),
@@ -311,61 +324,3 @@ network = "%s"
 		}
 	}
 }
-
-func TestLoadTomlConf(t *testing.T) {
-
-	var conf StandardConf
-	_, err := toml.Decode(testTomlConfStr, &conf)
-
-	if err != nil {
-		t.Log(err)
-		t.FailNow()
-	}
-
-	t.Log(conf)
-	t.Log("dial0", conf.Dial[0])
-	t.Log("listen0", conf.Listen[0])
-	t.Log("extra", conf.Listen[0].Extra)
-	t.Log(conf.Route[0])
-	t.Log(conf.Route[1])
-	t.Log(conf.Fallbacks)
-}
-
-const testTomlConfStr = `# this is a verysimple standard config
-
-[app]
-mycountry = "CN"
-
-[[dial]]
-tag = "my_vlesss1"
-protocol = "vlesss"
-uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
-host = "127.0.0.1"
-port = 4433
-version = 0
-insecure = true
-utls = true
-
-[[listen]]
-protocol = "socks5"
-host = "127.0.0.1"
-port = 1080
-tag = "my_socks51"
-extra = { ws_earlydata = 4096 }
-
-
-[[route]]
-dialTag = "my_ws1"
-country = ["CN"]
-ip = ["0.0.0.0/8","10.0.0.0/8","fe80::/10","10.0.0.1"]
-domain = ["www.google.com","www.twitter.com"]
-network = ["tcp","udp"]
-
-[[route]]
-dialTag = "my_vless1"
-
-
-[[fallback]]
-path = "/asf"
-dest = 6060
-`

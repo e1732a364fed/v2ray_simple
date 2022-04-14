@@ -73,8 +73,6 @@ errorPart:
 
 realPart:
 
-	//可参考 https://github.com/p4gefau1t/trojan-go/blob/master/tunnel/trojan/server.go
-
 	cmdb, _ := readbuf.ReadByte()
 
 	var isudp bool

@@ -51,6 +51,10 @@ func (s *Server) Name() string {
 	return Name
 }
 
+func (*Server) HasInnerMux() (int, string) {
+	return 1, "simplesocks"
+}
+
 //若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
 func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
@@ -113,7 +117,7 @@ realPart:
 
 	cmdb, _ := readbuf.ReadByte()
 
-	var isudp bool
+	var isudp, ismux bool
 	switch cmdb {
 	default:
 		returnErr = utils.ErrInErr{ErrDesc: "cmd byte wrong", ErrDetail: utils.ErrInvalidData, Data: cmdb}
@@ -128,6 +132,7 @@ realPart:
 		// 根据 tunnel/trojan/server.go, 如果申请的域名是 MUX_CONN, 则 就算是CmdConnect 也会被认为是mux
 
 		//关于 trojan实现多路复用的方式，可参考 https://p4gefau1t.github.io/trojan-go/developer/mux/
+		ismux = true
 	}
 
 	targetAddr, err = GetAddrFrom(readbuf)
@@ -151,6 +156,10 @@ realPart:
 	if crb != crlf[0] || lfb != crlf[1] {
 		returnErr = utils.ErrInErr{ErrDesc: "crlf wrong", ErrDetail: utils.ErrInvalidData, Data: int(crb)<<8 + int(lfb)}
 		goto errorPart
+	}
+
+	if ismux {
+
 	}
 
 	if isudp {

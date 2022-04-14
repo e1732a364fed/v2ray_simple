@@ -3,6 +3,7 @@ package netLayer
 import (
 	"io"
 	"net"
+	"os"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -101,7 +102,7 @@ func (uc *UDPConn) ReadMsgFrom() ([]byte, Addr, error) {
 		return msg.Data, NewAddrFromUDPAddr(&msg.Addr), nil
 
 	case <-uc.readDeadline.Wait():
-		return nil, Addr{}, ErrTimeout
+		return nil, Addr{}, os.ErrDeadlineExceeded
 	}
 }
 
@@ -115,7 +116,7 @@ func (uc *UDPConn) ReadMsg() (b []byte, err error) {
 		return msg.Data, nil
 
 	case <-uc.readDeadline.Wait():
-		return nil, ErrTimeout
+		return nil, os.ErrDeadlineExceeded
 	}
 }
 
@@ -130,7 +131,7 @@ func (uc *UDPConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
 		return n, uc.peerAddr, io.EOF
 
 	case <-uc.readDeadline.Wait():
-		return 0, uc.peerAddr, ErrTimeout
+		return 0, uc.peerAddr, os.ErrDeadlineExceeded
 	}
 }
 
@@ -173,7 +174,7 @@ func (uc *UDPConn) Read(buf []byte) (n int, err error) {
 func (uc *UDPConn) WriteMsgTo(buf []byte, addr Addr) error {
 	select {
 	case <-uc.writeDeadline.Wait():
-		return ErrTimeout
+		return os.ErrDeadlineExceeded
 	default:
 		time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 		if uc.isClient {
@@ -197,7 +198,7 @@ func (uc *UDPConn) WriteMsgTo(buf []byte, addr Addr) error {
 func (uc *UDPConn) Write(buf []byte) (n int, err error) {
 	select {
 	case <-uc.writeDeadline.Wait():
-		return 0, ErrTimeout
+		return 0, os.ErrDeadlineExceeded //ErrTimeout
 	default:
 		time.Sleep(time.Millisecond) //不能发送太快，否则会出现丢包,实测简单1毫秒即可避免
 		if uc.isClient {

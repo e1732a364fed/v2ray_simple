@@ -16,8 +16,6 @@ func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
 }
 
-//作为对照，可以参考 https://github.com/p4gefau1t/trojan-go/blob/master/tunnel/trojan/client.go
-
 type ClientCreator struct{}
 
 func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
@@ -59,7 +57,7 @@ func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 
 func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
 	if target.Port <= 0 {
-		return nil, errors.New("Trojan Client Handshake failed, target port invalid")
+		return nil, errors.New("simplesocks Client Handshake failed, target port invalid")
 
 	}
 	buf := utils.GetBuf()
