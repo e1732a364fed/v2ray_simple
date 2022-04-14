@@ -35,6 +35,7 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	c := Client{
 		password_hexStringBytes: SHA224_hexStringBytes(uuidStr),
+		use_mux:                 dc.Mux,
 	}
 
 	return &c, nil
@@ -43,14 +44,21 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 type Client struct {
 	proxy.ProxyCommonStruct
 	password_hexStringBytes []byte
+	use_mux                 bool
 }
 
 func (c *Client) Name() string {
 	return Name
 }
 
-func (*Client) HasInnerMux() (int, string) {
-	return 1, "simplesocks"
+func (c *Client) HasInnerMux() (int, string) {
+	if c.use_mux {
+		return 2, "simplesocks"
+
+	} else {
+		return 0, ""
+
+	}
 }
 
 func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
@@ -81,7 +89,13 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	buf := utils.GetBuf()
 	buf.Write(c.password_hexStringBytes)
 	buf.Write(crlf)
-	buf.WriteByte(CmdConnect)
+	if c.use_mux {
+		buf.WriteByte(CmdMux)
+
+	} else {
+		buf.WriteByte(CmdConnect)
+
+	}
 	WriteAddrToBuf(target, buf)
 
 	_, err := underlay.Write(buf.Bytes())
@@ -90,13 +104,17 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 		return nil, err
 	}
 
-	// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
-	//return underlay, nil
+	if c.use_mux {
+		//mux时我们直接返回underlay,
+		return underlay, nil
+	} else {
+		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
+		return &UserTCPConn{
+			Conn:            underlay,
+			underlayIsBasic: netLayer.IsBasicConn(underlay),
+		}, nil
+	}
 
-	return &UserTCPConn{
-		Conn:            underlay,
-		underlayIsBasic: netLayer.IsBasicConn(underlay),
-	}, nil
 }
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {

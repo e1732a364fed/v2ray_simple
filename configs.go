@@ -167,7 +167,7 @@ func loadConfig() (err error) {
 				return
 			}
 
-			simpleConf = proxy.Simple{
+			simpleConf = proxy.SimpleConf{
 				Server_ThatListenPort_Url: listenURL,
 			}
 

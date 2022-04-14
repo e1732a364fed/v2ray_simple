@@ -7,12 +7,16 @@ import (
 	"strconv"
 )
 
-var ErrNotImplemented = errors.New("not implemented")
-var ErrNilParameter = errors.New("nil parameter")
-var ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
-var ErrWrongParameter = errors.New("wrong parameter")
-var ErrShortRead = errors.New("short read")
-var ErrInvalidData = errors.New("invalid data")
+var (
+	ErrNotImplemented      = errors.New("not implemented")
+	ErrNilParameter        = errors.New("nil parameter")
+	ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
+	ErrWrongParameter      = errors.New("wrong parameter")
+	ErrShortRead           = errors.New("short read")
+	ErrInvalidData         = errors.New("invalid data")
+	ErrHandled             = errors.New("handled")
+	ErrFailed              = errors.New("failed")
+)
 
 //没啥特殊的
 type NumErr struct {
@@ -40,26 +44,6 @@ func (ef ErrFirstBuffer) Error() string {
 
 	return ef.Err.Error()
 }
-
-// 返回结构体，而不是指针, 这样可以避免内存逃逸到堆
-// 发现只要是函数就会逃逸到堆，自己初始化就没事。那就不提供初始化函数了。
-/*func NewErr(desc string, e error) ErrInErr {
-	return ErrInErr{
-		ErrDesc:   desc,
-		ErrDetail: e,
-	}
-}
-
-// 返回结构体，而不是指针, 这样可以避免内存逃逸到堆
-
-func NewDataErr(desc string, e error, data interface{}) ErrInErr {
-	return ErrInErr{
-		ErrDesc:   desc,
-		ErrDetail: e,
-		Data:      data,
-	}
-}
-*/
 
 // ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况.
 type ErrInErr struct {

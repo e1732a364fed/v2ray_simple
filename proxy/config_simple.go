@@ -10,16 +10,16 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//极简配置模式；
-type Simple struct {
+//极简配置模式；只支持json
+type SimpleConf struct {
 	Server_ThatListenPort_Url string                    `json:"listen"`
 	Client_ThatDialRemote_Url string                    `json:"dial"`
-	Route                     []*netLayer.RuleConf      `json:"route" toml:"route"`
+	Route                     []*netLayer.RuleConf      `json:"route"`
 	Fallbacks                 []*httpLayer.FallbackConf `json:"fallbacks"`
-	MyCountryISO_3166         string                    `toml:"mycountry" json:"mycountry"`
+	MyCountryISO_3166         string                    `json:"mycountry"`
 }
 
-func LoadSimpleConfigFile(fileNamePath string) (config Simple, hasError bool, E utils.ErrInErr) {
+func LoadSimpleConfigFile(fileNamePath string) (config SimpleConf, hasError bool, E utils.ErrInErr) {
 
 	if cf, err := os.Open(fileNamePath); err == nil {
 		defer cf.Close()
@@ -43,7 +43,7 @@ func LoadSimpleConfigFile(fileNamePath string) (config Simple, hasError bool, E 
 
 }
 
-func LoadSimpleConfigFromStr(str string) (config Simple, hasE bool, E utils.ErrInErr) {
+func LoadSimpleConfigFromStr(str string) (config SimpleConf, hasE bool, E utils.ErrInErr) {
 
 	if err := json.Unmarshal([]byte(str), &config); err != nil {
 		E = utils.ErrInErr{ErrDesc: "can not parse config ", ErrDetail: err}

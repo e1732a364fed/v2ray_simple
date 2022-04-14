@@ -243,16 +243,17 @@ realPart:
 	switch commandByte {
 	case CmdMux:
 
-		//实际目前verysimple 还未实现mux, 不过因为 v2ray的 mux.cool 有很多问题, 本作不会继续支持v0 的mux
+		//实际目前verysimple 还未实现mux, 因为 v2ray的 mux.cool 有很多问题, 本作不会支持v0 的mux
 
 		//targetAddr.Port = 0
 		//targetAddr.Name = "v1.mux.cool"
 		if version == 0 {
-			returnErr = errors.New("mux not supported by verysimple for vless v0")
+			returnErr = errors.New("mux for vless v0 is not supported by verysimple")
 			goto errorPart
-		}
+		} else {
+			//v1我们将采用 smux+simplesocks 的方式
 
-		//v1我们将采用 smux
+		}
 
 	case CmdTCP, CmdUDP:
 

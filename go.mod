@@ -12,6 +12,7 @@ require (
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/pkg/profile v1.6.0
 	github.com/refraction-networking/utls v1.0.0
+	github.com/xtaci/smux v1.5.16
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/zap v1.21.0
 	golang.org/x/exp v0.0.0-20220407100705-7b9b53b0aca4

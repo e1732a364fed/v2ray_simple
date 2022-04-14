@@ -81,9 +81,10 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	if vStr != "" {
 		v, err := strconv.Atoi(vStr)
 		if err == nil {
-			if v == 0 {
+			switch v {
+			case 0:
 
-			} else if v == 1 {
+			case 1:
 				c.version = 1
 
 				vless1_udp_multiStr := url.Query().Get("vless1_udp_multi")
@@ -95,7 +96,7 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 					c.udp_multi = true
 				}
 
-			} else {
+			default:
 				return nil, utils.ErrInErr{ErrDesc: "given version bigger than 1", ErrDetail: utils.ErrNotImplemented}
 			}
 		}

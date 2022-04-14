@@ -25,7 +25,7 @@ const (
 const (
 	CmdConnect      = 0x01
 	CmdUDPAssociate = 0x03
-	CmdMux          = 0x7f //trojan-gfw 那个文档里并没有提及Mux, 这个定义作者似乎没有在任何文档中提及，所以是在go文件中找到的。
+	CmdMux          = 0x7f //trojan-gfw 那个文档里并没有提及Mux, 这个定义作者似乎没有在任何文档中提及，所以这个是在trojan-go的源代码文件中找到的。
 )
 
 var (

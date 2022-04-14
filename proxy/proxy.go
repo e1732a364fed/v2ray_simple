@@ -13,6 +13,8 @@ import (
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/xtaci/smux"
+	"go.uber.org/zap"
 )
 
 func PrintAllServerNames() {
@@ -32,6 +34,12 @@ func PrintAllClientNames() {
 	}
 }
 
+//用于Server返回一个可被识别为innerMux的结构
+type MuxConnHaser struct {
+	io.ReadWriteCloser
+	IsMux bool
+}
+
 // Client 用于向 服务端 拨号.
 //服务端是一种 “泛目标”代理，所以我们客户端的 Handshake 要传入目标地址, 来告诉它 我们 想要到达的 目标地址.
 // 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
@@ -42,13 +50,16 @@ func PrintAllClientNames() {
 type Client interface {
 	ProxyCommon
 
-	Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error)
+	Handshake(underlay net.Conn, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
 	//建立一个通道, 然后在这个通道上 不断申请发送到 各个远程udp地址的连接。
 	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
 
 	//udp的拨号是否使用了多信道方式
 	IsUDP_MultiChannel() bool
+
+	//获取/拨号 一个可用的内层mux
+	GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session
 }
 
 // Server 用于监听 客户端 的连接.
@@ -60,6 +71,9 @@ type Server interface {
 
 	//ReadWriteCloser 为请求地址为tcp的情况, net.PacketConn 为 请求 建立的udp通道
 	Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.MsgConn, netLayer.Addr, error)
+
+	//获取/监听 一个可用的内层mux
+	GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session
 }
 
 // FullName 可以完整表示 一个 代理的 VSI 层级.
@@ -156,6 +170,7 @@ type ProxyCommon interface {
 	/////////////////// 内层mux层 ///////////////////
 
 	//0 为不会有 innermux, 1 为有可能有 innermux, 2 为总是使用 innerMux;
+	// 规定是，客户端 只能返回0或者2， 服务端 只能返回 0或者1（除非服务端协议不支持不mux的情况，此时可以返回2）
 	// string 为 innermux内部的 代理 协议 名称
 	HasInnerMux() (int, string)
 
@@ -206,6 +221,8 @@ type ProxyCommonStruct struct {
 	quic_c *quic.Client
 
 	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
+
+	innermux *smux.Session //用于存储 client的已拨号的mux连接
 }
 
 func (pcs *ProxyCommonStruct) setListenCommonConnFunc(f func() (newConnChan chan net.Conn, baseConn any)) {
@@ -254,6 +271,37 @@ func (pcs *ProxyCommonStruct) HasInnerMux() (int, string) {
 	return 0, ""
 }
 
+func (pcs *ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
+	smuxConfig := smux.DefaultConfig()
+	smuxSession, err := smux.Server(wlc, smuxConfig)
+	if err != nil {
+		if ce := utils.CanLogErr("smux.Server call failed"); ce != nil {
+			ce.Write(
+				zap.Error(err),
+			)
+		}
+	}
+	return smuxSession
+}
+
+func (pcs *ProxyCommonStruct) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
+	if pcs.innermux != nil && !pcs.innermux.IsClosed() {
+		return pcs.innermux
+	} else {
+		smuxConfig := smux.DefaultConfig()
+		smuxSession, err := smux.Client(wrc, smuxConfig)
+		if err != nil {
+			if ce := utils.CanLogErr("smux.Client call failed"); ce != nil {
+				ce.Write(
+					zap.Error(err),
+				)
+			}
+		}
+		pcs.innermux = smuxSession
+		return smuxSession
+	}
+}
+
 //return false
 func (pcs *ProxyCommonStruct) IsUDP_MultiChannel() bool {
 	return false
@@ -288,8 +336,11 @@ func (pcs *ProxyCommonStruct) AdvancedLayer() string {
 	return pcs.AdvancedL
 }
 
-//do nothing. As a placeholder.
+//try close inner mux
 func (s *ProxyCommonStruct) Stop() {
+	if s.innermux != nil {
+		s.innermux.Close()
+	}
 }
 
 //return false. As a placeholder.

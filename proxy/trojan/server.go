@@ -159,7 +159,10 @@ realPart:
 	}
 
 	if ismux {
-
+		return proxy.MuxConnHaser{
+			ReadWriteCloser: underlay,
+			IsMux:           true,
+		}, nil, targetAddr, nil
 	}
 
 	if isudp {

@@ -55,7 +55,7 @@ var (
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
 	confMode           int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	simpleConf         proxy.Simple
+	simpleConf         proxy.SimpleConf
 	standardConf       StandardConf
 	directClient, _, _ = proxy.ClientFromURL("direct://")
 	defaultOutClient   proxy.Client
@@ -598,24 +598,9 @@ startPass:
 	handshakeInserver_and_passToOutClient(iics)
 }
 
-// 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
-// iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
-func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
-	//log.Println("handshakeInserver_and_passToOutClient")
-
-	wrappedConn := iics.wrappedConn
-
+func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	inServer := iics.inServer
-
-	var wlc io.ReadWriteCloser
-	var udp_wlc netLayer.MsgConn
-
-	var targetAddr netLayer.Addr
-	var err error
-
-	if iics.shouldFallback {
-		goto checkFallback
-	}
+	wrappedConn := iics.wrappedConn
 
 	wlc, udp_wlc, targetAddr, err = inServer.Handshake(wrappedConn)
 
@@ -624,15 +609,17 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 		if udp_wlc != nil && inServer.Name() == socks5.Name {
 			// socks5的 udp associate返回的是 clientFutureAddr, 而不是实际客户的第一个请求.
+			//所以我们要读一次才能进行下一步。
 
-			firstSocks5RequestData, firstSocks5RequestAddr, err := udp_wlc.ReadMsgFrom()
-			if err != nil {
+			firstSocks5RequestData, firstSocks5RequestAddr, err2 := udp_wlc.ReadMsgFrom()
+			if err2 != nil {
 				if ce := utils.CanLogWarn("failed in socks5 read"); ce != nil {
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
-						zap.Error(err),
+						zap.Error(err2),
 					)
 				}
+				err = err2
 				return
 			}
 
@@ -641,50 +628,91 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 			targetAddr = firstSocks5RequestAddr
 		}
 
-		//无错误时直接跳过回落, 直接执行下一个步骤
-		goto afterLocalServerHandshake
+		////////////////////////////// 内层mux阶段 /////////////////////////////////////
+
+		if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
+			if mh, ok := wlc.(proxy.MuxConnHaser); ok {
+				session := inServer.GetServerInnerMuxSession(mh.ReadWriteCloser)
+				if session == nil {
+					err = utils.ErrFailed
+					return
+				}
+				//内层mux要对每一个子连接单独进行 子代理协议握手 以及 outClient的拨号。
+
+				go func() {
+					for {
+						stream, err := session.AcceptStream()
+						if err != nil {
+							session.Close()
+							return
+						}
+						muxConf := proxy.ListenConf{
+							CommonConf: proxy.CommonConf{
+								Protocol: innerProxyName,
+							},
+						}
+
+						muxSer, err := proxy.NewServer(&muxConf)
+						if err != nil {
+							if ce := utils.CanLogDebug("mux inner proxy server creation failed"); ce != nil {
+								ce.Write(zap.Error(err))
+							}
+							return
+						}
+						wlc1, udp_wlc1, targetAddr1, err1 := muxSer.Handshake(stream)
+
+						if err1 != nil {
+							if ce := utils.CanLogDebug("mux inner proxy handshake failed"); ce != nil {
+								ce.Write(zap.Error(err1))
+							}
+							passToOutClient(*iics, false, false, wlc1, udp_wlc1, targetAddr1)
+
+						} else {
+							passToOutClient(*iics, true, false, wlc1, udp_wlc1, targetAddr1)
+
+						}
+
+					}
+				}()
+
+				err = utils.ErrHandled
+				return
+			}
+		}
+
 	}
 
-	////////////////////////////// 回落阶段 /////////////////////////////////////
+	return
+}
 
-	//下面代码查看是否支持fallback; wlc先设为nil, 当所有fallback都不满足时,可以判断nil然后关闭连接
+// 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
+// iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
+func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
-	wlc = nil
-	udp_wlc = nil
-
-	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
-		ce.Write(
-			zap.String("handler", inServer.AddrStr()),
-			zap.Error(err),
-		)
-	}
-
-	if !inServer.CanFallback() {
-		wrappedConn.Close()
+	if iics.shouldFallback {
+		passToOutClient(iics, false, true, nil, nil, netLayer.Addr{})
 		return
 	}
 
-	{ //为防止goto 跳过变量定义，使用单独代码块
+	wlc, udp_wlc, targetAddr, err := handshakeInserver(&iics)
 
-		fe, ok := err.(*utils.ErrFirstBuffer)
-		if !ok {
-			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
-			wrappedConn.Close()
-			return
-		}
+	switch err {
+	case utils.ErrHandled:
+		return
+	case nil:
+		passToOutClient(iics, true, false, wlc, udp_wlc, targetAddr)
 
-		iics.theFallbackFirstBuffer = fe.First
-		if iics.theFallbackFirstBuffer == nil {
-			//不应该，至少能读到1字节的。
-
-			panic("No FirstBuffer")
-
-		}
+	default:
+		passToOutClient(iics, false, false, nil, nil, netLayer.Addr{})
 	}
 
-checkFallback:
+}
 
+func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wlc io.ReadWriteCloser) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
+
+	wrappedConn := iics.wrappedConn
+	inServer := iics.inServer
 
 	if mainFallback != nil {
 
@@ -740,7 +768,7 @@ checkFallback:
 		if fbAddr != nil {
 			targetAddr = *fbAddr
 			wlc = wrappedConn
-			goto afterLocalServerHandshake
+			return
 		}
 
 	}
@@ -753,11 +781,67 @@ checkFallback:
 		wlc = wrappedConn
 
 	}
+	return
+}
 
-afterLocalServerHandshake:
+func passToOutClient(iics incomingInserverConnState, noErr bool, gotoFallback bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
+
+	wrappedConn := iics.wrappedConn
+
+	inServer := iics.inServer
+	var err error
+
+	////////////////////////////// 回落阶段 /////////////////////////////////////
+
+	//下面代码查看是否支持fallback; wlc先设为nil, 当所有fallback都不满足时,可以判断nil然后关闭连接
+
+	if !noErr {
+
+		if !gotoFallback {
+			wlc = nil
+			udp_wlc = nil
+
+			if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
+				ce.Write(
+					zap.String("handler", inServer.AddrStr()),
+					zap.Error(err),
+				)
+			}
+
+			if !inServer.CanFallback() {
+				wrappedConn.Close()
+				return
+			}
+
+			{ //为防止goto 跳过变量定义，使用单独代码块
+
+				fe, ok := err.(*utils.ErrFirstBuffer)
+				if !ok {
+					// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
+					wrappedConn.Close()
+					return
+				}
+
+				iics.theFallbackFirstBuffer = fe.First
+				if iics.theFallbackFirstBuffer == nil {
+					//不应该，至少能读到1字节的。
+
+					panic("No FirstBuffer")
+
+				}
+			}
+
+		}
+
+		fallbackTargetAddr, fallbackWlc := checkfallback(iics)
+		if fallbackWlc != nil {
+			targetAddr = fallbackTargetAddr
+			wlc = fallbackWlc
+		}
+	}
 
 	if wlc == nil && udp_wlc == nil {
-		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接return
+		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
 		utils.Debug("invalid request and no matched fallback, hung up")
 		wrappedConn.Close()
 		return
@@ -936,7 +1020,7 @@ afterLocalServerHandshake:
 }
 
 //dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手
-// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功并处理了转发阶段(用于lazy )
+// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功并处理了转发阶段(用于lazy和mux )
 func dialClient(targetAddr netLayer.Addr,
 	client proxy.Client,
 	baseLocalConn,
@@ -1249,6 +1333,7 @@ advLayerStep:
 					zap.Error(err),
 				)
 			}
+			result = -1
 		}
 
 	} else {
@@ -1260,10 +1345,66 @@ advLayerStep:
 					zap.Error(err),
 				)
 			}
+			result = -1
 		}
 	}
 
-	//还有可能遇到 内层mux的情况
+	////////////////////////////// 内层 mux 阶段 /////////////////////////////////////
+	if muxInt, innerProxyName := client.HasInnerMux(); muxInt == 2 {
+		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan的实现。
+
+		smuxSession := client.GetClientInnerMuxSession(wrc)
+		if smuxSession == nil {
+			result = -1
+			return
+		}
+
+		stream, err := smuxSession.OpenStream()
+		if err != nil {
+			return
+		}
+
+		muxDialConf := proxy.DialConf{
+			CommonConf: proxy.CommonConf{
+				Protocol: innerProxyName,
+			},
+		}
+
+		muxClient, err := proxy.NewClient(&muxDialConf)
+		if err != nil {
+			if ce := utils.CanLogDebug("mux inner proxy client creation failed"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			result = -1
+			return
+		}
+		if isudp {
+			realwrc, err := muxClient.EstablishUDPChannel(stream, targetAddr)
+			if err != nil {
+				if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				result = -1
+				return
+			}
+			udp_wrc = realwrc
+
+			result = 1
+		} else {
+			realwrc, err := muxClient.Handshake(stream, targetAddr)
+			if err != nil {
+				if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+				result = -1
+				return
+			}
+			wrc = realwrc
+
+			result = 1
+		}
+
+	}
 
 	return
 }
