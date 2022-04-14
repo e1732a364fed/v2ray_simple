@@ -67,8 +67,16 @@ func TestUDP_vless_v1_udpMulti(t *testing.T) {
 	testUDP("vless", 1, "tcp", true, false, t)
 }
 
+func TestUDP_vless_v1_udpMulti_fullcone(t *testing.T) {
+	testUDP("vless", 1, "tcp", true, true, t)
+}
+
 func TestUDP_trojan(t *testing.T) {
 	testUDP("trojan", 0, "tcp", false, false, t)
+}
+
+func TestUDP_trojan_fullcone(t *testing.T) {
+	testUDP("trojan", 0, "tcp", false, true, t)
 }
 
 func TestUDP_trojan_through_udp(t *testing.T) {
