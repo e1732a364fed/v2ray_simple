@@ -138,7 +138,7 @@ protocol = "direct"
 }
 
 func tryGetHttp(client *http.Client, path string, t *testing.T) {
-	t.Log("start dail", path)
+	t.Log("start dial", path)
 	resp, err := client.Get(path)
 	if err != nil {
 		t.Log("get http failed", err)

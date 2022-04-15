@@ -254,7 +254,7 @@ func main() {
 		}
 
 	}
-	//没配置可用的listen或者dail，而且还无法动态更改配置
+	//没配置可用的listen或者dial，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
 		utils.Fatal("No valid proxy settings available, exit now.")
 		return
@@ -1031,8 +1031,12 @@ func dialClient(targetAddr netLayer.Addr,
 
 	isudp := targetAddr.IsUDP()
 
+	hasInnerMux := false
+
 	//先过滤掉 innermux 通道已经建立的情况, 此时我们不必再次外部拨号，而是直接进行内层拨号.
 	if muxInt, innerProxyName := client.HasInnerMux(); muxInt == 2 {
+		hasInnerMux = true
+
 		if client.InnerMuxEstablished() {
 			wrc1, realudp_wrc, result1 := dialInnerMux(client, nil, innerProxyName, targetAddr, isudp)
 
@@ -1098,7 +1102,7 @@ func dialClient(targetAddr netLayer.Addr,
 	var clientConn net.Conn
 
 	var grpcClientConn grpc.ClientConn
-	var dailedCommonConn any
+	var dialedCommonConn any
 
 	dialHere := !(client.Name() == "direct" && isudp)
 
@@ -1121,12 +1125,12 @@ func dialClient(targetAddr netLayer.Addr,
 			}
 		case "quic":
 			//quic这里并不是在tls层基础上进行dial，而是直接从传输层dial 或者获取之前已经存在的session
-			dailedCommonConn = client.GetQuic_Client().DialCommonConn(false, nil)
-			if dailedCommonConn != nil {
+			dialedCommonConn = client.GetQuic_Client().DialCommonConn(false, nil)
+			if dialedCommonConn != nil {
 				//跳过tls阶段
 				goto advLayerStep
 			} else {
-				//dail失败, 直接return掉
+				//dial失败, 直接return掉
 
 				result = -1
 				return
@@ -1210,7 +1214,7 @@ advLayerStep:
 		switch adv {
 		case "quic":
 			qclient := client.GetQuic_Client()
-			clientConn, err = qclient.DialSubConn(dailedCommonConn)
+			clientConn, err = qclient.DialSubConn(dialedCommonConn)
 			if err != nil {
 				eStr := err.Error()
 				if strings.Contains(eStr, "too many") {
@@ -1222,14 +1226,14 @@ advLayerStep:
 					}
 
 					//第一条连接已满，再开一条session
-					dailedCommonConn = qclient.DialCommonConn(true, dailedCommonConn)
-					if dailedCommonConn == nil {
+					dialedCommonConn = qclient.DialCommonConn(true, dialedCommonConn)
+					if dialedCommonConn == nil {
 						//再dial还是nil，也许是暂时性的网络错误, 先退出
 						result = -1
 						return
 					}
 
-					clientConn, err = qclient.DialSubConn(dailedCommonConn)
+					clientConn, err = qclient.DialSubConn(dialedCommonConn)
 					if err != nil {
 						if ce := utils.CanLogErr("DialSubConn failed after redialed new session"); ce != nil {
 							ce.Write(
@@ -1343,7 +1347,9 @@ advLayerStep:
 
 	////////////////////////////// 代理层 握手阶段 /////////////////////////////////////
 
-	if !isudp {
+	if !isudp || hasInnerMux {
+		//如果是udp但是有innermux, 依然用handshake
+
 		wrc, err = client.Handshake(clientConn, targetAddr)
 		if err != nil {
 			if ce := utils.CanLogErr("Handshake client failed"); ce != nil {
@@ -1356,6 +1362,7 @@ advLayerStep:
 		}
 
 	} else {
+
 		udp_wrc, err = client.EstablishUDPChannel(clientConn, targetAddr)
 		if err != nil {
 			if ce := utils.CanLogErr("EstablishUDPChannel failed"); ce != nil {

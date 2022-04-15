@@ -11,5 +11,5 @@ host = "your-domain-name.com"
 port = 4434
 insecure = true
 utls = true
-use_mux = true
+use_mux = true  # 只需要客户端指明使用mux即可, 服务端自动适配.
 

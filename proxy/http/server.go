@@ -119,7 +119,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, _ net
 	if isCONNECT {
 		underlay.Write(connectReturnBytes) //这个也是https代理的特征，所以不适合 公网使用
 
-		//正常来说我们的服务器要先dial，dial成功之后再返回200，但是因为我们目前的架构是在main函数里dail，
+		//正常来说我们的服务器要先dial，dial成功之后再返回200，但是因为我们目前的架构是在main函数里dial，
 		// 所以就直接写入了.
 
 		//另外，nginx是没有实现 CONNECT的，不过有插件
