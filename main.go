@@ -641,7 +641,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 					return
 				}
 
-				session := inServer.GetServerInnerMuxSession(mh.ReadWriteCloser)
+				session := inServer.GetServerInnerMuxSession(mh)
 
 				if session == nil {
 					err = utils.ErrFailed
@@ -660,7 +660,9 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 
 						stream, err := session.AcceptStream()
 						if err != nil {
-							utils.Debug("inServer try accept stream err")
+							if ce := utils.CanLogDebug("mux inServer try accept stream failed"); ce != nil {
+								ce.Write(zap.Error(err))
+							}
 
 							session.Close()
 							return

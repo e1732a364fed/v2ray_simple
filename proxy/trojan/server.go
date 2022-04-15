@@ -159,10 +159,14 @@ realPart:
 	}
 
 	if ismux {
-		return proxy.MuxConnHaser{
+		mh := proxy.MuxConnHaser{
 			ReadWriteCloser: underlay,
 			IsMux:           true,
-		}, nil, targetAddr, nil
+		}
+		if readbuf.Len() > 0 {
+			mh.OptionalReader = io.MultiReader(readbuf, underlay)
+		}
+		return mh, nil, targetAddr, nil
 	}
 
 	if isudp {

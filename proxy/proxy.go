@@ -37,7 +37,16 @@ func PrintAllClientNames() {
 //用于Server返回一个可被识别为innerMux的结构
 type MuxConnHaser struct {
 	io.ReadWriteCloser
-	IsMux bool
+	OptionalReader io.Reader
+	IsMux          bool
+}
+
+func (mc MuxConnHaser) Read(p []byte) (n int, err error) {
+	if r := mc.OptionalReader; r != nil {
+		return r.Read(p)
+	} else {
+		return mc.ReadWriteCloser.Read(p)
+	}
 }
 
 // Client 用于向 服务端 拨号.
@@ -282,7 +291,7 @@ func (pcs *ProxyCommonStruct) HasInnerMux() (int, string) {
 	return 0, ""
 }
 
-func (pcs *ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
+func (*ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
 	smuxConfig := smux.DefaultConfig()
 	smuxSession, err := smux.Server(wlc, smuxConfig)
 	if err != nil {
