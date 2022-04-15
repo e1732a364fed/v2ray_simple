@@ -140,7 +140,7 @@ func main() {
 
 	var defaultInServer proxy.Server
 
-	//load server and routePolicy
+	//load inServers and routePolicy
 	switch confMode {
 	case simpleMode:
 		var hase bool
@@ -196,7 +196,7 @@ func main() {
 
 	}
 
-	// load client
+	// load outClients
 	switch confMode {
 	case simpleMode:
 		var hase bool

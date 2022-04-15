@@ -21,7 +21,7 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 verysimple 研发了一些新技术，可以加速。
 
-为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术部分，点击跳转 -> [创新点](#创新点)
+为了不吓跑小白，目前 本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
 
 
 ## 安装方式：
@@ -65,27 +65,16 @@ cd v2ray_simple && go build
 
 如果你是直接下载的可执行文件，则不需要 go build
 
-
-#### 关于内嵌geoip 文件
-
-默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
-
-**不过，最新的版本会自动检测，如果你没有mmdb文件，会自动给你从cdn下载下来，所以已经很方便了，不需要自己动手.**
-
-可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
-
-加载的外部文件 必须使用原始 mmdb格式。
-
-若要内嵌编译，要用 `tar -czf GeoLite2-Country.mmdb.tgz GeoLite2-Country.mmdb` 来打包一下，将生成的tgz文件放到 netLayer文件夹中，然后再编译 ，用 `go build -tags embed_geoip` 编译
-
-内嵌编译 所使用的 文件名 必须是 GeoLite2-Country.mmdb.tgz
-
-
-因为为了减小文件体积，所以才内嵌的gzip格式，而不是内嵌原始mmdb
-
 ## 运行方式
 
-本作支持多种配置格式，方便不同需求的同学使用
+本作支持多种运行模式，方便不同需求的同学使用
+
+1. 命令行模式
+2. 极简模式
+3. 标准模式
+4. 兼容模式
+5. 交互模式
+
 
 ### 运行前的准备
 
@@ -130,11 +119,11 @@ verysimple -c server.json
 
 另外，极简模式所使用的 url并不是正规的 各个协议所规定的 分享链接格式，而是我们自己的格式，所以链接看起来会略有区别。
 
-以后可以考虑 推出一个 选项，选择 到底是 使用协议所规定的格式, 还是我们verysimple自己的通用链接格式。
+以后可以考虑 推出一个 选项，选择 到底是 使用协议所规定的格式, 还是 使用我们verysimple自己的通用链接格式。
 
 ### 命令行模式
 
-如果学会了极简模式里的url配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
+如果学会了极简模式里的url配置后，还可以用如下命令来运行，无需配置文件
 
 ```sh
 #客户端
@@ -148,7 +137,7 @@ verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.k
 
 命令行模式 实际上就是把命令行的内容转化成极简模式的配置 然后再处理
 
-命令行模式 不支持dns、分流、复杂回落 等特性。只能配置 默认回落。
+命令行模式 不支持dns、分流、复杂回落 等特性。只能在url中配置 默认回落。
 
 ### 标准模式
 
@@ -382,6 +371,22 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 在不使用新协议时，lazy只能通过不lazy tls1.2的方式来解决此问题, 即裸奔转发 tls1.3、加密转发 tls1.2. 
 
+## 关于内嵌geoip 文件
+
+默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
+
+**不过，最新的版本会自动检测，如果你没有mmdb文件，会自动给你从cdn下载下来，所以已经很方便了，不需要自己动手.**
+
+可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
+
+加载的外部文件 必须使用原始 mmdb格式。
+
+若要内嵌编译，要用 `tar -czf GeoLite2-Country.mmdb.tgz GeoLite2-Country.mmdb` 来打包一下，将生成的tgz文件放到 netLayer文件夹中，然后再编译 ，用 `go build -tags embed_geoip` 编译
+
+内嵌编译 所使用的 文件名 必须是 GeoLite2-Country.mmdb.tgz
+
+
+因为为了减小文件体积，所以才内嵌的gzip格式，而不是内嵌原始mmdb
 
 ## 开发标准以及理念
 
@@ -446,9 +451,6 @@ verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如s
 
 verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用url做到。谁规定url只能用于分享客户端配置了？一条url肯定比json更容易配置，不容易出错。
 
-不过，显然url无法配置大量复杂的内容，而且有些玩家也喜欢一份配置可以搞定多种内核，所以未来 verysimple 会推出兼容 v2ray的json配置 的模块。**只是兼容配置格式，不是兼容所有协议！目前只有vless v0 协议是兼容的，可以直接使用现有其它客户端**
-
-目前的json格式被称作“极简模式”，只需给定url就可以完整确认一个协议的配置.
 
 其它开发计划请参考
 https://github.com/hahahrfool/v2ray_simple/discussions/3

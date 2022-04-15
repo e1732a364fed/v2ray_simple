@@ -94,7 +94,7 @@ func init() {
 
 }
 
-//是否是活的。如果没有监听 也没有 动态修改配置的功能，则认为当前的运行是没有灵魂的、不灵活的、腐朽的.
+//是否可以在运行时动态修改配置。如果没有监听 apiServer 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
 func isFlexible() bool {
 	return interactive_mode || apiServerRunning
 }
@@ -108,13 +108,10 @@ func runPreCommands() {
 
 	if !nodownload {
 		tryDownloadMMDB()
-
 	}
-
 }
 
 func generateAndPrintUUID() {
-
 	fmt.Printf("New random uuid : %s\n", utils.GenerateUUIDStr())
 }
 

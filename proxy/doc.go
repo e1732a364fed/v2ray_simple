@@ -2,7 +2,7 @@
 
 Layer Definition
 
-目前认为，一个传输过程由四个部分组成，基础连接（udp/tcp），TLS（可选），中间层（ws、grpc、http等，可选），具体协议（socks5，vless，trojan等）.
+目前认为，一个传输过程大概由四个部分组成，基础连接（udp/tcp），TLS（可选），中间层（ws、grpc、http等，可选），具体协议（socks5，vless，trojan等）.
 
 其中，ws和grpc被认为是 高级应用层，http（伪装）属于低级应用层.
 
@@ -31,6 +31,8 @@ New Model - VSI 新的VSI 模型
 
 我们verysimple实际上就是 基于 “层” 的架构，或称 可分层结构.
 
+	11｜                                     （client real tcp/udp data)
+	--------------------------------------------------------------------------------
 	10｜                                     （inner proxy layer)
 	--------------------------------------------------------------------------------
 	9 ｜ [client real tcp/udp data]     or   [inner mux Layer]
@@ -56,6 +58,12 @@ New Model - VSI 新的VSI 模型
 对应的理想配置文件应该如下.
 
 	{
+		"layer3_settings": {	//或者叫 networksettings，
+				//可以配置一些网络层分流
+		},
+		"layer4_settings": {	//或者叫 transportLayer_settings，
+			"tcp":{}	//可以设置一些缓存大小等tcp配置.
+		},
 		"layer5_settings": {	//或者叫 tls_settings，
 			"tls":{"insecure": true},
 			"utls":{}
@@ -73,14 +81,15 @@ New Model - VSI 新的VSI 模型
 			"trojan":{}
 		},
 		"layer9_settings": {	//或者叫 inner_mux_settings
-			"smux":{
-				"simplesocks":{}
-			}
+			"smux":{}
+		},
+		"layer10_settings": {	//或者叫 innerProxy_settings
+			"simplesocks":{}
 		},
 	}
 
 我们项目的文件夹，netLayer 第3，4层，tlsLayer文件夹代表第5层; httpLayer第六层，
-ws和grpc文件夹（第七层）proxy文件夹代表第8层.
+advLayer文件夹 代表第七层, proxy文件夹代表第8层.
 
 
 同级的ws和grpc是独占的，可以都放到一个layer里，然后比如第八层配置了一个vless一个trojan，那么排列组合就是4种，vless+ws, vless+ grpc, trojan+ws, trojan+grpc.

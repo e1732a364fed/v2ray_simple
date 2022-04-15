@@ -162,10 +162,18 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 
 		integer = int(value)
 
-	case int64:
+	case int64: //toml包 默认把整数转换成int64
 		integer = int(value)
 	case string:
-		//两种情况, 带冒号的 ip:port, 或者 unix domain socket 的文件路径
+		//先判断是不是url
+		addr, err = NewAddrByURL(value)
+		if err == nil {
+			return
+		} else {
+			err = nil
+		}
+
+		//不是url时，有两种情况, 带冒号的 ip:port, 或者 unix domain socket 的文件路径
 
 		if strings.Contains(value, ":") {
 			dest_type = 1
@@ -183,7 +191,7 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	}
 
 	switch dest_type {
-	case 0:
+	case 0: //只给出数字的情况, 认为该数字为端口, ip为本机。
 		addr = Addr{
 			IP:   net.IPv4(127, 0, 0, 1),
 			Port: integer,
