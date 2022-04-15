@@ -32,7 +32,7 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 		userHashes: make(map[string]bool),
 	}
 
-	s.userHashes[string(SHA224_hexStringBytes(uuidStr))] = true
+	s.userHashes[SHA224_hexString(uuidStr)] = true
 
 	return s, nil
 }
@@ -43,7 +43,7 @@ func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 		userHashes: make(map[string]bool),
 	}
 
-	s.userHashes[string(SHA224_hexStringBytes(uuidStr))] = true
+	s.userHashes[SHA224_hexString(uuidStr)] = true
 
 	return s, nil
 }
@@ -135,7 +135,7 @@ realPart:
 		ismux = true
 	}
 
-	targetAddr, err = GetAddrFrom(readbuf)
+	targetAddr, err = GetAddrFrom(readbuf, ismux)
 	if err != nil {
 		returnErr = err
 		goto errorPart

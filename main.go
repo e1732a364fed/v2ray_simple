@@ -643,19 +643,20 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 
 				session := inServer.GetServerInnerMuxSession(mh.ReadWriteCloser)
 
-				utils.Debug("inServer got mux connection")
-
 				if session == nil {
 					err = utils.ErrFailed
 					return
 				}
+
+				utils.Debug("inServer got mux connection")
+
 				//内层mux要对每一个子连接单独进行 子代理协议握手 以及 outClient的拨号。
 
 				go func() {
-					utils.Debug("inServer start session loop ")
+					utils.Debug("inServer start smux session loop ")
 
 					for {
-						utils.Debug("inServer try accept stream ")
+						utils.Debug("inServer try accept smux stream ")
 
 						stream, err := session.AcceptStream()
 						if err != nil {
@@ -674,13 +675,13 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 								if ce := utils.CanLogDebug("mux inner proxy handshake failed"); ce != nil {
 									ce.Write(zap.Error(err1))
 								}
-								passToOutClient(*iics, false, false, wlc1, udp_wlc1, targetAddr1)
+								passToOutClient(*iics, err1, false, wlc1, udp_wlc1, targetAddr1)
 
 							} else {
 
 								utils.ZapLogger.Debug("inServer mux stream handshake ok", zap.Any("wlc1", wlc1), zap.Any("udp_wlc1", udp_wlc1), zap.Any("targetAddr1", targetAddr1))
 
-								passToOutClient(*iics, true, false, wlc1, udp_wlc1, targetAddr1)
+								passToOutClient(*iics, nil, false, wlc1, udp_wlc1, targetAddr1)
 
 							}
 
@@ -704,7 +705,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	if iics.shouldFallback {
-		passToOutClient(iics, false, true, nil, nil, netLayer.Addr{})
+		passToOutClient(iics, nil, true, nil, nil, netLayer.Addr{})
 		return
 	}
 
@@ -714,10 +715,10 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 	case utils.ErrHandled:
 		return
 	case nil:
-		passToOutClient(iics, true, false, wlc, udp_wlc, targetAddr)
+		passToOutClient(iics, nil, false, wlc, udp_wlc, targetAddr)
 
 	default:
-		passToOutClient(iics, false, false, nil, nil, netLayer.Addr{})
+		passToOutClient(iics, err, false, nil, nil, netLayer.Addr{})
 	}
 
 }
@@ -798,18 +799,17 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wl
 	return
 }
 
-func passToOutClient(iics incomingInserverConnState, noErr bool, gotoFallback bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
+func passToOutClient(iics incomingInserverConnState, err error, gotoFallback bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
 	wrappedConn := iics.wrappedConn
 
 	inServer := iics.inServer
-	var err error
 
 	////////////////////////////// 回落阶段 /////////////////////////////////////
 
 	//下面代码查看是否支持fallback; wlc先设为nil, 当所有fallback都不满足时,可以判断nil然后关闭连接
 
-	if !noErr {
+	if err != nil || gotoFallback {
 
 		if !gotoFallback {
 			wlc = nil
@@ -846,6 +846,8 @@ func passToOutClient(iics incomingInserverConnState, noErr bool, gotoFallback bo
 			}
 
 		}
+
+		err = nil
 
 		fallbackTargetAddr, fallbackWlc := checkfallback(iics)
 		if fallbackWlc != nil {

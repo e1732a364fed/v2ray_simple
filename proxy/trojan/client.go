@@ -105,7 +105,7 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	}
 
 	if c.use_mux {
-		//mux时我们直接返回underlay,
+		//mux时我们直接返回underlay, 外部会通过 HasInnerMux 方法 来确定我们 到底是单路还是 多路复用
 		return underlay, nil
 	} else {
 		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.

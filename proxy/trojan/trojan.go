@@ -4,12 +4,14 @@
 package trojan
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
@@ -43,16 +45,29 @@ func SHA224(password string) (r [28]byte) {
 func SHA224_hexStringBytes(password string) []byte {
 	hash := sha256.New224()
 	hash.Write([]byte(password))
-	val := hash.Sum(nil)
-	str := ""
-	for _, v := range val {
-		str += fmt.Sprintf("%02x", v)
+	bs := hash.Sum(nil)
+	var sb bytes.Buffer
+
+	for _, b := range bs {
+		sb.WriteString(fmt.Sprintf("%02x", b))
 	}
-	return []byte(str)
+	return sb.Bytes()
+}
+
+func SHA224_hexString(password string) string {
+	hash := sha256.New224()
+	hash.Write([]byte(password))
+	bs := hash.Sum(nil)
+	var sb strings.Builder
+
+	for _, b := range bs {
+		sb.WriteString(fmt.Sprintf("%02x", b))
+	}
+	return sb.String()
 }
 
 //依照trojan协议的格式读取 地址的域名、ip、port信息
-func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
+func GetAddrFrom(buf utils.ByteReader, ismux bool) (addr netLayer.Addr, err error) {
 	var b1 byte
 
 	b1, err = buf.ReadByte()
@@ -112,9 +127,11 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 		}
 		addr.IP = bs
 	default:
-		err = utils.ErrInvalidData
+		err = utils.ErrInErr{ErrDesc: "trojan GetAddrFrom err", ErrDetail: utils.ErrInvalidData, Data: b1}
 		return
 	}
+
+	//log.Println("trojan got addr", addr)
 
 	pb1, err := buf.ReadByte()
 	if err != nil {
@@ -128,8 +145,12 @@ func GetAddrFrom(buf utils.ByteReader) (addr netLayer.Addr, err error) {
 
 	port := uint16(pb1)<<8 + uint16(pb2)
 	if port == 0 {
-		err = utils.ErrInvalidData
-		return
+		if !ismux { //trojan-go 的实现中，第一次发起mux时，port会设成0, 域名被设为 MUX_CONN
+
+			err = utils.ErrInErr{ErrDesc: "trojan GetAddrFrom, port is zero, which is bad", ErrDetail: utils.ErrInvalidData}
+			return
+		}
+
 	}
 	addr.Port = int(port)
 

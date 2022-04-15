@@ -15,6 +15,11 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy"
 )
 
+// 解读如下：
+//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR （ipv4(0,0,0,0)）, BND.PORT(0, 2字节)
+//这个 BND.ADDR和port 按理说不应该传0的，不过如果只作为本地tcp代理的话应该不影响
+var commmonTCP_HandshakeReply = []byte{Version5, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+
 func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
@@ -139,7 +144,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpCha
 
 	if cmd == CmdUDPAssociate {
 
-		//这里我们serverAddr直接返回0.0.0.0即可，也实在想不到谁会返回一个另一个ip地址出来。
+		//这里我们serverAddr直接返回0.0.0.0即可，也实在想不到谁会返回 另一个ip地址出来。肯定应该和原ip相同的。
 
 		//随机生成一个端口专门用于处理该客户端。这是我的想法。
 
@@ -157,13 +162,17 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpCha
 		}
 
 		//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR(4字节的ipv4) , BND.PORT(2字节)
-		reply := []byte{Version5, 0x00, 0x00, 0x01, 0, 0, 0, 0, byte(int16(bindPort) >> 8), byte(int16(bindPort) << 8 >> 8)}
+		reply := [10]byte{Version5, 0x00, 0x00, 0x01, 0, 0, 0, 0, byte(int16(bindPort) >> 8), byte(int16(bindPort) << 8 >> 8)}
 
-		// Write command response
-		_, err = underlay.Write(reply)
+		_, err = underlay.Write(reply[:])
 		if err != nil {
 			returnErr = fmt.Errorf("failed to write command response: %w", err)
 			return
+		}
+
+		//theName有可能是ip的形式，比如浏览器一般不会自己dns，把一切ip和域名都当作域名传入socks5代理
+		if ip := net.ParseIP(theName); ip != nil {
+			theIP = ip
 		}
 
 		clientFutureAddr := netLayer.Addr{
@@ -173,22 +182,15 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpCha
 			Network: "udp",
 		}
 
-		//这里为了解析域名, 就用了 netLayer.Addr 作为中介的方式
 		uc := &ServerUDPConn{
-			clientSupposedAddr: clientFutureAddr.ToUDPAddr(),
+			clientSupposedAddr: clientFutureAddr.ToUDPAddr(), //这里为了解析域名, 就用了 netLayer.Addr 作为中介的方式
 			UDPConn:            udpRC,
 		}
 		return nil, uc, clientFutureAddr, nil
 
 	} else {
 
-		// 解读如下：
-		//ver（5）, rep（0，表示成功）, rsv（0）, atyp(1, 即ipv4), BND.ADDR （ipv4(0,0,0,0)）, BND.PORT(0, 2字节)
-		reply := []byte{Version5, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-
-		//这个 BND.ADDR和port 按理说不应该传0的，不过如果只作为本地tcp代理的话应该不影响
-
-		_, err = underlay.Write(reply)
+		_, err = underlay.Write(commmonTCP_HandshakeReply)
 		if err != nil {
 			returnErr = fmt.Errorf("failed to write command response: %w", err)
 			return
