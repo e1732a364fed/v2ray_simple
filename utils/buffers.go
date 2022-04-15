@@ -109,7 +109,9 @@ func BuffersWriteTo(bs [][]byte, writeConn io.Writer) (num int64, err2 error) {
 	return
 }
 
-// 如果 分配了新内存来 包含数据，则 duplicate ==true; 如果利用了原有的第一个[]byte, 则 duplicate==false
+// 如果 分配了新内存来 包含数据，则 duplicate ==true, 此时可以用PutPacket函数放回;
+//  如果利用了原有的第一个[]byte, 则 duplicate==false。
+//
 // 如果 duplicate==false, 不要 使用 PutPacket等方法放入Pool；
 //  因为 在更上级的调用会试图去把 整个bs 放入pool;
 func MergeBuffers(bs [][]byte) (result []byte, duplicate bool) {

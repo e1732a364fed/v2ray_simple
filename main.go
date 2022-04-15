@@ -624,7 +624,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 		////////////////////////////// 内层mux阶段 /////////////////////////////////////
 
 		if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
-			if mh, ok := wlc.(proxy.MuxConnHaser); ok {
+			if mh, ok := wlc.(proxy.MuxMarkerConn); ok {
 
 				muxConf := proxy.ListenConf{
 					CommonConf: proxy.CommonConf{
@@ -669,7 +669,9 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 						}
 
 						go func() {
-							utils.Debug("inServer got mux stream " + innerProxyName)
+							if ce := utils.CanLogDebug("inServer got mux stream"); ce != nil {
+								ce.Write(zap.String("innerProxyName", innerProxyName))
+							}
 
 							wlc1, udp_wlc1, targetAddr1, err1 := muxSer.Handshake(stream)
 
@@ -681,7 +683,9 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 
 							} else {
 
-								utils.ZapLogger.Debug("inServer mux stream handshake ok", zap.Any("wlc1", wlc1), zap.Any("udp_wlc1", udp_wlc1), zap.Any("targetAddr1", targetAddr1))
+								if ce := utils.CanLogDebug("inServer mux stream handshake ok"); ce != nil {
+									ce.Write(zap.String("targetAddr1", targetAddr1.String()))
+								}
 
 								passToOutClient(*iics, nil, false, wlc1, udp_wlc1, targetAddr1)
 

@@ -159,13 +159,17 @@ realPart:
 	}
 
 	if ismux {
-		mh := proxy.MuxConnHaser{
-			ReadWriteCloser: underlay,
-			IsMux:           true,
+		mh := &MuxMarkerConn{
+			ReadWrapper: netLayer.ReadWrapper{
+				Conn: underlay,
+			},
 		}
-		if readbuf.Len() > 0 {
+
+		if l := readbuf.Len(); l > 0 {
+			mh.RemainFirstBufLen = l
 			mh.OptionalReader = io.MultiReader(readbuf, underlay)
 		}
+
 		return mh, nil, targetAddr, nil
 	}
 
@@ -174,9 +178,7 @@ realPart:
 
 	} else {
 		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
-		//if readbuf.Len() == 0 {
-		//	return underlay, nil, targetAddr, nil
-		//} else {
+
 		return &UserTCPConn{
 			Conn:              underlay,
 			optionalReader:    io.MultiReader(readbuf, underlay),
@@ -185,7 +187,12 @@ realPart:
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),
 			isServerEnd:       true,
 		}, nil, targetAddr, nil
-		//}
 
 	}
 }
+
+type MuxMarkerConn struct {
+	netLayer.ReadWrapper
+}
+
+func (mh *MuxMarkerConn) IsMux() {}

@@ -1,7 +1,7 @@
 /*
 Package netLayer contains definitions in network layer AND transport layer.
 
-本包有 geoip, readv, relay, route, udp, splice 等相关功能。
+本包有 geoip, geosite, udp, readv, splice, relay, route, dns 等相关功能。
 
 以后如果要添加 kcp 或 raw socket 等底层协议时，或者要控制tcp/udp拨号的细节时，也要在此包里实现.
 
@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"reflect"
 	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -35,18 +36,13 @@ func Prepare() {
 
 func HasIpv6Interface() bool {
 
-	if utils.LogLevel == utils.Log_debug {
-		log.Println("HasIpv6Interface called")
-	}
-
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		if utils.ZapLogger != nil {
-			if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
+		if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
+			ce.Write(zap.Error(err))
 		} else {
 			log.Println("call net.InterfaceAddrs failed", err)
+
 		}
 
 		return false
@@ -58,9 +54,8 @@ func HasIpv6Interface() bool {
 			// According to godoc, If ip is not an IPv4 address, To4 returns nil.
 			// This means it's ipv6
 			if ipnet.IP.To4() == nil {
-				if utils.LogLevel == utils.Log_debug {
-					log.Println("Has Ipv6Interface!")
-				}
+				utils.Debug("Has Ipv6Interface!")
+
 				return true
 			}
 		}
@@ -82,7 +77,7 @@ func GetRawConn(reader io.Reader) syscall.RawConn {
 		rawConn, err := sc.SyscallConn()
 		if err != nil {
 			if ce := utils.CanLogDebug("can't convert syscall.Conn to syscall.RawConn"); ce != nil {
-				ce.Write(zap.Any("reader", reader), zap.Error(err))
+				ce.Write(zap.Any("reader", reader), zap.String("type", reflect.TypeOf(reader).String()), zap.Error(err))
 			}
 			return nil
 		}
@@ -100,4 +95,36 @@ func IsStrUDP_network(s string) bool {
 		return true
 	}
 	return false
+}
+
+//选择性从 OptionalReader读取, 直到 RemainFirstBufLen 小于等于0 为止；
+// 一般用于与 io.MultiReader 配合
+type ReadWrapper struct {
+	net.Conn
+	OptionalReader    io.Reader
+	RemainFirstBufLen int
+}
+
+func (mc *ReadWrapper) Read(p []byte) (n int, err error) {
+
+	if mc.RemainFirstBufLen > 0 {
+		n, err := mc.OptionalReader.Read(p)
+		if n > 0 {
+			mc.RemainFirstBufLen -= n
+		}
+		return n, err
+	} else {
+		return mc.Conn.Read(p)
+	}
+
+}
+
+func (c *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
+	bigbs, dup := utils.MergeBuffers(buffers)
+	n, e := c.Write(bigbs)
+	if dup {
+		utils.PutPacket(bigbs)
+	}
+	return int64(n), e
+
 }

@@ -34,19 +34,10 @@ func PrintAllClientNames() {
 	}
 }
 
-//用于Server返回一个可被识别为innerMux的结构
-type MuxConnHaser struct {
+//规定如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarkerConn 接口.
+type MuxMarkerConn interface {
 	io.ReadWriteCloser
-	OptionalReader io.Reader
-	IsMux          bool
-}
-
-func (mc MuxConnHaser) Read(p []byte) (n int, err error) {
-	if r := mc.OptionalReader; r != nil {
-		return r.Read(p)
-	} else {
-		return mc.ReadWriteCloser.Read(p)
-	}
+	IsMux()
 }
 
 // Client 用于向 服务端 拨号.
@@ -95,12 +86,18 @@ func GetFullName(pc ProxyCommon) string {
 	if n := pc.Name(); n == "direct" {
 		return n
 	} else {
-		result := pc.Network() + pc.MiddleName() + n
+		var sb strings.Builder
+		sb.WriteString(pc.Network())
+		sb.WriteString(pc.MiddleName())
+		sb.WriteString(n)
+
 		if i, innerProxyName := pc.HasInnerMux(); i == 2 {
-			result += "+smux+" + innerProxyName
+			sb.WriteString("+smux+")
+			sb.WriteString(innerProxyName)
+
 		}
 
-		return result
+		return sb.String()
 	}
 }
 

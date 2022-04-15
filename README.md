@@ -11,13 +11,223 @@
 
 verysimple， 实际上 谐音来自 V2ray Simple (显然只适用于汉语母语者), 意思就是极简.
 
-verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
+verysimple 是一个 代理内核, 对标 v2ray/xray，功能较为丰富。
 
-而且 verysimple 还研发了一些新技术，详情见下文。
+verysimple项目大大简化了 转发机制，能提高运行速度。本项目 转发流量时，关键代码直接放在main.go里！非常直白易懂。
 
 只有项目名称是v2ray_simple，其它所有场合 全使用 verysimple 这个名称，可简称 "vs"。本作过于极简，极简得连logo也没有.
 
 规定，编译出的文件名必须以 verysimple 开头.
+
+verysimple 研发了一些新技术，可以加速。
+
+为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术部分，点击跳转 -> [创新点](##创新点)
+
+
+## 安装方式：
+
+### 下载安装
+
+如果是 linux服务器，可以参考我的一篇指导文章 [install.md](docs/install.md)
+
+电脑客户端的话直接自己到release下载就行。
+
+#### 客户端的 geoip和 geosite
+
+注意如果要geoip分流，而且要自己的mmdb文件的话（高玩情况），还要下载mmdb；
+
+
+默认第一次运行是会自动下载mmdb文件的，所以不用太担心。
+
+不过geosite的话，也是需要下载的，可以通过交互模式进行下载，或者通过如下命令下载
+
+```sh
+#在verysimple可执行文件所在目录
+git clone github.com/v2fly/domain-list-community
+mv domain-list-community geosite
+```
+
+通过git下载的好处是, 自己想要更新时，直接 `git pull` 即可;
+
+通过 交互模式进行下载的好处是, 如果你配置了配置文件, 并且有一个可用的节点, 则交互模式优先通过你的节点来下载geosite.
+
+这样可以避免github被墙的情况。
+
+
+### 编译安装
+
+```sh
+git clone https://github.com/hahahrfool/v2ray_simple
+cd v2ray_simple && go build
+```
+
+详细优化的编译参数请参考Makefile文件
+
+如果你是直接下载的可执行文件，则不需要 go build
+
+
+#### 关于内嵌geoip 文件
+
+默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
+
+**不过，最新的版本会自动检测，如果你没有mmdb文件，会自动给你从cdn下载下来，所以已经很方便了，不需要自己动手.**
+
+可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
+
+加载的外部文件 必须使用原始 mmdb格式。
+
+若要内嵌编译，要用 `tar -czf GeoLite2-Country.mmdb.tgz GeoLite2-Country.mmdb` 来打包一下，将生成的tgz文件放到 netLayer文件夹中，然后再编译 ，用 `go build -tags embed_geoip` 编译
+
+内嵌编译 所使用的 文件名 必须是 GeoLite2-Country.mmdb.tgz
+
+
+因为为了减小文件体积，所以才内嵌的gzip格式，而不是内嵌原始mmdb
+
+## 运行方式
+
+本作支持多种配置格式，方便不同需求的同学使用
+
+### 运行前的准备
+
+若为客户端，运行 `./verysimple -i` 进入交互模式，选择下载geosite文件
+
+第一次运行时会自动下载geoip文件。
+
+可选拷贝示例文件
+```sh
+#如果使用极简模式，则复制vs.json文件
+cp examples/vs.client.json client.json
+cp examples/vs.server.json server.json
+
+#如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
+cp examples/vlesss.client.toml client.toml
+cp examples/vlesss.server.toml server.toml
+```
+
+如果你不拷贝示例文件，也可以通过 [交互模式](#交互模式) 来生成自定义的配置。
+
+### 极简模式
+
+```sh
+#客户端, 极简模式
+verysimple -c client.json
+
+#服务端, 极简模式
+verysimple -c server.json
+```
+
+关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
+
+目前极简模式配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
+
+极简模式使用json格式，内部使用链接url的方式，所以非常节省空间;
+
+极简模式 不支持 复杂分流，dns 等高级特性。极简模式只支持通过 mycountry进行 geoip分流 这一种分流情况。
+
+极简模式暂不支持 ws/grpc 特性.
+
+极简模式继承自v2simple，理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
+
+另外，极简模式所使用的 url并不是正规的 各个协议所规定的 分享链接格式，而是我们自己的格式，所以链接看起来会略有区别。
+
+以后可以考虑 推出一个 选项，选择 到底是 使用协议所规定的格式, 还是我们verysimple自己的通用链接格式。
+
+### 命令行模式
+
+如果学会了极简模式里的url配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
+
+```sh
+#客户端
+verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:443?insecure=true
+
+#服务端
+verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
+```
+
+不细心的人要注意了，vlesss，要三个s，不然的话你就是裸奔状态,加了第三个s才表示套tls
+
+命令行模式 实际上就是把命令行的内容转化成极简模式的配置 然后再处理
+
+命令行模式 不支持dns、分流、复杂回落 等特性。只能配置 默认回落。
+
+### 标准模式
+
+```sh
+#客户端，标准模式
+verysimple -c client.toml
+#服务端，标准模式
+verysimple -c server.toml
+
+```
+
+标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
+
+本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。
+
+### 兼容模式
+
+未来会推出兼容v2ray的json配置文件的模式。
+
+### 交互模式
+
+已经推出了交互模式, 可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
+
+交互模式有很多好玩的功能，可以试试。
+
+运行 `verysimple -i` 即可进入交互模式
+
+目前支持如下功能：
+
+1. 交互生成配置，超级强大
+2. 热删除配置
+3. 热加载新配置文件
+4. 调节日志等级
+5. 调节hy手动挡
+6. 生成一个随机的uuid供你参考
+7. 下载geosite原文件
+8. 打印当前版本所支持的所有协议
+9. 查询当前状态
+10. 生成随机ssl证书
+
+交互生成配置后还可以输出到文件、加载到当前运行环境、生成分享链接。
+
+### 其他说明
+
+如果你不是放在path里的，则要 `./verysimple`, 前面要加一个点和一个斜杠。windows没这个要求。
+
+注意，如果你是自己直接 go build 编译的，则可执行文件与项目名称一致，为 v2ray_simple；
+
+如果用的下载的官方编译版本，则可执行文件叫做 verysimple. 可以通过文件名称判断是自己编译的还是下载的。
+
+官方发布版统一叫做verysimple是为了与 v2ray区别开。
+
+## 关于证书
+
+不要在实际场合使用我提供的证书！自己生成！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
+
+而且用了真证书后，别忘了把配置文件中的 `insecure=true` 给删掉.
+
+使用自签名证书是会被中间人攻击的，再次特地提醒。如果被中间人攻击，就能直接获取你的uuid，然后你的服务器 攻击者就也能用了。
+
+要想申请真实证书，仅有ip是不够的，要拥有一个域名。本项目提供的自签名证书仅供快速测试使用，切勿用于实际场合。
+
+### 生成自签名证书
+
+注意运行第二行命令时会要求你输入一些信息。确保至少有一行不是空白即可，比如打个1
+```sh
+openssl ecparam -genkey -name prime256v1 -out cert.key
+openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
+```
+
+此命令会生成ecc证书，这个证书比rsa证书 速度更快, 有利于网速加速（加速tls握手）。
+
+
+### 交互模式自动生成证书
+
+本作的交互模式也有自动生成随机自签名证书功能
+
+在你的服务端下载好程序后，运行 `verysimple -i` 开启交互模式，然后通过提示来自动生成tls证书。
+
 
 ## 创新点
 
@@ -172,219 +382,6 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 在不使用新协议时，lazy只能通过不lazy tls1.2的方式来解决此问题, 即裸奔转发 tls1.3、加密转发 tls1.2. 
 
-## 安装方式：
-
-### 下载安装
-
-如果是 linux服务器，可以参考我的一篇指导文章 [install.md](docs/install.md)
-
-电脑客户端的话直接自己到release下载就行。
-
-#### 客户端的 geoip和 geosite
-
-注意如果要geoip分流，而且要自己的mmdb文件的话（高玩情况），还要下载mmdb；
-
-
-默认第一次运行是会自动下载mmdb文件的，所以不用太担心。
-
-不过geosite的话，也是需要下载的，可以通过交互模式进行下载，或者通过如下命令下载
-
-```sh
-#在verysimple可执行文件所在目录
-git clone github.com/v2fly/domain-list-community
-mv domain-list-community geosite
-```
-
-通过git下载的好处是, 自己想要更新时，直接 `git pull` 即可;
-
-通过 交互模式进行下载的好处是, 如果你配置了配置文件, 并且有一个可用的节点, 则交互模式优先通过你的节点来下载geosite.
-
-这样可以避免github被墙的情况。
-
-
-### 编译安装
-
-```sh
-git clone https://github.com/hahahrfool/v2ray_simple
-cd v2ray_simple && go build
-```
-
-详细优化的编译参数请参考Makefile文件
-
-如果你是直接下载的可执行文件，则不需要 go build
-
-
-#### 关于内嵌geoip 文件
-
-默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
-
-**不过，最新的版本会自动检测，如果你没有mmdb文件，会自动给你从cdn下载下来，所以已经很方便了，不需要自己动手.**
-
-可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
-
-加载的外部文件 必须使用原始 mmdb格式。
-
-若要内嵌编译，要用 `tar -czf GeoLite2-Country.mmdb.tgz GeoLite2-Country.mmdb` 来打包一下，将生成的tgz文件放到 netLayer文件夹中，然后再编译 ，用 `go build -tags embed_geoip` 编译
-
-内嵌编译 所使用的 文件名 必须是 GeoLite2-Country.mmdb.tgz
-
-
-因为为了减小文件体积，所以才内嵌的gzip格式，而不是内嵌原始mmdb
-
-
-
-## 运行方式
-
-本作支持多种配置格式，方便不同需求的同学使用
-
-### 运行前的准备
-
-若为客户端，运行 `./verysimple -i` 进入交互模式，选择下载geosite文件
-
-第一次运行时还会自动下载geoip文件。
-
-可选拷贝示例文件
-```sh
-#如果使用极简模式，则复制vs.json文件
-cp examples/vs.client.json client.json
-cp examples/vs.server.json server.json
-
-#如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
-cp examples/vlesss.client.toml client.toml
-cp examples/vlesss.server.toml server.toml
-```
-
-如果你不拷贝示例文件，也可以通过 [交互模式](#交互模式) 来生成自定义的配置。
-
-### 极简模式
-
-```sh
-#客户端, 极简模式
-verysimple -c client.json
-
-#服务端, 极简模式
-verysimple -c server.json
-```
-
-关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
-
-目前极简模式配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
-
-极简模式使用json格式，内部使用链接url的方式，所以非常节省空间;
-
-极简模式 不支持 复杂分流，dns 等高级特性。极简模式只支持通过 mycountry进行 geoip分流 这一种分流情况。
-
-极简模式暂不支持 ws/grpc 特性.
-
-极简模式继承自v2simple，理念是字越少越好。推荐没有极简需求的同学直接使用标准模式。
-
-另外，极简模式所使用的 url并不是正规的 各个协议所规定的 分享链接格式，而是我们自己的格式，所以链接看起来会略有区别。
-
-以后可以考虑 推出一个 选项，选择 到底是 使用协议所规定的格式, 还是我们verysimple自己的通用链接格式。
-
-### 命令行模式
-
-如果学会了极简模式里的url配置后，如果你使用v1.0.5以及更新版本，还可以用如下命令来运行，无需配置文件
-
-```sh
-#客户端
-verysimple -L=socks5://127.0.0.1:10800 -D=vlesss://你的uuid@你的服务器ip:443?insecure=true
-
-#服务端
-verysimple -L=vlesss://你的uuid@你的服务器ip:443?cert=cert.pem&key=cert.key&version=0&fallback=:80
-```
-
-不细心的人要注意了，vlesss，要三个s，不然的话你就是裸奔状态,加了第三个s才表示套tls
-
-命令行模式 实际上就是把命令行的内容转化成极简模式的配置 然后再处理
-
-命令行模式 不支持dns、分流、复杂回落 等特性。只能配置 默认回落。
-
-### 标准模式
-
-```sh
-#客户端，标准模式
-verysimple -c client.toml
-#服务端，标准模式
-verysimple -c server.toml
-
-```
-
-标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
-
-本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。
-
-### 兼容模式
-
-未来会推出兼容v2ray的json配置文件的模式。
-
-### 交互模式
-
-已经推出了交互模式, 可以在命令行交互着生成一个你想要的配置，这样也就不需要各种一键脚本了
-
-交互模式有很多好玩的功能，可以试试。
-
-运行 `verysimple -i` 即可进入交互模式
-
-目前支持如下功能：
-
-1. 交互生成配置，超级强大
-2. 热删除配置
-3. 热加载新配置文件
-4. 调节日志等级
-5. 调节hy手动挡
-6. 生成一个随机的uuid供你参考
-7. 下载geosite原文件
-8. 打印当前版本所支持的所有协议
-9. 查询当前状态
-10. 生成随机ssl证书
-
-交互生成配置后还可以输出到文件、加载到当前运行环境、生成分享链接。
-
-### 其他说明
-
-如果你不是放在path里的，则要 `./verysimple`, 前面要加一个点和一个斜杠。windows没这个要求。
-
-注意，如果你是自己直接 go build 编译的，则可执行文件与项目名称一致，为 v2ray_simple；
-
-如果用的下载的官方编译版本，则可执行文件叫做 verysimple. 可以通过文件名称判断是自己编译的还是下载的。
-
-官方发布版统一叫做verysimple是为了与 v2ray区别开。
-
-
-
-
-## 验证方式
-
-对于功能的golang test，请使用 `go test ./...  -count=1` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
-
-## 关于证书
-
-不要在实际场合使用我提供的证书！自己生成！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
-
-而且用了真证书后，别忘了把配置文件中的 `insecure=true` 给删掉.
-
-使用自签名证书是会被中间人攻击的，再次特地提醒。如果被中间人攻击，就能直接获取你的uuid，然后你的服务器 攻击者就也能用了。
-
-要想申请真实证书，仅有ip是不够的，要拥有一个域名。本项目提供的自签名证书仅供快速测试使用，切勿用于实际场合。
-
-### 生成自签名证书
-
-注意运行第二行命令时会要求你输入一些信息。确保至少有一行不是空白即可，比如打个1
-```sh
-openssl ecparam -genkey -name prime256v1 -out cert.key
-openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
-```
-
-此命令会生成ecc证书，这个证书比rsa证书 速度更快, 有利于网速加速（加速tls握手）。
-
-
-### 交互模式自动生成证书
-
-本作的交互模式也有自动生成随机自签名证书功能
-
-在你的服务端下载好程序后，运行 `verysimple -i` 开启交互模式，然后通过提示来自动生成tls证书。
-
 
 ## 开发标准以及理念
 
@@ -456,6 +453,11 @@ verysimple 继承 v2simple的一个优点，就是服务端的配置也可以用
 其它开发计划请参考
 https://github.com/hahahrfool/v2ray_simple/discussions/3
 
+
+
+## 验证方式
+
+对于功能的golang test，请使用 `go test ./...  -count=1` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
 ## 测速
 
