@@ -74,11 +74,11 @@ func TrimSlice[T any](a []T, deleteIndex int) []T {
 	//实际上 golang.org/x/exp/slices 的 Delete 函数也可以, 不过我还是觉得我自己的好理解一些
 }
 
-func GetMapSortedKeySlice[K constraints.Ordered, V any](flags map[K]V) []K {
-	result := make([]K, len(flags))
+func GetMapSortedKeySlice[K constraints.Ordered, V any](theMap map[K]V) []K {
+	result := make([]K, len(theMap))
 
 	i := 0
-	for f := range flags {
+	for f := range theMap {
 		result[i] = f
 		i++
 	}

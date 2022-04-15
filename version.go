@@ -25,9 +25,9 @@ Structure 本项目结构
 
 	main -> proxy.Standard(配置文件) -> netLayer-> tlsLayer -> httpLayer -> advLayer -> proxy.
 
-	main中，读取配置文件，生成 Dail、Listen 、 RoutePolicy 和 Fallback等 对象后，开始监听；
+	main.go 中，读取配置文件，生成 Dail、Listen 、 RoutePolicy 和 Fallback等 对象后，开始监听，并顺便选择性打开交互模式和 apiServer；
 
-	具体调用链 是 listenSer -> handleNewIncomeConnection -> handshakeInserver_and_passToOutClient -> dialClient
+	具体 转发过程 的 调用链 是 listenSer -> handleNewIncomeConnection -> handshakeInserver_and_passToOutClient -> handshakeInserver -> passToOutClient -> (checkfallback) -> dialClient_andRelay -> dialClient ,  netLayer.Relay / netLayer.RelayUDP
 
 	用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，可选经过ws/grpc, 然后都搞好后，传到proxy，然后就开始转发
 

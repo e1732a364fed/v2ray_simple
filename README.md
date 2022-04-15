@@ -19,7 +19,10 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 规定，编译出的文件名必须以 verysimple 开头.
 
-verysimple 研发了一些新技术，可以加速。
+verysimple 研发了一些新技术，可以加速，目前基本上是全网最快。
+
+vs的主要亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，交互模式等。
+
 
 为了不吓跑小白，目前 本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
 
@@ -221,6 +224,7 @@ openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 ## 创新点
 
 本作有不少创新点，如下
+
 ### 协议
 
 实现了vless协议（v0，v1）和vlesss（即vless+tcp+tls），
@@ -419,6 +423,14 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 **不够极简或者解释不够清晰的代码我们将会进行淘汰或修正。**
 
 有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) 或者issue中的【开发者贡献指南】.
+
+#### 开发者入门指导：
+
+首先学会使用verysimple，熟读本 README.md 和 examples/ 下的配置文件
+
+之后读 version.go 文件里的 注释，对本作结构有一个认识。然后读 proxy/doc.go 理解 VSI模型。
+
+之后就可以在go doc中选择自己感兴趣的地方阅读了。
 
 ## 本项目所使用的开源协议
 

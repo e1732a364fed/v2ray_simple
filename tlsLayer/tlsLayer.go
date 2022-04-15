@@ -19,11 +19,14 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+//使用 ecc p256 方式生成证书
 func GenerateRandomeCert_Key() ([]byte, []byte) {
-	//ecc p256
 
 	max := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, _ := rand.Int(rand.Reader, max)
+
+	//可参考 https://blog.ideawand.com/2017/11/22/build-certificate-that-support-Subject-Alternative-Name-SAN/
+
 	subject := pkix.Name{
 		Country:            []string{"ZZ"},
 		Province:           []string{"asfdsdaf"},
@@ -69,6 +72,7 @@ func GenerateRandomeCert_Key() ([]byte, []byte) {
 	*/
 }
 
+// 会调用 GenerateRandomeCert_Key 来生成证书，并生成包含该证书的 []tls.Certificate
 func GenerateRandomTLSCert() []tls.Certificate {
 
 	tlsCert, err := tls.X509KeyPair(GenerateRandomeCert_Key())
@@ -79,6 +83,7 @@ func GenerateRandomTLSCert() []tls.Certificate {
 
 }
 
+// 会调用 GenerateRandomeCert_Key 来生成证书，并输出到文件
 func GenerateRandomCertKeyFiles(cfn, kfn string) error {
 
 	cb, kb := GenerateRandomeCert_Key()
@@ -105,7 +110,7 @@ func GenerateRandomCertKeyFiles(cfn, kfn string) error {
 	return nil
 }
 
-//如 certFile, keyFile 有一项没给出，则会自动生成随机证书
+//若 certFile, keyFile 有一项没给出，则会自动生成随机证书
 func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate, err error) {
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))

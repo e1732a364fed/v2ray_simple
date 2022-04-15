@@ -286,7 +286,7 @@ func main() {
 	}
 }
 
-//非阻塞.
+//非阻塞. 在main函数中被调用。也可以在 test代码中直接使用 listenSer 函数 来手动开启新的转发流程。
 // 若 not_temporary 为true, 则生成的listener将会被添加到 listenerArray 中
 func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
 
@@ -411,6 +411,8 @@ type incomingInserverConnState struct {
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
+//
+// 在 listenSer 中被调用。
 func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, forbidDNS_orRoute bool) {
 
 	iics := incomingInserverConnState{
@@ -593,6 +595,7 @@ startPass:
 	handshakeInserver_and_passToOutClient(iics)
 }
 
+//被 handshakeInserver_and_passToOutClient 调用
 func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	inServer := iics.inServer
 	wrappedConn := iics.wrappedConn
@@ -708,6 +711,8 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 
 // 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
+//
+//被 handleNewIncomeConnection 调用。
 func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 	if iics.shouldFallback {
@@ -729,6 +734,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 }
 
+// 被 passToOutClient 调用
 func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wlc io.ReadWriteCloser) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
 
@@ -805,6 +811,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wl
 	return
 }
 
+//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用，会调用 dialClient_andRelay
 func passToOutClient(iics incomingInserverConnState, err error, gotoFallback bool, wlc io.ReadWriteCloser, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
 	wrappedConn := iics.wrappedConn
@@ -1021,8 +1028,9 @@ func passToOutClient(iics incomingInserverConnState, err error, gotoFallback boo
 	dialClient_andRelay(iics, targetAddr, client, isTlsLazy_clientEnd, wlc, udp_wlc)
 }
 
-//dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手
-// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功并处理了转发阶段(用于lazy和mux )
+//dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手。
+// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和mux )。
+// 在 dialClient_andRelay 中被调用。
 func dialClient(targetAddr netLayer.Addr,
 	client proxy.Client,
 	baseLocalConn,
@@ -1403,6 +1411,7 @@ advLayerStep:
 	return
 } //dialClient
 
+//在 dialClient 中调用
 func dialInnerMux(client proxy.Client, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
 	smuxSession := client.GetClientInnerMuxSession(wrc)
 	if smuxSession == nil {
