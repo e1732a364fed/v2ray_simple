@@ -60,6 +60,8 @@ type Client interface {
 
 	//获取/拨号 一个可用的内层mux
 	GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session
+	InnerMuxEstablished() bool
+	CloseInnerMuxSession()
 }
 
 // Server 用于监听 客户端 的连接.
@@ -84,8 +86,12 @@ func GetFullName(pc ProxyCommon) string {
 	if n := pc.Name(); n == "direct" {
 		return n
 	} else {
-		return pc.Network() + pc.MiddleName() + n
+		result := pc.Network() + pc.MiddleName() + n
+		if i, innerProxyName := pc.HasInnerMux(); i == 2 {
+			result += "+smux+" + innerProxyName
+		}
 
+		return result
 	}
 }
 
@@ -160,7 +166,7 @@ type ProxyCommon interface {
 
 	initGRPC_server() error
 
-	IsMux() bool //如果用了grpc或者quic, 则此方法返回true
+	IsMux() bool //如果用了grpc或者quic, 则此方法返回true。这个是用于判断外层mux的。
 
 	GetQuic_Client() *quic.Client //for outClient
 	setQuic_Client(*quic.Client)
@@ -169,9 +175,10 @@ type ProxyCommon interface {
 
 	/////////////////// 内层mux层 ///////////////////
 
+	// 判断是否有内层mux。
 	//0 为不会有 innermux, 1 为有可能有 innermux, 2 为总是使用 innerMux;
-	// 规定是，客户端 只能返回0或者2， 服务端 只能返回 0或者1（除非服务端协议不支持不mux的情况，此时可以返回2）
-	// string 为 innermux内部的 代理 协议 名称
+	// 规定是，客户端 只能返回0或者2， 服务端 只能返回 0或者1（除非服务端协议不支持不mux的情况，此时可以返回2）。
+	// string 为 innermux内部的 代理 协议 名称。（一般用simplesocks）
 	HasInnerMux() (int, string)
 
 	/////////////////// 其它私有方法 ///////////////////
@@ -266,6 +273,10 @@ func (pcs *ProxyCommonStruct) CantRoute() bool {
 	return pcs.cantRoute
 }
 
+func (pcs *ProxyCommonStruct) InnerMuxEstablished() bool {
+	return pcs.innermux != nil && !pcs.innermux.IsClosed()
+}
+
 //placeholder
 func (pcs *ProxyCommonStruct) HasInnerMux() (int, string) {
 	return 0, ""
@@ -282,6 +293,13 @@ func (pcs *ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *
 		}
 	}
 	return smuxSession
+}
+
+func (pcs *ProxyCommonStruct) CloseInnerMuxSession() {
+	if pcs.innermux != nil && !pcs.innermux.IsClosed() {
+		pcs.innermux.Close()
+		pcs.innermux = nil
+	}
 }
 
 func (pcs *ProxyCommonStruct) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {

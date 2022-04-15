@@ -52,9 +52,9 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 ### 创新之外的已实现的有用特性
 
-支持trojan协议, 而且经过测速，比trojan-go快。（速度差距和本作的vless与v2ray的vless的差距基本一致，所以就不放出测速文件了，参考vless即可）
+支持trojan协议 以及smux, 而且经过测速，比trojan-go快。（速度差距和本作的vless与v2ray的vless的差距基本一致，所以就不放出测速文件了，参考vless即可）
 
-不过目前trojan的服务端暂时没实现 smux。以后会加上。另外 lazy特性是不支持trojan的。这种不稳定不安全的特性还是专用在一个协议上比较好。
+不过 lazy特性是不支持trojan的。这种不稳定不安全的特性还是专用在一个协议上比较好。
 
 在没有mmdb文件时，自动下载mmdb
 
@@ -499,7 +499,7 @@ verysimple 版本 v1.0.3
 
 详细测速还可以参考另外几个文件，docs/speed_macos.md 和 docs/speed_ubuntu.md。
 
-总之目前可以看到，在有splice的情况下（即linux中），verysimple是绝对的王者。虽然有时还不够稳定，但是我会进一步优化这个问题的。
+总之目前可以看到，verysimple是绝对的王者。虽然有时还不够稳定，但是我会进一步优化这个问题的。
 
 ## 交流
 
@@ -543,9 +543,10 @@ github.com/lucas-clemente/quic-go
 github.com/tobyxdd/quic-go
 go.uber.org/zap
 github.com/manifoldco/promptui
+github.com/xtaci/smux v1.5.16
 ```
 
-可能不全，详情可见 go.mod 文件
+可能不全，详见 go.mod 文件
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 

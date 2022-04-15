@@ -13,10 +13,12 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-const name = "http"
+const Name = "http"
+
+var connectReturnBytes = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
 
 func init() {
-	proxy.RegisterServer(name, &ServerCreator{})
+	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
 type ServerCreator struct{}
@@ -45,50 +47,50 @@ func (_ Server) CanFallback() bool {
 }
 
 func (_ Server) Name() string {
-	return name
+	return Name
 }
 
 func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
-	var b = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
+	var bs = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
 	//因为要储存为 firstdata，所以也无法直接放回
-
-	newconn = underlay
 
 	n := 0
 
-	n, err = underlay.Read(b[:])
+	n, err = underlay.Read(bs[:])
 	if err != nil {
+		utils.PutBytes(bs)
 		return
 	}
 
 	//rfc: https://datatracker.ietf.org/doc/html/rfc7231#section-4.3.6
 	// "CONNECT is intended only for use in requests to a proxy.  " 总之CONNECT命令专门用于代理.
-	// GET如果 path也是带 http:// 头的话，也是可以的
+	// GET如果 path也是带 http:// 头的话，也是可以的，但是这种只适用于http代理，无法用于https。
 
-	method, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(b[:n], true)
+	method, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(bs[:n], true)
 	if failreason != 0 {
-		err = utils.ErrInErr{ErrDesc: "get method/path failed, method:" + method + " ,reason:", Data: failreason}
+		err = utils.ErrInErr{ErrDesc: "get method/path failed", ErrDetail: utils.ErrInvalidData, Data: []any{method, failreason}}
 
 		//一个正常的http代理如果遇到了 格式不符的情况的话是要返回 400 等错误代码的
 		// 但是，也不能说不返回400的就是异常服务器，因为这可能是服务器自己的策略，无视一切错误请求，比如防黑客时就常常会如此.
 		// 所以我们就直接return即可
 		//
 		//不过另外注意，连method都没有，那么就没有回落的可能性
+
+		utils.PutBytes(bs)
 		return
 	}
 
 	//log.Println("GetRequestMethod_and_PATH_from_Bytes", method, URL, "data:", string(b[:n]))
 
-	var isHTTPS bool
+	var isCONNECT bool
 
-	// 如果方法是CONNECT，则为https协议的代理
 	if method == "CONNECT" {
-		isHTTPS = true
+		isCONNECT = true
 	}
 
 	var addressStr string
 
-	if isHTTPS {
+	if isCONNECT {
 		addressStr = path //实测都会自带:443, 也就不需要我们额外判断了
 
 	} else {
@@ -96,6 +98,8 @@ func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, _ net
 		hostPortURL, err2 := url.Parse(path)
 		if err2 != nil {
 			err = err2
+
+			utils.PutBytes(bs)
 			return
 		}
 		addressStr = hostPortURL.Host
@@ -107,20 +111,24 @@ func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, _ net
 
 	targetAddr, err = netLayer.NewAddr(addressStr)
 	if err != nil {
+
+		utils.PutBytes(bs)
 		return
 	}
-	//如果使用https协议，需先向客户端表示连接建立完毕
-	if isHTTPS {
-		underlay.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-		//这个也是https代理的特征，所以不适合 公网使用
+	//如果使用CONNECT方式进行代理，需先向客户端表示连接建立完毕
+	if isCONNECT {
+		underlay.Write(connectReturnBytes) //这个也是https代理的特征，所以不适合 公网使用
+
 		//正常来说我们的服务器要先dial，dial成功之后再返回200，但是因为我们目前的架构是在main函数里dail，
 		// 所以就直接写入了.
 
 		//另外，nginx是没有实现 CONNECT的，不过有插件
 
+		newconn = underlay
+
 	} else {
 		newconn = &ProxyConn{
-			firstData: b[:n],
+			firstData: bs[:n],
 			Conn:      underlay,
 		}
 
@@ -140,9 +148,10 @@ func (pc *ProxyConn) Read(p []byte) (int, error) {
 	if pc.notFirst {
 		return pc.Conn.Read(p)
 	}
+	pc.notFirst = true
+
 	bs := pc.firstData
 	pc.firstData = nil
-	pc.notFirst = true
 
 	n := copy(p, bs)
 	utils.PutBytes(bs)

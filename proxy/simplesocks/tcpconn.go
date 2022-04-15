@@ -8,8 +8,8 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//trojan比较简洁，这个 UserTCPConn 只是用于读取握手读取时读到的剩余的缓存
-type UserTCPConn struct {
+//trojan比较简洁，这个 TCPConn 只是用于读取握手读取时读到的剩余的缓存
+type TCPConn struct {
 	net.Conn
 	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
 
@@ -20,7 +20,7 @@ type UserTCPConn struct {
 	isServerEnd bool
 }
 
-func (uc *UserTCPConn) Read(p []byte) (int, error) {
+func (uc *TCPConn) Read(p []byte) (int, error) {
 	if uc.remainFirstBufLen > 0 {
 		n, err := uc.optionalReader.Read(p)
 		if n > 0 {
@@ -31,11 +31,11 @@ func (uc *UserTCPConn) Read(p []byte) (int, error) {
 		return uc.Conn.Read(p)
 	}
 }
-func (uc *UserTCPConn) Write(p []byte) (int, error) {
+func (uc *TCPConn) Write(p []byte) (int, error) {
 	return uc.Conn.Write(p)
 }
 
-func (c *UserTCPConn) EverPossibleToSplice() bool {
+func (c *TCPConn) EverPossibleToSplice() bool {
 
 	if netLayer.IsBasicConn(c.Conn) {
 		return true
@@ -46,7 +46,7 @@ func (c *UserTCPConn) EverPossibleToSplice() bool {
 	return false
 }
 
-func (c *UserTCPConn) CanSplice() (r bool, conn net.Conn) {
+func (c *TCPConn) CanSplice() (r bool, conn net.Conn) {
 	if !c.isServerEnd && c.remainFirstBufLen > 0 {
 		return false, nil
 	}
@@ -61,12 +61,12 @@ func (c *UserTCPConn) CanSplice() (r bool, conn net.Conn) {
 
 	return
 }
-func (c *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
+func (c *TCPConn) ReadFrom(r io.Reader) (written int64, err error) {
 
 	return netLayer.TryReadFrom_withSplice(c, c.Conn, r, func() bool { return c.isServerEnd || c.remainFirstBufLen <= 0 })
 }
 
-func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
+func (c *TCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 	if c.isServerEnd || c.remainFirstBufLen <= 0 {
 

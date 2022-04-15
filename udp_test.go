@@ -83,7 +83,7 @@ func TestUDP_trojan_through_udp(t *testing.T) {
 	testUDP("trojan", 0, "udp", false, false, t)
 }
 
-//经实测，udp dokodemo/socks5->vless/trojan (tcp/udp)->udp direct 来请求dns 是毫无问题的。
+//udp测试我们直接使用dns请求来测试.
 func testUDP(protocol string, version int, network string, multi bool, fullcone bool, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()

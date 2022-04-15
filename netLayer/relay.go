@@ -196,6 +196,7 @@ classic:
 func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount, uploadByteCount *uint64) int64 {
 
 	if utils.LogLevel == utils.Log_debug {
+
 		rtaddrStr := realTargetAddr.String()
 		go func() {
 			n, e := TryCopy(wrc, wlc)

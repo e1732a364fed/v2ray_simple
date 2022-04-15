@@ -70,7 +70,7 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 		return nil, err
 	}
 
-	return &UserTCPConn{
+	return &TCPConn{
 		Conn:            underlay,
 		underlayIsBasic: netLayer.IsBasicConn(underlay),
 	}, nil

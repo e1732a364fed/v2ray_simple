@@ -14,26 +14,25 @@ import (
 	"sync/atomic"
 	"syscall"
 
+	"github.com/pkg/profile"
+	"go.uber.org/zap"
+
 	"github.com/hahahrfool/v2ray_simple/advLayer/grpc"
 	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
 	"github.com/hahahrfool/v2ray_simple/advLayer/ws"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
-	"github.com/pkg/profile"
-	"go.uber.org/zap"
-
-	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/proxy/direct"
-	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
-	"github.com/hahahrfool/v2ray_simple/proxy/vless"
 
 	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/dokodemo"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/simplesocks"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/socks5"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/trojan"
+	_ "github.com/hahahrfool/v2ray_simple/proxy/vless"
 )
 
 const (
@@ -414,8 +413,6 @@ type incomingInserverConnState struct {
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
 func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, forbidDNS_orRoute bool) {
 
-	//log.Println("handleNewIncomeConnection called", defaultClientForThis)
-
 	iics := incomingInserverConnState{
 		baseLocalConn:     thisLocalConnectionInstance,
 		inServer:          inServer,
@@ -479,8 +476,6 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		wrappedConn = tlsConn
 
 	}
-
-	//log.Println("handshake passed tls")
 
 	if adv := inServer.AdvancedLayer(); adv != "" {
 		switch adv {
@@ -605,9 +600,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 	wlc, udp_wlc, targetAddr, err = inServer.Handshake(wrappedConn)
 
 	if err == nil {
-		//log.Println("inServer handshake passed")
-
-		if udp_wlc != nil && inServer.Name() == socks5.Name {
+		if udp_wlc != nil && inServer.Name() == "socks5" {
 			// socks5的 udp associate返回的是 clientFutureAddr, 而不是实际客户的第一个请求.
 			//所以我们要读一次才能进行下一步。
 
@@ -632,7 +625,26 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 
 		if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
 			if mh, ok := wlc.(proxy.MuxConnHaser); ok {
+
+				muxConf := proxy.ListenConf{
+					CommonConf: proxy.CommonConf{
+						Protocol: innerProxyName,
+					},
+				}
+
+				muxSer, err2 := proxy.NewServer(&muxConf)
+				if err2 != nil {
+					if ce := utils.CanLogDebug("mux inner proxy server creation failed"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+					err = err2
+					return
+				}
+
 				session := inServer.GetServerInnerMuxSession(mh.ReadWriteCloser)
+
+				utils.Debug("inServer got mux connection")
+
 				if session == nil {
 					err = utils.ErrFailed
 					return
@@ -640,37 +652,39 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 				//内层mux要对每一个子连接单独进行 子代理协议握手 以及 outClient的拨号。
 
 				go func() {
+					utils.Debug("inServer start session loop ")
+
 					for {
+						utils.Debug("inServer try accept stream ")
+
 						stream, err := session.AcceptStream()
 						if err != nil {
+							utils.Debug("inServer try accept stream err")
+
 							session.Close()
 							return
 						}
-						muxConf := proxy.ListenConf{
-							CommonConf: proxy.CommonConf{
-								Protocol: innerProxyName,
-							},
-						}
 
-						muxSer, err := proxy.NewServer(&muxConf)
-						if err != nil {
-							if ce := utils.CanLogDebug("mux inner proxy server creation failed"); ce != nil {
-								ce.Write(zap.Error(err))
+						go func() {
+							utils.Debug("inServer got mux stream " + innerProxyName)
+
+							wlc1, udp_wlc1, targetAddr1, err1 := muxSer.Handshake(stream)
+
+							if err1 != nil {
+								if ce := utils.CanLogDebug("mux inner proxy handshake failed"); ce != nil {
+									ce.Write(zap.Error(err1))
+								}
+								passToOutClient(*iics, false, false, wlc1, udp_wlc1, targetAddr1)
+
+							} else {
+
+								utils.ZapLogger.Debug("inServer mux stream handshake ok", zap.Any("wlc1", wlc1), zap.Any("udp_wlc1", udp_wlc1), zap.Any("targetAddr1", targetAddr1))
+
+								passToOutClient(*iics, true, false, wlc1, udp_wlc1, targetAddr1)
+
 							}
-							return
-						}
-						wlc1, udp_wlc1, targetAddr1, err1 := muxSer.Handshake(stream)
 
-						if err1 != nil {
-							if ce := utils.CanLogDebug("mux inner proxy handshake failed"); ce != nil {
-								ce.Write(zap.Error(err1))
-							}
-							passToOutClient(*iics, false, false, wlc1, udp_wlc1, targetAddr1)
-
-						} else {
-							passToOutClient(*iics, true, false, wlc1, udp_wlc1, targetAddr1)
-
-						}
+						}()
 
 					}
 				}()
@@ -963,31 +977,11 @@ func passToOutClient(iics incomingInserverConnState, noErr bool, gotoFallback bo
 	}
 
 	//这一段代码是去判断是否要在转发结束后自动关闭连接
-	//如果目标是udp则要分情况讨论
-	//
-	// 这里 因为 vless v1 的 CRUMFURS 信道 会对 wrappedConn 进行 keep alive ，
-	// 而且具体的传递信息的部分并不是在main函数中处理，而是自己的go routine，所以不能直接关闭 wrappedConn
-	// 所以要分情况进行 defer wrappedConn.Close()。
-	// 然后这里是设置 iics.shouldCloseBaseConnWhenComplete, 然后在dialClient函数里再实际 defer
+	//如果目标是udp则要分情况讨论, 主要是socks5 的特殊情况
 
 	if targetAddr.IsUDP() {
 
 		switch inServer.Name() {
-		case "vless":
-
-			if targetAddr.Name == vless.CRUMFURS_Established_Str {
-				// 预留了 CRUMFURS 信道的话，就不要关闭 wrappedConn
-				// 	而且也不在这里处理监听事件，client自己会在额外的 goroutine里处理
-				//	server也一样，会在特定的场合给 CRUMFURS 传值，这个机制是与main函数无关的
-
-				// 而且 wrappedConn 会被 inServer 保存起来，用于后面的 unknownRemoteAddrMsgWriter
-				return
-			} else {
-				//如果不是CRUMFURS命令，那就是普通的针对某udp地址的连接，见下文 uniExtractor 的使用
-
-				iics.shouldCloseInSerBaseConnWhenFinish = true
-			}
-
 		case "socks5":
 			// UDP Associate：
 			// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
@@ -1035,9 +1029,31 @@ func dialClient(targetAddr netLayer.Addr,
 	clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder,
 	result int) {
 
+	isudp := targetAddr.IsUDP()
+
+	//先过滤掉 innermux 通道已经建立的情况, 此时我们不必再次外部拨号，而是直接进行内层拨号.
+	if muxInt, innerProxyName := client.HasInnerMux(); muxInt == 2 {
+		if client.InnerMuxEstablished() {
+			wrc1, realudp_wrc, result1 := dialInnerMux(client, nil, innerProxyName, targetAddr, isudp)
+
+			if result1 == 0 {
+				if wrc1 != nil {
+					wrc = wrc1
+				}
+				if realudp_wrc != nil {
+					udp_wrc = realudp_wrc
+				}
+				result = result1
+				return
+			} else {
+				utils.Debug("mux failed, will redial")
+			}
+
+		}
+	}
+
 	var err error
 	//先确认拨号地址
-	isudp := targetAddr.IsUDP()
 
 	//direct的话自己是没有目的地址的，直接使用 请求的地址
 	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
@@ -1084,7 +1100,7 @@ func dialClient(targetAddr netLayer.Addr,
 	var grpcClientConn grpc.ClientConn
 	var dailedCommonConn any
 
-	dialHere := !(client.Name() == direct.Name && isudp)
+	dialHere := !(client.Name() == "direct" && isudp)
 
 	// direct 的udp 是自己拨号的,因为要考虑到fullcone。
 	//
@@ -1143,8 +1159,6 @@ func dialClient(targetAddr netLayer.Addr,
 		}
 
 	}
-
-	//log.Println("dial real addr ok", realTargetAddr)
 
 	////////////////////////////// tls握手阶段 /////////////////////////////////////
 
@@ -1289,7 +1303,12 @@ advLayerStep:
 					return
 				}
 				ed = edBuf[:n]
-				//log.Println("will send early data", n, ed)
+
+				if ce := utils.CanLogDebug("will send early data"); ce != nil {
+					ce.Write(
+						zap.Int("len", n),
+					)
+				}
 
 			}
 
@@ -1349,67 +1368,83 @@ advLayerStep:
 		}
 	}
 
-	////////////////////////////// 内层 mux 阶段 /////////////////////////////////////
+	////////////////////////////// 建立内层 mux 阶段 /////////////////////////////////////
 	if muxInt, innerProxyName := client.HasInnerMux(); muxInt == 2 {
 		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan的实现。
 
-		smuxSession := client.GetClientInnerMuxSession(wrc)
-		if smuxSession == nil {
-			result = -1
-			return
-		}
+		var wrc1 io.ReadWriteCloser
+		var realudp_wrc netLayer.MsgConn
 
-		stream, err := smuxSession.OpenStream()
+		wrc1, realudp_wrc, result = dialInnerMux(client, wrc, innerProxyName, targetAddr, isudp)
+
+		if wrc1 != nil {
+			wrc = wrc1
+		}
+		if realudp_wrc != nil {
+			udp_wrc = realudp_wrc
+		}
+	}
+
+	return
+} //dialClient
+
+func dialInnerMux(client proxy.Client, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
+	smuxSession := client.GetClientInnerMuxSession(wrc)
+	if smuxSession == nil {
+		result = -1
+		utils.Debug("dialInnerMux return fail 1")
+		return
+	}
+
+	stream, err := smuxSession.OpenStream()
+	if err != nil {
+		client.CloseInnerMuxSession() //发现就算 OpenStream 失败, session也不会自动被关闭, 需要我们手动关一下。
+
+		if ce := utils.CanLogDebug("dialInnerMux return fail 2"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		result = -1
+		return
+	}
+
+	muxDialConf := proxy.DialConf{
+		CommonConf: proxy.CommonConf{
+			Protocol: innerProxyName,
+		},
+	}
+
+	muxClient, err := proxy.NewClient(&muxDialConf)
+	if err != nil {
+		if ce := utils.CanLogDebug("mux inner proxy client creation failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		result = -1
+		return
+	}
+	if isudp {
+		realudp_wrc, err = muxClient.EstablishUDPChannel(stream, targetAddr)
 		if err != nil {
-			return
-		}
-
-		muxDialConf := proxy.DialConf{
-			CommonConf: proxy.CommonConf{
-				Protocol: innerProxyName,
-			},
-		}
-
-		muxClient, err := proxy.NewClient(&muxDialConf)
-		if err != nil {
-			if ce := utils.CanLogDebug("mux inner proxy client creation failed"); ce != nil {
+			if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
 				ce.Write(zap.Error(err))
 			}
 			result = -1
 			return
 		}
-		if isudp {
-			realwrc, err := muxClient.EstablishUDPChannel(stream, targetAddr)
-			if err != nil {
-				if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				result = -1
-				return
+	} else {
+		realwrc, err = muxClient.Handshake(stream, targetAddr)
+		if err != nil {
+			if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
+				ce.Write(zap.Error(err))
 			}
-			udp_wrc = realwrc
-
-			result = 1
-		} else {
-			realwrc, err := muxClient.Handshake(stream, targetAddr)
-			if err != nil {
-				if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				result = -1
-				return
-			}
-			wrc = realwrc
-
-			result = 1
+			result = -1
+			return
 		}
-
 	}
 
 	return
-}
+} //dialInnerMux
 
-// dialClient_andRelay 进行实际转发(Copy)。
+// dialClient_andRelay 进行实际转发(Copy)。被 passToOutClient 调用.
 // targetAddr为用户所请求的地址。
 // client为真实要拨号的client，可能会与iics里的defaultClient不同。以client为准。
 // wlc为调用者所提供的 此请求的 来源 链接
@@ -1417,14 +1452,20 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 	isudp := targetAddr.IsUDP()
 
-	if iics.shouldCloseInSerBaseConnWhenFinish {
-		if iics.baseLocalConn != nil {
-			defer iics.baseLocalConn.Close()
-		}
-	}
-	if wlc != nil {
-		defer wlc.Close()
+	innerMuxResult, _ := client.HasInnerMux()
 
+	//在内层mux时, 不能因为单个传输完毕就关闭整个连接
+	if innerMuxResult == 0 {
+		if iics.shouldCloseInSerBaseConnWhenFinish {
+			if iics.baseLocalConn != nil {
+				defer iics.baseLocalConn.Close()
+			}
+		}
+
+		if wlc != nil {
+			defer wlc.Close()
+
+		}
 	}
 
 	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
@@ -1435,8 +1476,6 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 	////////////////////////////// 实际转发阶段 /////////////////////////////////////
 
 	if !isudp {
-
-		//log.Println("all handshake finished")
 
 		if tls_lazy_encrypt && !iics.routedToDirect {
 
@@ -1476,6 +1515,8 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		netLayer.Relay(&realTargetAddr, wrc, wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
 
 		atomic.AddInt32(&activeConnectionCount, -1)
+
+		utils.Debug("Relay tcp finished")
 
 		return
 

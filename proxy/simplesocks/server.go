@@ -100,7 +100,7 @@ realPart:
 		return nil, NewUDPConn(underlay, io.MultiReader(readbuf, underlay)), targetAddr, nil
 
 	} else {
-		return &UserTCPConn{
+		return &TCPConn{
 			Conn:              underlay,
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
