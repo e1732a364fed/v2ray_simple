@@ -137,6 +137,8 @@ protocol = "direct"
 	//tryGetHttp(client, "https://www.qq.com", t)
 	tryGetHttp(client, "http://captive.apple.com", t)
 	tryGetHttp(client, "http://www.msftconnecttest.com/connecttest.txt", t)
+
+	//联通性测试 可参考 https://imldy.cn/posts/99d42f85/
 }
 
 func tryGetHttp(client *http.Client, path string, t *testing.T) {

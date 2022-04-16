@@ -135,6 +135,7 @@ func main() {
 
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
+	fmt.Printf("tls_lazy_encrypt:%t\n", tls_lazy_encrypt)
 
 	runPreCommands()
 
