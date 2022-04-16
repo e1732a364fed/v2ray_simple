@@ -20,7 +20,7 @@ func TestUDP(t *testing.T) {
 	s := &socks5.Server{}
 
 	//建立socks5服务并监听，这里仅用于 udp associate 握手
-	sAddrStr := netLayer.GetRandLocalAddr()
+	sAddrStr := netLayer.GetRandLocalAddr(true, true)
 	listener, err := net.Listen("tcp", sAddrStr)
 	if err != nil {
 		t.Log("can not listen on", sAddrStr, err)
@@ -86,7 +86,7 @@ func TestUDP(t *testing.T) {
 	}()
 
 	//建立虚拟目标udp服务器并监听
-	fakeUDP_ServerPort := netLayer.RandPort()
+	fakeUDP_ServerPort := netLayer.RandPort(true, true)
 
 	fakeRealUDPServerListener, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),

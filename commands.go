@@ -211,7 +211,7 @@ protocol = "http"
 			fmt.Println("can not create clientEndInServer: ", err)
 			return
 		}
-		listenAddrStr := netLayer.GetRandLocalPrivateAddr()
+		listenAddrStr := netLayer.GetRandLocalPrivateAddr(true, false)
 		clientEndInServer.SetAddrStr(listenAddrStr)
 
 		listener = listenSer(clientEndInServer, outClient, false)

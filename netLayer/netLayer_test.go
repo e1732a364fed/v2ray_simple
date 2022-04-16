@@ -15,7 +15,7 @@ func TestIpv6(t *testing.T) {
 func TestUDP(t *testing.T) {
 	//测试setdeadline的情况. 实测证明 SetReadDeadline 在Read过程中也可以使用， 这样就可以防止阻塞
 
-	laddr, _ := net.ResolveUDPAddr("udp", ":"+RandPortStr())
+	laddr, _ := net.ResolveUDPAddr("udp", ":"+RandPortStr(true, true))
 
 	udpConn, _ := net.ListenUDP("udp", laddr)
 

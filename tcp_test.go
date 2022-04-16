@@ -68,8 +68,8 @@ protocol = "direct"
 
 `
 
-	clientListenPort := netLayer.RandPortStr()
-	clientDialPort := netLayer.RandPortStr()
+	clientListenPort := netLayer.RandPortStr(true, false)
+	clientDialPort := netLayer.RandPortStr(true, false)
 
 	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort, protocol, clientDialPort, version, network)
 

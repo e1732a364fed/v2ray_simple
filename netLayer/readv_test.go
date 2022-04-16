@@ -32,7 +32,7 @@ func TestReadVCopy(t *testing.T) {
 
 	utils.InitLog()
 
-	listenAddr := GetRandLocalAddr()
+	listenAddr := GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		t.Log(err)
@@ -93,7 +93,7 @@ func TestReadVCopy(t *testing.T) {
 func BenchmarkReadVCopy(b *testing.B) {
 	transmitCount := b.N
 
-	listenAddr := GetRandLocalAddr()
+	listenAddr := GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		b.Log(err)
@@ -156,7 +156,7 @@ func BenchmarkClassicCopy(b *testing.B) {
 
 	transmitCount := b.N
 
-	listenAddr := GetRandLocalAddr()
+	listenAddr := GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		b.Log(err)
@@ -233,7 +233,7 @@ func BenchmarkClassicCopy_SimulateRealWorld(b *testing.B) {
 
 	transmitCount := b.N
 
-	listenAddr := GetRandLocalAddr()
+	listenAddr := GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		b.Log(err)
@@ -316,7 +316,7 @@ func BenchmarkClassicCopy_SimulateRealWorld_ReadV(b *testing.B) {
 
 	transmitCount := b.N
 
-	listenAddr := GetRandLocalAddr()
+	listenAddr := GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		b.Log(err)

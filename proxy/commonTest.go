@@ -131,7 +131,7 @@ func TestUDP(protocol string, version int, port string, use_multi int, t *testin
 		t.FailNow()
 	}
 
-	thePort := netLayer.RandPort()
+	thePort := netLayer.RandPort(true, true)
 
 	t.Log("fake remote udp server port is ", thePort)
 

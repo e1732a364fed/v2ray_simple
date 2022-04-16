@@ -21,7 +21,7 @@ func TestBase64Len(t *testing.T) {
 // ws基本读写功能测试.
 // 分别测试写入短数据和长数据
 func TestWs(t *testing.T) {
-	listenAddr := netLayer.GetRandLocalAddr()
+	listenAddr := netLayer.GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		t.Log(err)

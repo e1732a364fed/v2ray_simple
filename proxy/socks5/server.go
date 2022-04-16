@@ -148,7 +148,7 @@ func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpCha
 
 		//随机生成一个端口专门用于处理该客户端。这是我的想法。
 
-		bindPort := netLayer.RandPort()
+		bindPort := netLayer.RandPort(true, true)
 
 		udpPreparedAddr := &net.UDPAddr{
 			IP:   []byte{0, 0, 0, 0},

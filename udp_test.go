@@ -132,10 +132,10 @@ network = "%s"
 		testClientConfFormatStr += "\nextra = { vless1_udp_multi = true }\n"
 	}
 
-	clientListenPort := netLayer.RandPortStr()
-	clientListen2Port := netLayer.RandPortStr()
-	clientDialPort := netLayer.RandPortStr()
-	socks5Port, socks5PortStr := netLayer.RandPort_andStr()
+	clientListenPort := netLayer.RandPortStr(true, true)
+	clientListen2Port := netLayer.RandPortStr(true, true)
+	clientDialPort := netLayer.RandPortStr(true, false)
+	socks5Port, socks5PortStr := netLayer.RandPort_andStr(true, false)
 
 	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort,
 		clientListen2Port, socks5PortStr, protocol, clientDialPort, version, network)

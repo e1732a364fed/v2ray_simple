@@ -52,25 +52,57 @@ type AddrData struct {
 	Data []byte
 }
 
-func RandPort() int {
-	return rand.Intn(60000) + 4096
+//if mustValid is true, a valid port is assured.
+// isudp is used to determine whether you want to use udp
+func RandPort(mustValid, isudp bool) (p int) {
+	p = rand.Intn(60000) + 4096
+	if mustValid {
+		if isudp {
+			ln, err := net.ListenUDP("udp", &net.UDPAddr{
+				IP:   net.IPv4(0, 0, 0, 0),
+				Port: p,
+			})
+
+			ln.Close()
+
+			if err != nil {
+				utils.Debug("Get RandPort udp but got err, trying again")
+				return RandPort(mustValid, true)
+			}
+		} else {
+			ln, err := net.ListenTCP("tcp", &net.TCPAddr{
+				IP:   net.IPv4(0, 0, 0, 0),
+				Port: p,
+			})
+
+			ln.Close()
+
+			if err != nil {
+				utils.Debug("Get RandPort tcp but got err, trying again")
+
+				return RandPort(mustValid, false)
+			}
+
+		}
+	}
+	return
 }
 
-func RandPortStr() string {
-	return strconv.Itoa(RandPort())
+func RandPortStr(mustValid, isudp bool) string {
+	return strconv.Itoa(RandPort(mustValid, isudp))
 }
 
-func RandPort_andStr() (int, string) {
-	pt := RandPort()
+func RandPort_andStr(mustValid, isudp bool) (int, string) {
+	pt := RandPort(mustValid, isudp)
 	return pt, strconv.Itoa(pt)
 }
 
-func GetRandLocalAddr() string {
-	return "0.0.0.0:" + RandPortStr()
+func GetRandLocalAddr(mustValid, isudp bool) string {
+	return "0.0.0.0:" + RandPortStr(mustValid, isudp)
 }
 
-func GetRandLocalPrivateAddr() string {
-	return "127.0.0.1:" + RandPortStr()
+func GetRandLocalPrivateAddr(mustValid, isudp bool) string {
+	return "127.0.0.1:" + RandPortStr(mustValid, isudp)
 }
 
 func NewAddrFromUDPAddr(addr *net.UDPAddr) Addr {

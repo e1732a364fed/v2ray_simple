@@ -14,7 +14,7 @@ import (
 )
 
 func TestVlesss(t *testing.T) {
-	testTls("vlesss", netLayer.RandPortStr(), t)
+	testTls("vlesss", netLayer.RandPortStr(true, false), t)
 }
 
 func testTls(protocol string, port string, t *testing.T) {
