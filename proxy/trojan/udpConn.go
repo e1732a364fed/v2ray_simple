@@ -2,6 +2,7 @@ package trojan
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"net"
 
@@ -14,6 +15,8 @@ type UDPConn struct {
 	optionalReader io.Reader
 
 	bufr *bufio.Reader
+
+	handshakeBuf *bytes.Buffer
 }
 
 func NewUDPConn(conn net.Conn, optionalReader io.Reader) (uc *UDPConn) {
@@ -81,11 +84,19 @@ func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 	return bs[:n], addr, nil
 }
 
-func (u UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
+func (u *UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
+	var buf *bytes.Buffer
+	if u.handshakeBuf != nil {
+		buf = u.handshakeBuf
+		u.handshakeBuf = nil
+	} else {
+		buf = utils.GetBuf()
+	}
+
 	abs, atype := addr.AddressBytes()
 
 	atype = netLayer.ATypeToSocks5Standard(atype)
-	buf := utils.GetBuf()
+
 	buf.WriteByte(atype)
 	buf.Write(abs)
 

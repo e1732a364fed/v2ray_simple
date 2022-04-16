@@ -133,8 +133,10 @@ protocol = "direct"
 		},
 	}
 
-	tryGetHttp(client, "http://www.baidu.com", t)
-	tryGetHttp(client, "https://www.qq.com", t)
+	//tryGetHttp(client, "http://www.baidu.com", t)
+	//tryGetHttp(client, "https://www.qq.com", t)
+	tryGetHttp(client, "http://captive.apple.com", t)
+	tryGetHttp(client, "http://www.msftconnecttest.com/connecttest.txt", t)
 }
 
 func tryGetHttp(client *http.Client, path string, t *testing.T) {

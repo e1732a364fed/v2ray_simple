@@ -1,6 +1,6 @@
 #BUILD_VERSION   := vx.x.x-beta.x 这个将在github action里自动通过tag配置, 参见 .github/workflows/build_release.yml
 
-prefix          :=verysimple
+prefix :=verysimple
 
 cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
 
@@ -21,7 +21,7 @@ endef
 endif
 
 
-all: linux_amd64 linux_arm64 linux_arm32_v7 linux_mips64 linux_mips macos macm1 win10 win10_arm win32
+all: linux_amd64 linux_arm64 linux_arm32_v7 macos macm1 win10 win10_arm win32
 
 # 注意调用参数时，逗号前后不能留空格
 # 关于arm版本号 https://github.com/goreleaser/goreleaser/issues/36
@@ -32,17 +32,17 @@ linux_amd64:
 linux_arm64:
 	$(call compile, ${prefix}_linux_arm64,linux,arm64)
 
-linux_arm32_v7:
-	$(call compile, ${prefix}_linux_arm32_v7a,linux,arm,,7)
+#linux_arm32_v7:
+#	$(call compile, ${prefix}_linux_arm32_v7a,linux,arm,,7)
 
-linux_mips64:
-	$(call compile, ${prefix}_linux_mips64,linux,mips64)
+#linux_mips64:
+#	$(call compile, ${prefix}_linux_mips64,linux,mips64)
 
-linux_mips:
-	$(call compile, ${prefix}_linux_mips,linux,mips)
+#linux_mips:
+#	$(call compile, ${prefix}_linux_mips,linux,mips)
 
-#android_arm64:
-#	$(call compile, ${prefix}_android_arm64,android,arm64)
+android_arm64:
+	$(call compile, ${prefix}_android_arm64,android,arm64)
 
 macos:
 	$(call compile, ${prefix}_macOS_intel,darwin,amd64)
@@ -50,8 +50,8 @@ macos:
 macm1:
 	$(call compile, ${prefix}_macOS_apple,darwin,arm64)
 
-win32:
-	$(call compile, ${prefix}_win32,windows,386,.exe)
+#win32:
+#	$(call compile, ${prefix}_win32,windows,386,.exe)
 
 win10:
 	$(call compile, ${prefix}_win10,windows,amd64,.exe)

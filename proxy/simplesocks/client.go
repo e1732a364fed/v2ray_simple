@@ -55,7 +55,7 @@ func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 	buf.WriteByte(byte(target.Port << 8 >> 8))
 }
 
-func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
+func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (io.ReadWriteCloser, error) {
 	if target.Port <= 0 {
 		return nil, errors.New("simplesocks Client Handshake failed, target port invalid")
 
@@ -63,6 +63,10 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	buf := utils.GetBuf()
 	buf.WriteByte(CmdTCP)
 	WriteAddrToBuf(target, buf)
+	if len(firstPayload) > 0 {
+		buf.Write(firstPayload)
+		utils.PutBytes(firstPayload)
+	}
 
 	_, err := underlay.Write(buf.Bytes())
 	utils.PutBuf(buf)
@@ -84,11 +88,8 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 	buf := utils.GetBuf()
 	buf.WriteByte(CmdUDP)
 	WriteAddrToBuf(target, buf)
-	_, err := underlay.Write(buf.Bytes())
-	utils.PutBuf(buf)
-	if err != nil {
-		return nil, err
-	}
 
-	return NewUDPConn(underlay, nil), nil
+	uc := NewUDPConn(underlay, nil)
+	uc.handshakeBuf = buf
+	return uc, nil
 }

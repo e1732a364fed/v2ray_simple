@@ -253,6 +253,7 @@ func (c *Client) trimSessions(ss map[[16]byte]*sessionState) (s *sessionState) {
 	return
 }
 
+//获取已拨号的连接，或者重新从底层拨号
 func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any {
 	//我们采用预先openStream的策略, 来试出哪些session已经满了, 哪些没满
 	// 已知的是, 一个session满了之后, 要等待 0～45秒 或以上的时间, 才能它才可能腾出空位

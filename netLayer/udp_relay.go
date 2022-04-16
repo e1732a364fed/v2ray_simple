@@ -25,9 +25,9 @@ var (
 //本文件内含 一些 转发 udp 数据的 接口与方法
 
 //MsgConn一般用于 udp. 是一种类似 net.PacketConn 的包装.
-// 实现 MsgConn接口 的类型 可以被用于 RelayUDP 进行转发
+// 实现 MsgConn接口 的类型 可以被用于 RelayUDP 进行转发。
 //
-//ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝
+//ReadMsgFrom直接返回数据, 这样可以尽量避免多次数据拷贝。
 //
 //使用Addr，是因为有可能请求地址是个域名，而不是ip; 而且通过Addr, MsgConn实际上有可能支持通用的情况,
 // 即可以用于 客户端 一会 请求tcp，一会又请求udp，一会又请求什么其它网络层 这种奇葩情况.

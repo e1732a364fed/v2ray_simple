@@ -2,25 +2,30 @@ package proxy
 
 import (
 	"strconv"
+
+	"github.com/hahahrfool/v2ray_simple/httpLayer"
 )
 
 // CommonConf 是标准配置中 Listen和Dial 都有的部分
 //如果新协议有其他新项，可以放入 Extra.
 type CommonConf struct {
-	Tag      string   `toml:"tag"`      //可选
-	Protocol string   `toml:"protocol"` //约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
-	Uuid     string   `toml:"uuid"`     //一个用户的唯一标识，建议使用uuid，但也不一定
-	Host     string   `toml:"host"`     //ip 或域名. 若unix domain socket 则为文件路径
-	IP       string   `toml:"ip"`       //给出Host后，该项可以省略; 既有Host又有ip的情况比较适合cdn
-	Port     int      `toml:"port"`     //若Network不为 unix , 则port项必填
-	Version  int      `toml:"version"`  //可选
-	TLS      bool     `toml:"tls"`      //可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
+	Tag      string `toml:"tag"`      //可选
+	Protocol string `toml:"protocol"` //代理层; 约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
+	Uuid     string `toml:"uuid"`     //代理层用户的唯一标识，视代理层协议而定，一般使用uuid，但trojan协议是随便的.
+	Host     string `toml:"host"`     //ip 或域名. 若unix domain socket 则为文件路径
+	IP       string `toml:"ip"`       //给出Host后，该项可以省略; 既有Host又有ip的情况比较适合cdn
+	Port     int    `toml:"port"`     //若Network不为 unix , 则port项必填
+	Version  int    `toml:"version"`  //可选
+
+	Network string `toml:"network"` //传输层协议; 默认使用tcp, network可选值为 tcp, udp, unix; 理论上来说应该用 transportLayer，但是怕小白不懂，所以使用 network作为名称。而且也不算错，因为go的net包 也是用 network来指示 传输层/网络层协议的. 比如 net.Listen()第一个参数可以用 ip, tcp, udp 等。
+
+	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
 	Insecure bool     `toml:"insecure"` //tls 是否安全
 	Alpn     []string `toml:"alpn"`
 
-	Network string `toml:"network"` //默认使用tcp, network可选值为 tcp, udp, unix;
+	HttpConf *httpLayer.HeaderConf `toml:"http"` //http层; 可选
 
-	AdvancedLayer string `toml:"advancedLayer"` //可不填，或者为ws，或者为grpc
+	AdvancedLayer string `toml:"advancedLayer"` //高级层; 可不填，或者为ws，或者为grpc
 
 	Path string `toml:"path"` //ws 的path 或 grpc的 serviceName。为了简便我们在同一位置给出.
 

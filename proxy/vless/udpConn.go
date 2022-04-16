@@ -24,6 +24,8 @@ type UDPConn struct {
 
 	notFirst bool //for v0
 	raddr    netLayer.Addr
+
+	handshakeBuf *bytes.Buffer
 }
 
 func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
@@ -34,7 +36,14 @@ func (u *UDPConn) Fullcone() bool {
 }
 
 func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {
-	writeBuf := utils.GetBuf()
+
+	var writeBuf *bytes.Buffer
+	if u.handshakeBuf != nil {
+		writeBuf = u.handshakeBuf
+		u.handshakeBuf = nil
+	} else {
+		writeBuf = utils.GetBuf()
+	}
 	defer utils.PutBuf(writeBuf)
 
 	//v0很垃圾，不支持fullcone，而是无视raddr，始终向最开始的raddr发送。

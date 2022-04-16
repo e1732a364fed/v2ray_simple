@@ -124,7 +124,7 @@ func (c *Client) IsUDP_MultiChannel() bool {
 	return c.udp_multi
 }
 
-func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
+func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (io.ReadWriteCloser, error) {
 	var err error
 
 	port := target.Port
@@ -138,9 +138,17 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 	buf.WriteByte(atyp)
 	buf.Write(addr)
 
+	if len(firstPayload) > 0 {
+		buf.Write(firstPayload)
+		utils.PutBytes(firstPayload)
+	}
 	_, err = underlay.Write(buf.Bytes())
 
 	utils.PutBuf(buf)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if c.version == 0 {
 		return &UserTCPConn{
@@ -148,7 +156,7 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 			uuid:            *c.user,
 			version:         c.version,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
-		}, err
+		}, nil
 	} else {
 		return underlay, nil
 	}
@@ -156,9 +164,6 @@ func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWrit
 }
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
-	var err error
-
-	//log.Println("vless EstablishUDPChannel called", target)
 
 	buf := c.getBufWithCmd(CmdUDP)
 	port := target.Port
@@ -170,18 +175,16 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 	buf.WriteByte(atyp)
 	buf.Write(addr)
 
-	_, err = underlay.Write(buf.Bytes())
-
-	utils.PutBuf(buf)
 	target.Network = "udp"
 
 	return &UDPConn{
-		Conn:        underlay,
-		version:     c.version,
-		isClientEnd: true,
-		raddr:       target,
-		udp_multi:   c.udp_multi,
-	}, err
+		Conn:         underlay,
+		version:      c.version,
+		isClientEnd:  true,
+		raddr:        target,
+		udp_multi:    c.udp_multi,
+		handshakeBuf: buf,
+	}, nil
 
 }
 

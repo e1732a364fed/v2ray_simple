@@ -85,7 +85,7 @@ func TestTCP(protocol string, version int, port string, t *testing.T) {
 
 	t.Log("client Dial success")
 
-	wrc, err := client.Handshake(rc, targetStruct)
+	wrc, err := client.Handshake(rc, []byte("hello"), targetStruct)
 	if err != nil {
 		log.Printf("failed in handshake to %v: %v", server.AddrStr(), err)
 		t.FailNow()
@@ -93,9 +93,9 @@ func TestTCP(protocol string, version int, port string, t *testing.T) {
 
 	t.Log("client Handshake success")
 
-	wrc.Write([]byte("hello"))
+	//wrc.Write([]byte("hello"))
 
-	t.Log("client write hello success")
+	//t.Log("client write hello success")
 
 	var world [5]byte
 	n, err := io.ReadFull(wrc, world[:])

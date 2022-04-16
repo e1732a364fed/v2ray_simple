@@ -8,6 +8,7 @@ import (
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 const Name = "direct"
@@ -44,13 +45,22 @@ func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 func (d *Client) Name() string { return Name }
 
 //若 underlay 为nil，则我们会自动对target进行拨号, 否则直接返回underlay。
-func (d *Client) Handshake(underlay net.Conn, target netLayer.Addr) (io.ReadWriteCloser, error) {
+func (d *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {
-		return target.Dial()
-	}
+		result, err = target.Dial()
 
-	return underlay, nil
+	} else {
+		result = underlay
+
+	}
+	if err != nil {
+		return
+	}
+	_, err = underlay.Write(firstPayload)
+	utils.PutBytes(firstPayload)
+
+	return
 
 }
 

@@ -2,6 +2,7 @@ package simplesocks
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"net"
 
@@ -13,7 +14,8 @@ type UDPConn struct {
 	net.Conn
 	optionalReader io.Reader
 
-	bufr *bufio.Reader
+	bufr         *bufio.Reader
+	handshakeBuf *bytes.Buffer
 }
 
 func NewUDPConn(conn net.Conn, optionalReader io.Reader) (uc *UDPConn) {
@@ -87,10 +89,17 @@ func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 }
 
 func (u UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
+
+	var buf *bytes.Buffer
+	if u.handshakeBuf != nil {
+		buf = u.handshakeBuf
+		u.handshakeBuf = nil
+	} else {
+		buf = utils.GetBuf()
+	}
 	abs, atype := addr.AddressBytes()
 
 	atype = netLayer.ATypeToSocks5Standard(atype)
-	buf := utils.GetBuf()
 	buf.WriteByte(atype)
 	buf.Write(abs)
 
@@ -103,6 +112,7 @@ func (u UDPConn) WriteMsgTo(bs []byte, addr netLayer.Addr) error {
 	buf.Write(bs)
 
 	_, err := u.Conn.Write(buf.Bytes())
+
 	utils.PutBuf(buf)
 
 	return err

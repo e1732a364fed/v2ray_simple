@@ -103,8 +103,6 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			}
 
 			//退化回原始状态
-			//go io.Copy(wrc, wlc)
-			//io.Copy(wlc, wrc)
 			go netLayer.TryCopy(wrc, wlc)
 			netLayer.TryCopy(wlc, wrc)
 			return
@@ -158,7 +156,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 					return
 				}
 
-				wrc, err = proxy_client.Handshake(tlsConn, targetAddr)
+				wrc, err = proxy_client.Handshake(tlsConn, p[:n], targetAddr)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake"); ce != nil {
 						ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
@@ -169,6 +167,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 				*wrcPtr = wrc
 
 				waitWRC_CreateChan <- 1
+				continue
 
 			} else {
 				if tlsLayer.PDD {
@@ -281,7 +280,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 					isbad = true
 				}
 			}
-		}
+		} //for
 		utils.PutPacket(p)
 
 		if isbad {

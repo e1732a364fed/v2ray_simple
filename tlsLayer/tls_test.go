@@ -115,15 +115,15 @@ func testTls(protocol string, port string, t *testing.T) {
 
 	t.Log("client handshake vless ")
 
-	wrc, err := client.Handshake(rc, targetStruct)
+	wrc, err := client.Handshake(rc, []byte("hello"), targetStruct)
 	if err != nil {
 		t.Log("failed in handshake to", server.AddrStr(), err)
 		t.FailNow()
 	}
 
-	t.Log("client write hello ")
+	//t.Log("client write hello ")
 
-	wrc.Write([]byte("hello"))
+	//wrc.Write([]byte("hello"))
 
 	t.Log("client read response ")
 	var world [5]byte

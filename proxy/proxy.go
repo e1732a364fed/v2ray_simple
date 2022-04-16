@@ -50,7 +50,7 @@ type MuxMarkerConn interface {
 type Client interface {
 	ProxyCommon
 
-	Handshake(underlay net.Conn, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
+	Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
 	//建立一个通道, 然后在这个通道上 不断申请发送到 各个远程udp地址的连接。
 	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
