@@ -87,9 +87,9 @@ func newConn(service StreamConn, cancelFunc context.CancelFunc) *Conn {
 		IP:   []byte{0, 0, 0, 0},
 		Port: 0,
 	}
-	ad := addrFromContext(service.Context())
-	if ad != nil {
-		conn.remote = ad
+	ad, ok := peer.FromContext(service.Context())
+	if ok {
+		conn.remote = ad.Addr
 	} else {
 		conn.remote = &net.TCPAddr{
 			IP:   []byte{0, 0, 0, 0},
@@ -98,13 +98,4 @@ func newConn(service StreamConn, cancelFunc context.CancelFunc) *Conn {
 	}
 
 	return conn
-}
-
-func addrFromContext(ctx context.Context) net.Addr {
-	p, ok := peer.FromContext(ctx)
-
-	if !ok {
-		return nil
-	}
-	return p.Addr
 }

@@ -651,12 +651,9 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc io.ReadWriteCloser,
 					return
 				}
 
-				utils.Debug("inServer got mux connection")
-
 				//内层mux要对每一个子连接单独进行 子代理协议握手 以及 outClient的拨号。
 
 				go func() {
-					utils.Debug("inServer start smux session loop ")
 
 					for {
 						utils.Debug("inServer try accept smux stream ")

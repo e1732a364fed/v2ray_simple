@@ -264,8 +264,6 @@ func (c *Conn) Write(p []byte) (n int, e error) {
 
 	if e == nil {
 		n = len(p)
-	} else {
-		//log.Println(e)
 	}
 	return
 

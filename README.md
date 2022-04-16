@@ -424,7 +424,7 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 
 有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) 或者issue中的【开发者贡献指南】.
 
-#### 开发者入门指导：
+#### 开发者入门指导
 
 首先学会使用verysimple，熟读本 README.md 和 examples/ 下的配置文件
 

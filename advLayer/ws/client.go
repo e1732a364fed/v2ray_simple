@@ -65,9 +65,7 @@ func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 		Conn:            underlay,
 		state:           ws.StateClientSide,
 		underlayIsBasic: netLayer.IsBasicConn(underlay),
-		//w:     wsutil.NewWriter(underlay, ws.StateClientSide, ws.OpBinary),
 	}
-	//theConn.w.DisableFlush() //使用ws分片功能会降低性能
 
 	// 根据 gobwas/ws的代码，在服务器没有返回任何数据时，br为nil
 	if br == nil {
@@ -160,13 +158,11 @@ func (edc *EarlyDataConn) Write(p []byte) (int, error) {
 		//实测总是 br==nil，就算发送了earlydata也是如此;不过理论上有可能粘包,只要远程目标服务器的响应够快
 
 		if br == nil {
-			//log.Println(" br == nil")
 			theConn.r = wsutil.NewClientSideReader(edc.Conn)
 
 			theConn.r.OnIntermediate = wsutil.ControlFrameHandler(edc.Conn, ws.StateClientSide)
 
 		} else {
-			//log.Println("br != nil")
 
 			additionalDataNum := br.Buffered()
 			bs, _ := br.Peek(additionalDataNum)
