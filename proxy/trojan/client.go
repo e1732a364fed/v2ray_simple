@@ -20,7 +20,7 @@ func init() {
 
 type ClientCreator struct{}
 
-func (_ ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
+func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	uuidStr := url.User.Username()
 	c := Client{
 		password_hexStringBytes: SHA224_hexStringBytes(uuidStr),
@@ -29,7 +29,7 @@ func (_ ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	return &c, nil
 }
 
-func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
 
@@ -47,7 +47,7 @@ type Client struct {
 	use_mux                 bool
 }
 
-func (c *Client) Name() string {
+func (*Client) Name() string {
 	return Name
 }
 

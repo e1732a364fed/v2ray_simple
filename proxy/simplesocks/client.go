@@ -18,12 +18,12 @@ func init() {
 
 type ClientCreator struct{}
 
-func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
+func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
 
 	return &Client{}, nil
 }
 
-func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	return &Client{}, nil
 }

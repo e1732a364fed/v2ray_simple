@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/url"
 	"time"
@@ -33,25 +32,20 @@ type Server struct {
 
 type ServerCreator struct{}
 
-func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	s := &Server{}
 	return s, nil
 }
 
-func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 	s := &Server{}
 	return s, nil
 }
 
-func (s *Server) Name() string { return Name }
-
-//English: https://www.ietf.org/rfc/rfc1928.txt
-
-//中文： https://aber.sh/articles/Socks5/
-// 参考 https://studygolang.com/articles/31404
+func (*Server) Name() string { return Name }
 
 // 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn 处理
-func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
+func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err

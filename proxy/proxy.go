@@ -34,7 +34,7 @@ func PrintAllClientNames() {
 	}
 }
 
-//规定如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarkerConn 接口.
+//规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarkerConn 接口.
 type MuxMarkerConn interface {
 	io.ReadWriteCloser
 	IsMux()
@@ -50,9 +50,11 @@ type MuxMarkerConn interface {
 type Client interface {
 	ProxyCommon
 
+	//进行 tcp承载数据的传输的握手。firstPayload 用于如 vless/trojan 这种 没有握手包的协议，可为空。
+	//规定, firstPayload 由 utils.GetMTU或者 GetPacket获取, 所以写入之后可以用 utils.PutBytes 放回
 	Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
-	//建立一个通道, 然后在这个通道上 不断申请发送到 各个远程udp地址的连接。
+	//建立一个通道, 然后在这个通道上 不断地申请发送到 各个远程udp地址 的连接。
 	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
 
 	//udp的拨号是否使用了多信道方式
@@ -66,13 +68,13 @@ type Client interface {
 
 // Server 用于监听 客户端 的连接.
 // 服务端是一种 “泛目标”代理，所以我们Handshake要返回 客户端请求的目标地址
-// 一个 Server 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
+// 一个 Server 掌握从最底层的tcp等到最上层的 代理协议间的所有机制。
 // 一旦一个 Server 被完整定义，则它的数据的流向就被完整确定了.
 type Server interface {
 	ProxyCommon
 
 	//ReadWriteCloser 为请求地址为tcp的情况, net.PacketConn 为 请求 建立的udp通道
-	Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.MsgConn, netLayer.Addr, error)
+	Handshake(underlay net.Conn) (net.Conn, netLayer.MsgConn, netLayer.Addr, error)
 
 	//获取/监听 一个可用的内层mux
 	GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session
@@ -81,29 +83,45 @@ type Server interface {
 // FullName 可以完整表示 一个 代理的 VSI 层级.
 // 这里认为, tcp/udp/kcp/raw_socket 是FirstName，具体的协议名称是 LastName, 中间层是 MiddleName。
 //
-// An Example of a full name:  tcp+tls+ws+vless
+// An Example of a full name:  tcp+tls+ws+vless.
+// 总之，类似【域名】的规则，只不过分隔符从 点号 变成了加号。
 func GetFullName(pc ProxyCommon) string {
 	if n := pc.Name(); n == "direct" {
 		return n
 	} else {
-		var sb strings.Builder
-		sb.WriteString(pc.Network())
-		sb.WriteString(pc.MiddleName())
-		sb.WriteString(n)
 
-		if i, innerProxyName := pc.HasInnerMux(); i == 2 {
-			sb.WriteString("+smux+")
-			sb.WriteString(innerProxyName)
-
-		}
-
-		return sb.String()
+		return getFullNameBuilder(pc, n).String()
 	}
+}
+
+func getFullNameBuilder(pc ProxyCommon, n string) *strings.Builder {
+
+	var sb strings.Builder
+	sb.WriteString(pc.Network())
+	sb.WriteString(pc.MiddleName())
+	sb.WriteString(n)
+
+	if i, innerProxyName := pc.HasInnerMux(); i == 2 {
+		sb.WriteString("+smux+")
+		sb.WriteString(innerProxyName)
+
+	}
+
+	return &sb
+
 }
 
 // return GetFullName(pc) + "://" + pc.AddrStr()
 func GetVSI_url(pc ProxyCommon) string {
-	return GetFullName(pc) + "://" + pc.AddrStr()
+	n := pc.Name()
+	if n == "direct" {
+		return "direct://"
+	}
+	sb := getFullNameBuilder(pc, n)
+	sb.WriteString("://")
+	sb.WriteString(pc.AddrStr())
+
+	return sb.String()
 }
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端.

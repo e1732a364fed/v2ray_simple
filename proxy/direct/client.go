@@ -17,15 +17,9 @@ func init() {
 	proxy.RegisterClient(Name, &ClientCreator{})
 }
 
-//实现了 proxy.Client, netLayer.UDP_Putter_Generator
-type Client struct {
-	proxy.ProxyCommonStruct
-	isfullcone bool
-}
-
 type ClientCreator struct{}
 
-func (_ ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
+func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	d := &Client{}
 
 	nStr := url.Query().Get("fullcone")
@@ -36,13 +30,19 @@ func (_ ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	return d, nil
 }
 
-func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	d := &Client{}
 	d.isfullcone = dc.Fullcone
 	return d, nil
 }
 
-func (d *Client) Name() string { return Name }
+//实现了 proxy.Client
+type Client struct {
+	proxy.ProxyCommonStruct
+	isfullcone bool
+}
+
+func (*Client) Name() string { return Name }
 
 //若 underlay 为nil，则我们会自动对target进行拨号, 否则直接返回underlay。
 func (d *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {

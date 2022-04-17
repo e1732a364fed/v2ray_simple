@@ -23,7 +23,7 @@ func init() {
 
 type ServerCreator struct{}
 
-func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	//只有地址和port需要配置，非常简单, 而且都是在通用部分 ProxyCommonStruct 被配置过了, 不需再记录
 
 	// TODO: Support Basic Auth
@@ -32,25 +32,25 @@ func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	return s, nil
 }
 
-func (_ ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
-
+func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 	s := &Server{}
 	return s, nil
 }
 
+//implements proxy.Server
 type Server struct {
 	proxy.ProxyCommonStruct
 }
 
-func (_ Server) CanFallback() bool {
+func (*Server) CanFallback() bool {
 	return false //true //暂时不考虑回落，下次再说
 }
 
-func (_ Server) Name() string {
+func (*Server) Name() string {
 	return Name
 }
 
-func (s *Server) Handshake(underlay net.Conn) (newconn io.ReadWriteCloser, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
+func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	var bs = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
 	//因为要储存为 firstdata，所以也无法直接放回
 

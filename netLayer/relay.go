@@ -185,21 +185,21 @@ classic:
 	return int64(n), e
 }
 
-// 从 wrc 读取 写入到 wlc ，并同时从 wlc 读取写入 wrc.
-// 阻塞.
+// 从 rc 读取 写入到 lc ，并同时从 lc 读取写入 rc.
+// 阻塞. rc是指 remoteConn, lc 是指localConn; 一般lc由自己监听的Accept产生, rc 由自己拨号产生.
 // UseReadv==true 时 内部使用 TryCopy 进行拷贝,
 // 会自动优选 splice，readv，不行则使用经典拷贝.
 //
 //拷贝完成后会主动关闭双方连接.
-// 返回从 wrc读取到的总字节长度（即下载流量）. 如果 downloadByteCount, uploadByteCount 给出,
-// 则会 更新上传和下载的总字节数
-func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount, uploadByteCount *uint64) int64 {
+// 返回从 rc读取到的总字节长度（即下载流量）. 如果 downloadByteCount, uploadByteCount 给出,
+// 则会 分别原子更新 上传和下载的总字节数
+func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, uploadByteCount *uint64) int64 {
 
 	if utils.LogLevel == utils.Log_debug {
 
 		rtaddrStr := realTargetAddr.String()
 		go func() {
-			n, e := TryCopy(wrc, wlc)
+			n, e := TryCopy(rc, lc)
 
 			utils.CanLogDebug("转发结束").Write(zap.String("direction", "本地->远程"),
 				zap.String("target", rtaddrStr),
@@ -207,8 +207,8 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount,
 				zap.Error(e),
 			)
 
-			wlc.Close()
-			wrc.Close()
+			lc.Close()
+			rc.Close()
 
 			if uploadByteCount != nil {
 				atomic.AddUint64(uploadByteCount, uint64(n))
@@ -216,7 +216,7 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount,
 
 		}()
 
-		n, e := TryCopy(wlc, wrc)
+		n, e := TryCopy(lc, rc)
 
 		utils.CanLogDebug("转发结束").Write(zap.String("direction", "远程->本地"),
 			zap.String("target", rtaddrStr),
@@ -224,8 +224,8 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount,
 			zap.Error(e),
 		)
 
-		wlc.Close()
-		wrc.Close()
+		lc.Close()
+		rc.Close()
 
 		if downloadByteCount != nil {
 			atomic.AddUint64(downloadByteCount, uint64(n))
@@ -233,10 +233,10 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount,
 		return n
 	} else {
 		go func() {
-			n, _ := TryCopy(wrc, wlc)
+			n, _ := TryCopy(rc, lc)
 
-			wlc.Close()
-			wrc.Close()
+			lc.Close()
+			rc.Close()
 
 			if uploadByteCount != nil {
 				atomic.AddUint64(uploadByteCount, uint64(n))
@@ -244,10 +244,10 @@ func Relay(realTargetAddr *Addr, wrc, wlc io.ReadWriteCloser, downloadByteCount,
 
 		}()
 
-		n, _ := TryCopy(wlc, wrc)
+		n, _ := TryCopy(lc, rc)
 
-		wlc.Close()
-		wrc.Close()
+		lc.Close()
+		rc.Close()
 
 		if downloadByteCount != nil {
 			atomic.AddUint64(downloadByteCount, uint64(n))

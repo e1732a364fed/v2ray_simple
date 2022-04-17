@@ -20,32 +20,24 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-//Server 同时支持vless v0 和 v1
-//实现 proxy.UserServer 以及 tlsLayer.UserHaser
-type Server struct {
-	proxy.ProxyCommonStruct
-	userHashes map[[16]byte]*proxy.V2rayUser
-	mux4Hashes sync.RWMutex
-}
-
 type ServerCreator struct{}
 
-func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 	id, err := proxy.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
 	s := &Server{
-		userHashes: make(map[[16]byte]*proxy.V2rayUser),
+		userHashes: make(map[[16]byte]bool),
 	}
 
-	s.addV2User(id)
+	s.addV2User(&id)
 
 	return s, nil
 }
 
-func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	return NewServer(u)
 }
 func NewServer(url *url.URL) (proxy.Server, error) {
@@ -56,24 +48,33 @@ func NewServer(url *url.URL) (proxy.Server, error) {
 		return nil, err
 	}
 	s := &Server{
-		userHashes: make(map[[16]byte]*proxy.V2rayUser),
+		userHashes: make(map[[16]byte]bool),
 	}
 
-	s.addV2User(id)
+	s.addV2User(&id)
 
 	return s, nil
 }
-func (s *Server) CanFallback() bool {
+
+//Server 同时支持vless v0 和 v1
+//实现 proxy.UserServer 以及 tlsLayer.UserHaser
+type Server struct {
+	proxy.ProxyCommonStruct
+	userHashes map[[16]byte]bool
+	mux4Hashes sync.RWMutex
+}
+
+func (*Server) CanFallback() bool {
 	return true
 }
 func (s *Server) addV2User(u *proxy.V2rayUser) {
-	s.userHashes[*u] = u
+	s.userHashes[*u] = true
 }
 
 func (s *Server) AddV2User(u *proxy.V2rayUser) {
 
 	s.mux4Hashes.Lock()
-	s.userHashes[*u] = u
+	s.userHashes[*u] = true
 	s.mux4Hashes.Unlock()
 }
 
@@ -82,7 +83,7 @@ func (s *Server) DelV2User(u *proxy.V2rayUser) {
 	s.mux4Hashes.RLock()
 
 	hasu := s.userHashes[*u]
-	if hasu == nil {
+	if hasu {
 		s.mux4Hashes.RUnlock()
 		return
 	}
@@ -98,7 +99,7 @@ func (s *Server) GetUserByBytes(bs []byte) proxy.User {
 		return nil
 	}
 	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&bs[0]))
-	if s.userHashes[thisUUIDBytes] != nil {
+	if s.userHashes[thisUUIDBytes] {
 		return proxy.V2rayUser(thisUUIDBytes)
 	}
 	return nil
@@ -108,7 +109,7 @@ func (s *Server) HasUserByBytes(bs []byte) bool {
 	if len(bs) < 16 {
 		return false
 	}
-	if s.userHashes[*(*[16]byte)(unsafe.Pointer(&bs[0]))] != nil {
+	if s.userHashes[*(*[16]byte)(unsafe.Pointer(&bs[0]))] {
 		return true
 	}
 	return false
@@ -129,7 +130,7 @@ func (s *Server) GetUserByStr(str string) proxy.User {
 func (s *Server) Name() string { return Name }
 
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
-func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
+func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
@@ -191,7 +192,7 @@ realPart:
 
 	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&idBytes[0]))
 
-	if user := s.userHashes[thisUUIDBytes]; user != nil {
+	if s.userHashes[thisUUIDBytes] {
 		s.mux4Hashes.RUnlock()
 	} else {
 		s.mux4Hashes.RUnlock()

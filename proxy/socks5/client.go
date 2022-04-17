@@ -11,16 +11,15 @@ import (
 
 //为了安全, 我们不建议socks5作为 proxy.Client; 所以这里没有注册到proxy。
 // 不过为了测试 udp associate 需要我们需要模拟一下socks5请求
-
 type Client struct {
 	proxy.ProxyCommonStruct
 }
 
-func (c *Client) Name() string {
+func (*Client) Name() string {
 	return Name
 }
 
-func (c *Client) Handshake(underlay net.Conn, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
+func (*Client) Handshake(underlay net.Conn, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {
 		panic("socks5 client handshake, nil underlay is not allowed")

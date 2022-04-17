@@ -16,29 +16,29 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
+type ServerCreator struct{}
+
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
+	s := &Server{}
+	return s, nil
+}
+
+func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+	s := &Server{}
+	return s, nil
+}
+
+//implements proxy.Server
 type Server struct {
 	proxy.ProxyCommonStruct
 }
-type ServerCreator struct{}
 
-func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-
-	s := &Server{}
-
-	return s, nil
-}
-
-func (_ ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	s := &Server{}
-
-	return s, nil
-}
-func (s *Server) Name() string {
+func (*Server) Name() string {
 	return Name
 }
 
 //若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
-func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
+func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
 		return

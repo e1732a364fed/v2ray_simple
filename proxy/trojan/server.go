@@ -16,16 +16,9 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-type Server struct {
-	proxy.ProxyCommonStruct
-
-	userHashes map[string]bool
-
-	//mux4Hashes sync.RWMutex
-}
 type ServerCreator struct{}
 
-func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 
 	s := &Server{
@@ -37,7 +30,7 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return s, nil
 }
 
-func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 	uuidStr := url.User.Username()
 	s := &Server{
 		userHashes: make(map[string]bool),
@@ -47,7 +40,17 @@ func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 
 	return s, nil
 }
-func (s *Server) Name() string {
+
+//implements proxy.Server
+type Server struct {
+	proxy.ProxyCommonStruct
+
+	userHashes map[string]bool
+
+	//mux4Hashes sync.RWMutex
+}
+
+func (*Server) Name() string {
 	return Name
 }
 
@@ -56,7 +59,7 @@ func (*Server) HasInnerMux() (int, string) {
 }
 
 //若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
-func (s *Server) Handshake(underlay net.Conn) (result io.ReadWriteCloser, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
+func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
 		return

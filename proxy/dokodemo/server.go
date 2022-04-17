@@ -35,7 +35,6 @@ https://www.40huo.cn/blog/wireguard-over-vless.html
 package dokodemo
 
 import (
-	"io"
 	"net"
 	"net/url"
 	"strconv"
@@ -54,7 +53,7 @@ func init() {
 type ServerCreator struct{}
 
 // 用如下参数形式： network=tcp&target=127.0.0.1&target_port=80
-func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 
 	nStr := url.Query().Get("network")
 	if nStr == "" {
@@ -90,7 +89,7 @@ func (_ ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 }
 
 // use lc.TargetAddr
-func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	ta, e := netLayer.NewAddrByURL(lc.TargetAddr)
 	if e != nil {
 		return nil, e
@@ -101,6 +100,7 @@ func (_ ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	return s, nil
 }
 
+//implements proxy.Server
 type Server struct {
 	proxy.ProxyCommonStruct
 
@@ -111,13 +111,12 @@ func NewServer() (proxy.Server, error) {
 	d := &Server{}
 	return d, nil
 }
-func (d *Server) Name() string { return name }
+func (*Server) Name() string { return name }
 
-func (s *Server) Handshake(underlay net.Conn) (io.ReadWriteCloser, netLayer.MsgConn, netLayer.Addr, error) {
+func (s *Server) Handshake(underlay net.Conn) (net.Conn, netLayer.MsgConn, netLayer.Addr, error) {
 	if s.targetAddr.IsUDP() {
 		return nil, netLayer.UniTargetMsgConn{Conn: underlay, Target: s.targetAddr}, s.targetAddr, nil
 	} else {
 		return underlay, nil, s.targetAddr, nil
-
 	}
 }

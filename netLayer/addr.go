@@ -58,25 +58,30 @@ func RandPort(mustValid, isudp bool) (p int) {
 	p = rand.Intn(60000) + 4096
 	if mustValid {
 		if isudp {
-			ln, err := net.ListenUDP("udp", &net.UDPAddr{
+			listener, err := net.ListenUDP("udp", &net.UDPAddr{
 				IP:   net.IPv4(0, 0, 0, 0),
 				Port: p,
 			})
 
-			ln.Close()
+			if listener != nil {
+				listener.Close()
+
+			}
 
 			if err != nil {
 				utils.Debug("Get RandPort udp but got err, trying again")
 				return RandPort(mustValid, true)
 			}
 		} else {
-			ln, err := net.ListenTCP("tcp", &net.TCPAddr{
+			listener, err := net.ListenTCP("tcp", &net.TCPAddr{
 				IP:   net.IPv4(0, 0, 0, 0),
 				Port: p,
 			})
 
-			ln.Close()
+			if listener != nil {
+				listener.Close()
 
+			}
 			if err != nil {
 				utils.Debug("Get RandPort tcp but got err, trying again")
 

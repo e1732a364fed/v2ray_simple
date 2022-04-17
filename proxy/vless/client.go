@@ -22,18 +22,18 @@ type Client struct {
 
 	version int
 
-	user *proxy.V2rayUser
+	user proxy.V2rayUser
 
 	udp_multi bool
 }
 
 type ClientCreator struct{}
 
-func (_ ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
+func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
 	return NewClientByURL(u)
 }
 
-func (_ ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
 	id, err := proxy.NewV2rayUser(uuidStr)
@@ -153,7 +153,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	if c.version == 0 {
 		return &UserTCPConn{
 			Conn:            underlay,
-			uuid:            *c.user,
+			uuid:            c.user,
 			version:         c.version,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
 		}, nil

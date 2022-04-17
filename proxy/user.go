@@ -6,6 +6,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
+//User是一个唯一身份标识。
 type User interface {
 	GetIdentityStr() string //每个user唯一，通过比较这个string 即可 判断两个User 是否相等
 
@@ -26,7 +27,7 @@ type UserContainer interface {
 	UserBytesLen() int
 }
 
-// 可以控制 User 登入和登出 的接口, 就像一辆公交车一样，或者一座航站楼
+// 可以控制 User 登入和登出 的接口, 就像一辆公交车一样，或者一座航站楼。Bus也可以理解为总线。
 type UserBus interface {
 	AddUser(User) error
 	DelUser(User)
@@ -54,23 +55,11 @@ func (u V2rayUser) GetIdentityBytes() []byte {
 	return u[:]
 }
 
-func NewV2rayUser(s string) (*V2rayUser, error) {
+func NewV2rayUser(s string) (V2rayUser, error) {
 	uuid, err := utils.StrToUUID(s)
 	if err != nil {
-		return nil, err
+		return V2rayUser{}, err
 	}
 
-	return (*V2rayUser)(&uuid), nil
+	return uuid, nil
 }
-
-/*
-//vmess legacy代码，先放这里，什么时候想实现vmess了再说
-// GetKey returns the key of AES-128-CFB encrypter
-// Key：MD5(UUID + []byte('c48619fe-8f02-49e0-b9e9-edf763e17e21'))
-func Get_cmdKey(uuid [16]byte) []byte {
-	md5hash := md5.New()
-	md5hash.Write(uuid[:])
-	md5hash.Write([]byte("c48619fe-8f02-49e0-b9e9-edf763e17e21"))
-	return md5hash.Sum(nil)
-}
-*/
