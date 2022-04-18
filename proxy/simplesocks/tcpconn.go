@@ -8,7 +8,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//trojan比较简洁，这个 TCPConn 只是用于读取握手读取时读到的剩余的缓存
 type TCPConn struct {
 	net.Conn
 	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader

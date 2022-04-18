@@ -322,7 +322,6 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 	newStart := off + l
 
 	if clientSupposedAddrIsNothing {
-		//clientSupposedAddrIsNothing = false
 		u.clientSupposedAddr = addr
 	}
 

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"log"
 	"net/url"
 	"strings"
@@ -9,6 +10,28 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
+
+var (
+	serverCreatorMap = make(map[string]ServerCreator)
+	clientCreatorMap = make(map[string]ClientCreator)
+)
+
+func PrintAllServerNames() {
+	fmt.Printf("===============================\nSupported Proxy Listen protocols:\n")
+	for _, v := range utils.GetMapSortedKeySlice(serverCreatorMap) {
+		fmt.Print(v)
+		fmt.Print("\n")
+	}
+}
+
+func PrintAllClientNames() {
+	fmt.Printf("===============================\nSupported Proxy Dial protocols:\n")
+
+	for _, v := range utils.GetMapSortedKeySlice(clientCreatorMap) {
+		fmt.Print(v)
+		fmt.Print("\n")
+	}
+}
 
 type ClientCreator interface {
 	//程序从某种配置文件格式中读取出 DialConf
@@ -21,11 +44,6 @@ type ServerCreator interface {
 	NewServer(*ListenConf) (Server, error)
 	NewServerFromURL(url *url.URL) (Server, error)
 }
-
-var (
-	clientCreatorMap = make(map[string]ClientCreator)
-	serverCreatorMap = make(map[string]ServerCreator)
-)
 
 // 规定，每个 实现Client的包必须使用本函数进行注册
 func RegisterClient(name string, c ClientCreator) {
@@ -286,12 +304,16 @@ func configCommon(ser ProxyCommon, cc *CommonConf) {
 
 }
 
-//SetAddrStr, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon(setAdvancedLayer)
+//SetAddrStr,setTag, setHeader, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon(setAdvancedLayer)
 func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 	cli.setNetwork(dc.Network)
 	cli.setIsDial(true)
 	cli.setDialConf(dc)
 	cli.setTag(dc.Tag)
+	if dc.HttpHeader != nil {
+		dc.HttpHeader.AssignDefaultValue()
+		cli.setHeader(dc.HttpHeader)
+	}
 
 	if cli.Name() != "direct" {
 		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
@@ -305,7 +327,7 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 	return nil
 }
 
-//SetAddrStr,setNetwork, setTag, setCantRoute,setListenConf(lc),setFallback, call configCommon
+//SetAddrStr,setNetwork, setTag,setHeader, setCantRoute,setListenConf(lc),setFallback, call configCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	ser.setNetwork(lc.Network)
@@ -313,6 +335,11 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 	ser.setTag(lc.Tag)
 	ser.setCantRoute(lc.NoRoute)
 	configCommon(ser, &lc.CommonConf)
+
+	if lc.HttpHeader != nil {
+		lc.HttpHeader.AssignDefaultValue()
+		ser.setHeader(lc.HttpHeader)
+	}
 
 	switch lc.AdvancedLayer {
 	case "ws":

@@ -4,7 +4,7 @@ Layer Definition
 
 目前认为，一个传输过程大概由四个部分组成，基础连接（udp/tcp），TLS（可选），中间层（ws、grpc、http等，可选），具体协议（socks5，vless，trojan等）.
 
-其中，ws和grpc被认为是 高级应用层，http（伪装）属于低级应用层.
+其中，ws和grpc被认为是 高级应用层，http（伪装）属于 header 层.
 
 TLS - Transport Layer Security 顾名思义TLS作用于传输层，第四层，但是我们tcp也是第四层，所以在本项目中，认为不需要“会话层”，单独加一个专用于tls的层比较稳妥.
 
@@ -15,9 +15,9 @@ New Model - VSI 新的VSI 模型
 
 那么我们提出一个 verysimple Interconnection Model， 简称vsi模型。1到4层与OSI相同（物理、链路、网络、传输).
 
-把第五层替换成“加密层”，把TLS放进去；把第六层改为低级应用层，http属于这一层.
+把第五层替换成“加密层”，把TLS放进去；把第六层改为 http头(1.1) 层
 
-第七层 改为高级应用层，ws/grpc 属于这一层, 简称高级层；第八层定为 代理层，vless/trojan 在这层.
+第七层 改为高级应用层，ws/grpc/http2 属于这一层, 简称高级层；第八层定为 代理层，vless/trojan 在这层.
 
 第九层为 承载数据层，承载的为 另一大串 第四层的数据.
 
@@ -29,11 +29,14 @@ New Model - VSI 新的VSI 模型
 
 内层多路复用的性质是，多路复用分离出一个个子协议后，子协议又是代理层。
 
+所以第九层除了承载数据外, 还可以为 inner mux 层, 第十层可以为 inner proxy 层, 此时第11层才是承载数据.
+
 我们verysimple实际上就是 基于 “层” 的架构，或称 可分层结构.
 
-	11｜                                     （client real tcp/udp data)
+
+	11｜        --------------               （client real tcp/udp data)
 	--------------------------------------------------------------------------------
-	10｜                                     （inner proxy layer)
+	10｜        --------------               （inner proxy layer)
 	--------------------------------------------------------------------------------
 	9 ｜ [client real tcp/udp data]     or   [inner mux Layer]
 	--------------------------------------------------------------------------------
@@ -41,9 +44,9 @@ New Model - VSI 新的VSI 模型
 	--------------------------------------------------------------------------------
 	7 ｜          ws/grpc/quic          ｜     advanced layer
 	--------------------------------------------------------------------------------
-	6 ｜           http (headers)       ｜     http layer
+	6 ｜           http header          ｜     http layer
 	--------------------------------------------------------------------------------
-	5 ｜            tls                 ｜     tls layer
+	5 ｜           tls                  ｜     tls layer
 	--------------------------------------------------------------------------------
 	4 ｜ tcp/udp/unix domain socket/kcp ｜     transport layer
 	--------------------------------------------------------------------------------
@@ -58,29 +61,30 @@ New Model - VSI 新的VSI 模型
 对应的理想配置文件应该如下.
 
 	{
-		"layer3_settings": {	//或者叫 networksettings，
-				//可以配置一些网络层分流
+		"layer3_settings": {	//或者叫 network_settings，
+				//可以配置一些网络层分流（ip）
 		},
 		"layer4_settings": {	//或者叫 transportLayer_settings，
-			"tcp":{}	//可以设置一些缓存大小等tcp配置.
+			"tcp":{}	//可以设置一些缓存大小等配置. 和传输层协议分流（tcp/udp）
 		},
 		"layer5_settings": {	//或者叫 tls_settings，
 			"tls":{"insecure": true},
 			"utls":{}
+			// 可以配置tls 层分流（sni 和 alpn）
 		},
 		"layer6_settings": {	//或者叫 http_settings
-			"headers":{}
+			//可以配置http path分流 或者 host分流
 		},
 		"layer7_settings": {	//或者叫 advancedLayer_settings
 			"ws":{},
 			"grpc":{},
-			"quic":{},
+			"quic":{}
 		},
 		"layer8_settings": {	//或者叫 proxy_settings
-			"vless":{}
+			"vless":{},
 			"trojan":{}
 		},
-		"layer9_settings": {	//或者叫 inner_mux_settings
+		"layer9_settings": {	//或者叫 innerMux_settings
 			"smux":{}
 		},
 		"layer10_settings": {	//或者叫 innerProxy_settings
@@ -107,7 +111,9 @@ advLayer文件夹 代表第七层, proxy文件夹代表第8层.
 
 然而，这种“高级模式”是不容易实现、也不好理解的，目前初始阶段先不考虑。
 
-目前的标准模式的配置文件中，整个一个节点的配置完全是扁平化的，所有的层的配置都会在同一级别中。比如tls的配置完全和节点本身的配置放在一起。总之 verysimple 的思路就是，要不就完全扁平化，要不就完全分层。
+目前的标准模式的配置文件中，整个一个节点的配置完全是扁平化的，所有的层的配置都会在同一级别中。比如tls的配置完全和节点本身的配置放在一起。
+
+总之 verysimple 的思路就是，要不就完全扁平化，要不就完全分层。
 
 本作认为，所有的代理是都可以有tls层，http层和ws/grpc层的，所以就统一嵌入所有的代理协议的配置当中,直接扁平化了.
 

@@ -66,9 +66,8 @@ func printVersion() {
 	fmt.Printf(desc)
 	fmt.Printf("\n")
 
-	fmt.Printf("Support tls, grpc, websocket, quic for all protocols.\n")
 	if netLayer.HasEmbedGeoip() {
-		fmt.Printf("Contains embeded Geoip file\n")
+		fmt.Printf("Contains embedded Geoip file\n")
 	}
 	fmt.Printf(delimiter)
 

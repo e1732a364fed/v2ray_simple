@@ -23,13 +23,13 @@ type CommonConf struct {
 	Insecure bool     `toml:"insecure"` //tls 是否安全
 	Alpn     []string `toml:"alpn"`
 
-	HttpConf *httpLayer.HeaderConf `toml:"http"` //http层; 可选
+	HttpHeader *httpLayer.HeaderPreset `toml:"header"` //http伪装头; 可选
 
 	AdvancedLayer string `toml:"advancedLayer"` //高级层; 可不填，或者为ws，或者为grpc
 
 	Path string `toml:"path"` //ws 的path 或 grpc的 serviceName。为了简便我们在同一位置给出.
 
-	Extra map[string]interface{} `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
+	Extra map[string]any `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.
 }
 
 func (cc *CommonConf) GetAddrStr() string {
@@ -92,5 +92,5 @@ type DialConf struct {
 	Utls     bool `toml:"utls"`     //是否使用 uTls 库 替换 go官方tls库
 	Fullcone bool `toml:"fullcone"` //在direct会用到, fullcone的话因为不能关闭udp连接, 所以可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
 
-	Mux bool `toml:"use_mux"` //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 mux。
+	Mux bool `toml:"use_mux"` //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
 }

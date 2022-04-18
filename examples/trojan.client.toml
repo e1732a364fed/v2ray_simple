@@ -13,4 +13,6 @@ port = 4434
 insecure = true
 utls = true
 
+# use_mux = true  # 只需要客户端指明 use_mux 即可开启mux, 服务端自动适配.
+
 # 备注： trojan 也是一样可以应用 ws/grpc/quic 的，具体你只要参考对应示例文件即可，然后把 vlesss 改成 trojans 即可.

@@ -57,12 +57,16 @@ func (e ErrInErr) Error() string {
 }
 
 func (e ErrInErr) Unwarp() error {
-
 	return e.ErrDetail
 }
 
 func (e ErrInErr) Is(err error) bool {
-	return e.ErrDetail == err
+	if e.ErrDetail == err {
+		return true
+	} else if errors.Is(e.ErrDetail, err) {
+		return true
+	}
+	return false
 }
 
 func (e ErrInErr) String() string {

@@ -46,7 +46,7 @@ func TestWs(t *testing.T) {
 			return
 		}
 
-		s := ws.NewServer(wsPath)
+		s := ws.NewServer(wsPath, nil)
 
 		wsConn, err := s.Handshake(nil, conn)
 		if err != nil {
@@ -75,7 +75,7 @@ func TestWs(t *testing.T) {
 		}
 	}()
 
-	cli, err := ws.NewClient(listenAddr, wsPath)
+	cli, err := ws.NewClient(listenAddr, wsPath, nil)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()

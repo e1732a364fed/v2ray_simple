@@ -25,16 +25,19 @@ const MaxEarlyDataLen = 2048
 type Client struct {
 	requestURL   *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可
 	UseEarlyData bool
+
+	headers map[string][]string
 }
 
 // 这里默认，传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查
-func NewClient(hostAddr, path string) (*Client, error) {
+func NewClient(hostAddr, path string, headers map[string][]string) (*Client, error) {
 	u, err := url.Parse("http://" + hostAddr + path)
 	if err != nil {
 		return nil, err
 	}
 	return &Client{
 		requestURL: u,
+		headers:    headers,
 	}, nil
 }
 
@@ -50,6 +53,10 @@ func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 			return underlay, nil
 		},
 		// 默认不给出Protocols的话, gobwas就不会发送这个header, 另一端也收不到此header
+
+	}
+	if len(c.headers) > 0 {
+		d.Header = ws.HandshakeHeaderHTTP(c.headers)
 	}
 
 	br, _, err := d.Upgrade(underlay, c.requestURL)

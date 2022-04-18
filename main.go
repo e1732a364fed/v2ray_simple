@@ -437,6 +437,8 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		iics.cachedRemoteAddr = addrstr
 	}
 
+	////////////////////////////// tls层 /////////////////////////////////////
+
 	//此时，baseLocalConn里面 正常情况下, 服务端看到的是 客户端的golang的tls 拨号发出的 tls数据
 	// 客户端看到的是 socks5的数据， 我们首先就是要看看socks5里的数据是不是tls，而socks5自然 IsUseTLS 是false
 
@@ -479,7 +481,27 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 	}
 
-	if adv := inServer.AdvancedLayer(); adv != "" {
+	adv := inServer.AdvancedLayer()
+
+	////////////////////////////// header 层 /////////////////////////////////////
+
+	if header := inServer.HasHeader(); header != nil {
+
+		//websocket 可以自行处理header, 不需要额外http包装
+		if adv != "ws" {
+			wrappedConn = &httpLayer.HeaderConn{
+				Conn:        wrappedConn,
+				H:           header,
+				IsServerEnd: true,
+			}
+
+		}
+
+	}
+
+	////////////////////////////// 高级层 /////////////////////////////////////
+
+	if adv != "" {
 		switch adv {
 		//quic虽然也是adv层，但是因为根本没调用 handleNewIncomeConnection 函数，所以不在此处理
 		//
@@ -786,7 +808,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wl
 		if iics.theFallbackFirstBuffer != nil && theRequestPath == "" {
 			var failreason int
 
-			_, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
+			_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
 
 			if failreason != 0 {
 				theRequestPath = ""
@@ -1126,10 +1148,11 @@ func dialClient(targetAddr netLayer.Addr,
 	// 不是direct的udp的话，也要分情况:
 	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
 	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接
+	adv := client.AdvancedLayer()
 
 	if dialHere {
 
-		switch client.AdvancedLayer() {
+		switch adv {
 		case "grpc":
 
 			grpcClientConn = grpc.GetEstablishedConnFor(&realTargetAddr)
@@ -1218,11 +1241,21 @@ func dialClient(targetAddr netLayer.Addr,
 
 	}
 
+	////////////////////////////// header 层 /////////////////////////////////////
+
+	if header := client.HasHeader(); header != nil && adv != "ws" {
+		clientConn = &httpLayer.HeaderConn{
+			Conn: clientConn,
+			H:    header,
+		}
+
+	}
+
 	////////////////////////////// 高级层握手阶段 /////////////////////////////////////
 
 advLayerHandshakeStep:
 
-	if adv := client.AdvancedLayer(); adv != "" {
+	if adv != "" {
 		switch adv {
 		case "quic":
 			qclient := client.GetQuic_Client()

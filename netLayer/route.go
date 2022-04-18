@@ -25,7 +25,7 @@ func (mdh MapDomainHaser) HasDomain(d string) bool {
 func HasFullOrSubDomain(domain string, ds DomainHaser) bool {
 	lastDotIndex := len(domain)
 
-	suffix := domain
+	var suffix string
 	for {
 
 		lastDotIndex = strings.LastIndex(domain[:lastDotIndex], ".")

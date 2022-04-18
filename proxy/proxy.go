@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"strings"
@@ -10,29 +9,13 @@ import (
 	"github.com/hahahrfool/v2ray_simple/advLayer/grpc"
 	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
 	"github.com/hahahrfool/v2ray_simple/advLayer/ws"
+	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/xtaci/smux"
 	"go.uber.org/zap"
 )
-
-func PrintAllServerNames() {
-	fmt.Printf("===============================\nSupported Proxy Listen protocols:\n")
-	for _, v := range utils.GetMapSortedKeySlice(serverCreatorMap) {
-		fmt.Print(v)
-		fmt.Print("\n")
-	}
-}
-
-func PrintAllClientNames() {
-	fmt.Printf("===============================\nSupported Proxy Dial protocols:\n")
-
-	for _, v := range utils.GetMapSortedKeySlice(clientCreatorMap) {
-		fmt.Print(v)
-		fmt.Print("\n")
-	}
-}
 
 //规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarkerConn 接口.
 type MuxMarkerConn interface {
@@ -140,13 +123,20 @@ type ProxyCommon interface {
 	AddrStr() string
 	SetAddrStr(string)
 	Network() string
+	setNetwork(string)
 
 	CantRoute() bool //for inServer
 	GetTag() string
+	setCantRoute(bool)
+	setTag(string)
 
 	IsDial() bool //true则为 Dial 端，false 则为 Listen 端
 	GetListenConf() *ListenConf
 	GetDialConf() *DialConf
+
+	setIsDial(bool)
+	setListenConf(*ListenConf) //for inServer
+	setDialConf(*DialConf)     //for outClient
 
 	//如果 IsHandleInitialLayers 方法返回true, 则监听/拨号从传输层一直到高级层的过程直接由inServer/outClient自己处理, 而我们主过程直接处理它 处理完毕的剩下的 代理层。
 	//
@@ -167,7 +157,12 @@ type ProxyCommon interface {
 	setTLS_Server(*tlsLayer.Server)
 	setTLS_Client(*tlsLayer.Client)
 
-	/////////////////// http层 ///////////////////
+	/////////////////// header层 ///////////////////
+
+	HasHeader() *httpLayer.HeaderPreset
+	setHeader(h *httpLayer.HeaderPreset)
+
+	/////////////////// header层的http部分 ///////////////////
 	//默认回落地址.
 	GetFallback() *netLayer.Addr
 	setFallback(netLayer.Addr)
@@ -175,10 +170,12 @@ type ProxyCommon interface {
 	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 
 	Path() string
+	setPath(string)
 
 	/////////////////// 高级层 ///////////////////
 
 	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
+	setAdvancedLayer(string)
 
 	GetWS_Client() *ws.Client //for outClient
 	GetWS_Server() *ws.Server //for inServer
@@ -204,19 +201,6 @@ type ProxyCommon interface {
 	// 规定是，客户端 只能返回0或者2， 服务端 只能返回 0或者1（除非服务端协议不支持不mux的情况，此时可以返回2）。
 	// string 为 innermux内部的 代理 协议 名称。（一般用simplesocks）
 	HasInnerMux() (int, string)
-
-	/////////////////// 其它私有方法 ///////////////////
-
-	setCantRoute(bool)
-	setTag(string)
-	setAdvancedLayer(string)
-	setNetwork(string)
-
-	setIsDial(bool)
-	setListenConf(*ListenConf) //for inServer
-	setDialConf(*DialConf)     //for outClient
-
-	setPath(string)
 }
 
 // ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法.
@@ -254,6 +238,8 @@ type ProxyCommonStruct struct {
 	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
 
 	innermux *smux.Session //用于存储 client的已拨号的mux连接
+
+	header *httpLayer.HeaderPreset
 }
 
 func (pcs *ProxyCommonStruct) setListenCommonConnFunc(f func() (newConnChan chan net.Conn, baseConn any)) {
@@ -271,6 +257,14 @@ func (pcs *ProxyCommonStruct) setPath(a string) {
 	pcs.PATH = a
 }
 
+func (pcs *ProxyCommonStruct) HasHeader() *httpLayer.HeaderPreset {
+	return pcs.header
+}
+
+func (pcs *ProxyCommonStruct) setHeader(h *httpLayer.HeaderPreset) {
+	pcs.header = h
+}
+
 func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {
 	return pcs.FallbackAddr
 }
@@ -284,6 +278,11 @@ func (pcs *ProxyCommonStruct) MiddleName() string {
 
 	if pcs.TLS {
 		sb.WriteString("+tls")
+	}
+	if pcs.header != nil {
+		if pcs.AdvancedL != "ws" {
+			sb.WriteString("+http")
+		}
 	}
 	if pcs.AdvancedL != "" {
 		sb.WriteString("+")
@@ -496,12 +495,20 @@ func (s *ProxyCommonStruct) initWS_client() error {
 		}
 	}
 
-	c, e := ws.NewClient(s.dialConf.GetAddrStr(), path)
-	if e != nil {
+	var c *ws.Client
+	var e error
 
-		return utils.ErrInErr{ErrDesc: "initWS_client failed", ErrDetail: e}
+	if s.header != nil {
+		c, e = ws.NewClient(s.dialConf.GetAddrStr(), path, s.header.Request.Headers)
+
+	} else {
+		c, e = ws.NewClient(s.dialConf.GetAddrStr(), path, nil)
 
 	}
+	if e != nil {
+		return utils.ErrInErr{ErrDesc: "initWS_client failed", ErrDetail: e}
+	}
+
 	c.UseEarlyData = useEarlyData
 	s.ws_c = c
 
@@ -527,7 +534,14 @@ func (s *ProxyCommonStruct) initWS_server() error {
 			}
 		}
 	}
-	wss := ws.NewServer(path)
+	var wss *ws.Server
+	if s.header != nil {
+		wss = ws.NewServer(path, s.header.Response.Headers)
+
+	} else {
+		wss = ws.NewServer(path, nil)
+
+	}
 	wss.UseEarlyData = useEarlyData
 
 	s.ws_s = wss

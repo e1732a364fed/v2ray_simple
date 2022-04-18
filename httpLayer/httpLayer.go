@@ -1,7 +1,15 @@
 /*
 Package httpLayer provides methods and definitions for http layer
 
-比如fallback一般由httpLayer处理
+
+虽然我们http层在vsi模型中属于 headerLayer, 但是因为 http比较重要, 所以单独放入一个包中.
+ fallback 由 本 httpLayer 包 处理. 因为回落的目标只可能是http服务器.
+
+http头 格式 可以参考：
+
+https://datatracker.ietf.org/doc/html/rfc2616#section-4
+
+https://datatracker.ietf.org/doc/html/rfc2616#section-5
 */
 package httpLayer
 
@@ -29,12 +37,25 @@ Content-Length: 0
 const (
 	H11_Str = "http/1.1"
 	H2_Str  = "h2"
+
+	CRLF = "\r\n"
+
+	//参考 https://datatracker.ietf.org/doc/html/rfc2616#section-4.1
+	//
+	//http头的尾部. 每个header末尾都有一个 crlf, 整个头部结尾还有一个crlf, 所以是两个.
+	HeaderENDING = CRLF + CRLF
+
+	//我们不使用v2ray的8k的最大header长度限制，因为这反倒会探测出特殊性。http标准是最大1MB。
 )
 
-var ErrNotHTTP_Request = errors.New("not http request")
+var (
+	HeaderENDING_bytes = []byte(HeaderENDING)
+
+	ErrNotHTTP_Request = errors.New("not http request")
+)
 
 func init() {
-	//使用 httptest 包 来完美重现 golang的http包的 notfound, 可以随golang具体实现而变化
+	//使用 httptest 包 来完美重现 golang的http包的 notfound, 可以随golang具体实现而同步变化
 
 	req := httptest.NewRequest("GET", "http://exam.com/", nil)
 	w := httptest.NewRecorder()
@@ -57,12 +78,13 @@ func (pe *RequestErr) Error() string {
 }
 
 // RequestParser被用于 预读一个链接，判断该连接是否是有效的http请求,
-// 并将相关数据记录在结构中.
+// 并将Version，Path，Method 记录在结构中.
 type RequestParser struct {
+	Version         string
 	Path            string
 	Method          string
 	WholeRequestBuf *bytes.Buffer
-	Failreason      int
+	Failreason      int //为0表示没错误
 }
 
 // 尝试读取数据并解析HTTP请求, 解析道道 数据会存入 RequestParser 结构中.
@@ -78,9 +100,9 @@ func (rhr *RequestParser) ReadAndParse(r io.Reader) error {
 	buf := bytes.NewBuffer(data)
 	rhr.WholeRequestBuf = buf
 
-	rhr.Method, rhr.Path, rhr.Failreason = GetRequestMethod_and_PATH_from_Bytes(data, false)
+	rhr.Version, rhr.Method, rhr.Path, rhr.Failreason = GetRequestMethod_and_PATH_from_Bytes(data, false)
 	if rhr.Failreason != 0 {
-		return ErrNotHTTP_Request
+		return utils.ErrInErr{ErrDesc: "httpLayer ReadAndParse failed", ErrDetail: ErrNotHTTP_Request, Data: rhr.Failreason}
 	}
 	return nil
 }

@@ -5,7 +5,7 @@ package httpLayer
 // 同时可以用这个方法判断明文 是不是 http1.1, http1.0, http0.9的 http请求
 // 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数
 // 此方法亦可以用于 判断一个http请求头部是否合法
-func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (method string, path string, failreason int) {
+func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, method string, path string, failreason int) {
 
 	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18
 		failreason = 1
@@ -31,10 +31,13 @@ func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (method strin
 
 	if bs[5] == ' ' {
 		// 没有五字节长度的 http请求方法
-		// 但是也会匹配到4字节+根目录的情况：
-		// 如果是 POST / HTTP/1.1, 或者HEAD, 倒是也会出现这种情况，但是反正只要配置default fallback，一样可以捕捉 / path的情况, 而且一般没人path分流会给 /, 根目录的情况直接就用default fallback了。
-		failreason = 3
-		return
+
+		//但是 Get / HTTP/1.1 也会遇到第6字节为空格的情况, put/pri 也一样, 所以还要过滤.
+
+		if bs[3] != ' ' {
+			failreason = 3
+			return
+		}
 	}
 
 	shouldSpaceIndex := 0
@@ -126,11 +129,13 @@ func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (method strin
 				failreason = 9
 				return
 			}
+
+			version = string(bs[i+6 : i+9])
 			path = string(bs[shouldSlashIndex:i])
 			return
 		}
 	}
-	failreason = last //!isproxy时, 我们只判断了前64字节，如果访问url更长的话，这了还是会返回failreason的
+	failreason = last //!isproxy时, 我们只判断了前64字节，如果访问url更长的话，这里还是会返回failreason的
 	return
 
 }

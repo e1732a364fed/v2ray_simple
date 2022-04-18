@@ -23,14 +23,17 @@ type Server struct {
 	//upgrader     *ws.Upgrader
 	UseEarlyData bool
 	Thepath      string
+
+	headers map[string][]string
 }
 
 // 这里默认: 传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查.
-func NewServer(path string) *Server {
+func NewServer(path string, headers map[string][]string) *Server {
 
 	return &Server{
 		//upgrader: upgrader,
 		Thepath: path,
+		headers: headers,
 	}
 }
 
@@ -74,6 +77,10 @@ func (s *Server) Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn)
 			}
 			return nil
 		},
+	}
+
+	if len(s.headers) > 0 {
+		theUpgrader.Header = ws.HandshakeHeaderHTTP(s.headers)
 	}
 
 	if s.UseEarlyData {

@@ -23,6 +23,10 @@ verysimple 研发了一些新技术，可以加速，目前基本上是全网最
 
 vs的主要亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，交互模式等。
 
+支持的功能有:
+
+ws(以及earlydata)/grpc/quic(以及hy阻控), trojan(以及smux)/simplesocks/vless/vless_v1/socks5/http/dokodemo, dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli/apiServer
+
 
 为了不吓跑小白，目前 本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
 
@@ -154,7 +158,7 @@ verysimple -c server.toml
 
 标准模式使用toml格式，类似windows的ini，对新手友好，不容易写错。推荐直接使用标准模式。
 
-本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。
+**本作的 examples文件夹中的 vlesss.client.toml, vlesss.server.toml , multi.client.toml 等文件中 提供了大量解释性的注释, 对新手很友好, 一定要读一下，才可以熟练掌握配置格式。**
 
 ### 兼容模式
 
@@ -291,8 +295,6 @@ api服务器。
 总之，强制tls，简单修订了一下协议格式，然后重点完善了fullcone。
 
 verysimple 实现了 一种独创的 非mux型“分离信道”方法的 udp over tcp 的fullcone
-
-测试 fullcone 的话，由于目前 verysimple 客户端只支持socks5入口，可以考虑先用v2ray + Netch或者透明代理 等方法监听本地网卡的所有请求，发送到 verysimple 客户端的socks5端口，然后 verysimple 客户端 再用 vless v1 发送到 verysimple vless v1 + direct 的服务端。
 
 v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1](docs/vless_v1.md)
 
@@ -446,8 +448,6 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后作者不承�
 
 我fork也是尊重原作者，既然你们这么谨慎，正好推动了我的重构计划，推动了历史发展
 ## 额外说明 以及 开发计划
-
-verysimple 是一个很简单的项目，覆盖协议也没有v2ray全，比如socks协议只能用于客户端入口，没法用于出口。
 
 本项目的目的类似于一种 proof of concept. 方便理解，也因为极简所以比官方v2ray快。
 
