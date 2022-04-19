@@ -15,7 +15,7 @@ var (
 	ErrShortRead           = errors.New("short read")
 	ErrInvalidData         = errors.New("invalid data")
 	ErrHandled             = errors.New("handled")
-	ErrFailed              = errors.New("failed")
+	ErrFailed              = errors.New("failed") //最无脑的Err, 在能描述清楚错误时不要使用 ErrFailed
 )
 
 //没啥特殊的
@@ -74,17 +74,17 @@ func (e ErrInErr) String() string {
 	if e.Data != nil {
 
 		if e.ErrDetail != nil {
-			return fmt.Sprintf("%s : %s, Data: %v", e.ErrDesc, e.ErrDetail.Error(), e.Data)
+			return fmt.Sprintf(" [ %s , Detail: %s, Data: %v ] ", e.ErrDesc, e.ErrDetail.Error(), e.Data)
 
 		}
 
-		return fmt.Sprintf("%s , Data: %v", e.ErrDesc, e.Data)
-
+		return fmt.Sprintf(" [ %s , Data: %v ] ", e.ErrDesc, e.Data)
 	}
+
 	if e.ErrDetail != nil {
-		return fmt.Sprintf("%s : %s", e.ErrDesc, e.ErrDetail.Error())
-
+		return fmt.Sprintf(" [ %s , Detail: %s ] ", e.ErrDesc, e.ErrDetail.Error())
 	}
+
 	return e.ErrDesc
 
 }

@@ -14,8 +14,6 @@ insecure = true
 utls = true
 # advancedLayer = "ws"  # ws也可应用我们的http header
 
-# header配置有两项 要填, type 和 content. 如果是 prefix类型, 则很简单:
-
 [dial.header.request]
 version = "1.1"
 method = "GET"

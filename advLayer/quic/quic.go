@@ -1,4 +1,7 @@
 //Package quic defines functions to listen and dial quic, with some customizable congestion settings.
+//
+// 这里我们使用 hysteria的 brutal阻控.
+// 见 https://github.com/tobyxdd/quic-go 中 toby的 *-mod 分支, 里面会多一个 congestion 文件夹.
 package quic
 
 import (
@@ -30,14 +33,14 @@ func init() {
 
 //但是我在mac里实测，内网单机极速测速的情况下，本来tcp能达到3000mbps的速度，到了quic就只能达到 1333mbps左右。
 
-//我们要是以后不使用hysteria的话，只需删掉 useHysteria 里的代码, 并删掉 go.mod中的replace部分
+//我们要是以后不使用hysteria的话，只需删掉 useHysteria 里的代码, 删掉 pacer.go/brutal.go, 并删掉 go.mod中的replace部分.
 // 然后proxy.go里的 相关配置部分也要删掉 在 prepareTLS_for* 函数中 的相关配置 即可.
 
 //100mbps
 const Default_hysteriaMaxByteCount = 1024 * 1024 / 8 * 100
 
 func CloseSession(baseC any) {
-	baseC.(quic.Session).CloseWithError(0, "")
+	baseC.(quic.Connection).CloseWithError(0, "")
 }
 
 //给 quic.Stream 添加 方法使其满足 net.Conn.
@@ -179,7 +182,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 	return
 }
 
-func isActive(s quic.Session) bool {
+func isActive(s quic.Connection) bool {
 	select {
 	case <-s.Context().Done():
 		return false
@@ -202,7 +205,7 @@ type Client struct {
 }
 
 type sessionState struct {
-	quic.Session
+	quic.Connection
 	id [16]byte
 
 	openedStreamCount int32
@@ -321,7 +324,7 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 	id := utils.GenerateUUID()
 
-	var result = &sessionState{Session: session, id: id}
+	var result = &sessionState{Connection: session, id: id}
 	c.sessionMapMutex.Lock()
 	c.clientconns[id] = result
 	c.sessionMapMutex.Unlock()

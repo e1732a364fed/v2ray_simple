@@ -13,7 +13,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-//观察v2ray的实现，在没有header时，还会添加一个 Date ，这个文档里没提
+//观察v2ray的实现，在没有header时，还会添加一个 Date ，这个v2ray的文档里没提
+// https://www.v2fly.org/config/transport/tcp.html#noneheaderobject
+//
+// transport/internet/headers/http/http.go
 
 type RequestHeader struct {
 	Version string              `toml:"version"` //默认值为 "1.1"
