@@ -11,3 +11,4 @@ verysimple_*
 *.mmdb
 *.tgz
 geosite
+vs_log*
