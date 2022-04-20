@@ -13,7 +13,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"reflect"
 	"syscall"
 
@@ -128,20 +127,4 @@ func (c *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
 	}
 	return int64(n), e
 
-}
-
-//用于 listen和 dial 配置一些底层参数.
-type Sockopt struct {
-	TProxy bool `toml:"tproxy"`
-	Somark int  `toml:"mark"`
-}
-
-type ListenerWithFile interface {
-	net.Listener
-	File() (f *os.File, err error)
-}
-
-type ConnWithFile interface {
-	net.Conn
-	File() (f *os.File, err error)
 }

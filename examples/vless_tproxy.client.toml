@@ -1,0 +1,27 @@
+# 本文件使用tproxy作为客户端监听协议. 服务端配置文件 直接使用 vlesss.server.toml 即可
+
+# 相关配置和讲解 可以对照 https://toutyrater.github.io/app/tproxy.html
+# 比如如何配置iptables, 要好好看上面教程. 原理都是一样的, 只是配置文件略有区别。
+
+# 我们不像v2ray/xray一样 使用 dokodemo的额外配置来处理tproxy，而是单独使用 tproxy作为一个协议.
+
+# tproxy无法在 交互模式/apiServer中配置 或 热加载, 只能用 标准toml配置文件启用.
+
+[[listen]]
+protocol = "tproxy" # tproxy只支持客户端, 且只支持linux系统, 一般用于软路由/树莓派等.
+host = "127.0.0.1"
+port = 12345
+# sockopt.tproxy = true # 不需要指明 tproxy这个 sockopt, 因为protocol指出trpxoxy后就会自动配置该项.
+
+# 不用指明network, 只要指明了tproxy, 就会同时自动监听 tcp和 dup.
+
+[[dial]]
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "127.0.0.1"
+port = 4434
+version = 0
+insecure = true
+utls = true
+
+sockopt.mark = 255

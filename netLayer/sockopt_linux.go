@@ -4,6 +4,14 @@ import (
 	"syscall"
 )
 
+func SetTproxy(fd int) error {
+	return syscall.SetsockoptInt(fd, syscall.SOL_IP, syscall.IP_TRANSPARENT, 1)
+}
+
+func SetSomark(fd int, somark int) error {
+	return syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_MARK, somark)
+}
+
 func SetTproxyFor(tcplistener ListenerWithFile) error {
 	fileDescriptorSource, err := tcplistener.File()
 	if err != nil {
@@ -11,7 +19,7 @@ func SetTproxyFor(tcplistener ListenerWithFile) error {
 	}
 	defer fileDescriptorSource.Close()
 
-	return syscall.SetsockoptInt(int(fileDescriptorSource.Fd()), syscall.SOL_IP, syscall.IP_TRANSPARENT, 1)
+	return SetTproxy(int(fileDescriptorSource.Fd()))
 }
 
 func SetSomarkForListener(tcplistener ListenerWithFile, somark int) error {
@@ -21,15 +29,15 @@ func SetSomarkForListener(tcplistener ListenerWithFile, somark int) error {
 	}
 	defer fileDescriptorSource.Close()
 
-	return syscall.SetsockoptInt(int(fileDescriptorSource.Fd()), syscall.SOL_SOCKET, syscall.SO_MARK, somark)
+	return SetSomark(int(fileDescriptorSource.Fd()), somark)
 }
 
-func SetSomarkForConn(c ConnWithFile) error {
+func SetSomarkForConn(c ConnWithFile, somark int) error {
 	fileDescriptorSource, err := c.File()
 	if err != nil {
 		return err
 	}
 	defer fileDescriptorSource.Close()
 
-	return syscall.SetsockoptInt(int(fileDescriptorSource.Fd()), syscall.SOL_SOCKET, syscall.SO_MARK, int(config.Mark))
+	return SetSomark(int(fileDescriptorSource.Fd()), somark)
 }

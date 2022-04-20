@@ -81,6 +81,8 @@ var (
 
 	startPProf bool
 	startMProf bool
+
+	tproxyListenCount int
 )
 
 func init() {
@@ -186,6 +188,10 @@ func main() {
 
 		for _, serverConf := range standardConf.Listen {
 			thisConf := serverConf
+			if thisConf.Protocol == "tproxy" {
+				listenTproxy(thisConf.GetAddrStrForListenOrDial())
+				continue
+			}
 
 			if thisConf.Uuid == "" && default_uuid != "" {
 				thisConf.Uuid = default_uuid
@@ -253,7 +259,7 @@ func main() {
 
 	configFileQualifiedToRun := false
 
-	if (defaultInServer != nil || len(allServers) > 0) && defaultOutClient != nil {
+	if (defaultInServer != nil || len(allServers) > 0 || tproxyListenCount != 0) && (defaultOutClient != nil) {
 		configFileQualifiedToRun = true
 
 		if confMode == simpleMode {
@@ -902,7 +908,10 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	if wlc == nil && udp_wlc == nil {
 		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
 		utils.Debug("invalid request and no matched fallback, hung up")
-		iics.wrappedConn.Close()
+		if iics.wrappedConn != nil {
+			iics.wrappedConn.Close()
+
+		}
 		return
 	}
 
@@ -939,11 +948,13 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	inServer := iics.inServer
 
 	//尝试分流, 获取到真正要发向 的 outClient
-	if !iics.forbidDNS_orRoute && routePolicy != nil && !inServer.CantRoute() {
+	if !iics.forbidDNS_orRoute && routePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
 
 		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,
-			Tag:  inServer.GetTag(),
+		}
+		if inServer != nil {
+			desc.Tag = inServer.GetTag()
 		}
 
 		if ce := utils.CanLogDebug("try routing"); ce != nil {
@@ -1027,16 +1038,19 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	if targetAddr.IsUDP() {
 
-		switch inServer.Name() {
-		case "socks5":
-			// UDP Associate：
-			// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
-			// 但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
-			// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
-		default:
-			iics.shouldCloseInSerBaseConnWhenFinish = true
+		if inServer != nil {
+			switch inServer.Name() {
+			case "socks5":
+				// UDP Associate：
+				// 因为socks5的 UDP Associate 办法是较为特殊的，不使用现有tcp而是新建立udp，所以此时该tcp连接已经没用了
+				// 但是根据socks5标准，这个tcp链接同样是 keep alive的，否则客户端就会认为服务端挂掉了.
+				// 另外，此时 targetAddr.IsUDP 只是用于告知此链接是udp Associate，并不包含实际地址信息
+			default:
+				iics.shouldCloseInSerBaseConnWhenFinish = true
 
+			}
 		}
+
 	} else {
 
 		//lazy_encrypt情况比较特殊，基础连接何时被关闭会在tlslazy相关代码中处理。

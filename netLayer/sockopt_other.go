@@ -14,3 +14,11 @@ func SetSomarkForListener(tcplistener ListenerWithFile) error {
 func SetSomarkForConn(c ConnWithFile) error {
 	return nil
 }
+
+func SetTproxy(fd int) error {
+	return nil
+}
+
+func SetSomark(fd int, somark int) error {
+	return nil
+}

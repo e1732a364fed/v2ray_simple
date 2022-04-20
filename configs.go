@@ -96,8 +96,7 @@ func loadCommonComponentsFromStandardConf() {
 	}
 }
 
-// set conf variable, or exit the program; 还会设置mainFallback
-// 先检查configFileName是否存在，存在就尝试加载文件，否则尝试 -L参数
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf 或者 simpleConf，否则尝试 -L参数
 func loadConfig() (err error) {
 
 	fpath := utils.GetFilePath(configFileName)

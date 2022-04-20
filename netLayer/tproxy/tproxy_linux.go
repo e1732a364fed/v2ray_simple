@@ -47,23 +47,23 @@ import (
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-func HandshakeTCP(tcpConn *net.TCPConn) (net.Conn, netLayer.Addr, error) {
+func HandshakeTCP(tcpConn *net.TCPConn) netLayer.Addr {
 	targetTCPAddr := tcpConn.LocalAddr().(*net.TCPAddr)
 
-	return tcpConn, netLayer.Addr{
+	return netLayer.Addr{
 		IP:   targetTCPAddr.IP,
 		Port: targetTCPAddr.Port,
-	}, nil
+	}
 
 }
 
 var udpMsgConnMap = make(map[netLayer.HashableAddr]*MsgConn)
 
-func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, error) {
+func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, netLayer.Addr, error) {
 	bs := utils.GetPacket()
 	n, src, dst, err := ReadFromUDP(underlay, bs)
 	if err != nil {
-		return nil, err
+		return nil, netLayer.Addr{}, err
 	}
 	ad := netLayer.NewAddrFromUDPAddr(src)
 	hash := ad.GetHashable()
@@ -80,7 +80,7 @@ func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, error) {
 
 	conn.readChan <- netLayer.AddrData{Data: bs[:n], Addr: netLayer.NewAddrFromUDPAddr(dst)}
 
-	return conn, nil
+	return conn, netLayer.NewAddrFromUDPAddr(dst), nil
 }
 
 //implements netLayer.MsgConn

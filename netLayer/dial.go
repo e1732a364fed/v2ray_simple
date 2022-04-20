@@ -3,6 +3,8 @@ package netLayer
 import (
 	"crypto/tls"
 	"net"
+	"syscall"
+	"time"
 )
 
 func (addr *Addr) Dial() (net.Conn, error) {
@@ -88,5 +90,29 @@ dialedPart:
 		return tlsconn, err
 	}
 	return resultConn, err
+
+}
+
+func (addr Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
+
+	dialer := &net.Dialer{
+		Timeout: time.Second * 16,
+	}
+	dialer.Control = func(network, address string, c syscall.RawConn) error {
+		return c.Control(func(fd uintptr) {
+			if sockopt != nil {
+
+				if sockopt.Somark != 0 {
+					SetSomark(int(fd), sockopt.Somark)
+				}
+
+				if sockopt.TProxy {
+					SetTproxy(int(fd))
+				}
+			}
+		})
+	}
+
+	return dialer.Dial(addr.Network, addr.String())
 
 }
