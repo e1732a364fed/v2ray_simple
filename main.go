@@ -112,6 +112,14 @@ func main() {
 		printVersion()
 
 	}
+	if strings.Contains(configFileName, "server") {
+		utils.LogOutFileName += "_server"
+	} else if strings.Contains(configFileName, "client") {
+		utils.LogOutFileName += "_client"
+	}
+
+	utils.ShouldLogToFile = true
+
 	utils.InitLog()
 
 	if startPProf {
@@ -277,6 +285,8 @@ func main() {
 		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
 		<-osSignals
 
+		utils.Info("Program got close signal.")
+
 		//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
 		// 用下面代码以试图解决端口占用问题.
 
@@ -351,7 +361,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 	}
 
 	network := inServer.Network()
-	thisListener, err = netLayer.ListenAndAccept(network, inServer.AddrStr(), handleFunc)
+	thisListener, err = netLayer.ListenAndAccept(network, inServer.AddrStr(), inServer.GetSockopt(), handleFunc)
 
 	if err == nil {
 		if ce := utils.CanLogInfo("Listening"); ce != nil {

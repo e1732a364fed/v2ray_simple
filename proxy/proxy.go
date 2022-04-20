@@ -116,27 +116,20 @@ type ProxyCommon interface {
 
 	Stop()
 
+	getCommon() *ProxyCommonStruct
+
 	/////////////////// 网络层/传输层 ///////////////////
+
+	GetSockopt() *netLayer.Sockopt
 
 	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是 unix domain socket 则是文件路径 ，
 	// 在 inServer就是监听地址，在 outClient就是拨号地址
 	AddrStr() string
 	SetAddrStr(string)
 	Network() string
-	setNetwork(string)
 
 	CantRoute() bool //for inServer
 	GetTag() string
-	setCantRoute(bool)
-	setTag(string)
-
-	IsDial() bool //true则为 Dial 端，false 则为 Listen 端
-	GetListenConf() *ListenConf
-	GetDialConf() *DialConf
-
-	setIsDial(bool)
-	setListenConf(*ListenConf) //for inServer
-	setDialConf(*DialConf)     //for outClient
 
 	//如果 IsHandleInitialLayers 方法返回true, 则监听/拨号从传输层一直到高级层的过程直接由inServer/outClient自己处理, 而我们主过程直接处理它 处理完毕的剩下的 代理层。
 	//
@@ -154,28 +147,20 @@ type ProxyCommon interface {
 	GetTLS_Server() *tlsLayer.Server
 	GetTLS_Client() *tlsLayer.Client
 
-	setTLS_Server(*tlsLayer.Server)
-	setTLS_Client(*tlsLayer.Client)
-
-	/////////////////// header层 ///////////////////
+	/////////////////// http 层 ///////////////////
 
 	HasHeader() *httpLayer.HeaderPreset
-	setHeader(h *httpLayer.HeaderPreset)
 
-	/////////////////// header层的http部分 ///////////////////
 	//默认回落地址.
 	GetFallback() *netLayer.Addr
-	setFallback(netLayer.Addr)
 
 	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 
 	Path() string
-	setPath(string)
 
 	/////////////////// 高级层 ///////////////////
 
 	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
-	setAdvancedLayer(string)
 
 	GetWS_Client() *ws.Client //for outClient
 	GetWS_Server() *ws.Server //for inServer
@@ -190,9 +175,6 @@ type ProxyCommon interface {
 	IsMux() bool //如果用了grpc或者quic, 则此方法返回true。这个是用于判断外层mux的。
 
 	GetQuic_Client() *quic.Client //for outClient
-	setQuic_Client(*quic.Client)
-
-	setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any))
 
 	/////////////////// 内层mux层 ///////////////////
 
@@ -204,24 +186,28 @@ type ProxyCommon interface {
 }
 
 // ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法.
-// 规定，所有的proxy都要内嵌本struct
+// 规定，所有的proxy都要内嵌本struct. 我们用这种方式实现 "继承".
 // 这是verysimple的架构所要求的。
 // verysimple规定，在加载完配置文件后，一个listen和一个dial所使用的全部层级都是确定了的.
 //  因为所有使用的层级都是确定的，就可以进行针对性优化
 type ProxyCommonStruct struct {
+	//isdial     bool
+	listenConf *ListenConf
+	dialConf   *DialConf
+
 	Addr    string
 	TLS     bool
 	Tag     string //可用于路由, 见 netLayer.route.go
 	network string
 
-	PATH string
+	Sockopt *netLayer.Sockopt
 
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
 
-	isdial     bool
-	listenConf *ListenConf
-	dialConf   *DialConf
+	header *httpLayer.HeaderPreset
+
+	PATH string
 
 	cantRoute bool //for inServer, 若为true，则 inServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
 
@@ -239,7 +225,10 @@ type ProxyCommonStruct struct {
 
 	innermux *smux.Session //用于存储 client的已拨号的mux连接
 
-	header *httpLayer.HeaderPreset
+}
+
+func (pcs *ProxyCommonStruct) getCommon() *ProxyCommonStruct {
+	return pcs
 }
 
 func (pcs *ProxyCommonStruct) setListenCommonConnFunc(f func() (newConnChan chan net.Conn, baseConn any)) {
@@ -351,6 +340,9 @@ func (pcs *ProxyCommonStruct) IsUDP_MultiChannel() bool {
 func (pcs *ProxyCommonStruct) GetTag() string {
 	return pcs.Tag
 }
+func (pcs *ProxyCommonStruct) GetSockopt() *netLayer.Sockopt {
+	return pcs.Sockopt
+}
 
 func (pcs *ProxyCommonStruct) setTag(tag string) {
 	pcs.Tag = tag
@@ -435,9 +427,10 @@ func (s *ProxyCommonStruct) HandleInitialLayersFunc() func() (newConnChan chan n
 func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
-func (s *ProxyCommonStruct) setIsDial(b bool) {
-	s.isdial = b
-}
+
+//func (s *ProxyCommonStruct) setIsDial(b bool) {
+//	s.isdial = b
+//}
 func (s *ProxyCommonStruct) setListenConf(lc *ListenConf) {
 	s.listenConf = lc
 }
@@ -445,6 +438,7 @@ func (s *ProxyCommonStruct) setDialConf(dc *DialConf) {
 	s.dialConf = dc
 }
 
+/*
 //true则为 Dial 端，false 则为 Listen 端
 func (s *ProxyCommonStruct) IsDial() bool {
 	return s.isdial
@@ -455,6 +449,7 @@ func (s *ProxyCommonStruct) GetListenConf() *ListenConf {
 func (s *ProxyCommonStruct) GetDialConf() *DialConf {
 	return s.dialConf
 }
+*/
 
 func (s *ProxyCommonStruct) GetQuic_Client() *quic.Client {
 	return s.quic_c

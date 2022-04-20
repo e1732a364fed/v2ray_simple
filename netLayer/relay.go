@@ -201,7 +201,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, u
 		go func() {
 			n, e := TryCopy(rc, lc)
 
-			utils.CanLogDebug("转发结束").Write(zap.String("direction", "本地->远程"),
+			utils.CanLogDebug("Relay End").Write(zap.String("direction", "L->R"),
 				zap.String("target", rtaddrStr),
 				zap.Int64("bytes", n),
 				zap.Error(e),
@@ -218,7 +218,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, u
 
 		n, e := TryCopy(lc, rc)
 
-		utils.CanLogDebug("转发结束").Write(zap.String("direction", "远程->本地"),
+		utils.CanLogDebug("Relay End").Write(zap.String("direction", "R->L"),
 			zap.String("target", rtaddrStr),
 			zap.Int64("bytes", n),
 			zap.Error(e),

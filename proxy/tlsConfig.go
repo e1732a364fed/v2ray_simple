@@ -29,7 +29,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			return e
 		}
 
-		com.setNetwork("udp")
+		com.getCommon().setNetwork("udp")
 		var useHysteria, hysteria_manual bool
 		var maxbyteCount int
 
@@ -65,7 +65,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			alpnList = quic.AlpnList
 		}
 
-		com.setQuic_Client(quic.NewClient(&na, alpnList, dc.Host, dc.Insecure, useHysteria, maxbyteCount, hysteria_manual))
+		com.getCommon().setQuic_Client(quic.NewClient(&na, alpnList, dc.Host, dc.Insecure, useHysteria, maxbyteCount, hysteria_manual))
 		return nil //quic直接接管了tls，所以不执行下面步骤
 
 	case "grpc":
@@ -80,7 +80,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			alpnList = append([]string{httpLayer.H2_Str}, alpnList...)
 		}
 	}
-	com.setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList))
+	com.getCommon().setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList))
 	return nil
 }
 
@@ -94,7 +94,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	switch com.AdvancedLayer() {
 	case "quic":
 
-		com.setNetwork("udp")
+		com.getCommon().setNetwork("udp")
 
 		if len(alpnList) == 0 {
 			alpnList = quic.AlpnList
@@ -146,7 +146,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 		}
 
-		com.setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any) {
+		com.getCommon().setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any) {
 
 			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
 
@@ -184,7 +184,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, alpnList)
 	if err == nil {
-		com.setTLS_Server(tlsserver)
+		com.getCommon().setTLS_Server(tlsserver)
 	} else {
 		return err
 	}
@@ -202,7 +202,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	if isclient {
 		utlsStr := u.Query().Get("utls")
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
-		com.setTLS_Client(tlsLayer.NewClient(u.Host, insecure, useUtls, nil))
+		com.getCommon().setTLS_Client(tlsLayer.NewClient(u.Host, insecure, useUtls, nil))
 
 	} else {
 		certFile := u.Query().Get("cert")
@@ -213,7 +213,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 
 		tlsserver, err := tlsLayer.NewServer(sni, certFile, keyFile, insecure, nil)
 		if err == nil {
-			com.setTLS_Server(tlsserver)
+			com.getCommon().setTLS_Server(tlsserver)
 		} else {
 			return err
 		}

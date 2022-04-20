@@ -24,6 +24,7 @@ func init() {
 
 }
 
+//阻塞
 func checkConfigAndTryRunApiServer() {
 	if standardConf.App == nil {
 		return
@@ -34,6 +35,7 @@ func checkConfigAndTryRunApiServer() {
 	}
 }
 
+//阻塞
 func runApiServer(adminUUID string) {
 
 	if ce := utils.CanLogInfo("Start Api Server"); ce != nil {

@@ -38,10 +38,21 @@ func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
 	}
 }
 
-// ListenAndAccept 试图监听 所有类型的网络，包括tcp, udp 和 unix domain socket.
+func loopAcceptUDP(uc net.UDPConn, acceptFunc func([]byte, *net.UDPAddr)) {
+	for {
+		p := utils.GetPacket()
+		n, addr, err := uc.ReadFromUDP(p)
+		if err != nil {
+			break
+		}
+		go acceptFunc(p[:n], addr)
+	}
+}
+
+// ListenAndAccept 试图监听 tcp, udp 和 unix domain socket 这三种传输层协议.
 //
 // 非阻塞，在自己的goroutine中监听.
-func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener net.Listener, err error) {
+func ListenAndAccept(network, addr string, sockopt *Sockopt, acceptFunc func(net.Conn)) (listener net.Listener, err error) {
 	if addr == "" || acceptFunc == nil {
 		return nil, utils.ErrNilParameter
 	}
@@ -49,17 +60,42 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener 
 		network = "tcp"
 	}
 	switch network {
-	case "udp", "udp4", "udp6":
+	case "tcp", "tcp4", "tcp6":
+		var tcplistener *net.TCPListener
+
+		var ta *net.TCPAddr
+		ta, err = net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			return
+		}
+
+		tcplistener, err = net.ListenTCP(network, ta)
+		if err != nil {
+			return
+		}
+
+		if sockopt != nil {
+			if sockopt.TProxy {
+				SetTproxyFor(tcplistener)
+			}
+		}
+
+		go loopAccept(tcplistener, acceptFunc)
+
+	case "udp", "udp4", "udp6": //udp 的透明代理并不使用本函数监听.
+
 		var ua *net.UDPAddr
 		ua, err = net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return
 		}
+
 		listener, err = NewUDPListener(ua)
 		if err != nil {
 			return
 		}
 		go loopAccept(listener, acceptFunc)
+
 	case "unix":
 		// 参考 https://eli.thegreenplace.net/2019/unix-domain-sockets-in-go/
 		//监听 unix domain socket后，就会自动创建 相应文件;
@@ -89,6 +125,7 @@ func ListenAndAccept(network, addr string, acceptFunc func(net.Conn)) (listener 
 		if err != nil {
 			return
 		}
+
 		go loopAccept(listener, acceptFunc)
 
 	}

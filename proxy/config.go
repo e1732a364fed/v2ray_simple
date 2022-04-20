@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer"
 )
 
 // CommonConf 是标准配置中 Listen和Dial 都有的部分
@@ -18,6 +19,8 @@ type CommonConf struct {
 	Version  int    `toml:"version"`  //可选
 
 	Network string `toml:"network"` //传输层协议; 默认使用tcp, network可选值为 tcp, udp, unix; 理论上来说应该用 transportLayer，但是怕小白不懂，所以使用 network作为名称。而且也不算错，因为go的net包 也是用 network来指示 传输层/网络层协议的. 比如 net.Listen()第一个参数可以用 ip, tcp, udp 等。
+
+	Sockopt *netLayer.Sockopt `toml:"sockopt"`
 
 	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
 	Insecure bool     `toml:"insecure"` //tls 是否安全

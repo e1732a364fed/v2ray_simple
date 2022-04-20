@@ -19,9 +19,9 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 规定，编译出的文件名必须以 verysimple 开头.
 
-verysimple 研发了一些新技术，可以加速，目前基本上是全网最快。
+verysimple 研发了一些新技术，使用自研架构，可以加速，目前基本上是全网最快，且有用户报告内存占用 比v2ray/xray 小1/3。
 
-vs的主要亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，交互模式等。
+vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，交互模式等。
 
 支持的功能有:
 
@@ -431,6 +431,8 @@ https://github.com/hahahrfool/v2ray_simple/discussions
 首先学会使用verysimple，熟读本 README.md 和 examples/ 下的配置文件
 
 之后读 version.go 文件里的 注释，对本作结构有一个认识。然后读 proxy/doc.go 理解 VSI模型。
+
+之后 学习 proxy.ProxyCommon 接口.
 
 之后就可以在go doc中选择自己感兴趣的地方阅读了。
 

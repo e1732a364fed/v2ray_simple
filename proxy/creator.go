@@ -249,8 +249,8 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 		nr = true
 	}
 
-	ser.setCantRoute(nr)
-	ser.setTag(u.Fragment)
+	ser.getCommon().setCantRoute(nr)
+	ser.getCommon().setTag(u.Fragment)
 
 	configCommonByURL(ser, u)
 
@@ -268,7 +268,7 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 			}
 		}
 
-		ser.setFallback(fa)
+		ser.getCommon().setFallback(fa)
 	}
 }
 
@@ -281,15 +281,15 @@ func configCommonByURL(ser ProxyCommon, u *url.URL) {
 	q := u.Query()
 	wsStr := q.Get("ws")
 	if wsStr != "" && wsStr != "0" && wsStr != "false" {
-		ser.setAdvancedLayer("ws")
+		ser.getCommon().setAdvancedLayer("ws")
 	}
 	grpcStr := q.Get("grpc")
 	if grpcStr != "" && grpcStr != "0" && grpcStr != "false" {
 		pathStr := q.Get("path")
 		if pathStr != "" && pathStr != "0" && pathStr != "false" {
 
-			ser.setAdvancedLayer("grpc")
-			ser.setPath(pathStr)
+			ser.getCommon().setAdvancedLayer("grpc")
+			ser.getCommon().setPath(pathStr)
 		}
 
 	}
@@ -297,22 +297,27 @@ func configCommonByURL(ser ProxyCommon, u *url.URL) {
 
 //setAdvancedLayer
 func configCommon(ser ProxyCommon, cc *CommonConf) {
-	ser.setAdvancedLayer(cc.AdvancedLayer)
+	ser.getCommon().setAdvancedLayer(cc.AdvancedLayer)
 	if cc.Path != "" {
-		ser.setPath(cc.Path)
+		ser.getCommon().setPath(cc.Path)
 	}
 
 }
 
 //SetAddrStr,setTag, setHeader, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon(setAdvancedLayer)
 func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
-	cli.setNetwork(dc.Network)
-	cli.setIsDial(true)
-	cli.setDialConf(dc)
-	cli.setTag(dc.Tag)
+	clic := cli.getCommon()
+	if clic == nil {
+		return nil
+	}
+
+	clic.setNetwork(dc.Network)
+	clic.setDialConf(dc)
+	clic.setTag(dc.Tag)
+	clic.Sockopt = dc.Sockopt
 	if dc.HttpHeader != nil {
 		dc.HttpHeader.AssignDefaultValue()
-		cli.setHeader(dc.HttpHeader)
+		clic.setHeader(dc.HttpHeader)
 	}
 
 	if cli.Name() != "direct" {
@@ -330,15 +335,21 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 //SetAddrStr,setNetwork, setTag,setHeader, setCantRoute,setListenConf(lc),setFallback, call configCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
-	ser.setNetwork(lc.Network)
-	ser.setListenConf(lc)
-	ser.setTag(lc.Tag)
-	ser.setCantRoute(lc.NoRoute)
+	serc := ser.getCommon()
+	if serc == nil {
+		return nil
+	}
+	serc.setNetwork(lc.Network)
+	serc.setListenConf(lc)
+	serc.setTag(lc.Tag)
+	serc.setCantRoute(lc.NoRoute)
+	serc.Sockopt = lc.Sockopt
+
 	configCommon(ser, &lc.CommonConf)
 
 	if lc.HttpHeader != nil {
 		lc.HttpHeader.AssignDefaultValue()
-		ser.setHeader(lc.HttpHeader)
+		serc.setHeader(lc.HttpHeader)
 	}
 
 	switch lc.AdvancedLayer {
@@ -371,7 +382,7 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 
 		}
 
-		ser.setFallback(fa)
+		serc.setFallback(fa)
 	}
 
 	return nil

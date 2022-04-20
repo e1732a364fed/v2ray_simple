@@ -2,8 +2,10 @@ package utils
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
+	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -16,7 +18,7 @@ const (
 	log_dpanic
 	log_panic
 	Log_fatal
-	//Log_off	//不支持不打印致命输出。既然致命我们一定要尸检然后查看病因啊
+	log_off //不支持不打印致命输出。既然致命我们一定要尸检然后查看病因啊
 
 	DefaultLL = Log_warning
 )
@@ -29,46 +31,66 @@ const (
 var (
 	LogLevel  int
 	ZapLogger *zap.Logger
+
+	LogOutFileName string
+
+	//在 go test时，我们依然想要查看命令行输出, 但是不希望产生多余文件.
+	// 所以只有在main.go 中我们才设置 ShouldLogToFile=true
+	ShouldLogToFile bool
 )
 
 func init() {
 
 	flag.IntVar(&LogLevel, "ll", DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
+
+	flag.StringVar(&LogOutFileName, "lf", "vs_log", "output file for log; If empty, no log file will be used.")
 }
 
 func LogLevelStrList() (sl []string) {
-	sl = make([]string, 0, 7)
-	for i := 0; i < 7; i++ {
+	sl = make([]string, 0, log_off)
+	for i := 0; i < log_off; i++ {
 		sl = append(sl, LogLevelStr(i))
 	}
-	return sl
+	return
 }
 
 func LogLevelStr(lvl int) string {
-	switch lvl {
-	case 0:
-		return "debug"
+	return zapcore.Level(lvl - 1).String()
+}
 
-	case 1:
-		return "info"
+func getZapLogFileWriteSyncer(fn string) zapcore.WriteSyncer {
+	return zapcore.AddSync(&lumberjack.Logger{
+		Filename:   fn,
+		MaxSize:    10,
+		MaxBackups: 10,
+		MaxAge:     30,
+		Compress:   false,
+	})
+}
 
-	case 2:
-		return "warning"
-
-	case 3:
-		return "error"
-
-	case 4:
-		return "dpanic"
-
-	case 5:
-		return "panic"
-
-	case 6:
-		return "fatal"
+//为了输出日志保持整齐, 统一使用5字节长度的字符串, 少的加尾缀空格, 多的以 点号 进行缩写。
+func levelCapitalStrWith5Chars(l zapcore.Level) string {
+	switch l {
+	case zapcore.DebugLevel:
+		return "DEBUG"
+	case zapcore.InfoLevel:
+		return "INFO "
+	case zapcore.WarnLevel:
+		return "WARN "
+	case zapcore.ErrorLevel:
+		return "ERROR"
+	case zapcore.DPanicLevel:
+		return "DPAN."
+	case zapcore.PanicLevel:
+		return "PANIC"
+	case zapcore.FatalLevel:
+		return "FATAL"
 	default:
-		return "undefined"
+		return fmt.Sprintf("LEVEL(%d)", l)
 	}
+}
+func capitalLevelEncoderWith5Chars(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(levelCapitalStrWith5Chars(l))
 }
 
 //本作大量用到zap打印输出, 所以必须调用InitLog函数来初始化，否则就会闪退
@@ -76,22 +98,32 @@ func InitLog() {
 	atomicLevel := zap.NewAtomicLevel()
 	atomicLevel.SetLevel(zapcore.Level(LogLevel - 1))
 
-	var writes = []zapcore.WriteSyncer{zapcore.AddSync(os.Stdout)}
-
-	core := zapcore.NewCore(zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
-		MessageKey:  "msg",
-		LevelKey:    "level",
-		TimeKey:     "time",
+	consoleCore := zapcore.NewCore(zapcore.NewConsoleEncoder(zapcore.EncoderConfig{
+		MessageKey:  "M",
+		LevelKey:    "L",
+		TimeKey:     "T",
 		FunctionKey: "func",
-		//EncodeTime:  zapcore.ISO8601TimeEncoder,
 		EncodeLevel: zapcore.CapitalColorLevelEncoder,
 		EncodeTime:  zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000"),
-		EncodeName:  zapcore.FullNameEncoder,
-		LineEnding:  zapcore.DefaultLineEnding,
-	}), zapcore.NewMultiWriteSyncer(writes...), atomicLevel)
+	}), zapcore.AddSync(os.Stdout), atomicLevel)
+
+	if ShouldLogToFile && LogOutFileName != "" {
+		jsonConf := zap.NewProductionEncoderConfig()
+		jsonConf.EncodeTime = zapcore.TimeEncoderOfLayout("060102 150405.000") //用一种比较简短的方式输出时间,年月日 时分秒.毫秒。 年分只需输出后两位数字即可, 不管Y2K问题, 80年后要是还没实现网络自由那这个世界完蛋了.
+		jsonConf.LevelKey = "L"
+		jsonConf.TimeKey = "T"
+		jsonConf.MessageKey = "M"
+		jsonConf.EncodeLevel = capitalLevelEncoderWith5Chars
+		jsonCore := zapcore.NewCore(zapcore.NewJSONEncoder(jsonConf), getZapLogFileWriteSyncer(LogOutFileName), atomicLevel)
+
+		ZapLogger = zap.New(zapcore.NewTee(consoleCore, jsonCore))
+
+	} else {
+		ZapLogger = zap.New(consoleCore)
+
+	}
 
 	//zap.NewDevelopmentEncoderConfig()
-	ZapLogger = zap.New(core)
 	ZapLogger.Info("zap log init complete.")
 }
 
