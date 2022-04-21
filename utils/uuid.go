@@ -3,17 +3,16 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"strings"
 )
 
 func StrToUUID(s string) (uuid [16]byte, err error) {
 	if len(s) != 36 {
-		return uuid, errors.New("invalid UUID Str: " + s)
+		return uuid, ErrInErr{ErrDesc: "invalid UUID Str", ErrDetail: ErrInvalidData, Data: s}
 	}
 	b := []byte(strings.Replace(s, "-", "", -1))
 	if len(b) != 32 {
-		return uuid, errors.New("invalid UUID Str: " + s)
+		return uuid, ErrInErr{ErrDesc: "invalid UUID Str", ErrDetail: ErrInvalidData, Data: s}
 	}
 	_, err = hex.Decode(uuid[:], b)
 	return

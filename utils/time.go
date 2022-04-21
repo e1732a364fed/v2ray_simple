@@ -12,12 +12,12 @@ import (
 func fixAndroidTimezone() {
 	out, err := exec.Command("/system/bin/getprop", "persist.sys.timezone").Output()
 	if err != nil {
-		log.Println("fixAndroidTimezone failed", err)
+		log.Println("fixAndroidTimezone failed when calling /system/bin/getprop,", err)
 		return
 	}
 	z, err := time.LoadLocation(strings.TrimSpace(string(out)))
 	if err != nil {
-		log.Println("fixAndroidTimezone failed", err)
+		log.Println("fixAndroidTimezone failed,", err)
 		return
 	}
 	time.Local = z

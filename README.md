@@ -1,4 +1,4 @@
-[![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] 
+[![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] [![Downloads][7]][8] [![release][9]][8] ![GoVersion][10]
 
 [1]: https://godoc.org/github.com/hahahrfool/v2ray_simple?status.svg
 [2]: https://godoc.org/github.com/hahahrfool/v2ray_simple
@@ -6,6 +6,11 @@
 [4]: LICENSE
 [5]: https://goreportcard.com/badge/github.com/hahahrfool/v2ray_simple
 [6]: https://goreportcard.com/report/github.com/hahahrfool/v2ray_simple
+[7]: https://img.shields.io/github/downloads/hahahrfool/v2ray_simple/total.svg
+[8]: https://github.com/hahahrfool/v2ray_simple/releases/latest
+[9]: https://img.shields.io/github/release/hahahrfool/v2ray_simple/all.svg?style=flat-square
+[10]: https://img.shields.io/github/go-mod/go-version/hahahrfool/v2ray_simple?style=flat-square
+
 
 # verysimple
 
@@ -25,13 +30,13 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-ws(以及earlydata)/grpc/quic(以及hy阻控)/smux, 
+socks5/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless/vless_v1, 
 
-tproxy(即透明代理)/trojan/simplesocks/vless/vless_v1/socks5/http/dokodemo, 
+ws(以及earlydata)/grpc/quic(以及hy阻控)/smux, 
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
 
-tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli/apiServer
+tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli(交互模式)/apiServer
 
 
 为了不吓跑小白，目前 本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -295,8 +300,6 @@ api服务器；tproxy 透明代理； http伪装头
 ### 关于vless v1
 
 这里的v1是 verysimple 自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)
-
-在客户端的 配置url中，添加 `?version=1` 即可生效。
 
 总之，强制tls，简单修订了一下协议格式，然后重点完善了fullcone。
 

@@ -292,6 +292,10 @@ func (a *Addr) IsEmpty() bool {
 	return a.Name == "" && len(a.IP) == 0 && a.Network == "" && a.Port == 0
 }
 
+func (a *Addr) IsIpv6() bool {
+	return a.IP.To4() == nil
+}
+
 func (a *Addr) GetNetIPAddr() (na netip.Addr) {
 	if len(a.IP) < 1 {
 		return

@@ -142,7 +142,7 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 	// 因此v1.0.3以及更老版本都是直接一段一段read的。
 	//但是，因为需要支持fallback技术，所以还是要 进行缓存
 
-	readbs := utils.GetBytes(utils.StandardBytesLength)
+	readbs := utils.GetBytes(utils.MTU)
 
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {

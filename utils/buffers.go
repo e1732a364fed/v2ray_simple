@@ -133,7 +133,7 @@ func MergeBuffers(bs [][]byte) (result []byte, duplicate bool) {
 		return b0, false
 	}
 
-	if allLen <= MaxBufLen {
+	if allLen <= MaxPacketLen {
 		result = GetPacket()
 
 	} else {

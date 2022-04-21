@@ -23,13 +23,13 @@ type ConnWithFile interface {
 	File() (f *os.File, err error)
 }
 
-func SetSockOptForListener(tcplistener ListenerWithFile, sockopt *Sockopt, isudp bool) {
+func SetSockOptForListener(tcplistener ListenerWithFile, sockopt *Sockopt, isudp bool, isipv6 bool) {
 	fileDescriptorSource, err := tcplistener.File()
 	if err != nil {
 		return
 	}
 	defer fileDescriptorSource.Close()
-	SetSockOpt(int(fileDescriptorSource.Fd()), sockopt, isudp)
+	SetSockOpt(int(fileDescriptorSource.Fd()), sockopt, isudp, isipv6)
 }
 
 //SetSockOpt 是平台相关的.

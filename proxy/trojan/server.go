@@ -66,7 +66,7 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
-	readbs := utils.GetBytes(utils.StandardBytesLength)
+	readbs := utils.GetBytes(utils.MTU)
 
 	wholeReadLen, err := underlay.Read(readbs)
 	if err != nil {

@@ -25,8 +25,6 @@ const (
 
 // LogLevel 值越小越唠叨, 废话越多，值越大打印的越少，见log_开头的常量;
 //
-// 默认是 info级别.因为还在开发中，所以默认级别高一些有好处，方便排错
-//
 //我们的loglevel具体值 与 zap的 loglevel+1 的含义等价
 var (
 	LogLevel  int
@@ -109,7 +107,7 @@ func InitLog() {
 
 	if ShouldLogToFile && LogOutFileName != "" {
 		jsonConf := zap.NewProductionEncoderConfig()
-		jsonConf.EncodeTime = zapcore.TimeEncoderOfLayout("060102 150405.000") //用一种比较简短的方式输出时间,年月日 时分秒.毫秒。 年分只需输出后两位数字即可, 不管Y2K问题, 80年后要是还没实现网络自由那这个世界完蛋了.
+		jsonConf.EncodeTime = zapcore.TimeEncoderOfLayout("060102 150405.000") //用一种比较简短的方式输出时间,年月日 时分秒.毫秒。 年只需输出后两位数字即可, 不管Y2K问题, 80年后要是还没实现网络自由那这个世界完蛋了.
 		jsonConf.LevelKey = "L"
 		jsonConf.TimeKey = "T"
 		jsonConf.MessageKey = "M"
@@ -123,7 +121,6 @@ func InitLog() {
 
 	}
 
-	//zap.NewDevelopmentEncoderConfig()
 	ZapLogger.Info("zap log init complete.")
 }
 

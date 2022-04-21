@@ -3,6 +3,5 @@
 
 package netLayer
 
-func SetSockOpt(fd int, sockopt *Sockopt, isudp bool) {
-
+func SetSockOpt(fd int, sockopt *Sockopt, isudp bool, isipv6 bool) {
 }

@@ -100,7 +100,7 @@ func (addr Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
 	}
 	dialer.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
-			SetSockOpt(int(fd), sockopt, addr.IsUDP())
+			SetSockOpt(int(fd), sockopt, addr.IsUDP(), addr.IsIpv6())
 
 		})
 	}

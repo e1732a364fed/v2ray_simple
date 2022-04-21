@@ -2,7 +2,6 @@
 package utils
 
 import (
-	"errors"
 	"flag"
 	"math/rand"
 	"strings"
@@ -78,6 +77,6 @@ func WrapFuncForPromptUI(f func(string) bool) func(string) error {
 		if f(s) {
 			return nil
 		}
-		return errors.New("not valid")
+		return ErrInvalidData
 	}
 }

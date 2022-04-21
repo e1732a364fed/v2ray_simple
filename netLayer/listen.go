@@ -77,7 +77,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, acceptFunc func(net
 		}
 
 		if sockopt != nil {
-			SetSockOptForListener(tcplistener, sockopt, false)
+			SetSockOptForListener(tcplistener, sockopt, false, ta.IP.To4() == nil)
 		}
 
 		go loopAccept(tcplistener, acceptFunc)
@@ -138,7 +138,7 @@ func (addr Addr) ListenUDP_withOpt(sockopt *Sockopt) (net.PacketConn, error) {
 	var lc net.ListenConfig
 	lc.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
-			SetSockOpt(int(fd), sockopt, true)
+			SetSockOpt(int(fd), sockopt, true, addr.IsIpv6())
 		})
 	}
 	return lc.ListenPacket(context.Background(), "udp", addr.String())

@@ -11,6 +11,8 @@ import (
 	"unsafe"
 )
 
+//credit: https://github.com/LiamHaworth/go-tproxy/blob/master/tproxy_udp.go ,  which is under MIT License
+
 // ListenUDP will construct a new UDP listener
 // socket with the Linux IP_TRANSPARENT option
 // set on the underlying socket

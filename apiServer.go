@@ -38,9 +38,7 @@ func checkConfigAndTryRunApiServer() {
 //阻塞
 func runApiServer(adminUUID string) {
 
-	if ce := utils.CanLogInfo("Start Api Server"); ce != nil {
-		ce.Write()
-	}
+	utils.Info("Start Api Server")
 
 	ser := newApiServer("admin", adminUUID)
 
