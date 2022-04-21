@@ -39,6 +39,7 @@ https://github.com/cybozu-go/transocks/blob/master/original_dst_linux.go
 package tproxy
 
 import (
+	"io"
 	"net"
 	"os"
 	"time"
@@ -72,6 +73,7 @@ func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, netLayer.Addr, error
 		conn = &MsgConn{
 			ourSrcAddr: src,
 			readChan:   make(chan netLayer.AddrData, 5),
+			closeChan:  make(chan struct{}),
 		}
 
 		udpMsgConnMap[hash] = conn
@@ -88,6 +90,8 @@ type MsgConn struct {
 	ourSrcAddr *net.UDPAddr
 
 	readChan chan netLayer.AddrData
+
+	closeChan chan struct{}
 }
 
 func (mc *MsgConn) Close() error {
@@ -105,6 +109,8 @@ func (mc *MsgConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	timeoutChan := time.After(netLayer.UDP_timeout)
 	select {
+	case <-mc.closeChan:
+		return nil, netLayer.Addr{}, io.EOF
 	case <-timeoutChan:
 		return nil, netLayer.Addr{}, os.ErrDeadlineExceeded
 	case newmsg := <-mc.readChan:

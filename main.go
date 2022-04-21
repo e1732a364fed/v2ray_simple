@@ -103,21 +103,27 @@ func init() {
 }
 
 func main() {
+	os.Exit(mainFunc())
+}
+func mainFunc() (result int) {
 
 	flag.Parse()
 
 	if cmdPrintVer {
 		printVersion_simple()
 		//根据 cmdPrintVer 的定义, 我们直接退出
-		os.Exit(0)
+		return
 	} else {
 		printVersion()
 
 	}
-	if strings.Contains(configFileName, "server") {
-		utils.LogOutFileName += "_server"
-	} else if strings.Contains(configFileName, "client") {
-		utils.LogOutFileName += "_client"
+
+	if !utils.IsFlagGiven("lf") {
+		if strings.Contains(configFileName, "server") {
+			utils.LogOutFileName += "_server"
+		} else if strings.Contains(configFileName, "client") {
+			utils.LogOutFileName += "_client"
+		}
 	}
 
 	utils.ShouldLogToFile = true
@@ -138,9 +144,12 @@ func main() {
 		defer p.Stop()
 	}
 
+	utils.Info("Program started")
+	defer utils.Info("Program exited")
+
 	if err := loadConfig(); err != nil && !isFlexible() {
 		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
-		os.Exit(-1)
+		return -1
 	}
 
 	netLayer.Prepare()
@@ -160,7 +169,10 @@ func main() {
 		var eie utils.ErrInErr
 		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
 		if hase {
-			log.Fatalf("can not create local server: %s\n", eie)
+			if ce := utils.CanLogErr("can not create local server"); ce != nil {
+				ce.Write(zap.Error(eie))
+			}
+			return -1
 		}
 
 		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
@@ -220,7 +232,10 @@ func main() {
 		var eie utils.ErrInErr
 		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
 		if hase {
-			log.Fatalln("can not create remote client: ", eie)
+			if ce := utils.CanLogErr("can not create remote client"); ce != nil {
+				ce.Write(zap.Error(eie))
+			}
+			return -1
 		}
 	case standardMode:
 
@@ -273,8 +288,8 @@ func main() {
 	}
 	//没配置可用的listen或者dial，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
-		utils.Fatal("No valid proxy settings available, exit now.")
-		return
+		utils.Error("No valid proxy settings available, exit now.")
+		return -1
 	}
 
 	if enableApiServer {
@@ -303,6 +318,7 @@ func main() {
 		}
 
 	}
+	return
 }
 
 //非阻塞. 在main函数中被调用。也可以在 test代码中直接使用 listenSer 函数 来手动开启新的转发流程。

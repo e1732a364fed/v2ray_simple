@@ -7,7 +7,7 @@ cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSIO
 
 ifdef PACK
 define compile
-	GOOS=$(2) GOARCH=$(3) GOARM=$(5) $(cmd) $(1)
+	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) GOARM=$(5) $(cmd) $(1)
 	mv $(1) verysimple$(4)
 	tar -cJf $(1).tar.xz verysimple$(4) examples/
 	rm verysimple$(4)
@@ -16,7 +16,7 @@ endef
 else
 
 define compile
-	GOOS=$(2) GOARCH=$(3) $(cmd) $(1)$(4)
+	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) $(cmd) $(1)$(4)
 endef
 endif
 
