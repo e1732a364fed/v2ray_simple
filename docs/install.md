@@ -3,6 +3,10 @@
 
 本指导默认不使用root账户。我是不建议用一键的。大家分段分步骤学习更加科学。
 
+如果你用root账户运行的话，不要在前面加 "sudo". 
+
+下面的命令也不要整个一大段拷贝，而要分条拷贝到vps并运行。
+
 ## 第0步，准备阶段
 
 首先确保自己服务器相应端口都是打开状态，防火墙要处理一下。然后安装一些BBR之类的加速组件。
@@ -11,13 +15,18 @@
 
 命令解释：先移除旧版本文件夹，然后从github下载最新版发布包，然后解压到相应位置后复制出一个配置文件。
 
-如果你以前用过verysimple，则最好在运行前将自己配置文件先拷贝到其它地方，防止下面代码将你原来配置误删除。
+注意，本命令只会下载正式版，不会下载beta版。如果你要测试beta版，到github上找到对应的下载链接下载，而不是使用jq所读到的版本。
+
+注意，如果你以前用过verysimple，则最好在运行前将自己配置文件先拷贝到其它地方，防止下面代码将你原来配置误删除。
+或者你可以先解压 新版verysimple可执行文件 到其他位置，然后再用 mv 覆盖掉老版本 的可执行文件 和 examples 目录。
 
 ```sh
 sudo rm -rf /usr/local/etc/verysimple
 sudo mkdir -p /usr/local/etc/verysimple
 
-sudo apt-get -y install jq
+sudo apt-get update
+
+sudo apt-get -y install jq curl
 
 tag=`curl -sL https://api.github.com/repos/hahahrfool/v2ray_simple/releases/latest | jq -r ".tag_name"`
 
