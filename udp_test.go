@@ -95,6 +95,8 @@ func testUDP(protocol string, version int, network string, multi bool, fullcone 
 	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 情况
 	//vless v1的udp_multi的dialfunc 需要单一 client 拨号多个raddr 才能被触发, 所以还要使用socks5测试两次
 
+	isTestInChina := utils.IsTimezoneCN()
+
 	var testClientConfFormatStr = `
 [[listen]]
 protocol = "dokodemo"
@@ -108,7 +110,7 @@ protocol = "dokodemo"
 network = "udp"
 host = "127.0.0.1"
 port = %s
-target = "udp://114.114.114.114:53"
+target = "udp://%s:53"
 
 [[listen]]
 protocol = "socks5"
@@ -137,8 +139,16 @@ network = "%s"
 	clientDialPort := netLayer.RandPortStr(true, false)
 	socks5Port, socks5PortStr := netLayer.RandPort_andStr(true, false)
 
+	var secondDnsServerStr string
+	if isTestInChina {
+		secondDnsServerStr = "114.114.114.114"
+	} else {
+		secondDnsServerStr = "1.1.1.1"
+
+	}
+
 	testClientConfStr := fmt.Sprintf(testClientConfFormatStr, clientListenPort,
-		clientListen2Port, socks5PortStr, protocol, clientDialPort, version, network)
+		clientListen2Port, secondDnsServerStr, socks5PortStr, protocol, clientDialPort, version, network)
 
 	var testServerConfFormatStr = `
 [[listen]]
@@ -314,7 +324,12 @@ protocol = "direct"
 		}
 	}
 
-	socks5ClientConn.WriteUDP_Target.IP = net.IPv4(114, 114, 114, 114)
+	if isTestInChina {
+		socks5ClientConn.WriteUDP_Target.IP = net.IPv4(114, 114, 114, 114)
+	} else {
+		socks5ClientConn.WriteUDP_Target.IP = net.IPv4(1, 1, 1, 1)
+
+	}
 
 	r, _, err = c.ExchangeWithConn(m, &dns.Conn{
 		Conn: socks5ClientConn,

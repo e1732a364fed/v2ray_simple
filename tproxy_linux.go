@@ -38,7 +38,7 @@ func (tp TProxy) StartLoopTCP() {
 		tcpconn := conn.(*net.TCPConn)
 		targetAddr := tproxy.HandshakeTCP(tcpconn)
 
-		if ce := utils.CanLogErr("TProxy loop read got new tcp"); ce != nil {
+		if ce := utils.CanLogInfo("TProxy loop read got new tcp"); ce != nil {
 			ce.Write(zap.String("->", targetAddr.String()))
 		}
 
@@ -68,7 +68,7 @@ func (tp TProxy) StartLoopUDP() {
 			}
 			break
 		} else {
-			if ce := utils.CanLogErr("TProxy loop read got new udp"); ce != nil {
+			if ce := utils.CanLogInfo("TProxy loop read got new udp"); ce != nil {
 				ce.Write(zap.String("->", raddr.String()))
 			}
 		}
