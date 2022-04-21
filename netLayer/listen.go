@@ -1,9 +1,11 @@
 package netLayer
 
 import (
+	"context"
 	"net"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -130,4 +132,25 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, acceptFunc func(net
 
 	}
 	return
+}
+
+func (addr Addr) ListenUDP_withOpt(sockopt *Sockopt) (net.PacketConn, error) {
+	var lc net.ListenConfig
+	lc.Control = func(network, address string, c syscall.RawConn) error {
+		return c.Control(func(fd uintptr) {
+			if sockopt != nil {
+
+				if sockopt.Somark != 0 {
+					SetSomark(int(fd), sockopt.Somark)
+				}
+
+				if sockopt.TProxy {
+					SetTproxy(int(fd))
+					SetTproxy_udp(int(fd))
+				}
+			}
+
+		})
+	}
+	return lc.ListenPacket(context.Background(), "udp", addr.String())
 }

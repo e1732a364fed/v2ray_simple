@@ -1,13 +1,13 @@
 
-下面给出安装到 ubuntu amd64服务器 所需要的命令, 大家总结一下即可得到一个简单的一键脚本
+下面给出安装到 ubuntu amd64服务器 所需要的步骤和命令, 大家总结一下即可得到一个简单的一键脚本
 
-本指导默认不使用root账户。我是不建议用一键的。大家分段分步骤学习更加科学。
+本指导默认不使用root账户，且不建议用一键脚本。分步骤学习、安装 更加科学。
 
 如果你用root账户运行的话，不要在前面加 "sudo". 
 
 下面的命令也不要整个一大段拷贝，而要分条拷贝到vps并运行。
 
-## 第0步，准备阶段
+## 第〇步，准备阶段
 
 首先确保自己服务器相应端口都是打开状态，防火墙要处理一下。然后安装一些BBR之类的加速组件。
 
@@ -26,7 +26,7 @@ sudo mkdir -p /usr/local/etc/verysimple
 
 sudo apt-get update
 
-sudo apt-get -y install jq curl
+sudo apt-get -y install jq curl wget
 
 tag=`curl -sL https://api.github.com/repos/hahahrfool/v2ray_simple/releases/latest | jq -r ".tag_name"`
 
@@ -45,7 +45,7 @@ sudo cp examples/vlesss.server.toml server.toml
 然后修改 `/usr/local/etc/verysimple/server.toml` ,使配置达到你想要的效果，注意里面证书路径要改为完整路径
 
 
-## 第二部，证书部分
+## 第二步，证书部分
 
 如果你没有证书，想要先用自签名证书试试，可以运行 `verysimple -i` 进入交互模式，然后根据提示自行生成自签名ssl证书
 

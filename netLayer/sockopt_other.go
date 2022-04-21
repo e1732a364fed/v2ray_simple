@@ -22,3 +22,6 @@ func SetTproxy(fd int) error {
 func SetSomark(fd int, somark int) error {
 	return nil
 }
+func SetTproxy_udp(fd int) error {
+	return nil
+}

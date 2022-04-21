@@ -8,6 +8,10 @@ func SetTproxy(fd int) error {
 	return syscall.SetsockoptInt(fd, syscall.SOL_IP, syscall.IP_TRANSPARENT, 1)
 }
 
+func SetTproxy_udp(fd int) error {
+	return syscall.SetsockoptInt(fd, syscall.SOL_IP, syscall.IP_RECVORIGDSTADDR, 1)
+}
+
 func SetSomark(fd int, somark int) error {
 	return syscall.SetsockoptInt(fd, syscall.SOL_SOCKET, syscall.SO_MARK, somark)
 }

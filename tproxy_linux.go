@@ -10,7 +10,7 @@ import (
 )
 
 func listenTproxy(addr string) {
-	utils.Info("Start running Tproxy ")
+	utils.Info("Start running Tproxy")
 
 	ad, err := netLayer.NewAddr(addr)
 	if err != nil {
@@ -43,7 +43,8 @@ func (tp TProxy) StartLoopTCP() {
 		}
 
 		passToOutClient(incomingInserverConnState{
-			wrappedConn: tcpconn,
+			wrappedConn:   tcpconn,
+			defaultClient: defaultOutClient,
 		}, false, tcpconn, nil, targetAddr)
 	})
 
@@ -52,7 +53,7 @@ func (tp TProxy) StartLoopTCP() {
 func (tp TProxy) StartLoopUDP() {
 	ad := netLayer.Addr(tp)
 	ad.Network = "udp"
-	conn, err := ad.DialWithOpt(&netLayer.Sockopt{TProxy: true})
+	conn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
 	if err != nil {
 		if ce := utils.CanLogErr("TProxy StartLoopUDP DialWithOpt failed"); ce != nil {
 			ce.Write(zap.Error(err))
@@ -73,6 +74,8 @@ func (tp TProxy) StartLoopUDP() {
 			}
 		}
 
-		go passToOutClient(incomingInserverConnState{}, false, nil, msgConn, raddr)
+		go passToOutClient(incomingInserverConnState{
+			defaultClient: defaultOutClient,
+		}, false, nil, msgConn, raddr)
 	}
 }

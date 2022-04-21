@@ -1075,7 +1075,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 			//实测 grpc.Conn 被调用了Close 也不会实际关闭连接，而是会卡住，阻塞，直到底层tcp连接被关闭后才会返回
 			// 但是我们还是 直接避免这种情况
-			if !inServer.IsMux() {
+			if inServer != nil && !inServer.IsMux() {
 				iics.shouldCloseInSerBaseConnWhenFinish = true
 
 			}
