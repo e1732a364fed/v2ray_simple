@@ -1442,12 +1442,6 @@ advLayerHandshakeStep:
 			wlc.SetReadDeadline(time.Now().Add(time.Second))
 			n, err := wlc.Read(firstPayload)
 			if err != nil {
-				if ce := utils.CanLogWarn("Read first payload failed"); ce != nil {
-					ce.Write(
-						zap.String("target", targetAddr.String()),
-						zap.Error(err),
-					)
-				}
 
 				if !errors.Is(err, os.ErrDeadlineExceeded) {
 					if ce := utils.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
@@ -1459,7 +1453,15 @@ advLayerHandshakeStep:
 
 					clientConn.Close()
 					wlc.Close()
+					result = -1
 					return
+				} else {
+					if ce := utils.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
+						ce.Write(
+							zap.String("target", targetAddr.String()),
+							zap.Error(err),
+						)
+					}
 				}
 
 			}
@@ -1476,6 +1478,7 @@ advLayerHandshakeStep:
 				)
 			}
 			result = -1
+			return
 		}
 
 	} else {
@@ -1489,6 +1492,7 @@ advLayerHandshakeStep:
 				)
 			}
 			result = -1
+			return
 		}
 	}
 
