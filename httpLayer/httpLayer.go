@@ -1,9 +1,7 @@
 /*
 Package httpLayer provides methods and definitions for http layer
 
-
-虽然我们http层在vsi模型中属于 headerLayer, 但是因为 http比较重要, 所以单独放入一个包中.
- fallback 由 本 httpLayer 包 处理. 因为回落的目标只可能是http服务器.
+fallback 由 本 httpLayer 包 处理. 因为回落的目标只可能是http服务器.
 
 http头 格式 可以参考：
 

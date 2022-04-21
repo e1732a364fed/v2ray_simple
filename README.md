@@ -25,7 +25,13 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-ws(以及earlydata)/grpc/quic(以及hy阻控), tproxy(即透明代理)/trojan(以及smux)/simplesocks/vless/vless_v1/socks5/http/dokodemo, dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli/apiServer
+ws(以及earlydata)/grpc/quic(以及hy阻控)/smux, 
+
+tproxy(即透明代理)/trojan/simplesocks/vless/vless_v1/socks5/http/dokodemo, 
+
+dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
+
+tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli/apiServer
 
 
 为了不吓跑小白，目前 本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)

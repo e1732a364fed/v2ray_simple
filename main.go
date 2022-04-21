@@ -95,8 +95,8 @@ func init() {
 
 	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
 
-	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the local part in config file), only enbled when config file is not provided.")
-	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the remote part in config file), only enbled when config file is not provided.")
+	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the listen part in config file), only enbled when config file is not provided.")
+	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the dial part in config file), only enbled when config file is not provided.")
 
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com. Only valid when loglevel=0")
 
@@ -1669,8 +1669,6 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		netLayer.Relay(&realTargetAddr, wrc, wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
 
 		atomic.AddInt32(&activeConnectionCount, -1)
-
-		utils.Debug("Relay tcp finished")
 
 		return
 
