@@ -100,16 +100,8 @@ func (addr Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
 	}
 	dialer.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
-			if sockopt != nil {
+			SetSockOpt(int(fd), sockopt, addr.IsUDP())
 
-				if sockopt.Somark != 0 {
-					SetSomark(int(fd), sockopt.Somark)
-				}
-
-				if sockopt.TProxy {
-					SetTproxy(int(fd))
-				}
-			}
 		})
 	}
 

@@ -77,14 +77,14 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, acceptFunc func(net
 		}
 
 		if sockopt != nil {
-			if sockopt.TProxy {
-				SetTproxyFor(tcplistener)
-			}
+			SetSockOptForListener(tcplistener, sockopt, false)
 		}
 
 		go loopAccept(tcplistener, acceptFunc)
 
-	case "udp", "udp4", "udp6": //udp 的透明代理并不使用本函数监听.
+	case "udp", "udp4", "udp6":
+
+		//udp 的透明代理等设置sockopt的情况并不使用本函数监听, 而是使用 ListenUDP_withOpt.
 
 		var ua *net.UDPAddr
 		ua, err = net.ResolveUDPAddr("udp", addr)
@@ -138,18 +138,7 @@ func (addr Addr) ListenUDP_withOpt(sockopt *Sockopt) (net.PacketConn, error) {
 	var lc net.ListenConfig
 	lc.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
-			if sockopt != nil {
-
-				if sockopt.Somark != 0 {
-					SetSomark(int(fd), sockopt.Somark)
-				}
-
-				if sockopt.TProxy {
-					SetTproxy(int(fd))
-					SetTproxy_udp(int(fd))
-				}
-			}
-
+			SetSockOpt(int(fd), sockopt, true)
 		})
 	}
 	return lc.ListenPacket(context.Background(), "udp", addr.String())

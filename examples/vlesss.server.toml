@@ -14,7 +14,7 @@ key = "cert.key"
 
 [[dial]]
 protocol = "direct"
-# fullcone = true   # 默认的fullcone是关闭状态, 可以取消注释以打开. 不过vless v0的话没用, v1有用.
+# fullcone = true   # 默认的fullcone是关闭状态, 可以取消注释以打开. 不过vless v0的话没用，因为vless v0不支持fullcone。 v1或者trojan可以打开 该选项.
 
 # fallback这一项是可选的，如果没有的话，或者未匹配，则默认使用listen提供的fallback
 # 如果listen也没提供fallback，那就会直接断开连接

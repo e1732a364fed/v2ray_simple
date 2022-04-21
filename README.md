@@ -25,7 +25,7 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-ws(以及earlydata)/grpc/quic(以及hy阻控), trojan(以及smux)/simplesocks/vless/vless_v1/socks5/http/dokodemo, dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli/apiServer
+ws(以及earlydata)/grpc/quic(以及hy阻控), tproxy(即透明代理)/trojan(以及smux)/simplesocks/vless/vless_v1/socks5/http/dokodemo, dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli/apiServer
 
 
 为了不吓跑小白，目前 本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -283,7 +283,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持 quic以及hysteria 阻控，与xray/v2ray兼容（详情见wiki）,还新开发了“手动挡”模式
 
-api服务器。
+api服务器；tproxy 透明代理； http伪装头
 
 ## 技术详情
 ### 关于vless v1
@@ -549,6 +549,12 @@ verysimple 版本 v1.0.3
 如果你能fork，并青出于蓝，那么我甘拜下风。
 
 也希望本项目能够普及到世界上所有需要学习相关技术的国家，希望所有的想要学习代码的人都能够先学习中文。
+
+如果本作作者突然停更，这里允许任何人以 verysimple 作者的名义fork并 接盘。你只要声称自己是原作者，忘记了github和自己邮箱的密码，只好重开，这不就ok了。
+
+关键不在于谁是作者，一个作者倒下，千万个作者会站起来。
+
+我们的思想 生生不息，追求自由的人们啊，一起奋斗吧！
 
 # 免责声明与鸣谢
 

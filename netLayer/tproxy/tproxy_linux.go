@@ -95,8 +95,14 @@ type MsgConn struct {
 }
 
 func (mc *MsgConn) Close() error {
+	select {
+	case <-mc.closeChan:
+	default:
+		close(mc.closeChan)
+	}
 	return nil
 }
+
 func (mc *MsgConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return nil
 }

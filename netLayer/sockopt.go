@@ -11,12 +11,25 @@ type Sockopt struct {
 	Somark int  `toml:"mark"`
 }
 
+//net.TCPListener, net.UnixListener
 type ListenerWithFile interface {
 	net.Listener
 	File() (f *os.File, err error)
 }
 
+//net.UnixConn, net.UDPConn, net.TCPConn, net.IPConn
 type ConnWithFile interface {
 	net.Conn
 	File() (f *os.File, err error)
 }
+
+func SetSockOptForListener(tcplistener ListenerWithFile, sockopt *Sockopt, isudp bool) {
+	fileDescriptorSource, err := tcplistener.File()
+	if err != nil {
+		return
+	}
+	defer fileDescriptorSource.Close()
+	SetSockOpt(int(fileDescriptorSource.Fd()), sockopt, isudp)
+}
+
+//SetSockOpt 是平台相关的.
