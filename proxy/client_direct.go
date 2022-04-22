@@ -1,5 +1,4 @@
-// Package direct provies a struct that implements proxy.Client
-package direct
+package proxy
 
 import (
 	"io"
@@ -7,20 +6,19 @@ import (
 	"net/url"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-const Name = "direct"
+const directName = "direct"
 
 func init() {
-	proxy.RegisterClient(Name, &ClientCreator{})
+	RegisterClient(directName, &DirectClientCreator{})
 }
 
-type ClientCreator struct{}
+type DirectClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
-	d := &Client{}
+func (DirectClientCreator) NewClientFromURL(url *url.URL) (Client, error) {
+	d := &DirectClient{}
 
 	nStr := url.Query().Get("fullcone")
 	if nStr == "true" || nStr == "1" {
@@ -30,22 +28,22 @@ func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	return d, nil
 }
 
-func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
-	d := &Client{}
+func (DirectClientCreator) NewClient(dc *DialConf) (Client, error) {
+	d := &DirectClient{}
 	d.isfullcone = dc.Fullcone
 	return d, nil
 }
 
-//实现了 proxy.Client
-type Client struct {
-	proxy.ProxyCommonStruct
+//实现了 DirectClient
+type DirectClient struct {
+	ProxyCommonStruct
 	isfullcone bool
 }
 
-func (*Client) Name() string { return Name }
+func (*DirectClient) Name() string { return directName }
 
 //若 underlay 为nil，则我们会自动对target进行拨号, 否则直接返回underlay。
-func (d *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
+func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {
 		result, err = target.Dial()
@@ -68,7 +66,6 @@ func (d *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 }
 
 //direct的Client的 EstablishUDPChannel 实际上就是直接 监听一个udp端口。会无视传入的net.Conn.
-func (d *Client) EstablishUDPChannel(_ net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
-
+func (d *DirectClient) EstablishUDPChannel(_ net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
 	return netLayer.NewUDPMsgConn(nil, d.isfullcone, false), nil
 }

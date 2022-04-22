@@ -29,7 +29,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 
-	_ "github.com/hahahrfool/v2ray_simple/proxy/direct"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/dokodemo"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/http"
 	_ "github.com/hahahrfool/v2ray_simple/proxy/simplesocks"

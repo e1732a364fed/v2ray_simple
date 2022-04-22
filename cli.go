@@ -14,11 +14,46 @@ import (
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/trojan"
 	"github.com/hahahrfool/v2ray_simple/proxy/vless"
+	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 	"github.com/manifoldco/promptui"
 )
 
-var cliCmdList []CliCmd
+var cliCmdList = []CliCmd{
+	{
+		"生成随机ssl证书", func() {
+			const certFn = "cert.pem"
+			const keyFn = "cert.key"
+			if utils.FileExist(certFn) {
+				fmt.Printf(certFn)
+				fmt.Printf(" 已存在！\n")
+				return
+			}
+
+			if utils.FileExist(keyFn) {
+				fmt.Printf(keyFn)
+				fmt.Printf(" 已存在！\n")
+				return
+			}
+
+			err := tlsLayer.GenerateRandomCertKeyFiles(certFn, keyFn)
+			if err == nil {
+				fmt.Printf("生成成功！请查看目录中的 ")
+				fmt.Printf(certFn)
+				fmt.Printf(" 和 ")
+				fmt.Printf(keyFn)
+				fmt.Printf("\n")
+
+			} else {
+
+				fmt.Printf("生成失败,")
+				fmt.Printf(err.Error())
+				fmt.Printf("\n")
+
+			}
+		},
+	},
+}
 
 func init() {
 

@@ -4,7 +4,9 @@ Server that wants to relay data to a dokodemo target address.
 
 dokodemo 是 dokodemo-door 协议的实现。目前不含透明代理功能。
 
-dokodemo 是 listen端, 监听一个普通的tcp端口，试图将一切流量转发到特定的预定义的地址. 并不是直接转发，而是转发到dial。
+严格来说 dokodemo-door 并不是一个 "协议", 而是一个预先指定目标的转发方式。
+
+dokodemo 是 listen端, 监听一个普通的tcp端口，试图将一切流量转发到特定的预定义的地址. 并不是直接连接，而是转发到dial。
 
 dokodemo 属于 “单目标”代理，而其它proxy.Server 一般都属于 “泛目标”代理。
 

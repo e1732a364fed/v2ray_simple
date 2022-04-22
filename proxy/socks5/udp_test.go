@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy/direct"
+	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
 )
 
@@ -27,7 +27,7 @@ func TestUDP(t *testing.T) {
 		t.FailNow()
 	}
 
-	direct := &direct.Client{}
+	direct := &proxy.DirectClient{}
 
 	go func() {
 		for {

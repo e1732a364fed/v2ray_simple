@@ -12,7 +12,6 @@ import (
 	"github.com/hahahrfool/v2ray_simple/advLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
@@ -32,7 +31,7 @@ func init() {
 	flag.BoolVar(&nodownload, "nd", false, "don't automatically download any extra data files")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 
-	//commands.go 中定义的 CliCmd都是直接运行的、无需进一步交互的命令
+	//commands.go 中定义的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成一个随机的uuid供你参考", func() {
@@ -55,40 +54,6 @@ func init() {
 	cliCmdList = append(cliCmdList, CliCmd{
 		"查询当前状态", func() {
 			printAllState(os.Stdout)
-		},
-	})
-
-	cliCmdList = append(cliCmdList, CliCmd{
-		"生成随机ssl证书", func() {
-			const certFn = "cert.pem"
-			const keyFn = "cert.key"
-			if utils.FileExist(certFn) {
-				fmt.Printf(certFn)
-				fmt.Printf(" 已存在！\n")
-				return
-			}
-
-			if utils.FileExist(keyFn) {
-				fmt.Printf(keyFn)
-				fmt.Printf(" 已存在！\n")
-				return
-			}
-
-			err := tlsLayer.GenerateRandomCertKeyFiles(certFn, keyFn)
-			if err == nil {
-				fmt.Printf("生成成功！请查看目录中的 ")
-				fmt.Printf(certFn)
-				fmt.Printf(" 和 ")
-				fmt.Printf(keyFn)
-				fmt.Printf("\n")
-
-			} else {
-
-				fmt.Printf("生成失败,")
-				fmt.Printf(err.Error())
-				fmt.Printf("\n")
-
-			}
 		},
 	})
 
