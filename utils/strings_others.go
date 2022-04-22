@@ -1,0 +1,9 @@
+//go:build !(darwin || dragonfly || freebsd || linux || netbsd || openbsd)
+
+package utils
+
+func GetRandomWord() string {
+	// 在非 unix/linux 系统下， 不必使用 babble包，因为该包太大了，占用空间.
+
+	return GenerateRandomString()
+}

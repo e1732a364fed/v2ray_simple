@@ -75,10 +75,11 @@ vless 的v0 始终处于beta中，而且 【udp长度】的包头仅仅在 commi
 ## 内层mux
 
 在cmdmux给出时，使用内层mux，使用 smux+simplesocks。关于simplesocks的情况 请阅读 trojan-go的文档。
-
+我们的mux标准 除了包头是vless格式以外，其余部分 完全与trojan-go一致
 
 # vless v1 所解决的问题
 
+## fullcone
 v1对 udp 添加了 两种可支持fullcone的方式，【经典多路复用】方式 以及 【分离信道】方式。
 
 而v0连经典的多路复用转发udp数据包的fullcone都没有做到，只能支持symmetric NAT，因为v0协议缺少 udp的raddr部分。
@@ -89,6 +90,8 @@ udp分离信道方式发送 性能会比默认的 多路复用 发送性能要�
 
 在有大量向不同 远程地址发送的 udp链接 存在时，才能体现出 分离信道 的优势 , 比如一些 实时游戏 或者 多人视频会议。
 
+## mux
+使用smux 以避免 mux.cool 的众多问题。
 
 # 其他情况
 ## 传输在websocket之上的情况

@@ -21,4 +21,6 @@ extra = { vless1_udp_multi = true }
 
 # use_mux = true  # 只需要客户端指明 use_mux 即可开启mux, 服务端自动适配. verysimple只支持v1的 mux，不支持v0的mux，因为 v0的mux有很多问题，vs作者是不负责解决这些历史问题的。
 
-# 开启mux可以 更隐蔽，建议开启。不过，开启mux后，udp_multi 功能就没用了。
+# 开启mux可以 更隐蔽，建议开启。
+
+# 不过，开启mux后，udp_multi 功能就没用了，就是说，此时虽然能共存, 但是 udp 的分离信道法就失去了意义，因为 它自己以为是分离信道，实际上都是在 mux 里，你把 udp_multi 给骗了。
