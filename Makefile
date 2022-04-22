@@ -3,7 +3,7 @@
 # for building with filename "verysimple" and pack into verysimple_xxx.tgz:
 #	make PACK=1
 #
-# 我们只支持64位
+# 简单起见，该makefile只支持64位
 #
 # for embedding geoip file:
 #	make tags="embed_geoip" macm1
@@ -15,7 +15,7 @@
 # 现在这个Makefile文件是你自己的了，随便改. 
 # 不过 现在 BUILD_VERSION  默认会获取当前git 的 commit id, 你可以自行改成任何值, 比如注释掉第二行, 用第一行
 # BUILD_VERSION   :=myversion
-BUILD_VERSION   := $(shell git rev-parse HEAD)
+BUILD_VERSION   := $(shell git rev-parse --short HEAD)
 
 prefix          :=verysimple
 

@@ -16,11 +16,7 @@ import (
 const Name = "vless"
 
 const (
-	CRUMFURS_ESTABLISHED byte = 20
-
-	CRUMFURS_Established_Str = "CRUMFURS_Established"
-
-	addon_udp_multi_flag = 1
+	addon_udp_multi_flag = 1 // for v1
 )
 
 // CMD types, for vless and vmess
@@ -29,8 +25,6 @@ const (
 	CmdTCP
 	CmdUDP
 	CmdMux
-	Cmd_CRUMFURS //byte = 4 // start from vless v1
-
 )
 
 //依照 vless 协议的格式 依次读取 地址的 port, 域名/ip 信息

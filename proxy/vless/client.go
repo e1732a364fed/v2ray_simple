@@ -16,17 +16,6 @@ func init() {
 	proxy.RegisterClient(Name, ClientCreator{})
 }
 
-//实现 proxy.UserClient，以及 netLayer.UDP_Putter
-type Client struct {
-	proxy.ProxyCommonStruct
-
-	version int
-
-	user proxy.V2rayUser
-
-	udp_multi bool
-}
-
 type ClientCreator struct{}
 
 func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
@@ -50,6 +39,8 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 		if v == 1 {
 			c.version = 1
+
+			c.use_mux = dc.Mux
 
 			if dc.Extra != nil {
 				if thing := dc.Extra["vless1_udp_multi"]; thing != nil {
@@ -105,6 +96,18 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	return &c, nil
 }
 
+//实现 proxy.UserClient
+type Client struct {
+	proxy.ProxyCommonStruct
+
+	version int
+
+	user proxy.V2rayUser
+
+	udp_multi bool
+	use_mux   bool
+}
+
 func (c *Client) Name() string {
 	if c.version == 0 {
 		return Name
@@ -119,6 +122,17 @@ func (c *Client) GetUser() proxy.User {
 	return c.user
 }
 
+//我们只支持 vless v1 的 mux
+func (c *Client) HasInnerMux() (int, string) {
+	if c.version == 1 && c.use_mux {
+		return 2, "simplesocks"
+
+	} else {
+		return 0, ""
+
+	}
+}
+
 func (c *Client) IsUDP_MultiChannel() bool {
 
 	return c.udp_multi
@@ -130,7 +144,13 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	port := target.Port
 	addr, atyp := target.AddressBytes()
 
-	buf := c.getBufWithCmd(CmdTCP)
+	var buf *bytes.Buffer
+	if c.use_mux {
+		buf = c.getBufWithCmd(CmdMux)
+
+	} else {
+		buf = c.getBufWithCmd(CmdTCP)
+	}
 
 	buf.WriteByte(byte(uint16(port) >> 8))
 	buf.WriteByte(byte(uint16(port) << 8 >> 8))

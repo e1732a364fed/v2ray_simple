@@ -18,3 +18,7 @@ extra = { vless1_udp_multi = true }
 # 用 vless1_udp_multi 选项 开启vless v1的 分离信道传输udp功能. udp分离信道发送 性能会比默认的 多路复用 发送性能要高。
 # 在有大量向不同 远程地址发送的 udp链接 存在时，才会体现出优势 , 比如一些 实时游戏 或者 多人视频会议。
 # 分离信道 又可以叫 【多信道】，因此我们用 multi 来表示。
+
+# use_mux = true  # 只需要客户端指明 use_mux 即可开启mux, 服务端自动适配. verysimple只支持v1的 mux，不支持v0的mux，因为 v0的mux有很多问题，vs作者是不负责解决这些历史问题的。
+
+# 开启mux可以 更隐蔽，建议开启。不过，开启mux后，udp_multi 功能就没用了。

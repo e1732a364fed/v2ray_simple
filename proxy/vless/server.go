@@ -64,6 +64,9 @@ type Server struct {
 	mux4Hashes sync.RWMutex
 }
 
+func (*Server) HasInnerMux() (int, string) {
+	return 1, "simplesocks"
+}
 func (*Server) CanFallback() bool {
 	return true
 }
@@ -241,20 +244,23 @@ realPart:
 		goto errorPart
 	}
 
+	var isudp, ismux bool
+
 	switch commandByte {
 	case CmdMux:
 
-		//实际目前verysimple 还未实现mux, 因为 v2ray的 mux.cool 有很多问题, 本作不会支持v0 的mux
+		//verysimple 没有实现 mux.cool,  因为 v2ray的 mux.cool 有很多问题, 本作不会支持v0 的mux
 
-		//targetAddr.Port = 0
-		//targetAddr.Name = "v1.mux.cool"
 		if version == 0 {
 			returnErr = errors.New("mux for vless v0 is not supported by verysimple")
-			goto errorPart
+			return // 这个就不回落了.
 		} else {
 			//v1我们将采用 smux+simplesocks 的方式
 
+			ismux = true
+
 		}
+		fallthrough
 
 	case CmdTCP, CmdUDP:
 
@@ -267,6 +273,7 @@ realPart:
 
 		if commandByte == CmdUDP {
 			targetAddr.Network = "udp"
+			isudp = true
 		}
 
 	default:
@@ -275,7 +282,22 @@ realPart:
 		goto errorPart
 	}
 
-	if targetAddr.IsUDP() {
+	if ismux {
+		mh := &proxy.MuxMarkerConn{
+			ReadWrapper: netLayer.ReadWrapper{
+				Conn: underlay,
+			},
+		}
+
+		if l := readbuf.Len(); l > 0 {
+			mh.RemainFirstBufLen = l
+			mh.OptionalReader = io.MultiReader(readbuf, underlay)
+		}
+
+		return mh, nil, targetAddr, nil
+	}
+
+	if isudp {
 		return nil, &UDPConn{
 			Conn:              underlay,
 			version:           int(version),

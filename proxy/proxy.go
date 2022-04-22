@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/hahahrfool/v2ray_simple/advLayer/grpc"
 	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
@@ -17,11 +18,23 @@ import (
 	"go.uber.org/zap"
 )
 
-//规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarkerConn 接口.
-type MuxMarkerConn interface {
+//规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
+type MuxMarker interface {
 	io.ReadWriteCloser
 	IsMux()
 }
+
+//实现 MusMarker
+type MuxMarkerConn struct {
+	netLayer.ReadWrapper
+}
+
+func (mh *MuxMarkerConn) IsMux() {}
+
+//有的客户端可能建立tcp连接后首先由读服务端的数据？虽然比较少见但是确实存在
+// 总之 firstpayload是有可能读不到的，我们尽量减少这个延迟.
+// 也有可能是有人通过 nc 来测试，也会遇到这种读不到 firstpayload的情况
+const FirstPayloadTimeout = time.Millisecond * 100
 
 // Client 用于向 服务端 拨号.
 //服务端是一种 “泛目标”代理，所以我们客户端的 Handshake 要传入目标地址, 来告诉它 我们 想要到达的 目标地址.

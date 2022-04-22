@@ -71,6 +71,12 @@ vless 的v0 始终处于beta中，而且 【udp长度】的包头仅仅在 commi
 
             1标识 UMFURS 数据, 此时，第 2、3字节 为 port。第4字节为 atype，然后是变长的addr内容，定义与tcp的握手的包头一致。接着是udp数据包长度的2字节，然后是承载数据。
 
+
+## 内层mux
+
+在cmdmux给出时，使用内层mux，使用 smux+simplesocks。关于simplesocks的情况 请阅读 trojan-go的文档。
+
+
 # vless v1 所解决的问题
 
 v1对 udp 添加了 两种可支持fullcone的方式，【经典多路复用】方式 以及 【分离信道】方式。

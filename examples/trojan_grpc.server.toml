@@ -1,0 +1,15 @@
+[[listen]]
+protocol = "trojans"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "0.0.0.0"
+port = 4434
+version = 0
+insecure = true
+fallback = ":80"
+cert = "cert.pem"
+key = "cert.key"
+advancedLayer = "grpc"
+path = "ohmygod_verysimple_is_very_simple"
+[[dial]]
+protocol = "direct"
+

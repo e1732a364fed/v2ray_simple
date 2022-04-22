@@ -162,7 +162,7 @@ realPart:
 	}
 
 	if ismux {
-		mh := &MuxMarkerConn{
+		mh := &proxy.MuxMarkerConn{
 			ReadWrapper: netLayer.ReadWrapper{
 				Conn: underlay,
 			},
@@ -193,9 +193,3 @@ realPart:
 
 	}
 }
-
-type MuxMarkerConn struct {
-	netLayer.ReadWrapper
-}
-
-func (mh *MuxMarkerConn) IsMux() {}

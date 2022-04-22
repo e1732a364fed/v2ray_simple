@@ -80,7 +80,19 @@ func loadCommonComponentsFromStandardConf() {
 		dnsMachine = netLayer.LoadDnsMachine(dnsConf)
 	}
 
-	hasAppLevelMyCountry := (standardConf.App != nil && standardConf.App.MyCountryISO_3166 != "")
+	var hasAppLevelMyCountry bool
+
+	if appConf := standardConf.App; appConf != nil {
+
+		hasAppLevelMyCountry = appConf.MyCountryISO_3166 != ""
+
+		if appConf.UDP_timeout != nil {
+			minutes := *appConf.UDP_timeout
+			if minutes > 0 {
+				netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
+			}
+		}
+	}
 
 	if standardConf.Route != nil || hasAppLevelMyCountry {
 
@@ -126,12 +138,6 @@ func loadConfig() (err error) {
 					netLayer.UseReadv = false
 				}
 
-				if appConf.UDP_timeout != nil {
-					minutes := *appConf.UDP_timeout
-					if minutes > 0 {
-						netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
-					}
-				}
 			}
 
 			return

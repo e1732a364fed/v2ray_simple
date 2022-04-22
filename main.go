@@ -682,7 +682,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 		////////////////////////////// 内层mux阶段 /////////////////////////////////////
 
 		if muxInt, innerProxyName := inServer.HasInnerMux(); muxInt > 0 {
-			if mh, ok := wlc.(proxy.MuxMarkerConn); ok {
+			if mh, ok := wlc.(proxy.MuxMarker); ok {
 
 				innerSerConf := proxy.ListenConf{
 					CommonConf: proxy.CommonConf{
@@ -1113,27 +1113,32 @@ func dialClient(targetAddr netLayer.Addr,
 	isudp := targetAddr.IsUDP()
 
 	hasInnerMux := false
+	var innerProxyName string
 
-	//先过滤掉 innermux 通道已经建立的情况, 此时我们不必再次外部拨号，而是直接进行内层拨号.
-	if muxInt, innerProxyName := client.HasInnerMux(); muxInt == 2 {
-		hasInnerMux = true
+	{
+		var muxInt int
 
-		if client.InnerMuxEstablished() {
-			wrc1, realudp_wrc, result1 := dialInnerMux(client, wlc, nil, innerProxyName, targetAddr, isudp)
+		if muxInt, innerProxyName = client.HasInnerMux(); muxInt == 2 {
+			hasInnerMux = true
 
-			if result1 == 0 {
-				if wrc1 != nil {
-					wrc = wrc1
+			//先过滤掉 innermux 通道已经建立的情况, 此时我们不必再次外部拨号，而是直接进行内层拨号.
+			if client.InnerMuxEstablished() {
+				wrc1, realudp_wrc, result1 := dialInnerProxy(client, wlc, nil, innerProxyName, targetAddr, isudp)
+
+				if result1 == 0 {
+					if wrc1 != nil {
+						wrc = wrc1
+					}
+					if realudp_wrc != nil {
+						udp_wrc = realudp_wrc
+					}
+					result = result1
+					return
+				} else {
+					utils.Debug("mux failed, will redial")
 				}
-				if realudp_wrc != nil {
-					udp_wrc = realudp_wrc
-				}
-				result = result1
-				return
-			} else {
-				utils.Debug("mux failed, will redial")
+
 			}
-
 		}
 	}
 
@@ -1440,10 +1445,10 @@ advLayerHandshakeStep:
 		//udp但是有innermux时 依然用handshake, 而不是 EstablishUDPChannel
 		var firstPayload []byte
 
-		if !hasInnerMux { //如果有内层mux，要在dialInnerMux函数里再读
+		if !hasInnerMux { //如果有内层mux，要在dialInnerProxy函数里再读
 			firstPayload = utils.GetMTU()
 
-			wlc.SetReadDeadline(time.Now().Add(time.Second))
+			wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
 			n, err := wlc.Read(firstPayload)
 			if err != nil {
 
@@ -1501,22 +1506,22 @@ advLayerHandshakeStep:
 	}
 
 	////////////////////////////// 建立内层 mux 阶段 /////////////////////////////////////
-	if muxInt, innerProxyName := client.HasInnerMux(); muxInt == 2 {
+	if hasInnerMux {
 		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan的实现。
 
-		wrc, udp_wrc, result = dialInnerMux(client, wlc, wrc, innerProxyName, targetAddr, isudp)
+		wrc, udp_wrc, result = dialInnerProxy(client, wlc, wrc, innerProxyName, targetAddr, isudp)
 	}
 
 	return
 } //dialClient
 
 //在 dialClient 中调用。 如果调用不成功，则result == -1
-func dialInnerMux(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
+func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
 
 	smuxSession := client.GetClientInnerMuxSession(wrc)
 	if smuxSession == nil {
 		result = -1
-		utils.Debug("dialInnerMux return fail 1")
+		utils.Debug("dialInnerProxy return fail 1")
 		return
 	}
 
@@ -1524,7 +1529,7 @@ func dialInnerMux(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, inn
 	if err != nil {
 		client.CloseInnerMuxSession() //发现就算 OpenStream 失败, session也不会自动被关闭, 需要我们手动关一下。
 
-		if ce := utils.CanLogDebug("dialInnerMux return fail 2"); ce != nil {
+		if ce := utils.CanLogDebug("dialInnerProxy return fail 2"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		result = -1
@@ -1558,7 +1563,7 @@ func dialInnerMux(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, inn
 
 		firstPayload := utils.GetMTU()
 
-		wlc.SetReadDeadline(time.Now().Add(time.Second))
+		wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
 		n, err := wlc.Read(firstPayload)
 
 		if err != nil {
@@ -1604,7 +1609,7 @@ func dialInnerMux(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, inn
 	}
 
 	return
-} //dialInnerMux
+} //dialInnerProxy
 
 // dialClient_andRelay 进行实际转发(Copy)。被 passToOutClient 调用.
 // targetAddr为用户所请求的地址。
