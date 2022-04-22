@@ -25,3 +25,5 @@ insecure = true
 utls = true
 
 sockopt.mark = 255  #根据上面 toutyrater 给出的 iptables命令，我们这里要设置 mark为255. 看一下 上面 toutyrater的教程吧！
+
+# sockopt.device = "eth32423"   # vs还支持 bindToDevice功能，可以指定 某一个网卡 来监听 或者拨号.

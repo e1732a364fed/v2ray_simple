@@ -7,8 +7,9 @@ import (
 
 //用于 listen和 dial 配置一些底层参数.
 type Sockopt struct {
-	TProxy bool `toml:"tproxy"`
-	Somark int  `toml:"mark"`
+	TProxy bool   `toml:"tproxy"`
+	Somark int    `toml:"mark"`
+	Device string `toml:"device"`
 }
 
 //net.TCPListener, net.UnixListener
