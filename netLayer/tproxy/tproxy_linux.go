@@ -64,7 +64,7 @@ https://toutyrater.github.io/app/tproxy.html
 	iptables -t mangle -A V2RAY_MASK -j RETURN -m mark --mark 0xff
 	iptables -t mangle -A V2RAY_MASK -p udp -j MARK --set-mark 1
 	iptables -t mangle -A V2RAY_MASK -p tcp -j MARK --set-mark 1
-	iptables -t mangle -A OUTPUT -j V2RAY_MASK # 应用规则
+	iptables -t mangle -A OUTPUT -j V2RAY_MASK
 
 
 Persistant iptables

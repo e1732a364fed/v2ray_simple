@@ -122,6 +122,7 @@ func printSupportedProtocols() {
 	advLayer.PrintAllProtocolNames()
 }
 
+//see https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 func tryDownloadMMDB() {
 
 	if utils.FileExist(utils.GetFilePath(netLayer.GeoipFileName)) {

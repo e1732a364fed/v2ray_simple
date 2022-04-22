@@ -8,7 +8,6 @@ import (
 )
 
 func (addr *Addr) Dial() (net.Conn, error) {
-	//log.Println("Dial called", addr, addr.Network)
 	var istls bool
 	var resultConn net.Conn
 	var err error
@@ -96,7 +95,7 @@ dialedPart:
 func (addr Addr) DialWithOpt(sockopt *Sockopt) (net.Conn, error) {
 
 	dialer := &net.Dialer{
-		Timeout: time.Second * 16,
+		Timeout: time.Second * 8, //v2ray默认16秒，是不是太长了？？
 	}
 	dialer.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {

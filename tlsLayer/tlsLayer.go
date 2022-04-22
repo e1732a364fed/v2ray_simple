@@ -1,9 +1,11 @@
 /*
-Package tlsLayer provides support for tlsLayer, including sniffing.
+Package tlsLayer provides facilities for tls, including sniffing.
 */
 package tlsLayer
 
 import (
+	mathrand "math/rand"
+
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -12,29 +14,38 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
-	"net"
 	"os"
 	"time"
 
+	"github.com/biter777/countries"
 	"github.com/hahahrfool/v2ray_simple/utils"
+	"go.uber.org/zap"
 )
 
 //使用 ecc p256 方式生成证书
-func GenerateRandomeCert_Key() ([]byte, []byte) {
-
-	max := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, _ := rand.Int(rand.Reader, max)
+func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
 
 	//可参考 https://blog.ideawand.com/2017/11/22/build-certificate-that-support-Subject-Alternative-Name-SAN/
 
-	subject := pkix.Name{
-		Country:            []string{"ZZ"},
-		Province:           []string{"asfdsdaf"},
-		Organization:       []string{"daffd"},
-		OrganizationalUnit: []string{"adsadf"},
-		CommonName:         "127.0.0.1",
+	clist := countries.All()
+	country := clist[mathrand.Intn(len(clist))]
+
+	companyName := utils.GetRandomWord()
+
+	if ce := utils.CanLogInfo("generating random cert with"); ce != nil {
+		ce.Write(zap.String("country", country.Info().Name), zap.String("company", companyName))
 	}
 
+	subject := pkix.Name{
+		Country:            []string{country.Alpha2()},
+		Province:           []string{country.Capital().String()},
+		Organization:       []string{companyName},
+		OrganizationalUnit: []string{""},
+		CommonName:         "www." + companyName + ".com",
+	}
+
+	max := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, _ := rand.Int(rand.Reader, max)
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject:      subject,
@@ -42,7 +53,7 @@ func GenerateRandomeCert_Key() ([]byte, []byte) {
 		NotAfter:     time.Now().Add(365 * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+		//IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
 	}
 
 	rootKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -54,13 +65,13 @@ func GenerateRandomeCert_Key() ([]byte, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &rootKey.PublicKey, rootKey)
 	if err != nil {
 		panic(err)
 	}
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	return certPEM, keyPEM
+	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	return
 
 	/*
 		//rsa
@@ -115,9 +126,17 @@ func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate
 	if certFile != "" && keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(utils.GetFilePath(certFile), utils.GetFilePath(keyFile))
 		if err != nil {
-			return nil, err
+
+			if ce := utils.CanLogErr("GetCertArrayFromFile failed, will use generated random cert in memory"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+
+			certArray = GenerateRandomTLSCert()
+
+		} else {
+			certArray = []tls.Certificate{cert}
+
 		}
-		certArray = []tls.Certificate{cert}
 	} else {
 		certArray = GenerateRandomTLSCert()
 	}

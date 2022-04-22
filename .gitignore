@@ -12,3 +12,5 @@ verysimple_*
 *.tgz
 geosite
 vs_log*
+cert.pem
+cert.key

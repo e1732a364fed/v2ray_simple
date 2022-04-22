@@ -1,4 +1,4 @@
-[![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] [![Downloads][7]][8] [![release][9]][8] ![GoVersion][10]
+![GoVersion][10] [![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] [![Downloads][7]][8] [![release][9]][8] 
 
 [1]: https://godoc.org/github.com/hahahrfool/v2ray_simple?status.svg
 [2]: https://godoc.org/github.com/hahahrfool/v2ray_simple

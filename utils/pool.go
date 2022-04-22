@@ -96,15 +96,15 @@ func GetBytes(size int) []byte {
 
 }
 
-// 根据bs长度 选择放入各种pool中, 只有 cap(bs)>=1500 才会被处理
+// 根据bs长度 选择放入各种pool中, 只有 cap(bs)>=MTU 才会被处理
 func PutBytes(bs []byte) {
 	c := cap(bs)
 	if c < MTU {
 
 		return
-	} else if c >= MTU && c < MaxPacketLen {
+	} else if c < MaxPacketLen {
 		mtuPool.Put(bs[:MTU])
-	} else if c >= MaxPacketLen {
+	} else {
 		packetPool.Put(bs[:MaxPacketLen])
 	}
 }

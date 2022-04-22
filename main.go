@@ -24,6 +24,7 @@ import (
 	"github.com/hahahrfool/v2ray_simple/advLayer/ws"
 	"github.com/hahahrfool/v2ray_simple/httpLayer"
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/netLayer/tproxy"
 	"github.com/hahahrfool/v2ray_simple/proxy"
 	"github.com/hahahrfool/v2ray_simple/tlsLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
@@ -82,7 +83,7 @@ var (
 	startPProf bool
 	startMProf bool
 
-	tproxyListenCount int
+	tproxyList []tproxy.Machine
 )
 
 func init() {
@@ -274,7 +275,7 @@ func mainFunc() (result int) {
 
 	configFileQualifiedToRun := false
 
-	if (defaultInServer != nil || len(allServers) > 0 || tproxyListenCount != 0) && (defaultOutClient != nil) {
+	if (defaultInServer != nil || len(allServers) > 0 || len(tproxyList) > 0) && (defaultOutClient != nil) {
 		configFileQualifiedToRun = true
 
 		if confMode == simpleMode {
@@ -315,6 +316,10 @@ func mainFunc() (result int) {
 			if listener != nil {
 				listener.Close()
 			}
+		}
+
+		for _, tm := range tproxyList {
+			tm.Stop()
 		}
 
 	}

@@ -57,8 +57,11 @@ func (d *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	if err != nil {
 		return
 	}
-	_, err = underlay.Write(firstPayload)
-	utils.PutBytes(firstPayload)
+	if len(firstPayload) > 0 {
+		_, err = underlay.Write(firstPayload)
+		utils.PutBytes(firstPayload)
+
+	}
 
 	return
 
