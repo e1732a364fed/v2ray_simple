@@ -47,7 +47,7 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 func (c *Conn) Write(b []byte) (n int, err error) {
 	err = c.stream.Send(&Hunk{Data: b})
 	if err != nil {
-		return 0, utils.ErrInErr{ErrDesc: "Unable to send data over stream service", ErrDetail: err}
+		return 0, utils.ErrInErr{ErrDesc: "Unable to send data over grpc stream", ErrDetail: err}
 	}
 	return len(b), nil
 }

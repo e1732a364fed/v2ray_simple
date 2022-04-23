@@ -22,14 +22,14 @@ type Splicer interface {
 // 若不是基本Conn，则会试图转换为Splicer并获取底层Conn
 func CanSpliceDirectly(r any) bool {
 
-	if _, ok := r.(*net.TCPConn); ok {
+	switch r.(type) {
+	case *net.TCPConn:
 		return true
-	} else if _, ok := r.(*net.UnixConn); ok {
-
+	case *net.UnixConn:
 		return true
+	default:
+		return false
 	}
-	return false
-
 }
 
 func CanSpliceEventually(r any) bool {
@@ -46,7 +46,6 @@ func CanSpliceEventually(r any) bool {
 // 如果r本身就不是 basicConn，则调用本函数没有意义, 因为既然拿不到basicConn那就不是裸奔，也就不可能splice。
 //
 func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r io.Reader, canDirectFunc func() bool) (written int64, err error) {
-	//log.Println("TryReadFrom_withSplice called")
 
 	underlay_canSpliceDirectly := CanSpliceDirectly(maySpliceConn)
 
@@ -148,7 +147,8 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 
 }
 
-//拷贝自 io.CopyBuffer。 因为原始的 CopyBuffer会又调用ReadFrom, 而我们这里过滤掉了ReadFrom, 希望直接进行经典拷贝
+//拷贝自 io.CopyBuffer。 因为原始的 CopyBuffer会又调用ReadFrom, 如果splice调用的话会产生无限递归。
+//  这里删掉了ReadFrom, 直接进行经典拷贝
 func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
 	buf := utils.GetPacket()
 	defer utils.PutPacket(buf)
