@@ -64,11 +64,13 @@ func RandPort(mustValid, isudp bool) (p int) {
 
 			if listener != nil {
 				listener.Close()
-
 			}
 
 			if err != nil {
-				utils.Debug("Get RandPort udp but got err, trying again")
+				if ce := utils.CanLogDebug("Get RandPort udp but got err, trying again"); ce != nil {
+					ce.Write()
+				}
+
 				return RandPort(mustValid, true)
 			}
 		} else {
@@ -82,7 +84,9 @@ func RandPort(mustValid, isudp bool) (p int) {
 
 			}
 			if err != nil {
-				utils.Debug("Get RandPort tcp but got err, trying again")
+				if ce := utils.CanLogDebug("Get RandPort tcp but got err, trying again"); ce != nil {
+					ce.Write()
+				}
 
 				return RandPort(mustValid, false)
 			}

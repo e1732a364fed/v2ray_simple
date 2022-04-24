@@ -13,12 +13,14 @@ import (
 )
 
 func TestVlesss(t *testing.T) {
-	testTls("vlesss", netLayer.RandPortStr(true, false), t)
+	testTls("vlesss", t)
 }
 
-func testTls(protocol string, port string, t *testing.T) {
+func testTls(protocol string, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
+
+	port := netLayer.RandPortStr(true, false)
 
 	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@localhost:" + port + "?alterID=4&cert=../cert.pem&key=../cert.key&insecure=1"
 	server, hase, errx := proxy.ServerFromURL(url)
