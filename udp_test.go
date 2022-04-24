@@ -12,43 +12,6 @@ import (
 	"github.com/miekg/dns"
 )
 
-/*
-nc 模拟dns请求
-https://unix.stackexchange.com/questions/600194/create-dns-query-with-netcat-or-dev-udp
-
-echo cfc9 0100 0001 0000 0000 0000 0a64 7563 6b64 7563 6b67 6f03 636f 6d00 0001 0001 |
-    xxd -p -r | nc -u -v 114.114.114.114 53
-
-不过为了灵活我们还是引用 miekg/dns 包
-	参考 https://zhengyinyong.com/post/go-dns-library/
-
-虽然net.Resolver也能用，
-https://stackoverflow.com/questions/59889882/specifying-dns-server-for-lookup-in-go
-
-但是我还是喜欢 miekg/dns;
-
-func TestDNSLookup_CN(t *testing.T) {
-	m := new(dns.Msg)
-	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)
-	c := new(dns.Client)
-
-	r, _, err := c.Exchange(m, "114.114.114.114:53")
-	if r == nil {
-		t.Log("*** error: ", err.Error())
-		t.FailNow()
-	}
-
-	if r.Rcode != dns.RcodeSuccess {
-		t.Log("*** err2 ", r.Rcode, r)
-		t.FailNow()
-	}
-
-	for _, a := range r.Answer {
-		t.Log(a)
-	}
-}
-*/
-
 func TestUDP_vless(t *testing.T) {
 	testUDP("vless", 0, "tcp", false, false, false, t)
 }

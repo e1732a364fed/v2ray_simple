@@ -366,7 +366,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 				if !ok {
 					utils.Error("read from SuperProxy not ok")
 
-					quic.CloseSession(baseConn)
+					quic.CloseConn(baseConn)
 
 					return
 				}

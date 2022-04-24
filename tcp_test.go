@@ -133,12 +133,11 @@ protocol = "direct"
 		},
 	}
 
-	//tryGetHttp(client, "http://www.baidu.com", t)
-	//tryGetHttp(client, "https://www.qq.com", t)
 	tryGetHttp(client, "http://captive.apple.com", t)
 	tryGetHttp(client, "http://www.msftconnecttest.com/connecttest.txt", t)
 
 	//联通性测试 可参考 https://imldy.cn/posts/99d42f85/
+	// 用这种 captive 测试 不容易遇到 网站无法在 某些地区 如 github action 所在的地区 访问 或者卡顿等情况.
 }
 
 func tryGetHttp(client *http.Client, path string, t *testing.T) {
@@ -149,7 +148,7 @@ func tryGetHttp(client *http.Client, path string, t *testing.T) {
 		t.FailNow()
 	}
 
-	t.Log("Got,start read")
+	t.Log("Got response, start read")
 
 	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -161,6 +160,9 @@ func tryGetHttp(client *http.Client, path string, t *testing.T) {
 	t.Log("got len", len(bs))
 	if len(bs) > 5 {
 		t.Log("first 5:", string(bs[:5]))
+
+	} else {
+		t.Log("all:", bs)
 
 	}
 

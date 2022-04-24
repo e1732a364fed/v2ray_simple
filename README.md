@@ -30,9 +30,9 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-socks5/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless/vless_v1, 
+socks5/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
 
-ws(以及earlydata)/grpc/quic(以及hy阻控)/smux, 
+ws(以及earlydata)/grpc(以及multiMode 以及uTls)/quic(以及hy阻控)/smux, 
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
 
