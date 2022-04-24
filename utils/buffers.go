@@ -46,10 +46,20 @@ type SystemReadver interface {
 
 	所以websocket很有必要实现 WriteBuffers 方法.
 
-	目前实现 的有 vless.UserConn 和  ws.Conn
+	目前实现 的有 vless/trojan 的 UserTCPConn ,  ws.Conn 以及 grpc 的 multiConn
 */
 type MultiWriter interface {
 	WriteBuffers([][]byte) (int64, error)
+}
+
+// 专门用于 grpc multiMode 的情况.
+// 因为其他协议并没有能够加速的情形。
+type MultiReader interface {
+	ReadBuffers() ([][]byte, error)
+
+	//在底层没有实现readbuffers时，显然调用 ReadBuffers没有什么意义。
+	//所以我们通过 WillReadBuffersBenifit 方法 查询 调用是否有益。
+	WillReadBuffersBenifit() bool
 }
 
 //获取所有子[]byte 长度总和

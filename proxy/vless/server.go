@@ -308,7 +308,7 @@ realPart:
 		}, targetAddr, nil
 
 	} else {
-		return &UserTCPConn{
+		uc := &UserTCPConn{
 			Conn:              underlay,
 			version:           int(version),
 			optionalReader:    io.MultiReader(readbuf, underlay),
@@ -316,7 +316,14 @@ realPart:
 			uuid:              thisUUIDBytes,
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),
 			isServerEnd:       true,
-		}, nil, targetAddr, nil
+		}
+
+		if r, rr, mr := netLayer.IsConnGoodForReadv(underlay); r > 0 {
+			uc.rr = rr
+			uc.mr = mr
+		}
+		return uc, nil, targetAddr, nil
+
 	}
 
 }

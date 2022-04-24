@@ -5,6 +5,7 @@ import (
 	"net"
 	_ "unsafe"
 
+	"github.com/hahahrfool/v2ray_simple/utils"
 	"google.golang.org/grpc"
 )
 
@@ -16,7 +17,7 @@ func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 type Server struct {
 	UnimplementedStreamServer
 
-	NewConnChan chan net.Conn
+	NewConnChan chan net.Conn //会在 main.go 被调用
 
 	ctx context.Context
 
@@ -43,6 +44,8 @@ func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 	// 但是我们这里接到的是新连接, 所以这个方法就类似Accept一样;
 	// 但又不全一样，因为grpc是多路复用的, 所以获取到的连接实际上来自同一条tcp连接中的一个子 “逻辑连接”
 
+	utils.Info("Grpc Got New Tun")
+
 	if s.ctx == nil {
 		s.ctx = context.Background()
 	}
@@ -56,6 +59,21 @@ func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 	//正常的grpc的业务逻辑是，客户端传一大段数据上来，然后我们服务端同步传回一大段数据, 然后达到某个时间点后 就自动关闭 此次 rpc 过程调用。
 	// 但是我们现在是作为代理用途， 所以到底发什么数据，和发送的时机都是在其它位置确定的,
 	//  我们只能 发送一个 新连接信号，然后等待外界Close子连接.
+
+	return nil
+}
+
+func (s *Server) TunMulti(stream_TunMultiServer Stream_TunMultiServer) error {
+
+	utils.Info("Grpc Got New MultiTun")
+
+	if s.ctx == nil {
+		s.ctx = context.Background()
+	}
+
+	tunCtx, cancel := context.WithCancel(s.ctx)
+	s.NewConnChan <- newMultiConn(stream_TunMultiServer, cancel)
+	<-tunCtx.Done()
 
 	return nil
 }
@@ -79,7 +97,8 @@ func NewServer(serviceName string) *Server {
 }
 
 // ServerDesc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
-// 默认proto生成的 Stream_ServiceDesc 变量 的名称是固定的, 见 stream_grpc.pb.go 的最下方.
+// 默认proto生成的 Stream_ServiceDesc 变量 的名称是固定的, 没办法进行自定义, 见 stream_grpc.pb.go 的最下方.
+// 所以我们才使用这个办法自定义 serviceName。
 func ServerDesc_withName(name string) grpc.ServiceDesc {
 	return grpc.ServiceDesc{
 		ServiceName: name,
@@ -89,6 +108,12 @@ func ServerDesc_withName(name string) grpc.ServiceDesc {
 			{
 				StreamName:    "Tun",
 				Handler:       _Stream_Tun_Handler,
+				ServerStreams: true,
+				ClientStreams: true,
+			},
+			{
+				StreamName:    "TunMulti",
+				Handler:       _Stream_TunMulti_Handler,
 				ServerStreams: true,
 				ClientStreams: true,
 			},

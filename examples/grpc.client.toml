@@ -14,3 +14,5 @@ insecure = true
 utls = true
 advancedLayer = "grpc"
 path = "ohmygod_verysimple_is_very_simple"
+
+extra = { multi = true }    # 是否开启MultiMode, 只需客户端配置，服务端自动适配. 注意，v2ray不支持multiMode, 这个功能只与 xray 兼容

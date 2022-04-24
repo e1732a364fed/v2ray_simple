@@ -6,17 +6,18 @@ import (
 	"errors"
 	"io"
 	"net"
+	"syscall"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
 	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
-//实现 net.Conn, io.ReaderFrom, utils.MultiWriter, netLayer.Splicer
+//实现 net.Conn, io.ReaderFrom, utils.MultiWriter, utils.MultiReader, netLayer.Splicer
 type UserTCPConn struct {
 	net.Conn
-	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
+	optionalReader io.Reader //在服务端 使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
 
-	remainFirstBufLen int //记录读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
+	remainFirstBufLen int //记录 服务端 读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
 
 	underlayIsBasic bool
 
@@ -32,6 +33,9 @@ type UserTCPConn struct {
 	isntFirstPacket bool          //for v0
 
 	hasAdvancedLayer bool //for v1, 在用ws或grpc时，这个开关保持打开
+
+	rr syscall.RawConn
+	mr utils.MultiReader
 }
 
 func (uc *UserTCPConn) GetProtocolVersion() int {
@@ -47,7 +51,7 @@ func (uc *UserTCPConn) GetIdentityStr() string {
 
 //当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
 func (c *UserTCPConn) canDirectWrite() bool {
-	return c.version == 1 || c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket)
+	return c.version == 1 || (c.version == 0 && !(c.isServerEnd && !c.isntFirstPacket))
 }
 
 func (c *UserTCPConn) EverPossibleToSplice() bool {
@@ -78,6 +82,10 @@ func (c *UserTCPConn) CanSplice() (r bool, conn net.Conn) {
 	return
 }
 
+func (c *UserTCPConn) WillReadBuffersBenifit() bool {
+	return c.rr != nil || c.mr != nil
+}
+
 func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 	if c.canDirectWrite() {
@@ -88,9 +96,11 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 		//本作的 ws.Conn 实现了 utils.MultiWriter
 
 		if c.underlayIsBasic {
+
 			return utils.BuffersWriteTo(buffers, c.Conn)
 
 		} else if mr, ok := c.Conn.(utils.MultiWriter); ok {
+
 			return mr.WriteBuffers(buffers)
 		}
 	}
@@ -99,17 +109,12 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 	bigbs, dup := utils.MergeBuffers(buffers)
 	n, e := c.Write(bigbs)
+
 	if dup {
 		utils.PutPacket(bigbs)
 	}
 	return int64(n), e
 
-}
-
-//专门适用于 裸奔splice的情况
-func (uc *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
-
-	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, uc.canDirectWrite)
 }
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
@@ -137,23 +142,22 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 		if writeBuf != nil {
 			writeBuf.Write(p)
 
-			_, err := uc.Conn.Write(writeBuf.Bytes()) //“直接return这个调用返回的长度n” 是错的，因为写入长度只能小于等于len(p)
+			_, err := uc.Conn.Write(writeBuf.Bytes())
 
 			utils.PutBuf(writeBuf)
 
 			if err != nil {
 				return 0, err
 			}
-			return originalSupposedWrittenLenth, nil
 
 		} else {
-			_, err := uc.Conn.Write(p) //“直接return这个的长度” 是错的，因为写入长度只能小于等于len(p)
+			_, err := uc.Conn.Write(p)
 
 			if err != nil {
 				return 0, err
 			}
-			return originalSupposedWrittenLenth, nil
 		}
+		return originalSupposedWrittenLenth, nil
 
 	} else {
 		return uc.Conn.Write(p)
@@ -161,24 +165,47 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 	}
 }
 
+//专门适用于 裸奔splice的情况
+func (uc *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
+
+	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, uc.canDirectWrite)
+}
+
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
 // 这里规定，如果是UDP，则 每次 Read 得到的都是一个 完整的UDP 数据包，除非p给的太小……
 func (uc *UserTCPConn) Read(p []byte) (int, error) {
 
-	var from io.Reader = uc.Conn
-	if uc.optionalReader != nil {
-		from = uc.optionalReader
-	}
+	if uc.isServerEnd {
+		var from io.Reader = uc.Conn
+		if uc.optionalReader != nil {
+			from = uc.optionalReader
+		}
 
-	if uc.version == 0 {
+		if uc.remainFirstBufLen > 0 {
 
-		if !uc.isServerEnd && !uc.isntFirstPacket {
+			n, err := from.Read(p)
+
+			if n > 0 {
+				uc.remainFirstBufLen -= n
+				if uc.remainFirstBufLen <= 0 {
+					uc.optionalReader = nil
+				}
+			}
+			return n, err
+
+		} else {
+			return uc.Conn.Read(p)
+		}
+
+	} else if uc.version == 0 {
+
+		if !uc.isntFirstPacket {
 			//先读取响应头
 
 			uc.isntFirstPacket = true
 
 			bs := utils.GetPacket()
-			n, e := from.Read(bs)
+			n, e := uc.Conn.Read(bs)
 
 			if e != nil {
 				utils.PutPacket(bs)
@@ -193,12 +220,57 @@ func (uc *UserTCPConn) Read(p []byte) (int, error) {
 			utils.PutPacket(bs)
 			return n, nil
 
+		} else {
+			return uc.Conn.Read(p)
+
 		}
 
-		return from.Read(p)
-
 	} else {
-		return from.Read(p)
+		return uc.Conn.Read(p)
 
 	}
+}
+
+func (c *UserTCPConn) ReadBuffers() (bs [][]byte, err error) {
+
+	if !c.isServerEnd {
+
+		if c.version == 0 && !c.isntFirstPacket {
+
+			c.isntFirstPacket = true
+
+			packet := utils.GetPacket()
+			var n int
+			n, err = c.Read(packet)
+			if err != nil {
+				utils.PutPacket(packet)
+				return
+			}
+			if n < 2 {
+				utils.PutPacket(packet)
+				return nil, errors.New("vless response head too short")
+			}
+			bs = append(bs, packet[2:n])
+			return
+
+		} else {
+
+			return netLayer.ReadBuffersFrom(c.Conn, c.rr, c.mr)
+
+		}
+
+	} else {
+
+		if c.remainFirstBufLen > 0 { //firstPayload 已经被最开始的main.go 中的 Read读掉了，所以 在调用 ReadBuffers 时 c.remainFirstBufLen 一般为 0, 所以一般不会调用这里
+
+			return netLayer.ReadBuffersFrom(c.optionalReader, nil, nil)
+
+		} else {
+
+			return netLayer.ReadBuffersFrom(c.Conn, c.rr, c.mr)
+
+		}
+
+	}
+
 }

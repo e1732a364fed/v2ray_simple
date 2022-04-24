@@ -1366,7 +1366,7 @@ advLayerHandshakeStep:
 
 			}
 
-			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, &realTargetAddr)
+			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, &realTargetAddr, client.IsGrpcClientMultiMode())
 			if err != nil {
 				if ce := utils.CanLogErr("grpc.DialNewSubConn failed"); ce != nil {
 
@@ -1476,6 +1476,14 @@ advLayerHandshakeStep:
 			}
 			wlc.SetReadDeadline(time.Time{})
 			firstPayload = firstPayload[:n]
+		}
+
+		if len(firstPayload) > 0 {
+			if ce := utils.CanLogDebug("handshake client with first payload"); ce != nil {
+				ce.Write(
+					zap.Int("len", len(firstPayload)),
+				)
+			}
 		}
 
 		wrc, err = client.Handshake(clientConn, firstPayload, targetAddr)

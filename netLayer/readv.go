@@ -3,6 +3,7 @@ package netLayer
 import (
 	"flag"
 	"io"
+	"net"
 	"sync"
 	"syscall"
 
@@ -136,4 +137,41 @@ func readvFrom(rawReadConn syscall.RawConn, rm *readvMem) ([][]byte, error) {
 	*/
 
 	return allocedBuffers[:nBuf], nil
+}
+
+//依次试图使用 readv、ReadBuffers 以及 原始 Read 读取数据
+func ReadBuffersFrom(c io.Reader, rawReadConn syscall.RawConn, mr utils.MultiReader) (buffers [][]byte, err error) {
+
+	if rawReadConn != nil {
+		readv_mem := get_readvMem()
+		defer put_readvMem(readv_mem)
+
+		buffers, err = readvFrom(rawReadConn, readv_mem)
+
+	} else if mr != nil {
+		return mr.ReadBuffers()
+	} else {
+		packet := utils.GetPacket()
+		var n int
+		n, err = c.Read(packet)
+		if err != nil {
+			return
+		}
+		buffers = append(buffers, packet[:n])
+	}
+	return
+}
+
+func IsConnGoodForReadv(c net.Conn) (r int, rawReadConn syscall.RawConn, mr utils.MultiReader) {
+	rawReadConn = GetRawConn(c)
+	var ok bool
+	if rawReadConn != nil {
+		r = 1
+		return
+
+	} else if mr, ok = c.(utils.MultiReader); ok {
+		r = 2
+		return
+	}
+	return
 }

@@ -16,9 +16,13 @@ import (
 func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
 	var multiWriter utils.MultiWriter
 
-	var rawConn syscall.RawConn
-	var isWriteConn_a_MultiWriter bool
-	var isWriteConnBasic bool
+	var rawReadConn syscall.RawConn
+	var isWriteConn_MultiWriter bool
+
+	var mr utils.MultiReader
+
+	var readv_withMultiReader bool
+
 	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
 		ce.Write(
 			zap.String("from", reflect.TypeOf(readConn).String()),
@@ -57,38 +61,68 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 		goto classic
 	}
 
-	rawConn = GetRawConn(readConn)
+	rawReadConn = GetRawConn(readConn)
 
-	if rawConn == nil {
-		goto classic
+	if rawReadConn == nil {
+		var ok bool
+		mr, ok = readConn.(utils.MultiReader)
+		if ok && mr.WillReadBuffersBenifit() {
+			readv_withMultiReader = true
+		} else {
+			goto classic
+
+		}
 	}
 
 	if ce := utils.CanLogDebug("copying with readv"); ce != nil {
-		ce.Write()
+		if readv_withMultiReader {
+			ce.Write(zap.String("with", "MultiReader"))
+
+		} else {
+			ce.Write()
+
+		}
 	}
 
-	isWriteConnBasic = IsBasicConn(writeConn)
+	if !IsBasicConn(writeConn) {
 
-	if !isWriteConnBasic {
-		multiWriter, isWriteConn_a_MultiWriter = writeConn.(utils.MultiWriter)
+		multiWriter, isWriteConn_MultiWriter = writeConn.(utils.MultiWriter)
+
+		if readv_withMultiReader && !isWriteConn_MultiWriter {
+			goto classic
+		}
 	}
 
 	{
 		var readv_mem *readvMem
-		readv_mem = get_readvMem()
-		defer put_readvMem(readv_mem)
+
+		if !readv_withMultiReader {
+			readv_mem = get_readvMem()
+			defer put_readvMem(readv_mem)
+		}
+
+		//这个for循环 只会通过 return 跳出, 不会落到外部
 		for {
 			var buffers net.Buffers
 
-			buffers, err = readvFrom(rawConn, readv_mem)
+			if readv_withMultiReader {
+				buffers, err = mr.ReadBuffers()
+
+			} else {
+				buffers, err = readvFrom(rawReadConn, readv_mem)
+
+			}
+
 			if err != nil {
 				return
 			}
 			var thisWriteNum int64
 			var writeErr error
 
-			// vless.UserConn 和 ws.Conn 实现了 utils.MultiWriter
-			if isWriteConn_a_MultiWriter {
+			// vless/trojan.UserTCPConn, ws.Conn 和 grpc.multiConn 实现了 utils.MultiWriter
+			// vless/trojan的 UserTCPConn 会 间接调用 ws.Conn 和 grpc.multiConn 的 WriteBuffers
+
+			if isWriteConn_MultiWriter {
 				thisWriteNum, writeErr = multiWriter.WriteBuffers(buffers)
 
 			} else {
@@ -96,7 +130,6 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 				// 而我们为了缓存,是不能允许篡改的
 				// 所以我们在确保 writeConn 不是 基本连接后, 要 自行write
 
-				//if isWriteConnBasic {
 				//在basic时之所以可以 WriteTo，是因为它并不会用循环读取方式, 而是用底层的writev，
 				// 而writev时是不会篡改 buffers的
 
@@ -113,7 +146,10 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 				return
 			}
 
-			buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+			if !readv_withMultiReader {
+				buffers = utils.RecoverBuffers(buffers, readv_buffer_allocLen, ReadvSingleBufLen)
+
+			}
 
 		}
 	}
@@ -123,8 +159,9 @@ classic:
 	}
 copy:
 
-	//Copy内部实现 会自动进行splice, 若无splice实现则直接使用原始方法 “循环读取 并 写入”
-	// 我们的 vless和 ws 的Conn均实现了ReadFrom方法，可以最终splice
+	//Copy内部实现 会调用 ReadFrom, 而ReadFrom 会自动进行splice,
+	// 若无splice实现则直接使用原始方法 “循环读取 并 写入”
+	// 我们的 vless/trojan 和 ws 的Conn均实现了ReadFrom方法，可以最终splice
 	return io.Copy(writeConn, readConn)
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/hahahrfool/v2ray_simple/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/connectivity"
@@ -85,24 +86,42 @@ func ClientHandshake(underlay net.Conn, addr *netLayer.Addr) (ClientConn, error)
 }
 
 //在一个已存在的grpc连接中 进行新的子连接申请
-func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr) (net.Conn, error) {
+func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr, isMulti bool) (net.Conn, error) {
 
 	// 帮助理解：
 	// 不像服务端需要自己写一个实现StreamServer接口的结构, 我们Client端直接可以调用函数生成 StreamClient
 	// 这也是grpc的特点, 客户端只负责 “调用“ ”service“，而具体的service的实现 是在服务端.
 
+	if isMulti {
+		utils.Info("grpc Dialing new Sub MultiTun Conn")
+	} else {
+		utils.Info("grpc Dialing new Sub Conn")
+	}
+
 	streamClient := NewStreamClient((*grpc.ClientConn)(clientconn)).(streamClient_withName)
 
 	ctx, cancelF := context.WithCancel(context.Background())
-	stream_TunClient, err := streamClient.tun_withName(ctx, path)
-	if err != nil {
-		clientconnMutex.Lock()
-		delete(clientconnMap, addr.GetHashable())
-		clientconnMutex.Unlock()
-		cancelF()
-		return nil, err
+	if isMulti {
+		stream_multiTunClient, err := streamClient.multitun_withName(ctx, path)
+		if err != nil {
+			clientconnMutex.Lock()
+			delete(clientconnMap, addr.GetHashable())
+			clientconnMutex.Unlock()
+			cancelF()
+			return nil, err
+		}
+		return newMultiConn(stream_multiTunClient, cancelF), nil
+	} else {
+		stream_TunClient, err := streamClient.tun_withName(ctx, path)
+		if err != nil {
+			clientconnMutex.Lock()
+			delete(clientconnMap, addr.GetHashable())
+			clientconnMutex.Unlock()
+			cancelF()
+			return nil, err
+		}
+		return newConn(stream_TunClient, cancelF), nil
 	}
-	return newConn(stream_TunClient, cancelF), nil
 
 }
 
@@ -111,6 +130,7 @@ type streamClient_withName interface {
 	StreamClient
 
 	tun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunClient, error)
+	multitun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error)
 }
 
 //比照 protoc生成的 stream_grpc.pb.go 中的 Tun方法
@@ -125,5 +145,18 @@ func (c *streamClient) tun_withName(ctx context.Context, name string, opts ...gr
 		return nil, err
 	}
 	x := &streamTunClient{stream}
+	return x, nil
+}
+
+func (c *streamClient) multitun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error) {
+	//这里ctx不能为nil，否则会报错
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	stream, err := c.cc.NewStream(ctx, &ServerDesc_withName(name).Streams[1], "/"+name+"/TunMulti", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &streamTunMultiClient{stream}
 	return x, nil
 }

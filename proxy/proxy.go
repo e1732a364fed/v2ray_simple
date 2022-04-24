@@ -183,6 +183,8 @@ type ProxyCommon interface {
 
 	GetGRPC_Server() *grpc.Server
 
+	IsGrpcClientMultiMode() bool
+
 	initGRPC_server() error
 
 	IsMux() bool //如果用了grpc或者quic, 则此方法返回true。这个是用于判断外层mux的。
@@ -230,6 +232,7 @@ type ProxyCommonStruct struct {
 	ws_s *ws.Server
 
 	grpc_s       *grpc.Server
+	grpc_multi   bool
 	FallbackAddr *netLayer.Addr
 
 	quic_c *quic.Client
@@ -422,6 +425,9 @@ func (s *ProxyCommonStruct) SetAddrStr(a string) {
 
 func (s *ProxyCommonStruct) IsUseTLS() bool {
 	return s.TLS
+}
+func (s *ProxyCommonStruct) IsGrpcClientMultiMode() bool {
+	return s.grpc_multi
 }
 
 func (s *ProxyCommonStruct) IsMux() bool {

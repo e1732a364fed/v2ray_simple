@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type StreamClient interface {
 	Tun(ctx context.Context, opts ...grpc.CallOption) (Stream_TunClient, error)
+	TunMulti(ctx context.Context, opts ...grpc.CallOption) (Stream_TunMultiClient, error)
 }
 
 type streamClient struct {
@@ -64,11 +65,43 @@ func (x *streamTunClient) Recv() (*Hunk, error) {
 	return m, nil
 }
 
+func (c *streamClient) TunMulti(ctx context.Context, opts ...grpc.CallOption) (Stream_TunMultiClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Stream_ServiceDesc.Streams[1], "/v2ray_simple.grpc.Stream/TunMulti", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &streamTunMultiClient{stream}
+	return x, nil
+}
+
+type Stream_TunMultiClient interface {
+	Send(*MultiHunk) error
+	Recv() (*MultiHunk, error)
+	grpc.ClientStream
+}
+
+type streamTunMultiClient struct {
+	grpc.ClientStream
+}
+
+func (x *streamTunMultiClient) Send(m *MultiHunk) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *streamTunMultiClient) Recv() (*MultiHunk, error) {
+	m := new(MultiHunk)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // StreamServer is the server API for Stream service.
 // All implementations must embed UnimplementedStreamServer
 // for forward compatibility
 type StreamServer interface {
 	Tun(Stream_TunServer) error
+	TunMulti(Stream_TunMultiServer) error
 	mustEmbedUnimplementedStreamServer()
 }
 
@@ -78,6 +111,9 @@ type UnimplementedStreamServer struct {
 
 func (UnimplementedStreamServer) Tun(Stream_TunServer) error {
 	return status.Errorf(codes.Unimplemented, "method Tun not implemented")
+}
+func (UnimplementedStreamServer) TunMulti(Stream_TunMultiServer) error {
+	return status.Errorf(codes.Unimplemented, "method TunMulti not implemented")
 }
 func (UnimplementedStreamServer) mustEmbedUnimplementedStreamServer() {}
 
@@ -118,6 +154,32 @@ func (x *streamTunServer) Recv() (*Hunk, error) {
 	return m, nil
 }
 
+func _Stream_TunMulti_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StreamServer).TunMulti(&streamTunMultiServer{stream})
+}
+
+type Stream_TunMultiServer interface {
+	Send(*MultiHunk) error
+	Recv() (*MultiHunk, error)
+	grpc.ServerStream
+}
+
+type streamTunMultiServer struct {
+	grpc.ServerStream
+}
+
+func (x *streamTunMultiServer) Send(m *MultiHunk) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *streamTunMultiServer) Recv() (*MultiHunk, error) {
+	m := new(MultiHunk)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Stream_ServiceDesc is the grpc.ServiceDesc for Stream service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -129,6 +191,12 @@ var Stream_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Tun",
 			Handler:       _Stream_Tun_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "TunMulti",
+			Handler:       _Stream_TunMulti_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

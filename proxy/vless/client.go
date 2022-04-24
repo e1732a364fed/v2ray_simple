@@ -171,12 +171,18 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	}
 
 	if c.version == 0 {
-		return &UserTCPConn{
+		uc := &UserTCPConn{
 			Conn:            underlay,
 			uuid:            c.user,
 			version:         c.version,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
-		}, nil
+		}
+		if r, rr, mr := netLayer.IsConnGoodForReadv(underlay); r > 0 {
+			uc.rr = rr
+			uc.mr = mr
+		}
+
+		return uc, nil
 	} else {
 		return underlay, nil
 	}

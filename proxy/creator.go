@@ -326,8 +326,17 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 
 	configCommon(cli, &dc.CommonConf)
 
-	if dc.AdvancedLayer == "ws" {
+	switch dc.AdvancedLayer {
+	case "ws":
 		return cli.initWS_client()
+	case "grpc":
+		if dc.Extra != nil {
+			if thing := dc.Extra["multi"]; thing != nil {
+				if use, ok := thing.(bool); ok && use == true {
+					clic.grpc_multi = true
+				}
+			}
+		}
 	}
 	return nil
 }
