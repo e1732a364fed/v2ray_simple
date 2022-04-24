@@ -105,7 +105,18 @@ func init() {
 func main() {
 	os.Exit(mainFunc())
 }
+
+//0 意味着正常退出，-3 意味着遇到 panic
 func mainFunc() (result int) {
+	defer func() {
+		if r := recover(); r != nil {
+			if ce := utils.CanLogErr("Captured panic!"); ce != nil {
+				ce.Write(zap.Any("err:", r))
+			}
+
+			result = -3
+		}
+	}()
 
 	flag.Parse()
 

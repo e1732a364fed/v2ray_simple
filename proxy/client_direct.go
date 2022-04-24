@@ -67,5 +67,5 @@ func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target 
 
 //direct的Client的 EstablishUDPChannel 实际上就是直接 监听一个udp端口。会无视传入的net.Conn.
 func (d *DirectClient) EstablishUDPChannel(_ net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
-	return netLayer.NewUDPMsgConn(nil, d.isfullcone, false), nil
+	return netLayer.NewUDPMsgConn(nil, d.isfullcone, false)
 }

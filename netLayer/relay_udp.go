@@ -320,10 +320,13 @@ type UDPMsgConn struct {
 // 如果是普通的单目标的客户端，用 (nil,false,false) 即可.
 //
 // 满足fullcone/symmetric, 由 fullcone 的值决定.
-func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConn {
+func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) (*UDPMsgConn, error) {
 	uc := new(UDPMsgConn)
 
-	udpConn, _ := net.ListenUDP("udp", laddr)
+	udpConn, err := net.ListenUDP("udp", laddr)
+	if err != nil {
+		return nil, err
+	}
 	udpConn.SetReadBuffer(MaxUDP_packetLen)
 	udpConn.SetWriteBuffer(MaxUDP_packetLen)
 
@@ -336,7 +339,7 @@ func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) *UDPMsgConn
 
 		//我们暂时不把udpConn放入 symmetricMap 中，而是等待第一次Write成功后再放入.
 	}
-	return uc
+	return uc, nil
 }
 
 func (u *UDPMsgConn) Fullcone() bool {

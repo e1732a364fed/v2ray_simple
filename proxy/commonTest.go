@@ -255,7 +255,12 @@ func TestUDP(protocol string, version int, port string, use_multi int, t *testin
 				na, _ := netLayer.NewAddr(remoteAddrStr)
 				na.Network = "udp"
 
-				wrc := netLayer.NewUDPMsgConn(nil, false, false)
+				wrc, err := netLayer.NewUDPMsgConn(nil, false, false)
+				if err != nil {
+					t.Logf("failed netLayer.NewUDPMsgConn\n")
+					t.Fail()
+					return
+				}
 
 				err = wrc.WriteMsgTo(bs, na)
 				if err != nil {
