@@ -331,7 +331,7 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 		return cli.initWS_client()
 	case "grpc":
 		if dc.Extra != nil {
-			if thing := dc.Extra["multi"]; thing != nil {
+			if thing := dc.Extra["grpc_multi"]; thing != nil {
 				if use, ok := thing.(bool); ok && use == true {
 					clic.grpc_multi = true
 				}

@@ -99,3 +99,9 @@ clean:
 	rm -f $(macFn).tar.xz
 	rm -f $(macM1Fn).tar.xz
 	rm -f $(androidArm64Fn).tar.xz
+
+rmlog:
+	rm -f vs_log
+	rm -f vs_log_client
+	rm -f vs_log_server
+	
