@@ -323,7 +323,7 @@ type UDPMsgConn struct {
 func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) (*UDPMsgConn, error) {
 	uc := new(UDPMsgConn)
 
-	udpConn, err := net.ListenUDP("udp", laddr)
+	udpConn, err := net.ListenUDP("udp", laddr) //根据反映，这里是有可能报错的，以后可以考虑重试多次。
 	if err != nil {
 		return nil, err
 	}

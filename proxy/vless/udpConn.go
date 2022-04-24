@@ -202,5 +202,4 @@ func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 			return bs, raddr, err
 		}
 	}
-	//return nil, netLayer.Addr{}, nil
 }

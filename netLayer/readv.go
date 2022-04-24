@@ -129,12 +129,6 @@ func readvFrom(rawReadConn syscall.RawConn, rm *readvMem) ([][]byte, error) {
 	}
 
 	nBuf := utils.ShrinkBuffers(allocedBuffers, int(nBytes), ReadvSingleBufLen)
-	/*
-		if ce:=utils.CanLogDebug("release buf");ce!=nil {
-			// 可用于查看到底用了几个buf, 便于我们调整buf最大长度
-			ce.Write( zap.Int("count",len(allocedBuffers)-nBuf))
-		}
-	*/
 
 	return allocedBuffers[:nBuf], nil
 }

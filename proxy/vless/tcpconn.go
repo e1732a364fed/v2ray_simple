@@ -1,7 +1,6 @@
 package vless
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"io"
@@ -26,16 +25,10 @@ type UserTCPConn struct {
 	version          int
 	isServerEnd      bool //for v0
 
-	// udpUnreadPart 不为空，则表示上一次读取没读完整个包（给Read传入的buf太小），须接着读
-	udpUnreadPart []byte //for udp
+	isntFirstPacket bool //for v0
 
-	bufr            *bufio.Reader //for udp
-	isntFirstPacket bool          //for v0
-
-	hasAdvancedLayer bool //for v1, 在用ws或grpc时，这个开关保持打开
-
-	rr syscall.RawConn
-	mr utils.MultiReader
+	rr syscall.RawConn   //用于 Readbuffers
+	mr utils.MultiReader //用于 Readbuffers
 }
 
 func (uc *UserTCPConn) GetProtocolVersion() int {
