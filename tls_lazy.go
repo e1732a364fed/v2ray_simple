@@ -1,4 +1,4 @@
-package main
+package v2ray_simple
 
 import (
 	"io"
@@ -85,7 +85,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 
 			wrcVless := wrc.(*vless.UserTCPConn)
 			tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
-			rawWRC = tlsConn.GetRaw(tls_lazy_encrypt)
+			rawWRC = tlsConn.GetRaw(Tls_lazy_encrypt)
 
 		} else {
 			rawWRC = wrc.(*net.TCPConn) //因为是direct
@@ -97,7 +97,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 
 			}
 
-			if tls_lazy_encrypt {
+			if Tls_lazy_encrypt {
 				theRecorder.StopRecord()
 				theRecorder.ReleaseBuffers()
 			}

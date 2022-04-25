@@ -1,22 +1,17 @@
-package main
+package v2ray_simple
 
 import (
 	"bytes"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
 	"os"
-	"os/signal"
-	"runtime/pprof"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
-	"github.com/pkg/profile"
 	"go.uber.org/zap"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer/grpc"
@@ -38,62 +33,51 @@ import (
 )
 
 const (
-	simpleMode = iota
-	standardMode
-	v2rayCompatibleMode
+	SimpleMode = iota
+	StandardMode
+	V2rayCompatibleMode
 )
 
 //统计数据
 var (
-	activeConnectionCount      int32
-	allDownloadBytesSinceStart uint64
-	allUploadBytesSinceStart   uint64
+	ActiveConnectionCount      int32
+	AllDownloadBytesSinceStart uint64
+	AllUploadBytesSinceStart   uint64
 )
 
 var (
-	configFileName string
-
 	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
 
-	confMode           int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	simpleConf         proxy.SimpleConf
-	standardConf       StandardConf
-	directClient, _, _ = proxy.ClientFromURL("direct://")
-	defaultOutClient   proxy.Client
-	default_uuid       string
+	ConfMode           int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
+	SimpleConf         proxy.SimpleConf
+	DirectClient, _, _ = proxy.ClientFromURL("direct://")
+	DefaultOutClient   proxy.Client
+	Default_uuid       string
 
-	allServers    = make([]proxy.Server, 0, 8)
-	allClients    = make([]proxy.Client, 0, 8)
-	listenerArray []net.Listener
+	AllServers    = make([]proxy.Server, 0, 8)
+	AllClients    = make([]proxy.Client, 0, 8)
+	ListenerArray []net.Listener
 
-	serversTagMap = make(map[string]proxy.Server)
-	clientsTagMap = make(map[string]proxy.Client)
+	ServersTagMap = make(map[string]proxy.Server)
+	ClientsTagMap = make(map[string]proxy.Client)
 
 	listenURL string //用于命令行模式
 	dialURL   string //用于命令行模式
 
-	tls_lazy_encrypt bool
-	tls_lazy_secure  bool
+	Tls_lazy_encrypt bool
+	Tls_lazy_secure  bool
 
-	routePolicy  *netLayer.RoutePolicy
+	RoutePolicy  *netLayer.RoutePolicy
 	mainFallback *httpLayer.ClassicFallback
 	dnsMachine   *netLayer.DNSMachine
 
-	startPProf bool
-	startMProf bool
-
-	tproxyList []tproxy.Machine
+	TproxyList []tproxy.Machine
 )
 
 func init() {
 
-	flag.BoolVar(&startPProf, "pp", false, "pprof")
-	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
-
-	flag.BoolVar(&tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
-	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
-
-	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
+	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
+	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
 	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the listen part in config file), only enbled when config file is not provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the dial part in config file), only enbled when config file is not provided.")
@@ -102,244 +86,9 @@ func init() {
 
 }
 
-func main() {
-	os.Exit(mainFunc())
-}
-
-func mainFunc() (result int) {
-	defer func() {
-		if r := recover(); r != nil {
-			if ce := utils.CanLogFatal("Captured panic!"); ce != nil {
-				ce.Write(zap.Any("err:", r))
-			} else {
-				log.Fatalln("panic captured!", r)
-			}
-
-			result = -3
-		}
-	}()
-
-	flag.Parse()
-
-	if cmdPrintVer {
-		printVersion_simple()
-		//根据 cmdPrintVer 的定义, 我们直接退出
-		return
-	} else {
-		printVersion()
-
-	}
-
-	if !utils.IsFlagGiven("lf") {
-		if strings.Contains(configFileName, "server") {
-			utils.LogOutFileName += "_server"
-		} else if strings.Contains(configFileName, "client") {
-			utils.LogOutFileName += "_client"
-		}
-	}
-
-	utils.ShouldLogToFile = true
-
-	utils.InitLog()
-
-	if startPProf {
-		f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
-		defer f.Close()
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-
-	}
-	if startMProf {
-		//若不使用 NoShutdownHook, 我们ctrl+c退出时不会产生 pprof文件
-		p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
-
-		defer p.Stop()
-	}
-
-	utils.Info("Program started")
-	defer utils.Info("Program exited")
-
-	if err := loadConfig(); err != nil && !isFlexible() {
-		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
-		return -1
-	}
-
-	netLayer.Prepare()
-
-	fmt.Printf("Log Level:%d\n", utils.LogLevel)
-	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
-	fmt.Printf("tls_lazy_encrypt:%t\n", tls_lazy_encrypt)
-
-	runPreCommands()
-
-	var defaultInServer proxy.Server
-
-	//load inServers and routePolicy
-	switch confMode {
-	case simpleMode:
-		var hase bool
-		var eie utils.ErrInErr
-		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
-		if hase {
-			if ce := utils.CanLogErr("can not create local server"); ce != nil {
-				ce.Write(zap.Error(eie))
-			}
-			return -1
-		}
-
-		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
-
-			netLayer.LoadMaxmindGeoipFile("")
-
-			//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
-			routePolicy = netLayer.NewRoutePolicy()
-			if simpleConf.MyCountryISO_3166 != "" {
-				routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
-
-			}
-		}
-	case standardMode:
-
-		loadCommonComponentsFromStandardConf()
-
-		//虽然标准模式支持多个Server，目前先只考虑一个
-		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
-
-		if len(standardConf.Listen) < 1 {
-			utils.Warn("no listen in config settings")
-			break
-		}
-
-		for _, serverConf := range standardConf.Listen {
-			thisConf := serverConf
-			if thisConf.Protocol == "tproxy" {
-				listenTproxy(thisConf.GetAddrStrForListenOrDial())
-				continue
-			}
-
-			if thisConf.Uuid == "" && default_uuid != "" {
-				thisConf.Uuid = default_uuid
-			}
-
-			thisServer, err := proxy.NewServer(thisConf)
-			if err != nil {
-				if ce := utils.CanLogErr("can not create local server:"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				continue
-			}
-
-			allServers = append(allServers, thisServer)
-			if tag := thisServer.GetTag(); tag != "" {
-				serversTagMap[tag] = thisServer
-			}
-		}
-
-	}
-
-	// load outClients
-	switch confMode {
-	case simpleMode:
-		var hase bool
-		var eie utils.ErrInErr
-		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
-		if hase {
-			if ce := utils.CanLogErr("can not create remote client"); ce != nil {
-				ce.Write(zap.Error(eie))
-			}
-			return -1
-		}
-	case standardMode:
-
-		if len(standardConf.Dial) < 1 {
-			utils.Warn("no dial in config settings")
-			break
-		}
-
-		for _, thisConf := range standardConf.Dial {
-			if thisConf.Uuid == "" && default_uuid != "" {
-				thisConf.Uuid = default_uuid
-			}
-
-			thisClient, err := proxy.NewClient(thisConf)
-			if err != nil {
-				if ce := utils.CanLogErr("can not create remote client: "); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				continue
-			}
-			allClients = append(allClients, thisClient)
-
-			if tag := thisClient.GetTag(); tag != "" {
-				clientsTagMap[tag] = thisClient
-			}
-		}
-
-		if len(allClients) > 0 {
-			defaultOutClient = allClients[0]
-
-		} else {
-			defaultOutClient = directClient
-		}
-
-	}
-
-	configFileQualifiedToRun := false
-
-	if (defaultInServer != nil || len(allServers) > 0 || len(tproxyList) > 0) && (defaultOutClient != nil) {
-		configFileQualifiedToRun = true
-
-		if confMode == simpleMode {
-			listenSer(defaultInServer, defaultOutClient, true)
-		} else {
-			for _, inServer := range allServers {
-				listenSer(inServer, defaultOutClient, true)
-			}
-		}
-
-	}
-	//没配置可用的listen或者dial，而且还无法动态更改配置
-	if !configFileQualifiedToRun && !isFlexible() {
-		utils.Error("No valid proxy settings available, exit now.")
-		return -1
-	}
-
-	if enableApiServer {
-		go checkConfigAndTryRunApiServer()
-
-	}
-
-	if interactive_mode {
-		runCli()
-	}
-
-	{
-		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
-		<-osSignals
-
-		utils.Info("Program got close signal.")
-
-		//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
-		// 用下面代码以试图解决端口占用问题.
-
-		for _, listener := range listenerArray {
-			if listener != nil {
-				listener.Close()
-			}
-		}
-
-		for _, tm := range tproxyList {
-			tm.Stop()
-		}
-
-	}
-	return
-}
-
-//非阻塞. 在main函数中被调用。也可以在 test代码中直接使用 listenSer 函数 来手动开启新的转发流程。
+//非阻塞. 在main函数中被调用。也可以在 test代码中直接使用 ListenSer 函数 来手动开启新的转发流程。
 // 若 not_temporary 为true, 则生成的listener将会被添加到 listenerArray 中
-func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
+func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
 
 	var err error
 
@@ -411,7 +160,7 @@ func listenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 		}
 
 		if not_temporary {
-			listenerArray = append(listenerArray, thisListener)
+			ListenerArray = append(ListenerArray, thisListener)
 
 		}
 
@@ -470,7 +219,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		forbidDNS_orRoute: forbidDNS_orRoute,
 	}
 
-	iics.isTlsLazyServerEnd = tls_lazy_encrypt && canLazyEncryptServer(inServer)
+	iics.isTlsLazyServerEnd = Tls_lazy_encrypt && canLazyEncryptServer(inServer)
 
 	wrappedConn := thisLocalConnectionInstance
 
@@ -980,7 +729,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	inServer := iics.inServer
 
 	//尝试分流, 获取到真正要发向 的 outClient
-	if !iics.forbidDNS_orRoute && routePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
+	if !iics.forbidDNS_orRoute && RoutePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
 
 		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,
@@ -993,10 +742,10 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			ce.Write(zap.Any("source", desc))
 		}
 
-		outtag := routePolicy.GetOutTag(desc)
+		outtag := RoutePolicy.GetOutTag(desc)
 
 		if outtag == "direct" {
-			client = directClient
+			client = DirectClient
 			iics.routedToDirect = true
 			routed = true
 
@@ -1007,7 +756,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			}
 		} else {
 
-			if tagC, ok := clientsTagMap[outtag]; ok {
+			if tagC, ok := ClientsTagMap[outtag]; ok {
 				client = tagC
 				routed = true
 				if ce := utils.CanLogInfo("Route"); ce != nil {
@@ -1047,7 +796,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			iics.inServerTlsRawReadRecorder.StopRecord()
 		}
 	} else {
-		isTlsLazy_clientEnd = tls_lazy_encrypt && canLazyEncryptClient(client)
+		isTlsLazy_clientEnd = Tls_lazy_encrypt && canLazyEncryptClient(client)
 
 	}
 
@@ -1062,7 +811,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			log.Printf("loading TLS SniffConn %t %t\n", isTlsLazy_clientEnd, iics.isTlsLazyServerEnd)
 		}
 
-		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, tls_lazy_secure)
+		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, Tls_lazy_secure)
 
 	}
 
@@ -1266,7 +1015,7 @@ func dialClient(targetAddr netLayer.Addr,
 
 		if isTlsLazy_clientEnd {
 
-			if tls_lazy_secure && wlc != nil {
+			if Tls_lazy_secure && wlc != nil {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
 				// 这种情况只需要客户端操作, 此时我们wrc直接传入原始的 刚拨号好的 tcp连接，即 clientConn
 
@@ -1660,7 +1409,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 	if !targetAddr.IsUDP() {
 
-		if tls_lazy_encrypt && !iics.routedToDirect {
+		if Tls_lazy_encrypt && !iics.routedToDirect {
 
 			// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
 			if isTlsLazy_clientEnd {
@@ -1693,11 +1442,11 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 		}
 
-		atomic.AddInt32(&activeConnectionCount, 1)
+		atomic.AddInt32(&ActiveConnectionCount, 1)
 
-		netLayer.Relay(&realTargetAddr, wrc, wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
+		netLayer.Relay(&realTargetAddr, wrc, wlc, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart)
 
-		atomic.AddInt32(&activeConnectionCount, -1)
+		atomic.AddInt32(&ActiveConnectionCount, -1)
 
 		return
 
@@ -1710,12 +1459,12 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		}
 
-		atomic.AddInt32(&activeConnectionCount, 1)
+		atomic.AddInt32(&ActiveConnectionCount, 1)
 
 		if client.IsUDP_MultiChannel() {
 			utils.Debug("Relaying UDP with MultiChannel")
 
-			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &allDownloadBytesSinceStart, &allUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
+			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
 				utils.Debug("Relaying UDP with MultiChannel,dialfunc called")
 
 				_, udp_wrc, _, _, result := dialClient(raddr, client, iics.baseLocalConn, nil, "", false)
@@ -1732,11 +1481,11 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			})
 
 		} else {
-			netLayer.RelayUDP(udp_wrc, udp_wlc, &allDownloadBytesSinceStart, &allUploadBytesSinceStart)
+			netLayer.RelayUDP(udp_wrc, udp_wlc, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart)
 
 		}
 
-		atomic.AddInt32(&activeConnectionCount, -1)
+		atomic.AddInt32(&ActiveConnectionCount, -1)
 
 		return
 	}

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 
+	vs "github.com/e1732a364fed/v2ray_simple"
+
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -128,16 +130,16 @@ func tryDownloadMMDB() {
 }
 
 func printAllState(w io.Writer) {
-	fmt.Fprintln(w, "activeConnectionCount", activeConnectionCount)
-	fmt.Fprintln(w, "allDownloadBytesSinceStart", allDownloadBytesSinceStart)
-	fmt.Fprintln(w, "allUploadBytesSinceStart", allUploadBytesSinceStart)
+	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
+	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
+	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
 
-	for i, s := range allServers {
+	for i, s := range vs.AllServers {
 		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
 
 	}
 
-	for i, c := range allClients {
+	for i, c := range vs.AllClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
 	}
 }
@@ -148,8 +150,8 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 
 	var outClient proxy.Client
 
-	if defaultOutClient != nil {
-		outClient = defaultOutClient
+	if vs.DefaultOutClient != nil {
+		outClient = vs.DefaultOutClient
 		fmt.Println("trying to download geosite through your proxy dial")
 	} else {
 		fmt.Println("trying to download geosite directly")
@@ -165,7 +167,7 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 protocol = "http"
 `
 
-		clientConf, err := LoadTomlConfStr(tempClientConfStr)
+		clientConf, err := vs.LoadTomlConfStr(tempClientConfStr)
 		if err != nil {
 			fmt.Println("can not create LoadTomlConfStr: ", err)
 
@@ -180,7 +182,7 @@ protocol = "http"
 		listenAddrStr := netLayer.GetRandLocalPrivateAddr(true, false)
 		clientEndInServer.SetAddrStr(listenAddrStr)
 
-		listener = listenSer(clientEndInServer, outClient, false)
+		listener = vs.ListenSer(clientEndInServer, outClient, false)
 
 		proxyurl = "http://" + listenAddrStr
 
@@ -200,10 +202,10 @@ func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
 			log.Println("can not create outClient: ", err)
 			return
 		}
-		if defaultOutClient == nil {
-			defaultOutClient = outClient
+		if vs.DefaultOutClient == nil {
+			vs.DefaultOutClient = outClient
 		}
-		allClients = append(allClients, outClient)
+		vs.AllClients = append(vs.AllClients, outClient)
 	}
 
 }
@@ -215,8 +217,8 @@ func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 			log.Println("can not create inServer: ", err)
 			return
 		}
-		listenSer(inServer, defaultOutClient, true)
-		allServers = append(allServers, inServer)
+		vs.ListenSer(inServer, vs.DefaultOutClient, true)
+		vs.AllServers = append(vs.AllServers, inServer)
 
 	}
 

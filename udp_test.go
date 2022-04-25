@@ -1,4 +1,4 @@
-package main
+package v2ray_simple
 
 import (
 	"fmt"
@@ -190,10 +190,10 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	listenSer(clientEndInServer, clientEndOutClient, false)
-	listenSer(clientEndInServer2, clientEndOutClient, false)
-	listenSer(clientEndInServer3, clientEndOutClient, false)
-	listenSer(serverEndInServer, serverEndOutClient, false)
+	ListenSer(clientEndInServer, clientEndOutClient, false)
+	ListenSer(clientEndInServer2, clientEndOutClient, false)
+	ListenSer(clientEndInServer3, clientEndOutClient, false)
+	ListenSer(serverEndInServer, serverEndOutClient, false)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)

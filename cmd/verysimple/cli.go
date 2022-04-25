@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	vs "github.com/e1732a364fed/v2ray_simple"
+
 	"github.com/asaskevich/govalidator"
 	"github.com/e1732a364fed/v2ray_simple/advLayer/quic"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -193,8 +195,8 @@ func generateConfigFileInteractively() {
 		"将此次生成的配置投入运行（热加载）",
 	}
 
-	confClient := StandardConf{}
-	confServer := StandardConf{}
+	confClient := vs.StandardConf{}
+	confServer := vs.StandardConf{}
 
 	var clientStr, serverStr string
 
@@ -220,7 +222,7 @@ func generateConfigFileInteractively() {
 				Domains: []string{"geosite:cn"},
 			}}
 
-			confClient.App = &AppConf{MyCountryISO_3166: "CN"}
+			confClient.App = &vs.AppConf{MyCountryISO_3166: "CN"}
 
 			clientStr, err = utils.GetPurgedTomlStr(confClient)
 			if err != nil {
@@ -247,8 +249,8 @@ func generateConfigFileInteractively() {
 			fmt.Printf("\n")
 
 		case 2: //clear
-			confClient = StandardConf{}
-			confServer = StandardConf{}
+			confClient = vs.StandardConf{}
+			confServer = vs.StandardConf{}
 			clientStr = ""
 			serverStr = ""
 		case 3: //output
@@ -632,10 +634,10 @@ func interactively_hotRemoveServerOrClient() {
 	printAllState(os.Stdout)
 
 	var items []string
-	if len(allServers) > 0 {
+	if len(vs.AllServers) > 0 {
 		items = append(items, "listen")
 	}
-	if len(allClients) > 0 {
+	if len(vs.AllClients) > 0 {
 		items = append(items, "dial")
 	}
 
@@ -665,7 +667,7 @@ func interactively_hotRemoveServerOrClient() {
 
 	var theInt int64
 
-	if (will_delete_dial && len(allClients) > 1) || (will_delete_listen && len(allServers) > 1) {
+	if (will_delete_dial && len(vs.AllClients) > 1) || (will_delete_listen && len(vs.AllServers) > 1) {
 
 		validateFunc := func(input string) error {
 			theInt, err = strconv.ParseInt(input, 10, 64)
@@ -673,11 +675,11 @@ func interactively_hotRemoveServerOrClient() {
 				return errors.New("Invalid number")
 			}
 
-			if will_delete_dial && int(theInt) >= len(allClients) {
+			if will_delete_dial && int(theInt) >= len(vs.AllClients) {
 				return errors.New("must with in len of dial array")
 			}
 
-			if will_delete_listen && int(theInt) >= len(allServers) {
+			if will_delete_listen && int(theInt) >= len(vs.AllServers) {
 				return errors.New("must with in len of listen array")
 			}
 
@@ -705,15 +707,15 @@ func interactively_hotRemoveServerOrClient() {
 	will_delete_index = int(theInt)
 
 	if will_delete_dial {
-		allClients[will_delete_index].Stop()
-		allClients = utils.TrimSlice(allClients, will_delete_index)
+		vs.AllClients[will_delete_index].Stop()
+		vs.AllClients = utils.TrimSlice(vs.AllClients, will_delete_index)
 	}
 	if will_delete_listen {
-		listenerArray[will_delete_index].Close()
-		allServers[will_delete_index].Stop()
+		vs.ListenerArray[will_delete_index].Close()
+		vs.AllServers[will_delete_index].Stop()
 
-		allServers = utils.TrimSlice(allServers, will_delete_index)
-		listenerArray = utils.TrimSlice(listenerArray, will_delete_index)
+		vs.AllServers = utils.TrimSlice(vs.AllServers, will_delete_index)
+		vs.ListenerArray = utils.TrimSlice(vs.ListenerArray, will_delete_index)
 
 	}
 
@@ -755,7 +757,7 @@ func interactively_hotLoadConfigFile() {
 
 	fmt.Printf("你输入了 %s\n", fpath)
 
-	standardConf, err = LoadTomlConfFile(fpath)
+	standardConf, err = vs.LoadTomlConfFile(fpath)
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)

@@ -4,7 +4,7 @@ client.toml
 server.toml
 v2ray_simple
 v2ray_simple_*
-verysimple
+cmd/verysimple/verysimple
 verysimple_*
 *.exe
 *.DS_Store

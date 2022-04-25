@@ -1,4 +1,4 @@
-package main
+package v2ray_simple
 
 import (
 	"crypto/tls"
@@ -115,8 +115,8 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	listenSer(clientEndInServer, clientEndOutClient, false)
-	listenSer(serverEndInServer, serverEndOutClient, false)
+	ListenSer(clientEndInServer, clientEndOutClient, false)
+	ListenSer(serverEndInServer, serverEndOutClient, false)
 
 	proxyurl := "http://127.0.0.1:" + clientListenPort
 

@@ -483,6 +483,17 @@ https://github.com/e1732a364fed/v2ray_simple/discussions/3
 
 对于功能的golang test，请使用 `go test ./...  -count=1` 命令。如果要详细的打印出test的过程，可以添加 -v 参数
 
+内网测试命令示例：
+
+在 cmd/verysimple 文件夹中, 打开两个终端,
+```
+./verysimple -c ../../examples/quic.client.toml -ll 0
+```
+
+```
+./verysimple -c ../../examples/quic.server.toml -ll 0
+```
+
 ## 测速
 
 测试环境：ubuntu虚拟机, 使用开源测试工具

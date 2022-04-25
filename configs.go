@@ -1,4 +1,4 @@
-package main
+package v2ray_simple
 
 import (
 	"errors"
@@ -70,7 +70,7 @@ func LoadTomlConfFile(fileNamePath string) (StandardConf, error) {
 }
 
 //mainfallback, dnsMachine, routePolicy
-func loadCommonComponentsFromStandardConf() {
+func LoadCommonComponentsFromStandardConf(standardConf *StandardConf) {
 
 	if len(standardConf.Fallbacks) != 0 {
 		mainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
@@ -98,18 +98,18 @@ func loadCommonComponentsFromStandardConf() {
 
 		netLayer.LoadMaxmindGeoipFile("")
 
-		routePolicy = netLayer.NewRoutePolicy()
+		RoutePolicy = netLayer.NewRoutePolicy()
 		if hasAppLevelMyCountry {
-			routePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
+			RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
 
 		}
 
-		netLayer.LoadRulesForRoutePolicy(standardConf.Route, routePolicy)
+		netLayer.LoadRulesForRoutePolicy(standardConf.Route, RoutePolicy)
 	}
 }
 
 // 先检查configFileName是否存在，存在就尝试加载文件到 standardConf 或者 simpleConf，否则尝试 -L参数
-func loadConfig() (err error) {
+func LoadConfig(configFileName string) (standardConf StandardConf, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
 	if fpath != "" {
@@ -123,11 +123,11 @@ func loadConfig() (err error) {
 				return
 			}
 
-			confMode = 1
+			ConfMode = 1
 
 			//loglevel 和 noreadv这种会被 命令行覆盖的配置，需要直接在 loadConfig函数中先处理一遍
 			if appConf := standardConf.App; appConf != nil {
-				default_uuid = appConf.DefaultUUID
+				Default_uuid = appConf.DefaultUUID
 
 				if appConf.LogLevel != nil && !utils.IsFlagGiven("ll") {
 					utils.LogLevel = *appConf.LogLevel
@@ -146,19 +146,19 @@ func loadConfig() (err error) {
 			// 默认所有json格式的文件都为 极简模式
 
 			var hasE bool
-			simpleConf, hasE, err = proxy.LoadSimpleConfigFile(fpath)
+			SimpleConf, hasE, err = proxy.LoadSimpleConfigFile(fpath)
 			if hasE {
 
 				log.Printf("can not load simple config file: %s\n", err)
 				return
 			}
-			if simpleConf.Fallbacks != nil {
-				mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
+			if SimpleConf.Fallbacks != nil {
+				mainFallback = httpLayer.NewClassicFallbackFromConfList(SimpleConf.Fallbacks)
 			}
-			confMode = 0
+			ConfMode = 0
 
-			if simpleConf.Client_ThatDialRemote_Url == "" {
-				simpleConf.Client_ThatDialRemote_Url = "direct://"
+			if SimpleConf.Client_ThatDialRemote_Url == "" {
+				SimpleConf.Client_ThatDialRemote_Url = "direct://"
 			}
 			return
 		}
@@ -172,7 +172,7 @@ func loadConfig() (err error) {
 				return
 			}
 
-			simpleConf = proxy.SimpleConf{
+			SimpleConf = proxy.SimpleConf{
 				Server_ThatListenPort_Url: listenURL,
 			}
 
@@ -184,7 +184,7 @@ func loadConfig() (err error) {
 					return
 				}
 
-				simpleConf.Client_ThatDialRemote_Url = dialURL
+				SimpleConf.Client_ThatDialRemote_Url = dialURL
 			}
 
 		} else {

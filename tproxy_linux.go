@@ -1,4 +1,4 @@
-package main
+package v2ray_simple
 
 import (
 	"go.uber.org/zap"
@@ -9,7 +9,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-func listenTproxy(addr string) {
+func ListenTproxy(addr string) {
 	utils.Info("Start running Tproxy")
 
 	ad, err := netLayer.NewAddr(addr)
@@ -26,7 +26,7 @@ func listenTproxy(addr string) {
 	}
 	udpConn := startLoopUDP(ad)
 
-	tproxyList = append(tproxyList, tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn})
+	TproxyList = append(TproxyList, tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn})
 
 }
 
@@ -42,7 +42,7 @@ func startLoopTCP(ad netLayer.Addr) (net.Listener, error) {
 
 		passToOutClient(incomingInserverConnState{
 			wrappedConn:   tcpconn,
-			defaultClient: defaultOutClient,
+			defaultClient: DefaultOutClient,
 		}, false, tcpconn, nil, targetAddr)
 	})
 
@@ -75,7 +75,7 @@ func startLoopUDP(ad netLayer.Addr) *net.UDPConn {
 			}
 
 			go passToOutClient(incomingInserverConnState{
-				defaultClient: defaultOutClient,
+				defaultClient: DefaultOutClient,
 			}, false, nil, msgConn, raddr)
 		}
 
