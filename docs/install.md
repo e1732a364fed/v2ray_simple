@@ -30,9 +30,9 @@ sudo apt-get update
 
 sudo apt-get -y install jq curl wget
 
-tag=`curl -sL https://api.github.com/repos/hahahrfool/v2ray_simple/releases/latest | jq -r ".tag_name"`
+tag=`curl -sL https://api.github.com/repos/e1732a364fed/v2ray_simple/releases/latest | jq -r ".tag_name"`
 
-wget https://github.com/hahahrfool/v2ray_simple/releases/download/$tag/verysimple_linux_amd64.tar.xz
+wget https://github.com/e1732a364fed/v2ray_simple/releases/download/$tag/verysimple_linux_amd64.tar.xz
 
 sudo tar -xJf verysimple_linux_amd64.tar.xz -C /usr/local/etc/verysimple
 
