@@ -5,7 +5,7 @@
 
 如果你用root账户运行的话，不要在前面加 "sudo". 
 
-下面的命令也不要整个一大段拷贝，而要分条拷贝到vps并运行。
+下面的命令也不要整个一大段拷贝，而要分条拷贝到终端并运行。
 
 ## 第〇步，准备
 
@@ -45,6 +45,8 @@ sudo cp examples/vlesss.server.toml server.toml
 
 
 然后修改 `/usr/local/etc/verysimple/server.toml` ,使配置达到你想要的效果，注意里面证书路径要改为完整路径
+
+你也可以不复制 配置文件，运行 `verysimple -i` 进入交互模式 生成一个你想要的配置。
 
 
 ## 第二步，证书部分

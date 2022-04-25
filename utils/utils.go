@@ -1,4 +1,4 @@
-// Package utils provides utilities that is used in all codes in verysimple
+// Package utils provides general utilities.
 package utils
 
 import (
@@ -22,7 +22,7 @@ type ByteReader interface {
 	Read(p []byte) (n int, err error)
 }
 
-// bytes.Buffer 实现了 ByteReader
+// bytes.Buffer 实现了 ByteWriter
 type ByteWriter interface {
 	WriteByte(byte) error
 	Write(p []byte) (n int, err error)

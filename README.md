@@ -76,12 +76,14 @@ mv domain-list-community geosite
 
 ```sh
 git clone https://github.com/e1732a364fed/v2ray_simple
-cd v2ray_simple && go build
+cd v2ray_simple/cmd/verysimple && go build
 ```
 
 详细优化的编译参数请参考Makefile文件
 
 如果你是直接下载的可执行文件，则不需要 go build
+
+注意，本项目自v1.1.9开始，可执行文件的目录在 cmd/verysimple 文件夹内，而根目录 为 v2ray_simple 包。
 
 ## 运行方式
 
@@ -100,18 +102,8 @@ cd v2ray_simple && go build
 
 第一次运行时会自动下载geoip文件。
 
-可选拷贝示例文件
-```sh
-#如果使用极简模式，则复制vs.json文件
-cp examples/vs.client.json client.json
-cp examples/vs.server.json server.json
 
-#如果使用 标准toml格式，则复制toml文件，我们提供了多种配置示例，你只需复制一种想要的即可
-cp examples/vlesss.client.toml client.toml
-cp examples/vlesss.server.toml server.toml
-```
-
-如果你不拷贝示例文件，也可以通过 [交互模式](#交互模式) 来生成自定义的配置。
+可以通过 [交互模式](#交互模式) 来生成自定义的配置。
 
 ### 极简模式
 
@@ -123,7 +115,7 @@ verysimple -c client.json
 verysimple -c server.json
 ```
 
-关于 vlesss 的配置，查看 server.example.json和 client.example.json就知道了，很简单的。
+关于 vlesss 的配置，查看 vs.server.json和 vs.client.json 就知道了，很简单的。
 
 目前极简模式配置文件最短情况一共就4行，其中两行还是花括号，这要是还要我解释我就踢你的屁股。
 

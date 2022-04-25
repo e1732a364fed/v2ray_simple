@@ -86,7 +86,7 @@ func init() {
 
 }
 
-//非阻塞. 在main函数中被调用。也可以在 test代码中直接使用 ListenSer 函数 来手动开启新的转发流程。
+//非阻塞. 可以 直接使用 ListenSer 函数 来手动开启新的转发流程。
 // 若 not_temporary 为true, 则生成的listener将会被添加到 listenerArray 中
 func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
 
