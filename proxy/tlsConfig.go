@@ -14,10 +14,15 @@ import (
 	"go.uber.org/zap"
 )
 
-//use dc.Host, dc.Insecure, dc.Utls
+//use dc.Host, dc.Insecure, dc.Utls, dc.Alpn.
 // 如果用到了quic，还会直接配置quic的client的所有设置.
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	alpnList := dc.Alpn
+
+	clic := com.getCommon()
+	if clic == nil {
+		return nil
+	}
 
 	switch com.AdvancedLayer() {
 	case "quic":
@@ -29,8 +34,8 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			return e
 		}
 
-		com.getCommon().setNetwork("udp")
-		var useHysteria, hysteria_manual bool
+		clic.setNetwork("udp")
+		var useHysteria, hysteria_manual, early bool
 		var maxbyteCount int
 
 		if dc.Extra != nil {
@@ -59,13 +64,19 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 				}
 			}
 
+			if thing := dc.Extra["quic_early"]; thing != nil {
+				if use, ok := thing.(bool); ok && use {
+					early = true
+				}
+			}
+
 		}
 
 		if len(alpnList) == 0 {
 			alpnList = quic.AlpnList
 		}
 
-		com.getCommon().setQuic_Client(quic.NewClient(&na, alpnList, dc.Host, dc.Insecure, useHysteria, maxbyteCount, hysteria_manual))
+		clic.setQuic_Client(quic.NewClient(&na, alpnList, dc.Host, dc.Insecure, useHysteria, maxbyteCount, hysteria_manual, early))
 		return nil //quic直接接管了tls，所以不执行下面步骤
 
 	case "grpc":
@@ -80,32 +91,42 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 			alpnList = append([]string{httpLayer.H2_Str}, alpnList...)
 		}
 	}
-	com.getCommon().setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList))
+	clic.setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList))
 	return nil
 }
 
-//use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure
+//use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn.
 // 如果用到了quic，还会直接配置quic的server的所有设置.
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
 	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径
 
+	serc := com.getCommon()
+	if serc == nil {
+		return nil
+	}
+
 	alpnList := lc.Alpn
 	switch com.AdvancedLayer() {
 	case "quic":
 
-		com.getCommon().setNetwork("udp")
+		serc.setNetwork("udp")
 
 		if len(alpnList) == 0 {
 			alpnList = quic.AlpnList
 		}
 
-		var useHysteria bool
-		var hysteria_manual bool
+		var useHysteria, hysteria_manual, early bool
 		var maxbyteCount int
 		var maxStreamCountInOneSession int64
 
 		if lc.Extra != nil {
+
+			if thing := lc.Extra["quic_early"]; thing != nil {
+				if use, ok := thing.(bool); ok && use {
+					early = true
+				}
+			}
 
 			if thing := lc.Extra["maxStreamCountInOneSession"]; thing != nil {
 				if count, ok := thing.(int64); ok && count > 0 {
@@ -146,7 +167,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 		}
 
-		com.getCommon().setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any) {
+		serc.setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any) {
 
 			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
 
@@ -164,7 +185,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 				ServerName:         lc.Host,
 				Certificates:       certArray,
 				NextProtos:         alpnList,
-			}, useHysteria, maxbyteCount, hysteria_manual, maxStreamCountInOneSession)
+			}, useHysteria, maxbyteCount, hysteria_manual, early, maxStreamCountInOneSession)
 
 		})
 
@@ -184,7 +205,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, alpnList)
 	if err == nil {
-		com.getCommon().setTLS_Server(tlsserver)
+		serc.setTLS_Server(tlsserver)
 	} else {
 		return err
 	}

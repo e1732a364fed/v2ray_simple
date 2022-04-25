@@ -82,14 +82,25 @@ var (
 	}
 )
 
-func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual bool, customMaxStreamCountInOneSession int64) (newConnChan chan net.Conn, baseConn any) {
+func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual, early bool, customMaxStreamCountInOneSession int64) (newConnChan chan net.Conn, baseConn any) {
 
 	thisConfig := common_ListenConfig
 	if customMaxStreamCountInOneSession > 0 {
 		thisConfig.MaxIncomingStreams = customMaxStreamCountInOneSession
 	}
 
-	listener, err := quic.ListenAddr(addr, &tlsConf, &thisConfig)
+	var listener quic.Listener
+	var elistener quic.EarlyListener
+	var err error
+
+	if early {
+		utils.Info("quic Listen Early")
+		elistener, err = quic.ListenAddrEarly(addr, &tlsConf, &thisConfig)
+
+	} else {
+		listener, err = quic.ListenAddr(addr, &tlsConf, &thisConfig)
+
+	}
 	if err != nil {
 		if ce := utils.CanLogErr("quic listen"); ce != nil {
 			ce.Write(zap.Error(err))
@@ -106,15 +117,21 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 
 	newConnChan = make(chan net.Conn, 10)
 
-	go loopAccept(listener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
+	if early {
+		go loopAcceptEarly(elistener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
+
+	} else {
+		go loopAccept(listener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
+
+	}
 
 	return
 }
 
 //阻塞
-func loopAccept(listener quic.Listener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
+func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
 	for {
-		session, err := listener.Accept(context.Background())
+		conn, err := l.Accept(context.Background())
 		if err != nil {
 			if ce := utils.CanLogErr("quic session accept"); ce != nil {
 				ce.Write(zap.Error(err))
@@ -123,26 +140,48 @@ func loopAccept(listener quic.Listener, theChan chan net.Conn, useHysteria bool,
 			return
 		}
 
-		dealNewSession(session, theChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
+		if useHysteria {
+			configHyForConn(conn, hysteria_manual, hysteriaMaxByteCount)
+		}
+
+		dealNewSession(conn, theChan)
+	}
+}
+
+//阻塞
+func loopAcceptEarly(el quic.EarlyListener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
+
+	for {
+		conn, err := el.Accept(context.Background())
+		if err != nil {
+			if ce := utils.CanLogErr("quic session accept"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			return
+		}
+
+		if useHysteria {
+			configHyForConn(conn, hysteria_manual, hysteriaMaxByteCount)
+		}
+
+		dealNewSession(conn, theChan)
+	}
+}
+
+func configHyForConn(conn quic.Connection, hysteria_manual bool, hysteriaMaxByteCount int) {
+	if hysteria_manual {
+		bs := NewBrutalSender_M(congestion.ByteCount(hysteriaMaxByteCount))
+
+		conn.SetCongestionControl(bs)
+	} else {
+		bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
+
+		conn.SetCongestionControl(bs)
 	}
 }
 
 //非阻塞
-func dealNewSession(session quic.Connection, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
-
-	if useHysteria {
-
-		if hysteria_manual {
-			bs := NewBrutalSender_M(congestion.ByteCount(hysteriaMaxByteCount))
-
-			session.SetCongestionControl(bs)
-		} else {
-			bs := NewBrutalSender(congestion.ByteCount(hysteriaMaxByteCount))
-
-			session.SetCongestionControl(bs)
-		}
-
-	}
+func dealNewSession(session quic.Connection, theChan chan net.Conn) {
 
 	go func() {
 		for {
@@ -150,7 +189,7 @@ func dealNewSession(session quic.Connection, theChan chan net.Conn, useHysteria 
 			if err != nil {
 				if ce := utils.CanLogDebug("quic stream accept failed"); ce != nil {
 					//只要某个连接idle时间一长，超过了idleTimeout，服务端就会出现此错误:
-					// timeout: no recent network activity，即 IdleTimeoutError
+					// timeout: no recent network activity，即 quic.IdleTimeoutError
 					//这不能说是错误, 而是quic的udp特性所致，所以放到debug 输出中.
 					//这也同时说明, keep alive功能并不会更新 idle的最后期限.
 

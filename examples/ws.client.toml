@@ -14,4 +14,4 @@ insecure = true
 #utls = true    # 如果你要用v2ray或者xray做服务端，则要关闭utls,它们不够强大所以它们的websocket无法支持uTls；如果你用verysimple做服务端，则可以打开utls，享受chrome指纹伪装。
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple" #为了防探测这里越长越随机越好
-#extra = { ws_earlydata = true }    # 是否开启early data, 注意本作这里要开启的话，就要两端都开启。
+#extra = { ws_earlydata = true }    # 是否开启early data, 注意本作这里要开启的话，就要服务端和客户端 两端都开启。

@@ -19,15 +19,15 @@ type Client struct {
 
 	serverAddrStr string
 
-	tlsConf                      tls.Config
-	useHysteria, hysteria_manual bool
-	maxbyteCount                 int
+	tlsConf                             tls.Config
+	useHysteria, hysteria_manual, early bool
+	maxbyteCount                        int
 
 	clientconns     map[[16]byte]*sessionState
 	sessionMapMutex sync.RWMutex
 }
 
-func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, useHysteria bool, maxbyteCount int, hysteria_manual bool) *Client {
+func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, useHysteria bool, maxbyteCount int, hysteria_manual, early bool) *Client {
 	return &Client{
 		serverAddrStr: addr.String(),
 		tlsConf: tls.Config{
@@ -38,6 +38,7 @@ func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure boo
 		useHysteria:     useHysteria,
 		hysteria_manual: hysteria_manual,
 		maxbyteCount:    maxbyteCount,
+		early:           early,
 	}
 }
 
@@ -116,7 +117,18 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 	}
 
-	session, err := quic.DialAddr(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+	var conn quic.Connection
+	var err error
+
+	if c.early {
+		utils.Info("quic Dial Early")
+		conn, err = quic.DialAddrEarly(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+
+	} else {
+		conn, err = quic.DialAddr(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+
+	}
+
 	if err != nil {
 		if ce := utils.CanLogErr("QUIC:  dial failed"); ce != nil {
 			ce.Write(zap.Error(err))
@@ -131,18 +143,18 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 		if c.hysteria_manual {
 			bs := NewBrutalSender_M(congestion.ByteCount(c.maxbyteCount))
-			session.SetCongestionControl(bs)
+			conn.SetCongestionControl(bs)
 
 		} else {
 			bs := NewBrutalSender(congestion.ByteCount(c.maxbyteCount))
-			session.SetCongestionControl(bs)
+			conn.SetCongestionControl(bs)
 
 		}
 	}
 
 	id := utils.GenerateUUID()
 
-	var result = &sessionState{Connection: session, id: id}
+	var result = &sessionState{Connection: conn, id: id}
 	c.sessionMapMutex.Lock()
 	c.clientconns[id] = result
 	c.sessionMapMutex.Unlock()
