@@ -1,4 +1,4 @@
-module github.com/hahahrfool/v2ray_simple
+module github.com/e1732a364fed/v2ray_simple
 
 go 1.18
 
