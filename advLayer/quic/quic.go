@@ -12,8 +12,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/advLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/congestion"
 	"go.uber.org/zap"

@@ -5,7 +5,7 @@ import (
 	"golang.org/x/sys/unix"
 	"syscall"
 
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 func SetSockOpt(fd int, sockopt *Sockopt, isudp bool, isipv6 bool) {

@@ -35,7 +35,7 @@ https://tonybai.com/2019/09/28/how-to-build-websockets-in-go/
 */
 package ws
 
-import "github.com/hahahrfool/v2ray_simple/advLayer"
+import "github.com/e1732a364fed/v2ray_simple/advLayer"
 
 func init() {
 	advLayer.ProtocolsMap["ws"] = true

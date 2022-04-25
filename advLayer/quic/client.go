@@ -7,8 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/congestion"
 	"go.uber.org/zap"

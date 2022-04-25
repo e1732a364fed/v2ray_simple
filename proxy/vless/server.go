@@ -10,9 +10,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
 

@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/hahahrfool/v2ray_simple/advLayer"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //本文件下所有命令的输出统一使用 fmt 而不是 log

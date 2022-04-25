@@ -4,8 +4,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/hahahrfool/v2ray_simple/httpLayer"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
 var testf = httpLayer.FallbackConditionSet{

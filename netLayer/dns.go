@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/miekg/dns"
 	"go.uber.org/zap"
 )

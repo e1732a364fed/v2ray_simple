@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/hahahrfool/v2ray_simple/httpLayer"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //极简配置模式；只支持json

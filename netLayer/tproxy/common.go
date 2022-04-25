@@ -3,7 +3,7 @@ package tproxy
 import (
 	"net"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
 //一个tproxy状态机 具有 监听端口、tcplistener、udpConn 这三个要素。

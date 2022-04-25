@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/proxy/socks5"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/proxy/socks5"
 )
 
 //tcp就不测了，我们实践直接测试完全好使，这里重点测试UDP

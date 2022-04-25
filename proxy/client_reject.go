@@ -5,8 +5,8 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/hahahrfool/v2ray_simple/httpLayer"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
 const rejectName = "reject"

@@ -5,13 +5,13 @@ import (
 	"net"
 	"unsafe"
 
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	utls "github.com/refraction-networking/utls"
 	"go.uber.org/zap"
 )
 
 // 关于utls的简单分析，可参考
-//https://github.com/hahahrfool/v2ray_simple/discussions/7
+//https://github.com/e1732a364fed/v2ray_simple/discussions/7
 
 type Client struct {
 	tlsConfig  *tls.Config

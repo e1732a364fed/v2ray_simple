@@ -6,10 +6,10 @@ import (
 	"net"
 	"testing"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy"
-	_ "github.com/hahahrfool/v2ray_simple/proxy/vless"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
+	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 func TestVlesss(t *testing.T) {

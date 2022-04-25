@@ -9,10 +9,10 @@ import (
 	"net"
 	"net/url"
 
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
 )
 
 //为了避免黑客攻击,我们固定earlydata最大值为2048

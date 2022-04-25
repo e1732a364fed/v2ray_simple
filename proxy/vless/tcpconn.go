@@ -7,8 +7,8 @@ import (
 	"net"
 	"syscall"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //实现 net.Conn, io.ReaderFrom, utils.MultiWriter, utils.MultiReader, netLayer.Splicer

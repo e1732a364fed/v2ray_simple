@@ -24,7 +24,7 @@ https://github.com/v2fly/v2ray-core/pull/757
 */
 package grpc
 
-import "github.com/hahahrfool/v2ray_simple/advLayer"
+import "github.com/e1732a364fed/v2ray_simple/advLayer"
 
 func init() {
 	advLayer.ProtocolsMap["grpc"] = true

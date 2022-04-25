@@ -3,8 +3,8 @@ package proxy
 import (
 	"strconv"
 
-	"github.com/hahahrfool/v2ray_simple/httpLayer"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
 // CommonConf 是标准配置中 Listen和Dial 都有的部分

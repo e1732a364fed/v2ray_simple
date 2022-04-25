@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/hahahrfool/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
 func TestClientSimpleConfig(t *testing.T) {

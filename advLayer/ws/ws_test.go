@@ -7,8 +7,8 @@ import (
 	"net"
 	"testing"
 
-	"github.com/hahahrfool/v2ray_simple/advLayer/ws"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/advLayer/ws"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
 func TestBase64Len(t *testing.T) {

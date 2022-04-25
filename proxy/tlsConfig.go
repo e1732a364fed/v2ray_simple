@@ -6,11 +6,11 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/hahahrfool/v2ray_simple/advLayer/quic"
-	"github.com/hahahrfool/v2ray_simple/httpLayer"
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/tlsLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/advLayer/quic"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
 

@@ -4,8 +4,8 @@ import (
 	"io"
 	"net"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //trojan比较简洁，这个 UserTCPConn 只是用于读取握手读取时读到的剩余的缓存

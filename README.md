@@ -1,15 +1,15 @@
 ![GoVersion][10] [![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] [![Downloads][7]][8] [![release][9]][8] 
 
-[1]: https://godoc.org/github.com/hahahrfool/v2ray_simple?status.svg
-[2]: https://godoc.org/github.com/hahahrfool/v2ray_simple
+[1]: https://godoc.org/github.com/e1732a364fed/v2ray_simple?status.svg
+[2]: https://godoc.org/github.com/e1732a364fed/v2ray_simple
 [3]: https://img.shields.io/badge/license-MIT-blue.svg
 [4]: LICENSE
-[5]: https://goreportcard.com/badge/github.com/hahahrfool/v2ray_simple
-[6]: https://goreportcard.com/report/github.com/hahahrfool/v2ray_simple
-[7]: https://img.shields.io/github/downloads/hahahrfool/v2ray_simple/total.svg
-[8]: https://github.com/hahahrfool/v2ray_simple/releases/latest
-[9]: https://img.shields.io/github/release/hahahrfool/v2ray_simple/all.svg?style=flat-square
-[10]: https://img.shields.io/github/go-mod/go-version/hahahrfool/v2ray_simple?style=flat-square
+[5]: https://goreportcard.com/badge/github.com/e1732a364fed/v2ray_simple
+[6]: https://goreportcard.com/report/github.com/e1732a364fed/v2ray_simple
+[7]: https://img.shields.io/github/downloads/e1732a364fed/v2ray_simple/total.svg
+[8]: https://github.com/e1732a364fed/v2ray_simple/releases/latest
+[9]: https://img.shields.io/github/release/e1732a364fed/v2ray_simple/all.svg?style=flat-square
+[10]: https://img.shields.io/github/go-mod/go-version/e1732a364fed/v2ray_simple?style=flat-square
 
 
 # verysimple
@@ -32,7 +32,7 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 socks5/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
 
-ws(以及earlydata)/grpc(以及multiMode 以及uTls)/quic(以及hy阻控)/smux, 
+ws(以及earlydata)/grpc(以及multiMode 以及uTls)/quic(以及hy阻控 和 0-rtt)/smux, 
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
 
@@ -75,7 +75,7 @@ mv domain-list-community geosite
 ### 编译安装
 
 ```sh
-git clone https://github.com/hahahrfool/v2ray_simple
+git clone https://github.com/e1732a364fed/v2ray_simple
 cd v2ray_simple && go build
 ```
 
@@ -344,7 +344,7 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 而且这种技术不通过魔改tls包实现，而是在tls的外部实现，不会有我讲的xtls的233漏洞，而且以后可以与utls配合 进行模拟指纹。
 
-关于 splice，还可以参考我的文章 https://github.com/hahahrfool/xray_splice-
+关于 splice，还可以参考我的文章 https://github.com/e1732a364fed/xray_splice-
 
 该特性不完全稳定，可能会导致一些网页访问有时出现异常,有时出现bad mac alert;刷新页面可以解决
 
@@ -386,7 +386,7 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 而且后面可以考虑，如果底层是使用的tls1.2，那么我们上层也可以用 tls1.2来握手。这个是可以做到的，因为底层的判断在客户端握手刚发生时就可以做到，而此时我们先判断，然后再发起对 服务端的连接，即可。
 
-也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/hahahrfool/v2ray_simple/discussions/2
+也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/e1732a364fed/v2ray_simple/discussions/2
 
 在不使用新协议时，lazy只能通过不lazy tls1.2的方式来解决此问题, 即裸奔转发 tls1.3、加密转发 tls1.2. 
 
@@ -419,12 +419,12 @@ KISS, Keep it Simple and Stupid
 
 根据golang的标准，注释就是文档本身（godoc的原理），所以一定要多写注释。不要以为解释重复了就不要写，因为要生成godoc文档，在 pkg.go.dev 上 给用户看的时候它们首先看到的是注释内容，而不是代码内容
 
-本项目所生成的文档在 https://pkg.go.dev/github.com/hahahrfool/v2ray_simple
+本项目所生成的文档在 https://pkg.go.dev/github.com/e1732a364fed/v2ray_simple
 
 再次重复，文档越多越好，尽量降低开发者入门的门槛。
 
 我有时也会时常在 discussion里发一些研究、讨论的文章，大家也要踊跃发言
-https://github.com/hahahrfool/v2ray_simple/discussions
+https://github.com/e1732a364fed/v2ray_simple/discussions
 
 
 ### 代码
@@ -475,7 +475,7 @@ MIT协议，即你用的时候也要附带一个MIT文件，然后作者不承�
 
 
 其它开发计划请参考
-https://github.com/hahahrfool/v2ray_simple/discussions/3
+https://github.com/e1732a364fed/v2ray_simple/discussions/3
 
 
 
@@ -504,7 +504,7 @@ https://github.com/librespeed/speedtest-go
 ### 关于readv与测速
 
 如果你是按上面指导内网进行测速的话，实际上readv有可能会造成减速效果，具体可参考
-https://github.com/hahahrfool/v2ray_simple/issues/14
+https://github.com/e1732a364fed/v2ray_simple/issues/14
 
 如果发现减速，则要关闭readv
 
@@ -599,4 +599,4 @@ github.com/xtaci/smux v1.5.16
 
 ## Stargazers over time
 
-[![Stargazers over time](https://starchart.cc/hahahrfool/v2ray_simple.svg)](https://starchart.cc/hahahrfool/v2ray_simple)
+[![Stargazers over time](https://starchart.cc/e1732a364fed/v2ray_simple.svg)](https://starchart.cc/e1732a364fed/v2ray_simple)

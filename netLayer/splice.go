@@ -6,7 +6,7 @@ import (
 	"net"
 	"runtime"
 
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 var errInvalidWrite = errors.New("vless readfrom, invalid write result")

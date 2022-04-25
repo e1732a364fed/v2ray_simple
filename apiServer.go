@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/tlsLayer"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 var (

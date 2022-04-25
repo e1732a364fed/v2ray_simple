@@ -4,9 +4,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
-	"github.com/hahahrfool/v2ray_simple/proxy"
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //为了安全, 我们不建议socks5作为 proxy.Client; 所以这里没有注册到proxy。

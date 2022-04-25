@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/hahahrfool/v2ray_simple/utils"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 // 和TeeConn配合的是Recorder, 每次调用Write就会记录一个新Buffer

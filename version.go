@@ -40,7 +40,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/hahahrfool/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
 const delimiter = "===============================\n"
