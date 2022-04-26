@@ -8,6 +8,8 @@ About TProxy 关于透明代理
 透明代理原理
 https://www.kernel.org/doc/html/latest/networking/tproxy.html
 
+https://powerdns.org/tproxydoc/tproxy.md.html
+
 golang 示例
 https://github.com/LiamHaworth/go-tproxy/blob/master/tproxy_tcp.go
 

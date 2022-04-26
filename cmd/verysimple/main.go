@@ -32,14 +32,14 @@ var (
 	standardConf proxy.StandardConf
 	simpleConf   proxy.SimpleConf
 
-	AllServers = make([]proxy.Server, 0, 8)
+	AllServers = make([]proxy.Server, 0, 8) //储存除tproxy之外 所有运行的 inServer
 	AllClients = make([]proxy.Client, 0, 8)
 
+	TproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
+
+	ListenerArray []net.Listener //储存除tproxy之外 所有运行的 inServer 的 Listener
+
 	DefaultOutClient proxy.Client
-
-	TproxyList []*tproxy.Machine
-
-	ListenerArray []net.Listener
 
 	RoutingEnv proxy.RoutingEnv
 )
