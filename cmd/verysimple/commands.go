@@ -134,12 +134,12 @@ func printAllState(w io.Writer) {
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
 
-	for i, s := range vs.AllServers {
+	for i, s := range AllServers {
 		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
 
 	}
 
-	for i, c := range vs.AllClients {
+	for i, c := range AllClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
 	}
 }
@@ -150,8 +150,8 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 
 	var outClient proxy.Client
 
-	if vs.DefaultOutClient != nil {
-		outClient = vs.DefaultOutClient
+	if DefaultOutClient != nil {
+		outClient = DefaultOutClient
 		fmt.Println("trying to download geosite through your proxy dial")
 	} else {
 		fmt.Println("trying to download geosite directly")
@@ -167,7 +167,7 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 protocol = "http"
 `
 
-		clientConf, err := vs.LoadTomlConfStr(tempClientConfStr)
+		clientConf, err := proxy.LoadTomlConfStr(tempClientConfStr)
 		if err != nil {
 			fmt.Println("can not create LoadTomlConfStr: ", err)
 
@@ -182,7 +182,7 @@ protocol = "http"
 		listenAddrStr := netLayer.GetRandLocalPrivateAddr(true, false)
 		clientEndInServer.SetAddrStr(listenAddrStr)
 
-		listener = vs.ListenSer(clientEndInServer, outClient, false)
+		listener = vs.ListenSer(clientEndInServer, outClient, nil)
 
 		proxyurl = "http://" + listenAddrStr
 
@@ -202,23 +202,27 @@ func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
 			log.Println("can not create outClient: ", err)
 			return
 		}
-		if vs.DefaultOutClient == nil {
-			vs.DefaultOutClient = outClient
+		if DefaultOutClient == nil {
+			DefaultOutClient = outClient
 		}
-		vs.AllClients = append(vs.AllClients, outClient)
+		AllClients = append(AllClients, outClient)
 	}
 
 }
 func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 
-	for _, l := range conf {
+	for i, l := range conf {
 		inServer, err := proxy.NewServer(l)
 		if err != nil {
-			log.Println("can not create inServer: ", err)
+			log.Println("can not create inServer: ", i, err)
 			return
 		}
-		vs.ListenSer(inServer, vs.DefaultOutClient, true)
-		vs.AllServers = append(vs.AllServers, inServer)
+		lis := vs.ListenSer(inServer, DefaultOutClient, &RoutingEnv)
+		if lis != nil {
+			ListenerArray = append(ListenerArray, lis)
+			AllServers = append(AllServers, inServer)
+
+		}
 
 	}
 

@@ -18,13 +18,20 @@ import (
 	"go.uber.org/zap"
 )
 
+//配置文件格式
+const (
+	SimpleMode = iota
+	StandardMode
+	V2rayCompatibleMode
+)
+
 //规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
 type MuxMarker interface {
 	io.ReadWriteCloser
 	IsMux()
 }
 
-//实现 MusMarker
+//实现 MuxMarker
 type MuxMarkerConn struct {
 	netLayer.ReadWrapper
 }
@@ -206,7 +213,6 @@ type ProxyCommon interface {
 // verysimple规定，在加载完配置文件后，一个listen和一个dial所使用的全部层级都是确定了的.
 //  因为所有使用的层级都是确定的，就可以进行针对性优化
 type ProxyCommonStruct struct {
-	//isdial     bool
 	listenConf *ListenConf
 	dialConf   *DialConf
 
@@ -348,7 +354,7 @@ func (pcs *ProxyCommonStruct) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *
 	}
 }
 
-//return false
+//return false. As a placeholder.
 func (pcs *ProxyCommonStruct) IsUDP_MultiChannel() bool {
 	return false
 }
@@ -397,7 +403,6 @@ func (s *ProxyCommonStruct) CanFallback() bool {
 	return false
 }
 
-//return false. As a placeholder.
 func (s *ProxyCommonStruct) IsHandleInitialLayers() bool {
 	return s.AdvancedL == "quic"
 }
@@ -438,7 +443,6 @@ func (s *ProxyCommonStruct) IsMux() bool {
 	return false
 }
 
-//return nil. As a placeholder.
 func (s *ProxyCommonStruct) HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any) {
 	return s.listenCommonConnFunc
 }
@@ -447,28 +451,12 @@ func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
 
-//func (s *ProxyCommonStruct) setIsDial(b bool) {
-//	s.isdial = b
-//}
 func (s *ProxyCommonStruct) setListenConf(lc *ListenConf) {
 	s.listenConf = lc
 }
 func (s *ProxyCommonStruct) setDialConf(dc *DialConf) {
 	s.dialConf = dc
 }
-
-/*
-//true则为 Dial 端，false 则为 Listen 端
-func (s *ProxyCommonStruct) IsDial() bool {
-	return s.isdial
-}
-func (s *ProxyCommonStruct) GetListenConf() *ListenConf {
-	return s.listenConf
-}
-func (s *ProxyCommonStruct) GetDialConf() *DialConf {
-	return s.dialConf
-}
-*/
 
 func (s *ProxyCommonStruct) GetQuic_Client() *quic.Client {
 	return s.quic_c
@@ -478,7 +466,6 @@ func (s *ProxyCommonStruct) setQuic_Client(c *quic.Client) {
 	s.quic_c = c
 }
 
-//for outClient
 func (s *ProxyCommonStruct) GetWS_Client() *ws.Client {
 	return s.ws_c
 }
@@ -490,7 +477,6 @@ func (s *ProxyCommonStruct) GetGRPC_Server() *grpc.Server {
 	return s.grpc_s
 }
 
-//for outClient
 func (s *ProxyCommonStruct) initWS_client() error {
 	if s.dialConf == nil {
 		return errors.New("initWS_client failed when no dialConf assigned")

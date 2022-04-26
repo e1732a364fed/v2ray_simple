@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
 )
 
 func TestLoadTomlConf(t *testing.T) {
 
-	var conf StandardConf
+	var conf proxy.StandardConf
 	_, err := toml.Decode(testTomlConfStr, &conf)
 
 	if err != nil {

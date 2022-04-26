@@ -75,12 +75,12 @@ protocol = "direct"
 
 	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, version, network)
 
-	clientConf, err := LoadTomlConfStr(testClientConfStr)
+	clientConf, err := proxy.LoadTomlConfStr(testClientConfStr)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
-	serverConf, err := LoadTomlConfStr(testServerConfStr)
+	serverConf, err := proxy.LoadTomlConfStr(testServerConfStr)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
@@ -115,8 +115,8 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	ListenSer(clientEndInServer, clientEndOutClient, false)
-	ListenSer(serverEndInServer, serverEndOutClient, false)
+	ListenSer(clientEndInServer, clientEndOutClient, nil)
+	ListenSer(serverEndInServer, serverEndOutClient, nil)
 
 	proxyurl := "http://127.0.0.1:" + clientListenPort
 

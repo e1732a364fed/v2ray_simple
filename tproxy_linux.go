@@ -9,7 +9,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-func ListenTproxy(addr string) {
+func ListenTproxy(addr string) (tm *tproxy.Machine) {
 	utils.Info("Start running Tproxy")
 
 	ad, err := netLayer.NewAddr(addr)
@@ -26,8 +26,9 @@ func ListenTproxy(addr string) {
 	}
 	udpConn := startLoopUDP(ad)
 
-	TproxyList = append(TproxyList, tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn})
+	tm = &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn})
 
+	return
 }
 
 //非阻塞

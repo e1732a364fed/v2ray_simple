@@ -4,9 +4,11 @@
 package v2ray_simple
 
 import (
+	"github.com/e1732a364fed/v2ray_simple/netLayer/tproxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-func ListenTproxy(addr string) {
+func ListenTproxy(addr string) (tm *tproxy.Machine) {
 	utils.Warn("Tproxy not possible on non-linux device")
+	return
 }

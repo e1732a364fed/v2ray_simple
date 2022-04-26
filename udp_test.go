@@ -136,12 +136,12 @@ protocol = "direct"
 
 	testServerConfStr := fmt.Sprintf(testServerConfFormatStr, protocol, clientDialPort, version, network)
 
-	clientConf, err := LoadTomlConfStr(testClientConfStr)
+	clientConf, err := proxy.LoadTomlConfStr(testClientConfStr)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
 	}
-	serverConf, err := LoadTomlConfStr(testServerConfStr)
+	serverConf, err := proxy.LoadTomlConfStr(testServerConfStr)
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
@@ -190,10 +190,10 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	ListenSer(clientEndInServer, clientEndOutClient, false)
-	ListenSer(clientEndInServer2, clientEndOutClient, false)
-	ListenSer(clientEndInServer3, clientEndOutClient, false)
-	ListenSer(serverEndInServer, serverEndOutClient, false)
+	ListenSer(clientEndInServer, clientEndOutClient, nil)
+	ListenSer(clientEndInServer2, clientEndOutClient, nil)
+	ListenSer(clientEndInServer3, clientEndOutClient, nil)
+	ListenSer(serverEndInServer, serverEndOutClient, nil)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)

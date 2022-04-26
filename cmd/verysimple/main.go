@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"runtime/pprof"
@@ -11,7 +12,9 @@ import (
 	"syscall"
 
 	vs "github.com/e1732a364fed/v2ray_simple"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer/tproxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/pkg/profile"
@@ -20,16 +23,35 @@ import (
 
 var (
 	configFileName string
-	standardConf   vs.StandardConf
+	startPProf     bool
+	startMProf     bool
+	listenURL      string //用于命令行模式
+	dialURL        string //用于命令行模式
+	jsonMode       int
 
-	startPProf bool
-	startMProf bool
+	standardConf proxy.StandardConf
+	simpleConf   proxy.SimpleConf
+
+	AllServers = make([]proxy.Server, 0, 8)
+	AllClients = make([]proxy.Client, 0, 8)
+
+	DefaultOutClient proxy.Client
+
+	TproxyList []*tproxy.Machine
+
+	ListenerArray []net.Listener
+
+	RoutingEnv proxy.RoutingEnv
 )
 
 func init() {
 	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
+	flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
+
+	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the listen part in config file), only enbled when config file is not provided.")
+	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the dial part in config file), only enbled when config file is not provided.")
 
 }
 
@@ -89,8 +111,14 @@ func mainFunc() (result int) {
 
 	utils.Info("Program started")
 	defer utils.Info("Program exited")
+
 	var err error
-	if standardConf, err = vs.LoadConfig(configFileName); err != nil && !isFlexible() {
+	var mode int
+	var mainFallback *httpLayer.ClassicFallback
+
+	standardConf, simpleConf, mode, mainFallback, err = proxy.LoadConfig(configFileName, listenURL, dialURL)
+
+	if err != nil && !isFlexible() {
 		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
 		return -1
 	}
@@ -104,13 +132,18 @@ func mainFunc() (result int) {
 	runPreCommands()
 
 	var defaultInServer proxy.Server
+	var Default_uuid string
+
+	if mainFallback != nil {
+		RoutingEnv.MainFallback = mainFallback
+	}
 
 	//load inServers and vs.RoutePolicy
-	switch vs.ConfMode {
-	case vs.SimpleMode:
+	switch mode {
+	case proxy.SimpleMode:
 		var hase bool
 		var eie utils.ErrInErr
-		defaultInServer, hase, eie = proxy.ServerFromURL(vs.SimpleConf.Server_ThatListenPort_Url)
+		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
 		if hase {
 			if ce := utils.CanLogErr("can not create local server"); ce != nil {
 				ce.Write(zap.Error(eie))
@@ -118,20 +151,20 @@ func mainFunc() (result int) {
 			return -1
 		}
 
-		if !defaultInServer.CantRoute() && vs.SimpleConf.Route != nil {
+		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
 
 			netLayer.LoadMaxmindGeoipFile("")
 
 			//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
-			vs.RoutePolicy = netLayer.NewRoutePolicy()
-			if vs.SimpleConf.MyCountryISO_3166 != "" {
-				vs.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(vs.SimpleConf.MyCountryISO_3166))
+			RoutingEnv.RoutePolicy = netLayer.NewRoutePolicy()
+			if simpleConf.MyCountryISO_3166 != "" {
+				RoutingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
 
 			}
 		}
-	case vs.StandardMode:
+	case proxy.StandardMode:
 
-		vs.LoadCommonComponentsFromStandardConf(&standardConf)
+		RoutingEnv, Default_uuid = proxy.LoadEnvFromStandardConf(&standardConf)
 
 		//虽然标准模式支持多个Server，目前先只考虑一个
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
@@ -144,12 +177,15 @@ func mainFunc() (result int) {
 		for _, serverConf := range standardConf.Listen {
 			thisConf := serverConf
 			if thisConf.Protocol == "tproxy" {
-				vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial())
+				tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial())
+				if tm != nil {
+					TproxyList = append(TproxyList, tm)
+				}
 				continue
 			}
 
-			if thisConf.Uuid == "" && vs.Default_uuid != "" {
-				thisConf.Uuid = vs.Default_uuid
+			if thisConf.Uuid == "" && Default_uuid != "" {
+				thisConf.Uuid = Default_uuid
 			}
 
 			thisServer, err := proxy.NewServer(thisConf)
@@ -160,7 +196,7 @@ func mainFunc() (result int) {
 				continue
 			}
 
-			vs.AllServers = append(vs.AllServers, thisServer)
+			AllServers = append(AllServers, thisServer)
 			if tag := thisServer.GetTag(); tag != "" {
 				vs.ServersTagMap[tag] = thisServer
 			}
@@ -169,18 +205,18 @@ func mainFunc() (result int) {
 	}
 
 	// load outClients
-	switch vs.ConfMode {
-	case vs.SimpleMode:
+	switch mode {
+	case proxy.SimpleMode:
 		var hase bool
 		var eie utils.ErrInErr
-		vs.DefaultOutClient, hase, eie = proxy.ClientFromURL(vs.SimpleConf.Client_ThatDialRemote_Url)
+		DefaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
 		if hase {
 			if ce := utils.CanLogErr("can not create remote client"); ce != nil {
 				ce.Write(zap.Error(eie))
 			}
 			return -1
 		}
-	case vs.StandardMode:
+	case proxy.StandardMode:
 
 		if len(standardConf.Dial) < 1 {
 			utils.Warn("no dial in config settings")
@@ -188,8 +224,8 @@ func mainFunc() (result int) {
 		}
 
 		for _, thisConf := range standardConf.Dial {
-			if thisConf.Uuid == "" && vs.Default_uuid != "" {
-				thisConf.Uuid = vs.Default_uuid
+			if thisConf.Uuid == "" && Default_uuid != "" {
+				thisConf.Uuid = Default_uuid
 			}
 
 			thisClient, err := proxy.NewClient(thisConf)
@@ -199,32 +235,39 @@ func mainFunc() (result int) {
 				}
 				continue
 			}
-			vs.AllClients = append(vs.AllClients, thisClient)
+			AllClients = append(AllClients, thisClient)
 
 			if tag := thisClient.GetTag(); tag != "" {
 				vs.ClientsTagMap[tag] = thisClient
 			}
 		}
 
-		if len(vs.AllClients) > 0 {
-			vs.DefaultOutClient = vs.AllClients[0]
+		if len(AllClients) > 0 {
+			DefaultOutClient = AllClients[0]
 
 		} else {
-			vs.DefaultOutClient = vs.DirectClient
+			DefaultOutClient = vs.DirectClient
 		}
 
 	}
 
 	configFileQualifiedToRun := false
 
-	if (defaultInServer != nil || len(vs.AllServers) > 0 || len(vs.TproxyList) > 0) && (vs.DefaultOutClient != nil) {
+	if (defaultInServer != nil || len(AllServers) > 0 || len(TproxyList) > 0) && (DefaultOutClient != nil) {
 		configFileQualifiedToRun = true
 
-		if vs.ConfMode == vs.SimpleMode {
-			vs.ListenSer(defaultInServer, vs.DefaultOutClient, true)
+		if mode == proxy.SimpleMode {
+			lis := vs.ListenSer(defaultInServer, DefaultOutClient, &RoutingEnv)
+			if lis != nil {
+				ListenerArray = append(ListenerArray, lis)
+			}
 		} else {
-			for _, inServer := range vs.AllServers {
-				vs.ListenSer(inServer, vs.DefaultOutClient, true)
+			for _, inServer := range AllServers {
+				lis := vs.ListenSer(inServer, DefaultOutClient, &RoutingEnv)
+
+				if lis != nil {
+					ListenerArray = append(ListenerArray, lis)
+				}
 			}
 		}
 
@@ -254,13 +297,13 @@ func mainFunc() (result int) {
 		//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
 		// 用下面代码以试图解决端口占用问题.
 
-		for _, listener := range vs.ListenerArray {
+		for _, listener := range ListenerArray {
 			if listener != nil {
 				listener.Close()
 			}
 		}
 
-		for _, tm := range vs.TproxyList {
+		for _, tm := range TproxyList {
 			tm.Stop()
 		}
 

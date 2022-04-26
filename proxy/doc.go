@@ -1,5 +1,22 @@
 /*Package proxy defines necessary components for proxy.
 
+Config Format  配置格式
+
+一共有三种配置格式，极简模式，标准模式，兼容模式。
+
+“极简模式”(即 verysimple mode)，入口和出口仅有一个，而且都是使用共享链接的url格式来配置.
+
+标准模式使用toml格式。
+
+兼容模式可以兼容v2ray现有json格式。（暂未实现）。
+
+极简模式的理念是，配置文件的字符尽量少，尽量短小精悍;
+
+还有个命令行模式，就是直接把极简模式的url 放到命令行参数中，比如:
+
+	verysimple -L socks5://sfdfsaf -D direct://
+
+
 Layer Definition
 
 目前认为，一个传输过程大概由四个部分组成，基础连接（udp/tcp），TLS（可选），中间层（ws、grpc、http等，可选），具体协议（socks5，vless，trojan等）.
@@ -36,7 +53,7 @@ New Model - VSI 新的VSI 模型
 
 	11｜        --------------               （client real tcp/udp data)
 	--------------------------------------------------------------------------------
-	10｜        --------------               （inner proxy layer)
+	10｜        (simplesocks)           |    （inner proxy layer)
 	--------------------------------------------------------------------------------
 	9 ｜ [client real tcp/udp data]     or   [inner mux Layer]
 	--------------------------------------------------------------------------------
@@ -51,7 +68,7 @@ New Model - VSI 新的VSI 模型
 	4 ｜ tcp/udp/unix domain socket/kcp ｜     transport layer
 	--------------------------------------------------------------------------------
 
-实际上quic属于一种超级协议，横跨传输层一直到高级层，不过为了分类方便，这里认为它也是一种 高级层。
+另外，实际上quic属于一种超级协议，横跨传输层一直到高级层，不过为了分类方便，这里认为它也是一种 高级层。
 也就是说，如果遇到横跨多个层的协议，我们认为它属于其中最高的层级。
 
 
@@ -93,7 +110,7 @@ New Model - VSI 新的VSI 模型
 	}
 
 我们项目的文件夹，netLayer 第3，4层，tlsLayer文件夹代表第5层; httpLayer第六层，
-advLayer文件夹 代表第七层, proxy文件夹代表第8层.
+advLayer文件夹 代表第七层, proxy文件夹代表第8层或第10层, 同时连带 处理了 第九层.
 
 
 同级的ws和grpc是独占的，可以都放到一个layer里，然后比如第八层配置了一个vless一个trojan，那么排列组合就是4种，vless+ws, vless+ grpc, trojan+ws, trojan+grpc.
@@ -125,7 +142,7 @@ Contents of proxy package - proxy包内容
 
 使用 RegisterClient 和 RegisterServer 来注册新的实现.
 
-还定义了关于udp 转发到机制，该部分直接参考 各个UDP开头的 部分即可.
+还定义了关于udp 转发 的机制，该部分直接参考 relay_udp.go 即可.
 
 Server and Client
 

@@ -19,7 +19,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/advLayer/ws"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
-	"github.com/e1732a364fed/v2ray_simple/netLayer/tproxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -32,12 +31,6 @@ import (
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
 )
 
-const (
-	SimpleMode = iota
-	StandardMode
-	V2rayCompatibleMode
-)
-
 //统计数据
 var (
 	ActiveConnectionCount      int32
@@ -46,32 +39,16 @@ var (
 )
 
 var (
-	uniqueTestDomain string //有时需要测试到单一网站的流量，此时为了避免其它干扰，需要在这里声明 一下 该域名，然后程序里会进行过滤
-
-	ConfMode           int = -1 //0: simple json, 1: standard toml, 2: v2ray compatible json
-	SimpleConf         proxy.SimpleConf
 	DirectClient, _, _ = proxy.ClientFromURL("direct://")
-	DefaultOutClient   proxy.Client
-	Default_uuid       string
-
-	AllServers    = make([]proxy.Server, 0, 8)
-	AllClients    = make([]proxy.Client, 0, 8)
-	ListenerArray []net.Listener
 
 	ServersTagMap = make(map[string]proxy.Server)
 	ClientsTagMap = make(map[string]proxy.Client)
 
-	listenURL string //用于命令行模式
-	dialURL   string //用于命令行模式
-
 	Tls_lazy_encrypt bool
 	Tls_lazy_secure  bool
 
-	RoutePolicy  *netLayer.RoutePolicy
-	mainFallback *httpLayer.ClassicFallback
-	dnsMachine   *netLayer.DNSMachine
-
-	TproxyList []tproxy.Machine
+	//有时需要测试到单一网站的流量，此时为了避免其它干扰，可声明 一下 该域名，然后程序里会进行过滤
+	uniqueTestDomain string
 )
 
 func init() {
@@ -79,16 +56,13 @@ func init() {
 	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
-	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the listen part in config file), only enbled when config file is not provided.")
-	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the dial part in config file), only enbled when config file is not provided.")
-
 	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com. Only valid when loglevel=0")
 
 }
 
 //非阻塞. 可以 直接使用 ListenSer 函数 来手动开启新的转发流程。
-// 若 not_temporary 为true, 则生成的listener将会被添加到 listenerArray 中
-func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_temporary bool) (thisListener net.Listener) {
+// 若 not_temporary 为 false, 则不会使用 RoutingEnv进行路由或回落
+func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (thisListener net.Listener) {
 
 	var err error
 
@@ -144,7 +118,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 	}
 
 	handleFunc := func(conn net.Conn) {
-		handleNewIncomeConnection(inServer, defaultOutClientForThis, conn, !not_temporary)
+		handleNewIncomeConnection(inServer, defaultOutClientForThis, conn, env)
 	}
 
 	network := inServer.Network()
@@ -157,11 +131,6 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, not_
 				zap.String("protocol", proxy.GetFullName(inServer)),
 				zap.String("addr", inServer.AddrStr()),
 			)
-		}
-
-		if not_temporary {
-			ListenerArray = append(ListenerArray, thisListener)
-
 		}
 
 	} else {
@@ -194,9 +163,6 @@ type incomingInserverConnState struct {
 	inServerTlsConn            *tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
 
-	//shouldFallback    bool
-	forbidDNS_orRoute bool
-
 	theFallbackFirstBuffer *bytes.Buffer
 
 	isTlsLazyServerEnd bool
@@ -204,19 +170,21 @@ type incomingInserverConnState struct {
 	shouldCloseInSerBaseConnWhenFinish bool
 
 	routedToDirect bool
+
+	RoutingEnv *proxy.RoutingEnv //used in passToOutClient
 }
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
 // 然后将代理层的处理发往 handshakeInserver_and_passToOutClient 函数。
 //
 // 在 listenSer 中被调用。
-func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, forbidDNS_orRoute bool) {
+func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, env *proxy.RoutingEnv) {
 
 	iics := incomingInserverConnState{
-		baseLocalConn:     thisLocalConnectionInstance,
-		inServer:          inServer,
-		defaultClient:     defaultClientForThis,
-		forbidDNS_orRoute: forbidDNS_orRoute,
+		baseLocalConn: thisLocalConnectionInstance,
+		inServer:      inServer,
+		defaultClient: defaultClientForThis,
+		RoutingEnv:    env,
 	}
 
 	iics.isTlsLazyServerEnd = Tls_lazy_encrypt && canLazyEncryptServer(inServer)
@@ -527,7 +495,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 	return
 }
 
-// 在调用 passToOutClient前遇到err时调用
+// 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
 func findoutFirstBuf(err error, iics *incomingInserverConnState) bool {
 	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
 		ce.Write(
@@ -594,7 +562,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wlc net.Conn) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
 
-	if mainFallback != nil {
+	if mf := iics.RoutingEnv.MainFallback; mf != nil {
 
 		utils.Debug("Fallback check")
 
@@ -639,7 +607,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wl
 		}
 
 		{
-			fbAddr := mainFallback.GetFallback(thisFallbackType, fallback_params...)
+			fbAddr := mf.GetFallback(thisFallbackType, fallback_params...)
 
 			if ce := utils.CanLogDebug("Fallback check"); ce != nil {
 				if fbAddr != nil {
@@ -704,13 +672,13 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	// 因为在direct时，netLayer.Addr 拨号时，会优先选用ip拨号，而且我们下面的分流阶段 如果使用ip的话，
 	// 可以利用geoip文件,  可以做到国别分流.
 
-	if !iics.forbidDNS_orRoute && dnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
+	if iics.RoutingEnv != nil && iics.RoutingEnv.DnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
 
 		if ce := utils.CanLogDebug("Dns querying"); ce != nil {
 			ce.Write(zap.String("domain", targetAddr.Name))
 		}
 
-		ip := dnsMachine.Query(targetAddr.Name)
+		ip := iics.RoutingEnv.DnsMachine.Query(targetAddr.Name)
 
 		if ip != nil {
 			targetAddr.IP = ip
@@ -729,7 +697,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	inServer := iics.inServer
 
 	//尝试分流, 获取到真正要发向 的 outClient
-	if !iics.forbidDNS_orRoute && RoutePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
+	if iics.RoutingEnv != nil && iics.RoutingEnv.RoutePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
 
 		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,
@@ -742,7 +710,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			ce.Write(zap.Any("source", desc))
 		}
 
-		outtag := RoutePolicy.GetOutTag(desc)
+		outtag := iics.RoutingEnv.RoutePolicy.GetOutTag(desc)
 
 		if outtag == "direct" {
 			client = DirectClient
