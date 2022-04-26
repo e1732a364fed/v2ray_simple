@@ -14,19 +14,19 @@ import (
 )
 
 func TestTCP_vless(t *testing.T) {
-	testTCP("vless", 0, "tcp", false, t)
+	testTCP(t, "vless", 0, "tcp", false)
 }
 
 func TestTCP_trojan(t *testing.T) {
-	testTCP("trojan", 0, "tcp", false, t)
+	testTCP(t, "trojan", 0, "tcp", false)
 }
 
 func TestTCP_trojan_mux(t *testing.T) {
-	testTCP("trojan", 0, "tcp", true, t)
+	testTCP(t, "trojan", 0, "tcp", true)
 }
 
 //tcp测试我们直接使用http请求来测试
-func testTCP(protocol string, version int, network string, innermux bool, t *testing.T) {
+func testTCP(t *testing.T, protocol string, version int, network string, innermux bool) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
@@ -133,14 +133,14 @@ protocol = "direct"
 		},
 	}
 
-	tryGetHttp(client, "http://captive.apple.com", t)
-	tryGetHttp(client, "http://www.msftconnecttest.com/connecttest.txt", t)
+	tryGetHttp(t, client, "http://captive.apple.com")
+	tryGetHttp(t, client, "http://www.msftconnecttest.com/connecttest.txt")
 
 	//联通性测试 可参考 https://imldy.cn/posts/99d42f85/
 	// 用这种 captive 测试 不容易遇到 网站无法在 某些地区 如 github action 所在的地区 访问 或者卡顿等情况.
 }
 
-func tryGetHttp(client *http.Client, path string, t *testing.T) {
+func tryGetHttp(t *testing.T, client *http.Client, path string) {
 	t.Log("start dial", path)
 	resp, err := client.Get(path)
 	if err != nil {

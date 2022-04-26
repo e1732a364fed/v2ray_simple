@@ -28,17 +28,18 @@ func canLazyEncryptClient(outClient proxy.Client) bool {
 	return outClient.IsUseTLS() && canNetwork_tlsLazy(outClient.Network()) && outClient.AdvancedLayer() == ""
 }
 
-func canNetwork_tlsLazy(nw string) bool {
-	switch nw {
+func canNetwork_tlsLazy(n string) bool {
+	switch n {
 	case "", "tcp", "tcp4", "tcp6", "unix":
 		return true
 	}
 	return false
 }
 
-// tryTlsLazyRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发
+// tryTlsLazyRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发.
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
-// 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝
+// 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝.
+//
 // 第一个参数仅用于 tls_lazy_secure
 func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 	if ce := utils.CanLogDebug("trying tls lazy copy"); ce != nil {
@@ -362,7 +363,9 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 					//
 					//这是因为, 触发上一段类似代码的原因是tls 0-rtt，而 tls 0-rtt 总是由 客户端发起的
 					log.Println("有问题， nextI > len(bs)", nextI, len(bs))
-					//os.Exit(-1) //这里就暂时不要退出程序了，毕竟理论上有可能由一些黑客来触发这里。
+
+					//这里不应 用 os.Exit 退出程序，理论上有可能由一些黑客来触发这里, 直接退出转发过程即可。
+
 					localConn.Close()
 					rawWRC.Close()
 					return

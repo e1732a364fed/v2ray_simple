@@ -1,7 +1,6 @@
 package netLayer
 
 import (
-	"flag"
 	"io"
 	"net"
 	"sync"
@@ -29,7 +28,6 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&UseReadv, "readv", DefaultReadvOption, "toggle the use of 'readv' syscall")
 
 	readvPool = sync.Pool{
 		New: newReadvMem,

@@ -9,6 +9,8 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+
+//监听透明代理, 返回一个 值 用于 关闭.
 func ListenTproxy(addr string) (tm *tproxy.Machine) {
 	utils.Info("Start running Tproxy")
 
@@ -16,7 +18,7 @@ func ListenTproxy(addr string) (tm *tproxy.Machine) {
 	if err != nil {
 		panic(err)
 	}
-	//tproxy因为比较特殊, 不属于 proxy.Server, 需要独特的转发过程去处理.
+	//因为 tproxy比较特殊, 不属于 proxy.Server, 所以 需要 独立的 转发过程去处理.
 	lis, err := startLoopTCP(ad)
 	if err != nil {
 		if ce := utils.CanLogErr("TProxy startLoopTCP failed"); ce != nil {

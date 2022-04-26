@@ -3,7 +3,7 @@
 
 [app]   # app 项是可选的
 
-# 日志等级,默认为2.  0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal, 
+# 日志等级,默认为1.  0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal, 
 # 推荐开发时用0, 测试时使用1, 日常使用时 使用2或3; 显然日志越少越快, 设为6或者更大值的话性能是最好的.
 #loglevel = 1
 

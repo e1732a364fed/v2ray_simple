@@ -57,7 +57,7 @@ type Client interface {
 	//规定, firstPayload 由 utils.GetMTU或者 GetPacket获取, 所以写入之后可以用 utils.PutBytes 放回
 	Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
-	//建立一个通道, 然后在这个通道上 不断地申请发送到 各个远程udp地址 的连接。
+	//建立一个通道, 然后在这个通道上 不断地申请发送到 各个远程udp地址 的连接。理论上target可为空值。
 	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
 
 	//udp的拨号是否使用了多信道方式

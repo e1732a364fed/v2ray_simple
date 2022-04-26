@@ -4,25 +4,42 @@
 package utils
 
 import (
-	"github.com/tjarratt/babble"
-	"go.uber.org/zap"
+	"io/ioutil"
+	"math/rand"
+	"os"
+	"strings"
 )
 
+var words []string
+var getWordListFailed bool
+
 func GetRandomWord() (result string) {
-	//babbler包 在 系统中 没有 /usr/share/dict/words 且不是windows 时，会panic
-	defer func() {
 
-		if r := recover(); r != nil {
-			if ce := CanLogErr("getRandomWord babble panic"); ce != nil {
-				ce.Write(zap.Any("err:", r))
-			}
+	if len(words) == 0 && !getWordListFailed {
+		words = readAvailableDictionary()
+	}
 
-			result = GenerateRandomString()
-		}
-	}()
-	babbler := babble.NewBabbler()
-	babbler.Count = 1
-	result = babbler.Babble()
+	if theLen := len(words); theLen == 0 {
+		getWordListFailed = true
+		result = GenerateRandomString()
+	} else {
+		result = words[rand.Int()%theLen]
+	}
 
+	return
+}
+
+func readAvailableDictionary() (words []string) {
+	file, err := os.Open("/usr/share/dict/words")
+	if err != nil {
+		return
+	}
+
+	bytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return
+	}
+
+	words = strings.Split(string(bytes), "\n")
 	return
 }

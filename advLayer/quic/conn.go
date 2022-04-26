@@ -7,8 +7,9 @@ import (
 	"github.com/lucas-clemente/quic-go"
 )
 
-//用于 跟踪 一个 session 中 所开启的 stream的数量
-type sessionState struct {
+// 对 quic.Connection 的一个包装。
+//用于 跟踪 一个 session 中 所开启的 stream的数量.
+type connState struct {
 	quic.Connection
 	id [16]byte
 
@@ -20,9 +21,9 @@ type sessionState struct {
 // 因为它是通过 StreamID 来识别连接. 不过session是有的。
 type StreamConn struct {
 	quic.Stream
-	laddr, raddr        net.Addr
-	relatedSessionState *sessionState
-	isclosed            bool
+	laddr, raddr     net.Addr
+	relatedConnState *connState
+	isclosed         bool
 }
 
 func (sc StreamConn) LocalAddr() net.Addr {
@@ -42,7 +43,7 @@ func (sc StreamConn) Close() error {
 	sc.isclosed = true
 	sc.CancelRead(quic.StreamErrorCode(quic.ConnectionRefused))
 	sc.CancelWrite(quic.StreamErrorCode(quic.ConnectionRefused))
-	if rss := sc.relatedSessionState; rss != nil {
+	if rss := sc.relatedConnState; rss != nil {
 
 		atomic.AddInt32(&rss.openedStreamCount, -1)
 

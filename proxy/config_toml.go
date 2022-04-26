@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
-	"net/url"
 	"os"
 	"path/filepath"
 	"time"
@@ -27,9 +26,9 @@ type AppConf struct {
 	UDP_timeout *int `toml:"udp_timeout"`
 }
 
-//标准配置。默认使用toml格式
+//标准配置，使用toml格式。
 // toml：https://toml.io/cn/
-// english: https://toml.io/en/
+// English: https://toml.io/en/
 type StandardConf struct {
 	App     *AppConf          `toml:"app"`
 	DnsConf *netLayer.DnsConf `toml:"dns"`
@@ -43,7 +42,6 @@ type StandardConf struct {
 
 func LoadTomlConfStr(str string) (c StandardConf, err error) {
 	_, err = toml.Decode(str, &c)
-
 	return
 }
 
@@ -59,7 +57,8 @@ func LoadTomlConfFile(fileNamePath string) (StandardConf, error) {
 
 }
 
-// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf 或者 simpleConf，否则尝试 -L参数
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf 或者 simpleConf，否则尝试 listenURL, dialURL 参数.
+// 若 返回的是 simpleConf, 则还可能返回 mainFallback.
 func LoadConfig(configFileName, listenURL, dialURL string) (standardConf StandardConf, simpleConf SimpleConf, confMode int, mainFallback *httpLayer.ClassicFallback, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
@@ -110,54 +109,6 @@ func LoadConfig(configFileName, listenURL, dialURL string) (standardConf Standar
 			return
 		}
 	}
-	return
-}
-
-func loadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *httpLayer.ClassicFallback, err error) {
-	//默认认为所有其他后缀的都是json格式，因为有时会用 server.json.vless 这种写法
-	// 默认所有json格式的文件都为 极简模式
-
-	var hasE bool
-	simpleConf, hasE, err = LoadSimpleConfigFile(fpath)
-	if hasE {
-
-		log.Printf("can not load simple config file: %s\n", err)
-		return
-	}
-	if simpleConf.Fallbacks != nil {
-		mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
-	}
-	//ConfMode = 0
-
-	if simpleConf.Client_ThatDialRemote_Url == "" {
-		simpleConf.Client_ThatDialRemote_Url = "direct://"
-	}
-	return
-}
-
-func loadSimpleConf_byUrl(listenURL, dialURL string) (simpleConf SimpleConf, err error) {
-
-	_, err = url.Parse(listenURL)
-	if err != nil {
-		log.Printf("listenURL given but invalid %s %s\n", listenURL, err)
-		return
-	}
-
-	simpleConf = SimpleConf{
-		Server_ThatListenPort_Url: listenURL,
-	}
-
-	if dialURL != "" {
-
-		_, err = url.Parse(dialURL)
-		if err != nil {
-			log.Printf("dialURL given but invalid %s %s\n", dialURL, err)
-			return
-		}
-
-		simpleConf.Client_ThatDialRemote_Url = dialURL
-	}
-
 	return
 }
 

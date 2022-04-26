@@ -23,8 +23,8 @@ type Client struct {
 	useHysteria, hysteria_manual, early bool
 	maxbyteCount                        int
 
-	clientconns     map[[16]byte]*sessionState
-	sessionMapMutex sync.RWMutex
+	clientconns  map[[16]byte]*connState
+	connMapMutex sync.RWMutex
 }
 
 func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, useHysteria bool, maxbyteCount int, hysteria_manual, early bool) *Client {
@@ -42,8 +42,8 @@ func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure boo
 	}
 }
 
-//trimSessions移除不Active的session, 并试图返回一个 最佳的可用于新stream的session
-func (c *Client) trimSessions(ss map[[16]byte]*sessionState) (s *sessionState) {
+//trimBadConns removes non-Active sessions, 并试图返回一个 最佳的可用于新stream的session
+func (c *Client) trimBadConns(ss map[[16]byte]*connState) (s *connState) {
 	minSessionNum := 10000
 	for id, thisState := range ss {
 		if isActive(thisState) {
@@ -84,24 +84,24 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 	if !openBecausePreviousFull {
 
-		c.sessionMapMutex.Lock()
-		var theSession *sessionState
+		c.connMapMutex.Lock()
+		var theState *connState
 		if len(c.clientconns) > 0 {
-			theSession = c.trimSessions(c.clientconns)
+			theState = c.trimBadConns(c.clientconns)
 		}
 		if len(c.clientconns) > 0 {
-			c.sessionMapMutex.Unlock()
-			if theSession != nil {
-				return theSession
+			c.connMapMutex.Unlock()
+			if theState != nil {
+				return theState
 
 			}
 		} else {
-			c.clientconns = make(map[[16]byte]*sessionState)
-			c.sessionMapMutex.Unlock()
+			c.clientconns = make(map[[16]byte]*connState)
+			c.connMapMutex.Unlock()
 		}
 	} else if previous != nil && c.knownServerMaxStreamCount == 0 {
 
-		ps, ok := previous.(*sessionState)
+		ps, ok := previous.(*connState)
 		if !ok {
 			if ce := utils.CanLogDebug("QUIC: 'previous' parameter was given but with wrong type  "); ce != nil {
 				ce.Write(zap.String("type", reflect.TypeOf(previous).String()))
@@ -154,16 +154,16 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 	id := utils.GenerateUUID()
 
-	var result = &sessionState{Connection: conn, id: id}
-	c.sessionMapMutex.Lock()
+	var result = &connState{Connection: conn, id: id}
+	c.connMapMutex.Lock()
 	c.clientconns[id] = result
-	c.sessionMapMutex.Unlock()
+	c.connMapMutex.Unlock()
 
 	return result
 }
 
 func (c *Client) DialSubConn(thing any) (net.Conn, error) {
-	theState, ok := thing.(*sessionState)
+	theState, ok := thing.(*connState)
 	if !ok {
 		return nil, utils.ErrNilOrWrongParameter
 	}
@@ -176,5 +176,5 @@ func (c *Client) DialSubConn(thing any) (net.Conn, error) {
 
 	atomic.AddInt32(&theState.openedStreamCount, 1)
 
-	return StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedSessionState: theState}, nil
+	return StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedConnState: theState}, nil
 }

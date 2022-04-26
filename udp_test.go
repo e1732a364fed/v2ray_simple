@@ -13,45 +13,45 @@ import (
 )
 
 func TestUDP_vless(t *testing.T) {
-	testUDP("vless", 0, "tcp", false, false, false, t)
+	testUDP(t, "vless", 0, "tcp", false, false, false)
 }
 
 //v0 没有fullcone
 
 func TestUDP_vless_v1(t *testing.T) {
-	testUDP("vless", 1, "tcp", false, false, false, t)
+	testUDP(t, "vless", 1, "tcp", false, false, false)
 }
 
 func TestUDP_vless_v1_fullcone(t *testing.T) {
-	testUDP("vless", 1, "tcp", false, true, false, t)
+	testUDP(t, "vless", 1, "tcp", false, true, false)
 }
 
 func TestUDP_vless_v1_udpMulti(t *testing.T) {
-	testUDP("vless", 1, "tcp", true, false, false, t)
+	testUDP(t, "vless", 1, "tcp", true, false, false)
 }
 
 func TestUDP_vless_v1_udpMulti_fullcone(t *testing.T) {
-	testUDP("vless", 1, "tcp", true, true, false, t)
+	testUDP(t, "vless", 1, "tcp", true, true, false)
 }
 
 func TestUDP_trojan(t *testing.T) {
-	testUDP("trojan", 0, "tcp", false, false, false, t)
+	testUDP(t, "trojan", 0, "tcp", false, false, false)
 }
 
 func TestUDP_trojan_mux(t *testing.T) {
-	testUDP("trojan", 0, "tcp", false, false, true, t)
+	testUDP(t, "trojan", 0, "tcp", false, false, true)
 }
 
 func TestUDP_trojan_fullcone(t *testing.T) {
-	testUDP("trojan", 0, "tcp", false, true, false, t)
+	testUDP(t, "trojan", 0, "tcp", false, true, false)
 }
 
 func TestUDP_trojan_through_udp(t *testing.T) {
-	testUDP("trojan", 0, "udp", false, false, false, t)
+	testUDP(t, "trojan", 0, "udp", false, false, false)
 }
 
 //udp测试我们直接使用dns请求来测试.
-func testUDP(protocol string, version int, network string, multi bool, fullcone bool, mux bool, t *testing.T) {
+func testUDP(t *testing.T, protocol string, version int, network string, multi bool, fullcone bool, mux bool) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 

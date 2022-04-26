@@ -2,7 +2,6 @@ package netLayer
 
 import (
 	_ "embed"
-	"flag"
 	"log"
 	"net"
 	"os"
@@ -16,13 +15,8 @@ var (
 	the_geoipdb *maxminddb.Reader
 	embedGeoip  bool
 
-	GeoipFileName string //若运行程序指定了 geoip 参数，则该值为给定值；否则默认会被init为 GeoLite2-Country.mmdb
+	GeoipFileName string
 )
-
-func init() {
-	flag.StringVar(&GeoipFileName, "geoip", "GeoLite2-Country.mmdb", "geoip maxmind file name")
-
-}
 
 func HasEmbedGeoip() bool {
 	return embedGeoip
@@ -42,7 +36,7 @@ func LoadMaxmindGeoipFile(fn string) {
 	if fn == "" {
 		fn = GeoipFileName
 	}
-	if fn == "" { //因为 GeoipFileName 是共有变量，所以可能会被设成"", 不排除脑残
+	if fn == "" { //因为 GeoipFileName 是公有变量，所以可能会被设成""
 		return
 	}
 	bs, e := os.ReadFile(fn)

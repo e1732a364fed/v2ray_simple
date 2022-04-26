@@ -48,7 +48,7 @@ var (
 	Tls_lazy_secure  bool
 
 	//有时需要测试到单一网站的流量，此时为了避免其它干扰，可声明 一下 该域名，然后程序里会进行过滤
-	uniqueTestDomain string
+	//uniqueTestDomain string
 )
 
 func init() {
@@ -56,12 +56,12 @@ func init() {
 	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
-	flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com. Only valid when loglevel=0")
+	//flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com. Only valid when loglevel=0")
 
 }
 
 //非阻塞. 可以 直接使用 ListenSer 函数 来手动开启新的转发流程。
-// 若 not_temporary 为 false, 则不会使用 RoutingEnv进行路由或回落
+// 若 env 为 nil, 则不会 进行路由或回落
 func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (thisListener net.Listener) {
 
 	var err error
@@ -878,19 +878,22 @@ func dialClient(targetAddr netLayer.Addr,
 	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
 	realTargetAddr = targetAddr
 
-	if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
+	/*
+		if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
 
-		if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
 
-			ce.Write(
-				zap.String("request", targetAddr.String()),
-				zap.String("uniqueTestDomain", uniqueTestDomain),
-			)
-			result = -1
-			return
+			if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
 
+				ce.Write(
+					zap.String("request", targetAddr.String()),
+					zap.String("uniqueTestDomain", uniqueTestDomain),
+				)
+				result = -1
+				return
+
+			}
 		}
-	}
+	*/
 
 	if ce := utils.CanLogInfo("Request"); ce != nil {
 

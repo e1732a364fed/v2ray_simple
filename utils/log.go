@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
@@ -15,12 +14,12 @@ const (
 	Log_info
 	Log_warning
 	Log_error //error一般用于输出一些 连接错误或者客户端协议错误之类的, 但不致命
-	log_dpanic
-	log_panic
+	Log_dpanic
+	Log_panic
 	Log_fatal
-	log_off //不支持不打印致命输出。既然致命我们一定要尸检然后查看病因啊
+	log_off //不支持不打印致命输出。既然致命 那么我们一定要尸检然后查看病因
 
-	DefaultLL = Log_warning
+	DefaultLL = Log_info
 )
 
 // LogLevel 值越小越唠叨, 废话越多，值越大打印的越少，见log_开头的常量;
@@ -36,13 +35,6 @@ var (
 	// 所以只有在main.go 中我们才设置 ShouldLogToFile=true
 	ShouldLogToFile bool
 )
-
-func init() {
-
-	flag.IntVar(&LogLevel, "ll", DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
-
-	flag.StringVar(&LogOutFileName, "lf", "vs_log", "output file for log; If empty, no log file will be used.")
-}
 
 func LogLevelStrList() (sl []string) {
 	sl = make([]string, 0, log_off)
@@ -107,7 +99,7 @@ func InitLog() {
 
 	if ShouldLogToFile && LogOutFileName != "" {
 		jsonConf := zap.NewProductionEncoderConfig()
-		jsonConf.EncodeTime = zapcore.TimeEncoderOfLayout("060102 150405.000") //用一种比较简短的方式输出时间,年月日 时分秒.毫秒。 年只需输出后两位数字即可, 不管Y2K问题, 80年后要是还没实现网络自由那这个世界完蛋了.
+		jsonConf.EncodeTime = zapcore.TimeEncoderOfLayout("060102 150405.000") //用一种比较简短的方式输出时间,年月日 时分秒.毫秒。 年只需输出后两位数字即可, 不管Y2K问题
 		jsonConf.LevelKey = "L"
 		jsonConf.TimeKey = "T"
 		jsonConf.MessageKey = "M"

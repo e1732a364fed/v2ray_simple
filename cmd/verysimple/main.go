@@ -53,6 +53,16 @@ func init() {
 	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the listen part in config file), only enbled when config file is not provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the dial part in config file), only enbled when config file is not provided.")
 
+	//other packages
+
+	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
+
+	flag.StringVar(&utils.LogOutFileName, "lf", "vs_log", "output file for log; If empty, no log file will be used.")
+
+	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
+
+	flag.StringVar(&netLayer.GeoipFileName, "geoip", "GeoLite2-Country.mmdb", "geoip maxmind file name")
+
 }
 
 func main() {
@@ -69,6 +79,8 @@ func mainFunc() (result int) {
 			}
 
 			result = -3
+
+			cleanup()
 		}
 	}()
 
@@ -91,7 +103,9 @@ func mainFunc() (result int) {
 		}
 	}
 
-	utils.ShouldLogToFile = true
+	if utils.LogOutFileName != "" {
+		utils.ShouldLogToFile = true
+	}
 
 	utils.InitLog()
 
@@ -103,7 +117,7 @@ func mainFunc() (result int) {
 
 	}
 	if startMProf {
-		//若不使用 NoShutdownHook, 我们ctrl+c退出时不会产生 pprof文件
+		//若不使用 NoShutdownHook, 则 我们ctrl+c退出时不会产生 pprof文件
 		p := profile.Start(profile.MemProfile, profile.MemProfileRate(1), profile.NoShutdownHook)
 
 		defer p.Stop()
@@ -126,8 +140,21 @@ func mainFunc() (result int) {
 	netLayer.Prepare()
 
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
-	fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
-	fmt.Printf("tls_lazy_encrypt:%t\n", vs.Tls_lazy_encrypt)
+
+	if ce := utils.CanLogInfo("Options"); ce != nil {
+
+		ce.Write(
+			zap.String("Log Level", utils.LogLevelStr(utils.LogLevel)),
+			zap.Bool("UseReadv", netLayer.UseReadv),
+			zap.Bool("tls_lazy_encrypt", vs.Tls_lazy_encrypt),
+		)
+
+	} else {
+
+		fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
+		fmt.Printf("tls_lazy_encrypt:%t\n", vs.Tls_lazy_encrypt)
+
+	}
 
 	runPreCommands()
 
@@ -138,7 +165,7 @@ func mainFunc() (result int) {
 		RoutingEnv.MainFallback = mainFallback
 	}
 
-	//load inServers and vs.RoutePolicy
+	//load inServers and RoutingEnv
 	switch mode {
 	case proxy.SimpleMode:
 		var hase bool
@@ -294,19 +321,22 @@ func mainFunc() (result int) {
 
 		utils.Info("Program got close signal.")
 
-		//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
-		// 用下面代码以试图解决端口占用问题.
-
-		for _, listener := range ListenerArray {
-			if listener != nil {
-				listener.Close()
-			}
-		}
-
-		for _, tm := range TproxyList {
-			tm.Stop()
-		}
-
+		cleanup()
 	}
 	return
+}
+
+func cleanup() {
+	//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
+	// 用下面代码以试图解决端口占用问题.
+
+	for _, listener := range ListenerArray {
+		if listener != nil {
+			listener.Close()
+		}
+	}
+
+	for _, tm := range TproxyList {
+		tm.Stop()
+	}
 }

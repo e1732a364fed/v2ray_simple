@@ -1,11 +1,11 @@
 /*
 Package v2ray_simple provides a way to set up a proxy.
 
-
 Structure 本项目结构
 
 utils -> netLayer-> tlsLayer -> httpLayer -> advLayer -> proxy -> v2ray_simple -> cmd/verysimple
 
+根项目 v2ray_simple 仅研究实际转发过程.
 
 Chain
 
