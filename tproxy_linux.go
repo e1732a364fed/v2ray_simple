@@ -6,12 +6,12 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tproxy"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-
-//监听透明代理, 返回一个 值 用于 关闭.
-func ListenTproxy(addr string) (tm *tproxy.Machine) {
+//非阻塞。监听透明代理, 返回一个 值 用于 关闭.
+func ListenTproxy(addr string, defaultOutClientForThis proxy.Client) (tm *tproxy.Machine) {
 	utils.Info("Start running Tproxy")
 
 	ad, err := netLayer.NewAddr(addr)
@@ -19,22 +19,22 @@ func ListenTproxy(addr string) (tm *tproxy.Machine) {
 		panic(err)
 	}
 	//因为 tproxy比较特殊, 不属于 proxy.Server, 所以 需要 独立的 转发过程去处理.
-	lis, err := startLoopTCP(ad)
+	lis, err := startLoopTCP(ad, defaultOutClientForThis)
 	if err != nil {
 		if ce := utils.CanLogErr("TProxy startLoopTCP failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return
 	}
-	udpConn := startLoopUDP(ad)
+	udpConn := startLoopUDP(ad, defaultOutClientForThis)
 
-	tm = &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn})
+	tm = &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn}
 
 	return
 }
 
 //非阻塞
-func startLoopTCP(ad netLayer.Addr) (net.Listener, error) {
+func startLoopTCP(ad netLayer.Addr, defaultOutClientForThis proxy.Client) (net.Listener, error) {
 	return netLayer.ListenAndAccept("tcp", ad.String(), &netLayer.Sockopt{TProxy: true}, func(conn net.Conn) {
 		tcpconn := conn.(*net.TCPConn)
 		targetAddr := tproxy.HandshakeTCP(tcpconn)
@@ -45,14 +45,14 @@ func startLoopTCP(ad netLayer.Addr) (net.Listener, error) {
 
 		passToOutClient(incomingInserverConnState{
 			wrappedConn:   tcpconn,
-			defaultClient: DefaultOutClient,
+			defaultClient: defaultOutClientForThis,
 		}, false, tcpconn, nil, targetAddr)
 	})
 
 }
 
 //非阻塞
-func startLoopUDP(ad netLayer.Addr) *net.UDPConn {
+func startLoopUDP(ad netLayer.Addr, defaultOutClientForThis proxy.Client) *net.UDPConn {
 	ad.Network = "udp"
 	conn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
 	if err != nil {
@@ -78,7 +78,7 @@ func startLoopUDP(ad netLayer.Addr) *net.UDPConn {
 			}
 
 			go passToOutClient(incomingInserverConnState{
-				defaultClient: DefaultOutClient,
+				defaultClient: defaultOutClientForThis,
 			}, false, nil, msgConn, raddr)
 		}
 

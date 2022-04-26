@@ -165,6 +165,8 @@ func mainFunc() (result int) {
 		RoutingEnv.MainFallback = mainFallback
 	}
 
+	var tproxyConfs []*proxy.ListenConf
+
 	//load inServers and RoutingEnv
 	switch mode {
 	case proxy.SimpleMode:
@@ -204,10 +206,8 @@ func mainFunc() (result int) {
 		for _, serverConf := range standardConf.Listen {
 			thisConf := serverConf
 			if thisConf.Protocol == "tproxy" {
-				tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial())
-				if tm != nil {
-					TproxyList = append(TproxyList, tm)
-				}
+				tproxyConfs = append(tproxyConfs, thisConf)
+
 				continue
 			}
 
@@ -276,6 +276,16 @@ func mainFunc() (result int) {
 			DefaultOutClient = vs.DirectClient
 		}
 
+	}
+
+	if DefaultOutClient != nil && len(tproxyConfs) > 0 {
+		for _, thisConf := range tproxyConfs {
+			tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), DefaultOutClient)
+			if tm != nil {
+				TproxyList = append(TproxyList, tm)
+			}
+
+		}
 	}
 
 	configFileQualifiedToRun := false
