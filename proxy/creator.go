@@ -295,11 +295,11 @@ func configCommonByURL(ser ProxyCommon, u *url.URL) {
 	}
 }
 
-//setAdvancedLayer
-func configCommon(ser ProxyCommon, cc *CommonConf) {
-	ser.getCommon().setAdvancedLayer(cc.AdvancedLayer)
+//setAdvancedLayer, setPath
+func configCommon(this ProxyCommon, cc *CommonConf) {
+	this.getCommon().setAdvancedLayer(cc.AdvancedLayer)
 	if cc.Path != "" {
-		ser.getCommon().setPath(cc.Path)
+		this.getCommon().setPath(cc.Path)
 	}
 
 }
@@ -326,18 +326,7 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 
 	configCommon(cli, &dc.CommonConf)
 
-	switch dc.AdvancedLayer {
-	case "ws":
-		return cli.initWS_client()
-	case "grpc":
-		if dc.Extra != nil {
-			if thing := dc.Extra["grpc_multi"]; thing != nil {
-				if use, ok := thing.(bool); ok && use == true {
-					clic.grpc_multi = true
-				}
-			}
-		}
-	}
+	clic.InitAdvLayer()
 	return nil
 }
 
@@ -361,25 +350,7 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 		serc.setHeader(lc.HttpHeader)
 	}
 
-	switch lc.AdvancedLayer {
-	case "ws":
-		err := ser.initWS_server()
-		if err != nil {
-			return err
-		}
-
-	case "grpc":
-		err := ser.initGRPC_server()
-		if err != nil {
-			return err
-		}
-
-		//case "quic":
-
-		//因为quic接管了tls层, 而我们的configCommonForServer是在tls配置之前被调用的
-		// 所以不能在这里配置quic。本作直接在 prepareTLS_forServer 函数里配置 quic的所有配置
-
-	}
+	serc.InitAdvLayer()
 
 	fallbackThing := lc.Fallback
 

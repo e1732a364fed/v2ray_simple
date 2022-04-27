@@ -71,7 +71,7 @@ tcp:
 	}
 
 defaultPart:
-	resultConn, err = net.Dial(addr.Network, addr.String())
+	resultConn, err = net.DialTimeout(addr.Network, addr.String(), time.Second*15)
 
 dialedPart:
 	if istls && err == nil {

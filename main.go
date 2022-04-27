@@ -14,14 +14,16 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/e1732a364fed/v2ray_simple/advLayer/grpc"
-	"github.com/e1732a364fed/v2ray_simple/advLayer/quic"
-	"github.com/e1732a364fed/v2ray_simple/advLayer/ws"
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
+
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpc"
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/quic"
+	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
 
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/http"
@@ -46,17 +48,12 @@ var (
 
 	Tls_lazy_encrypt bool
 	Tls_lazy_secure  bool
-
-	//有时需要测试到单一网站的流量，此时为了避免其它干扰，可声明 一下 该域名，然后程序里会进行过滤
-	//uniqueTestDomain string
 )
 
 func init() {
 
 	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
-
-	//flag.StringVar(&uniqueTestDomain, "td", "", "test a single domain, like www.domain.com. Only valid when loglevel=0")
 
 }
 
@@ -68,20 +65,23 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 
 	var err error
 
+	var handleHere bool
+	var advs advLayer.Server
+
+	if advs = inServer.GetAdvServer(); advs != nil {
+		handleHere = advs.IsSuper() && advs.IsMux()
+	}
+
 	//quic
-	if inServer.IsHandleInitialLayers() {
+	if handleHere {
 		//如果像quic一样自行处理传输层至tls层之间的部分，则我们跳过 handleNewIncomeConnection 函数
 		// 拿到连接后直接调用 handshakeInserver_and_passToOutClient
 
-		handleFunc := inServer.HandleInitialLayersFunc()
-		if handleFunc == nil {
-			panic("inServer.IsHandleInitialLayers but inServer.HandleInitialLayersFunc() returns nil")
-		}
+		superSer := advs.(advLayer.SuperMuxServer)
 
-		//baseConn可以为nil，quic就是如此
-		newConnChan, baseConn := handleFunc()
+		newConnChan, closer := superSer.StartListen()
 		if newConnChan == nil {
-			utils.Error("StarthandleInitialLayers can't extablish baseConn")
+			utils.Error("superSer.StartListen can't extablish baseConn")
 			return
 		}
 
@@ -89,17 +89,18 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 			for {
 				newConn, ok := <-newConnChan
 				if !ok {
-					utils.Error("read from SuperProxy not ok")
+					utils.Error("read from Super AdvLayer not ok")
 
-					quic.CloseConn(baseConn)
+					if closer != nil {
+						closer.Close()
+					}
 
 					return
 				}
+				//utils.Debug("quic Got New Conn")
 
 				iics := incomingInserverConnState{
-					wrappedConn: newConn,
-					//baseLocalConn: baseConn,	//quic是没有baseLocalConn的，因为基于udp
-					// 或者说虽然有baseConn，但是并不与子连接一一对应.那个conn更类似于一个listener
+					wrappedConn:   newConn,
 					inServer:      inServer,
 					defaultClient: defaultOutClientForThis,
 				}
@@ -170,6 +171,43 @@ type incomingInserverConnState struct {
 	routedToDirect bool
 
 	RoutingEnv *proxy.RoutingEnv //used in passToOutClient
+}
+
+// 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
+func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
+	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
+		ce.Write(
+			zap.String("handler", iics.inServer.AddrStr()),
+			zap.Error(err),
+		)
+	}
+
+	if !iics.inServer.CanFallback() {
+		iics.wrappedConn.Close()
+		return false
+	}
+
+	//通过err找出 并赋值给 iics.theFallbackFirstBuffer
+	{
+
+		fe, ok := err.(*utils.ErrFirstBuffer)
+		if !ok {
+			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
+			iics.wrappedConn.Close()
+			return false
+		}
+
+		if firstbuffer := fe.First; firstbuffer == nil {
+			//不应该，至少能读到1字节的。
+
+			panic("No FirstBuffer")
+
+		} else {
+			iics.theFallbackFirstBuffer = firstbuffer
+
+		}
+	}
+	return true
 }
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
@@ -275,11 +313,9 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 			// 我们直接循环监听然后分别用 新goroutine发向 handshakeInserver_and_passToOutClient
 
-			if ce := utils.CanLogDebug("start upgrade grpc"); ce != nil {
-				ce.Write()
-			}
+			utils.Debug("start upgrade grpc")
 
-			grpcs := inServer.GetGRPC_Server() //这个grpc server是在配置阶段初始化好的.
+			grpcs := inServer.GetAdvServer().(advLayer.MuxServer)
 
 			newConnChan := make(chan net.Conn, 10)
 			grpcs.StartHandle(wrappedConn, newConnChan)
@@ -288,7 +324,11 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			// 新的子请求被 grpc包 抽象成了 抽象的 conn
 			//遇到chan被关闭的情况后，就会自动关闭底层连接并退出整个函数。
 			for {
+
+				//utils.Debug("grpc for chan")
 				newGConn, ok := <-newConnChan
+				//utils.Debug("grpc for chan got")
+
 				if !ok {
 					if ce := utils.CanLogWarn("grpc getNewSubConn not ok"); ce != nil {
 						ce.Write()
@@ -332,9 +372,9 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				return
 			}
 
-			wss := inServer.GetWS_Server()
+			wss := inServer.GetAdvServer()
 
-			if rp.Method != "GET" || wss.Thepath != rp.Path {
+			if rp.Method != "GET" || wss.GetPath() != rp.Path {
 				iics.theRequestPath = rp.Path
 				iics.theFallbackFirstBuffer = rp.WholeRequestBuf
 
@@ -343,7 +383,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
 						zap.String("reason", "path/method not match"),
-						zap.String("validPath", wss.Thepath),
+						zap.String("validPath", wss.GetPath()),
 						zap.String("gotMethod", rp.Method),
 						zap.String("gotPath", rp.Path),
 					)
@@ -354,8 +394,12 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 			}
 
+			wsss := wss.(advLayer.SingleServer)
+
 			//此时path和method都已经匹配了, 如果还不能通过那就说明后面的header等数据不满足ws的upgrade请求格式, 肯定是非法数据了,也不用再回落
-			wsConn, err := wss.Handshake(rp.WholeRequestBuf, wrappedConn)
+
+			wsConn, err := wsss.Handshake(rp.WholeRequestBuf, wrappedConn)
+
 			if err != nil {
 				if ce := utils.CanLogErr("InServer ws handshake failed"); ce != nil {
 
@@ -382,6 +426,10 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 //被 handshakeInserver_and_passToOutClient 调用
 func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	inServer := iics.inServer
+	if inServer == nil {
+		err = utils.ErrInErr{ErrDesc: "handshakeInserver failed, nil inServer", ErrDetail: utils.ErrNilParameter}
+		return
+	}
 
 	wlc, udp_wlc, targetAddr, err = inServer.Handshake(iics.wrappedConn)
 
@@ -464,7 +512,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 								}
 								newiics := *iics
 
-								if !findoutFirstBuf(err1, &newiics) {
+								if !newiics.extractFirstBufFromErr(err1) {
 									return
 								}
 								passToOutClient(newiics, true, wlc1, udp_wlc1, targetAddr1)
@@ -494,43 +542,6 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 	return
 }
 
-// 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
-func findoutFirstBuf(err error, iics *incomingInserverConnState) bool {
-	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
-		ce.Write(
-			zap.String("handler", iics.inServer.AddrStr()),
-			zap.Error(err),
-		)
-	}
-
-	if !iics.inServer.CanFallback() {
-		iics.wrappedConn.Close()
-		return false
-	}
-
-	//通过err找出 并赋值给 iics.theFallbackFirstBuffer
-	{
-
-		fe, ok := err.(*utils.ErrFirstBuffer)
-		if !ok {
-			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
-			iics.wrappedConn.Close()
-			return false
-		}
-
-		if firstbuffer := fe.First; firstbuffer == nil {
-			//不应该，至少能读到1字节的。
-
-			panic("No FirstBuffer")
-
-		} else {
-			iics.theFallbackFirstBuffer = firstbuffer
-
-		}
-	}
-	return true
-}
-
 // 本函数 处理inServer的代理层数据，并在试图处理 分流和回落后，将流量导向目标，并开始Copy。
 // iics 不使用指针, 因为iics不能公用，因为 在多路复用时 iics.wrappedConn 是会变化的。
 //
@@ -547,7 +558,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 		return
 
 	default:
-		if !findoutFirstBuf(err, &iics) {
+		if !iics.extractFirstBufFromErr(err) {
 			return
 		}
 
@@ -807,7 +818,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 			//实测 grpc.Conn 被调用了Close 也不会实际关闭连接，而是会卡住，阻塞，直到底层tcp连接被关闭后才会返回
 			// 但是我们还是 直接避免这种情况
-			if inServer != nil && !inServer.IsMux() {
+			if inServer != nil && !(inServer.GetAdvServer() != nil && inServer.GetAdvServer().IsMux()) {
 				iics.shouldCloseInSerBaseConnWhenFinish = true
 
 			}
@@ -877,23 +888,6 @@ func dialClient(targetAddr netLayer.Addr,
 	// 而其它代理的话, realTargetAddr会被设成实际配置的代理的地址
 	realTargetAddr = targetAddr
 
-	/*
-		if ce := utils.CanLogDebug("request isn't the appointed domain"); ce != nil {
-
-
-			if uniqueTestDomain != "" && uniqueTestDomain != targetAddr.Name {
-
-				ce.Write(
-					zap.String("request", targetAddr.String()),
-					zap.String("uniqueTestDomain", uniqueTestDomain),
-				)
-				result = -1
-				return
-
-			}
-		}
-	*/
-
 	if ce := utils.CanLogInfo("Request"); ce != nil {
 
 		ce.Write(
@@ -918,7 +912,7 @@ func dialClient(targetAddr netLayer.Addr,
 	}
 	var clientConn net.Conn
 
-	var grpcClientConn grpc.ClientConn
+	//var grpcClientConn any//grpc.ClientConn
 	var dialedCommonConn any
 
 	dialHere := !(client.Name() == "direct" && isudp)
@@ -930,25 +924,26 @@ func dialClient(targetAddr netLayer.Addr,
 	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接
 	adv := client.AdvancedLayer()
 
+	var notsuper bool
 	if dialHere {
 
-		switch adv {
-		case "grpc":
+		if adv != "" && client.GetAdvClient().IsMux() {
+			if client.GetAdvClient().IsSuper() {
 
-			grpcClientConn = grpc.GetEstablishedConnFor(&realTargetAddr)
+				dialedCommonConn, err = client.GetAdvClient().(advLayer.MuxClient).GetCommonConn(nil)
+				if dialedCommonConn != nil && err == nil {
+					goto advLayerHandshakeStep
+				} else {
 
-			if grpcClientConn != nil {
-				//如果有已经建立好的连接，则跳过传输层拨号和tls阶段
-				goto advLayerHandshakeStep
-			}
-		case "quic":
-			dialedCommonConn, _ = client.GetQuic_Client().DialCommonConn(nil)
-			if dialedCommonConn != nil {
-				goto advLayerHandshakeStep
+					result = -1
+					return
+				}
 			} else {
-
-				result = -1
-				return
+				notsuper = true
+				dialedCommonConn, err = client.GetAdvClient().(advLayer.MuxClient).GetCommonConn(nil)
+				if dialedCommonConn != nil && err == nil {
+					goto advLayerHandshakeStep
+				}
 			}
 		}
 
@@ -1038,7 +1033,7 @@ advLayerHandshakeStep:
 	if adv != "" {
 		switch adv {
 		case "quic":
-			qclient := client.GetQuic_Client()
+			qclient := client.GetAdvClient().(advLayer.MuxClient)
 			clientConn, err = qclient.DialSubConn(dialedCommonConn)
 			if err != nil {
 				eStr := err.Error()
@@ -1052,7 +1047,7 @@ advLayerHandshakeStep:
 					qclient.ProcessWhenFull(dialedCommonConn)
 
 					//第一条连接已满，再开一条session
-					dialedCommonConn, _ = qclient.DialCommonConn(nil)
+					dialedCommonConn, _ = qclient.GetCommonConn(nil)
 					if dialedCommonConn == nil {
 						//再dial还是nil，也许是暂时性的网络错误, 先退出
 						result = -1
@@ -1081,24 +1076,21 @@ advLayerHandshakeStep:
 
 			}
 		case "grpc":
-			if grpcClientConn == nil {
-				grpcClientConn, err = grpc.ClientHandshake(clientConn, &realTargetAddr)
-				if err != nil {
-					if ce := utils.CanLogErr("grpc.ClientHandshake failed"); ce != nil {
-						ce.Write(zap.Error(err))
+			if notsuper && dialedCommonConn == nil {
+				dialedCommonConn, _ = client.GetAdvClient().(advLayer.MuxClient).GetCommonConn(clientConn)
 
-					}
-					if baseLocalConn != nil {
-						baseLocalConn.Close()
-
+				if dialedCommonConn == nil {
+					if ce := utils.CanLogErr("GetCommonConn failed"); ce != nil {
+						ce.Write(
+							zap.Error(err),
+						)
 					}
 					result = -1
 					return
 				}
-
 			}
 
-			clientConn, err = grpc.DialNewSubConn(client.Path(), grpcClientConn, &realTargetAddr, client.IsGrpcClientMultiMode())
+			clientConn, err = client.GetAdvClient().(advLayer.MuxClient).DialSubConn(dialedCommonConn)
 			if err != nil {
 				if ce := utils.CanLogErr("grpc.DialNewSubConn failed"); ce != nil {
 
@@ -1116,14 +1108,14 @@ advLayerHandshakeStep:
 			}
 
 		case "ws":
-			wsClient := client.GetWS_Client()
+			wsClient := client.GetAdvClient()
 
 			var ed []byte
 
-			if wsClient.UseEarlyData && wlc != nil {
+			if wsClient.IsEarly() && wlc != nil {
 				//若配置了 MaxEarlyDataLen，则我们先读一段;
 				edBuf := utils.GetPacket()
-				edBuf = edBuf[:ws.MaxEarlyDataLen]
+				edBuf = edBuf[:advLayer.MaxEarlyDataLen]
 				n, e := wlc.Read(edBuf)
 				if e != nil {
 					if ce := utils.CanLogErr("failed to read ws early data"); ce != nil {
@@ -1148,7 +1140,9 @@ advLayerHandshakeStep:
 
 			var wc net.Conn
 
-			wc, err = wsClient.Handshake(clientConn, ed)
+			wcs := wsClient.(advLayer.SingleClient)
+
+			wc, err = wcs.Handshake(clientConn, ed)
 
 			if err != nil {
 				if ce := utils.CanLogErr("failed in handshake ws"); ce != nil {

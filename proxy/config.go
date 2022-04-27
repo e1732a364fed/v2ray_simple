@@ -30,6 +30,8 @@ type CommonConf struct {
 
 	AdvancedLayer string `toml:"advancedLayer"` //高级层; 可不填，或者为ws，或者为grpc
 
+	IsEarly bool `toml:"early"` //是否启用 0-rtt
+
 	Path string `toml:"path"` //ws 的path 或 grpc的 serviceName。为了简便我们在同一位置给出.
 
 	Extra map[string]any `toml:"extra"` //用于包含任意其它数据.虽然本包自己定义的协议肯定都是已知的，但是如果其他人使用了本包的话，那就有可能添加一些 新协议 特定的数据.

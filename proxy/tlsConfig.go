@@ -1,21 +1,14 @@
 package proxy
 
 import (
-	"crypto/tls"
-	"log"
 	"net"
 	"net/url"
 
-	"github.com/e1732a364fed/v2ray_simple/advLayer/quic"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
-	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
-	"github.com/e1732a364fed/v2ray_simple/utils"
-	"go.uber.org/zap"
 )
 
 //use dc.Host, dc.Insecure, dc.Utls, dc.Alpn.
-// 如果用到了quic，还会直接配置quic的client的所有设置.
 func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 	alpnList := dc.Alpn
 
@@ -26,59 +19,8 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 
 	switch com.AdvancedLayer() {
 	case "quic":
-		na, e := netLayer.NewAddr(com.AddrStr())
-		if e != nil {
-			if ce := utils.CanLogErr("prepareTLS_forClient,quic,netLayer.NewAddr failed"); ce != nil {
-				ce.Write(zap.Error(e))
-			}
-			return e
-		}
-
 		clic.setNetwork("udp")
-		var useHysteria, hysteria_manual, early bool
-		var maxbyteCount int
-
-		if dc.Extra != nil {
-			if thing := dc.Extra["congestion_control"]; thing != nil {
-				if use, ok := thing.(string); ok && use == "hy" {
-					useHysteria = true
-
-					if thing := dc.Extra["mbps"]; thing != nil {
-						if mbps, ok := thing.(int64); ok && mbps > 1 {
-							maxbyteCount = int(mbps) * 1024 * 1024 / 8
-
-							log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
-						}
-					} else {
-						log.Println("Using Hysteria Congestion Control, max upload mbps: ", quic.Default_hysteriaMaxByteCount, "mbps")
-					}
-
-					if thing := dc.Extra["hy_manual"]; thing != nil {
-						if ismanual, ok := thing.(bool); ok {
-							hysteria_manual = ismanual
-							if ismanual {
-								log.Println("Using Hysteria Manual Control Mode")
-							}
-						}
-					}
-				}
-			}
-
-			if thing := dc.Extra["quic_early"]; thing != nil {
-				if use, ok := thing.(bool); ok && use {
-					early = true
-				}
-			}
-
-		}
-
-		if len(alpnList) == 0 {
-			alpnList = quic.AlpnList
-		}
-
-		clic.setQuic_Client(quic.NewClient(&na, alpnList, dc.Host, dc.Insecure, useHysteria, maxbyteCount, hysteria_manual, early))
-		return nil //quic直接接管了tls，所以不执行下面步骤
-
+		return nil
 	case "grpc":
 		has_h2 := false
 		for _, a := range alpnList {
@@ -96,7 +38,6 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 }
 
 //use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn.
-// 如果用到了quic，还会直接配置quic的server的所有设置.
 func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	// 这里直接不检查 字符串就直接传给 tlsLayer.NewServer
 	// 所以要求 cert和 key 不在程序本身目录 的话，就要给出完整路径
@@ -111,85 +52,8 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 	case "quic":
 
 		serc.setNetwork("udp")
+		return nil
 
-		if len(alpnList) == 0 {
-			alpnList = quic.AlpnList
-		}
-
-		var useHysteria, hysteria_manual, early bool
-		var maxbyteCount int
-		var maxStreamCountInOneSession int64
-
-		if lc.Extra != nil {
-
-			if thing := lc.Extra["quic_early"]; thing != nil {
-				if use, ok := thing.(bool); ok && use {
-					early = true
-				}
-			}
-
-			if thing := lc.Extra["maxStreamCountInOneSession"]; thing != nil {
-				if count, ok := thing.(int64); ok && count > 0 {
-					log.Println("maxStreamCountInOneSession,", count)
-					maxStreamCountInOneSession = count
-
-				}
-
-			}
-
-			if thing := lc.Extra["congestion_control"]; thing != nil {
-				if use, ok := thing.(string); ok && use == "hy" {
-					useHysteria = true
-
-					if thing := lc.Extra["mbps"]; thing != nil {
-						if mbps, ok := thing.(int64); ok && mbps > 1 {
-							maxbyteCount = int(mbps) * 1024 * 1024 / 8
-
-							log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
-
-						}
-					} else {
-
-						log.Println("Using Hysteria Congestion Control, max upload mbps:", quic.Default_hysteriaMaxByteCount, "mbps")
-
-					}
-
-					if thing := lc.Extra["hy_manual"]; thing != nil {
-						if ismanual, ok := thing.(bool); ok {
-							hysteria_manual = ismanual
-							if ismanual {
-								log.Println("Using Hysteria Manual Control Mode")
-							}
-						}
-					}
-				}
-			}
-
-		}
-
-		serc.setListenCommonConnFunc(func() (newConnChan chan net.Conn, baseConn any) {
-
-			certArray, err := tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
-
-			if err != nil {
-
-				if ce := utils.CanLogErr("can't create tls cert"); ce != nil {
-					ce.Write(zap.String("cert", lc.TLSCert), zap.String("key", lc.TLSKey), zap.Error(err))
-				}
-
-				return nil, nil
-			}
-
-			return quic.ListenInitialLayers(com.AddrStr(), tls.Config{
-				InsecureSkipVerify: lc.Insecure,
-				ServerName:         lc.Host,
-				Certificates:       certArray,
-				NextProtos:         alpnList,
-			}, useHysteria, maxbyteCount, hysteria_manual, early, maxStreamCountInOneSession)
-
-		})
-
-		return nil //quic直接接管了tls，所以不执行下面步骤
 	case "grpc":
 		has_h2 := false
 		for _, a := range alpnList {

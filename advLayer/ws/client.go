@@ -21,6 +21,7 @@ const MaxEarlyDataLen = 2048
 //implements advLayer.Client
 type Client struct {
 	requestURL   *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可
+	path         string
 	UseEarlyData bool
 
 	headers map[string][]string
@@ -34,9 +35,14 @@ func NewClient(hostAddr, path string, headers map[string][]string, isEarly bool)
 	}
 	return &Client{
 		requestURL:   u,
+		path:         path,
 		headers:      headers,
 		UseEarlyData: isEarly,
 	}, nil
+}
+
+func (c *Client) GetPath() string {
+	return c.path
 }
 
 func (c *Client) IsSuper() bool {

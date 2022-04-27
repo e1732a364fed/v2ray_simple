@@ -42,4 +42,4 @@ advancedLayer = "quic"
 
 # 实测似乎mac上quic最大的网速就只能够达到 1400mbps左右，配置再大的数也没用
 
-# extra = { quic_early = true }
+# early = true 

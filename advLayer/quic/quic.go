@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
-	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 )
 
@@ -58,7 +57,7 @@ func CloseConn(baseC any) {
 }
 
 var (
-	AlpnList = []string{"h3"}
+	DefaultAlpnList = []string{"h3"}
 
 	common_ListenConfig = quic.Config{
 		ConnectionIDLength:    common_ConnectionIDLength,
@@ -80,9 +79,93 @@ var (
 type Creator struct{}
 
 func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
-	return NewClient(&conf.Addr, conf.TlsConf.NextProtos, conf.Host, conf.TlsConf.InsecureSkipVerify, false, 0, false, conf.IsEarly), nil
+	var alpn []string
+	if conf.TlsConf != nil {
+		alpn = conf.TlsConf.NextProtos
+
+	}
+
+	var useHysteria, hysteria_manual bool
+	var maxbyteCount int
+
+	if len(alpn) == 0 {
+		alpn = DefaultAlpnList
+	}
+
+	if conf.Extra != nil {
+		useHysteria, hysteria_manual, maxbyteCount, _ = getExtra(conf.Extra)
+	}
+
+	return NewClient(&conf.Addr, alpn, conf.Host, conf.TlsConf.InsecureSkipVerify, useHysteria, maxbyteCount, hysteria_manual, conf.IsEarly), nil
 }
 
 func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
-	return nil, utils.ErrNotImplemented
+
+	var useHysteria, hysteria_manual bool
+	var maxbyteCount int
+	var maxStreamCountInOneSession int64
+
+	tlsConf := *conf.TlsConf
+	if len(tlsConf.NextProtos) == 0 {
+		tlsConf.NextProtos = DefaultAlpnList
+	}
+
+	if conf.Extra != nil {
+
+		useHysteria, hysteria_manual, maxbyteCount, maxStreamCountInOneSession = getExtra(conf.Extra)
+
+	}
+
+	return &Server{
+		addr:                          conf.Addr.String(),
+		tlsConf:                       tlsConf,
+		useHysteria:                   useHysteria,
+		hysteria_manual:               hysteria_manual,
+		hysteriaMaxByteCount:          maxbyteCount,
+		customMaxStreamCountInOneConn: maxStreamCountInOneSession,
+	}, nil
+}
+
+func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
+	maxbyteCount int,
+	maxStreamCountInOneSession int64) {
+
+	if thing := extra["maxStreamCountInOneSession"]; thing != nil {
+		if count, ok := thing.(int64); ok && count > 0 {
+			log.Println("maxStreamCountInOneSession,", count)
+			maxStreamCountInOneSession = count
+
+		}
+
+	}
+
+	if thing := extra["congestion_control"]; thing != nil {
+		if use, ok := thing.(string); ok && use == "hy" {
+			useHysteria = true
+
+			if thing := extra["mbps"]; thing != nil {
+				if mbps, ok := thing.(int64); ok && mbps > 1 {
+					maxbyteCount = int(mbps) * 1024 * 1024 / 8
+
+					log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
+
+				}
+			} else {
+
+				log.Println("Using Hysteria Congestion Control, max upload mbps:", Default_hysteriaMaxByteCount, "mbps")
+
+			}
+
+			if thing := extra["hy_manual"]; thing != nil {
+				if ismanual, ok := thing.(bool); ok {
+					hysteria_manual = ismanual
+					if ismanual {
+						log.Println("Using Hysteria Manual Control Mode")
+					}
+				}
+			}
+		}
+	}
+
+	return
 }

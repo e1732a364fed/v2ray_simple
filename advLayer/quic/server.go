@@ -3,6 +3,7 @@ package quic
 import (
 	"context"
 	"crypto/tls"
+	"io"
 	"net"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -11,7 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual, early bool, customMaxStreamCountInOneConn int64) (newConnChan chan net.Conn, baseConn any) {
+//non-blocking
+func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual, early bool, customMaxStreamCountInOneConn int64) (newConnChan chan net.Conn, baseConn io.Closer) {
 
 	thisConfig := common_ListenConfig
 	if customMaxStreamCountInOneConn > 0 {
@@ -47,10 +49,11 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 
 	if early {
 		go loopAcceptEarly(elistener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
-
+		baseConn = elistener
 	} else {
 		go loopAccept(listener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
 
+		baseConn = listener
 	}
 
 	return
@@ -129,4 +132,33 @@ func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
 		}
 		theChan <- StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false}
 	}
+}
+
+type Server struct {
+	addr                          string
+	tlsConf                       tls.Config
+	useHysteria                   bool
+	hysteriaMaxByteCount          int
+	hysteria_manual, early        bool
+	customMaxStreamCountInOneConn int64
+}
+
+func (s *Server) GetPath() string {
+	return ""
+}
+
+func (*Server) IsMux() bool {
+	return true
+}
+
+func (*Server) IsSuper() bool {
+	return true
+}
+
+func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer) {
+	return ListenInitialLayers(s.addr, s.tlsConf, s.useHysteria, s.hysteriaMaxByteCount, s.hysteria_manual, s.early, s.customMaxStreamCountInOneConn)
+}
+
+func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn) {
+	go dealNewConn(underlay.(quic.Connection), newSubConnChan)
 }

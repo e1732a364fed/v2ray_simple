@@ -113,6 +113,7 @@ func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr, isM
 		return newMultiConn(stream_multiTunClient, cancelF), nil
 	} else {
 		stream_TunClient, err := streamClient.tun_withName(ctx, path)
+
 		if err != nil {
 			clientconnMutex.Lock()
 			delete(clientconnMap, addr.GetHashable())
@@ -174,6 +175,10 @@ func NewClient(addr netLayer.Addr, path string) (*Client, error) {
 	}, nil
 }
 
+func (c *Client) GetPath() string {
+	return c.Path
+}
+
 func (c *Client) IsSuper() bool {
 	return false
 }
@@ -188,12 +193,16 @@ func (c *Client) IsEarly() bool {
 
 func (c *Client) GetCommonConn(underlay net.Conn) (any, error) {
 
-	cc := GetEstablishedConnFor(&c.ServerAddr)
-	if cc != nil {
-		return cc, nil
+	if underlay == nil {
+		cc := GetEstablishedConnFor(&c.ServerAddr)
+		if cc != nil {
+			return cc, nil
+		} else {
+			return nil, utils.ErrFailed
+
+		}
 	} else {
 		return ClientHandshake(underlay, &c.ServerAddr)
-
 	}
 }
 

@@ -44,13 +44,13 @@ func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure boo
 }
 
 //trimBadConns removes non-Active sessions, 并试图返回一个 最佳的可用于新stream的session
-func (c *Client) trimBadConns(ss map[[16]byte]*connState) (s *connState) {
+func (c *Client) trimBadConns() (bestConn *connState) {
 	minSessionNum := 10000
-	for id, thisState := range ss {
+	for id, thisState := range c.clientconns {
 		if isActive(thisState) {
 
 			if c.knownServerMaxStreamCount == 0 {
-				s = thisState
+				bestConn = thisState
 				return
 			} else {
 				osc := int(thisState.openedStreamCount)
@@ -58,7 +58,7 @@ func (c *Client) trimBadConns(ss map[[16]byte]*connState) (s *connState) {
 				if osc < int(c.knownServerMaxStreamCount) {
 
 					if osc < minSessionNum {
-						s = thisState
+						bestConn = thisState
 						minSessionNum = osc
 
 					}
@@ -67,7 +67,7 @@ func (c *Client) trimBadConns(ss map[[16]byte]*connState) (s *connState) {
 
 		} else {
 			thisState.CloseWithError(0, "")
-			delete(ss, id)
+			delete(c.clientconns, id)
 		}
 	}
 
@@ -95,7 +95,7 @@ func (c *Client) ProcessWhenFull(previous any) {
 }
 
 //获取已拨号的连接，或者重新从底层拨号。返回一个可作 c.DialSubConn 参数 的值.
-func (c *Client) DialCommonConn(_ any) (any, error) {
+func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
 	//返回一个 *sessionState.
 
 	//我们采用预先openStream的策略, 来试出哪些session已经满了, 哪些没满
@@ -108,7 +108,7 @@ func (c *Client) DialCommonConn(_ any) (any, error) {
 		c.connMapMutex.Lock()
 		var theState *connState
 		if len(c.clientconns) > 0 {
-			theState = c.trimBadConns(c.clientconns)
+			theState = c.trimBadConns()
 		}
 		if len(c.clientconns) > 0 {
 			c.connMapMutex.Unlock()
@@ -194,4 +194,7 @@ func (c *Client) IsMux() bool {
 
 func (c *Client) IsEarly() bool {
 	return c.early
+}
+func (c *Client) GetPath() string {
+	return ""
 }

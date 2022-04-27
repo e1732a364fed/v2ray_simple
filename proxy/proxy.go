@@ -1,15 +1,13 @@
 package proxy
 
 import (
-	"errors"
+	"crypto/tls"
 	"io"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/e1732a364fed/v2ray_simple/advLayer/grpc"
-	"github.com/e1732a364fed/v2ray_simple/advLayer/quic"
-	"github.com/e1732a364fed/v2ray_simple/advLayer/ws"
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
@@ -151,14 +149,6 @@ type ProxyCommon interface {
 	CantRoute() bool //for inServer
 	GetTag() string
 
-	//如果 IsHandleInitialLayers 方法返回true, 则监听/拨号从传输层一直到高级层的过程直接由inServer/outClient自己处理, 而我们主过程直接处理它 处理完毕的剩下的 代理层。
-	//
-	// quic就属于这种接管底层协议的“超级协议”, 可称之为 SuperProxy。
-	IsHandleInitialLayers() bool
-
-	// 在IsHandleInitialLayers时可用， 用于 inServer
-	HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any)
-
 	/////////////////// TLS层 ///////////////////
 
 	SetUseTLS()
@@ -182,21 +172,10 @@ type ProxyCommon interface {
 
 	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
 
-	GetWS_Client() *ws.Client //for outClient
-	GetWS_Server() *ws.Server //for inServer
+	GetAdvClient() advLayer.Client
+	GetAdvServer() advLayer.Server
 
-	initWS_client() error //for outClient
-	initWS_server() error //for inServer
-
-	GetGRPC_Server() *grpc.Server
-
-	IsGrpcClientMultiMode() bool
-
-	initGRPC_server() error
-
-	IsMux() bool //如果用了grpc或者quic, 则此方法返回true。这个是用于判断外层mux的。
-
-	GetQuic_Client() *quic.Client //for outClient
+	//IsGrpcClientMultiMode() bool
 
 	/////////////////// 内层mux层 ///////////////////
 
@@ -234,16 +213,12 @@ type ProxyCommonStruct struct {
 
 	AdvancedL string
 
-	ws_c *ws.Client
-	ws_s *ws.Server
+	advC advLayer.Client
+	advS advLayer.Server
 
-	grpc_s       *grpc.Server
-	grpc_multi   bool
+	//grpc_multi   bool
+
 	FallbackAddr *netLayer.Addr
-
-	quic_c *quic.Client
-
-	listenCommonConnFunc func() (newConnChan chan net.Conn, baseConn any)
 
 	innermux *smux.Session //用于存储 client的已拨号的mux连接
 
@@ -251,10 +226,6 @@ type ProxyCommonStruct struct {
 
 func (pcs *ProxyCommonStruct) getCommon() *ProxyCommonStruct {
 	return pcs
-}
-
-func (pcs *ProxyCommonStruct) setListenCommonConnFunc(f func() (newConnChan chan net.Conn, baseConn any)) {
-	pcs.listenCommonConnFunc = f
 }
 
 func (pcs *ProxyCommonStruct) Network() string {
@@ -403,10 +374,6 @@ func (s *ProxyCommonStruct) CanFallback() bool {
 	return false
 }
 
-func (s *ProxyCommonStruct) IsHandleInitialLayers() bool {
-	return s.AdvancedL == "quic"
-}
-
 func (pcs *ProxyCommonStruct) setTLS_Server(s *tlsLayer.Server) {
 	pcs.tls_s = s
 }
@@ -431,9 +398,10 @@ func (s *ProxyCommonStruct) SetAddrStr(a string) {
 func (s *ProxyCommonStruct) IsUseTLS() bool {
 	return s.TLS
 }
-func (s *ProxyCommonStruct) IsGrpcClientMultiMode() bool {
-	return s.grpc_multi
-}
+
+//func (s *ProxyCommonStruct) IsGrpcClientMultiMode() bool {
+//	return s.grpc_multi
+//}
 
 func (s *ProxyCommonStruct) IsMux() bool {
 	switch s.AdvancedL {
@@ -441,10 +409,6 @@ func (s *ProxyCommonStruct) IsMux() bool {
 		return true
 	}
 	return false
-}
-
-func (s *ProxyCommonStruct) HandleInitialLayersFunc() func() (newConnChan chan net.Conn, baseConn any) {
-	return s.listenCommonConnFunc
 }
 
 func (s *ProxyCommonStruct) SetUseTLS() {
@@ -457,112 +421,106 @@ func (s *ProxyCommonStruct) setListenConf(lc *ListenConf) {
 func (s *ProxyCommonStruct) setDialConf(dc *DialConf) {
 	s.dialConf = dc
 }
-
-func (s *ProxyCommonStruct) GetQuic_Client() *quic.Client {
-	return s.quic_c
+func (s *ProxyCommonStruct) GetAdvClient() advLayer.Client {
+	return s.advC
+}
+func (s *ProxyCommonStruct) GetAdvServer() advLayer.Server {
+	return s.advS
 }
 
-func (s *ProxyCommonStruct) setQuic_Client(c *quic.Client) {
-	s.quic_c = c
-}
-
-func (s *ProxyCommonStruct) GetWS_Client() *ws.Client {
-	return s.ws_c
-}
-func (s *ProxyCommonStruct) GetWS_Server() *ws.Server {
-	return s.ws_s
-}
-
-func (s *ProxyCommonStruct) GetGRPC_Server() *grpc.Server {
-	return s.grpc_s
-}
-
-func (s *ProxyCommonStruct) initWS_client() error {
-	if s.dialConf == nil {
-		return errors.New("initWS_client failed when no dialConf assigned")
-	}
-	path := s.dialConf.Path
-	if path == "" { // 至少Path需要为 "/"
-		path = "/"
+func (s *ProxyCommonStruct) InitAdvLayer() {
+	if s.AdvancedL == "" {
+		return
 	}
 
-	var useEarlyData bool
-	if s.dialConf.Extra != nil {
-		if thing := s.dialConf.Extra["ws_earlydata"]; thing != nil {
-			if use, ok := thing.(bool); ok && use {
-				useEarlyData = true
+	creator := advLayer.ProtocolsMap[s.AdvancedL]
+	if creator == nil {
+		utils.Error("InitAdvLayer failed, 2, " + s.AdvancedL)
+
+		return
+	}
+
+	ad, err := netLayer.NewAddr(s.Addr)
+	if err != nil {
+		utils.Error("InitAdvLayer failed, 3")
+
+		return
+	}
+
+	if dc := s.dialConf; dc != nil {
+
+		var Headers map[string][]string
+		if dc.HttpHeader != nil {
+			if dc.HttpHeader.Request != nil {
+				Headers = dc.HttpHeader.Request.Headers
 			}
 		}
-	}
 
-	var c *ws.Client
-	var e error
+		advClient, err := creator.NewClientFromConf(&advLayer.Conf{
+			Path:    dc.Path,
+			Host:    dc.Host,
+			IsEarly: dc.IsEarly,
+			Addr:    ad,
+			Headers: Headers,
+			TlsConf: &tls.Config{
+				InsecureSkipVerify: dc.Insecure,
+				NextProtos:         dc.Alpn,
+				ServerName:         dc.Host,
+			},
+			Extra: dc.Extra,
+		})
+		if err != nil {
+			utils.Error("InitAdvLayer failed, 4")
 
-	if s.header != nil {
-		c, e = ws.NewClient(s.dialConf.GetAddrStr(), path, s.header.Request.Headers)
-
-	} else {
-		c, e = ws.NewClient(s.dialConf.GetAddrStr(), path, nil)
-
-	}
-	if e != nil {
-		return utils.ErrInErr{ErrDesc: "initWS_client failed", ErrDetail: e}
-	}
-
-	c.UseEarlyData = useEarlyData
-	s.ws_c = c
-
-	return nil
-}
-
-func (s *ProxyCommonStruct) initWS_server() error {
-	if s.listenConf == nil {
-
-		return errors.New("initWS_server failed when no listenConf assigned")
+			return
+		}
+		s.advC = advClient
 
 	}
-	path := s.listenConf.Path
-	if path == "" { // 至少Path需要为 "/"
-		path = "/"
-	}
 
-	var useEarlyData bool
-	if s.listenConf.Extra != nil {
-		if thing := s.listenConf.Extra["ws_earlydata"]; thing != nil {
-			if use, ok := thing.(bool); ok && use {
-				useEarlyData = true
+	if lc := s.listenConf; lc != nil {
+
+		var Headers map[string][]string
+		if lc.HttpHeader != nil {
+			if lc.HttpHeader.Request != nil {
+				Headers = lc.HttpHeader.Response.Headers
 			}
 		}
+
+		var certArray []tls.Certificate
+
+		if lc.TLSCert != "" && lc.TLSKey != "" {
+			certArray, err = tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
+
+			if err != nil {
+
+				if ce := utils.CanLogErr("can't create tls cert"); ce != nil {
+					ce.Write(zap.String("cert", lc.TLSCert), zap.String("key", lc.TLSKey), zap.Error(err))
+				}
+
+				return
+			}
+
+		}
+
+		advSer, err := creator.NewServerFromConf(&advLayer.Conf{
+			Path:    lc.Path,
+			Host:    lc.Host,
+			IsEarly: lc.IsEarly,
+			Addr:    ad,
+			Headers: Headers,
+			TlsConf: &tls.Config{
+				InsecureSkipVerify: lc.Insecure,
+				NextProtos:         lc.Alpn,
+				ServerName:         lc.Host,
+				Certificates:       certArray,
+			},
+			Extra: lc.Extra,
+		})
+		if err != nil {
+			return
+		}
+
+		s.advS = advSer
 	}
-	var wss *ws.Server
-	if s.header != nil {
-		wss = ws.NewServer(path, s.header.Response.Headers)
-
-	} else {
-		wss = ws.NewServer(path, nil)
-
-	}
-	wss.UseEarlyData = useEarlyData
-
-	s.ws_s = wss
-
-	return nil
-}
-
-func (s *ProxyCommonStruct) initGRPC_server() error {
-	if s.listenConf == nil {
-
-		return errors.New("initGRPC_server failed when no listenConf assigned")
-
-	}
-
-	serviceName := s.listenConf.Path
-	if serviceName == "" { //不能为空
-
-		return errors.New("initGRPC_server failed, path must be specified")
-
-	}
-
-	s.grpc_s = grpc.NewServer(serviceName)
-	return nil
 }

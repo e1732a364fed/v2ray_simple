@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -15,6 +16,8 @@ import (
 var ErrPreviousFull = errors.New("previous conn full")
 
 var ProtocolsMap = make(map[string]Creator)
+
+var MaxEarlyDataLen = 2048 //for ws early data
 
 func PrintAllProtocolNames() {
 	fmt.Printf("===============================\nSupported Advanced Layer protocols:\n")
@@ -42,6 +45,7 @@ type Conf struct {
 }
 
 type Client interface {
+	GetPath() string
 	IsMux() bool   //quic and grpc. if IsMux, then Client is a MuxClient, or it's a SingleClient
 	IsEarly() bool //is 0-rtt or not.
 
@@ -61,7 +65,10 @@ type SingleClient interface {
 type MuxClient interface {
 	Client
 
-	GetCommonConn(underlay net.Conn) (conn any, err error) //if IsSuper, underlay should be nil
+	// If IsSuper, underlay should be nil;
+	//
+	// If not IsSuper and underlay == nil, it will return error if it can't find any extablished connection.
+	GetCommonConn(underlay net.Conn) (conn any, err error)
 
 	DialSubConn(underlay any) (net.Conn, error)
 
@@ -76,10 +83,21 @@ type Server interface {
 	IsSuper() bool //quic
 }
 
+//ws
 type SingleServer interface {
 	Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn) (net.Conn, error)
 }
 
+//grpc
 type MuxServer interface {
+	//non-blocking
 	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn)
+}
+
+//quic
+type SuperMuxServer interface {
+	MuxServer
+
+	//non-blocking.  Super会直接掌控 原始链接的 监听过程, 并直接向 newSubConnChan 传递 子连接。
+	StartListen() (newSubConnChan chan net.Conn, closer io.Closer)
 }

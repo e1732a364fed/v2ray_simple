@@ -10,7 +10,7 @@ cert = "cert.pem"
 key = "cert.key"
 advancedLayer = "ws"
 path = "/ohmygod_verysimple_is_very_simple"
-#extra = { ws_earlydata = true }
+# early = true 
 
 [[dial]]
 protocol = "direct"
