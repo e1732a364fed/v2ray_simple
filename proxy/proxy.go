@@ -296,6 +296,7 @@ func (*ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux
 				zap.Error(err),
 			)
 		}
+		return nil
 	}
 	return smuxSession
 }
@@ -319,6 +320,7 @@ func (pcs *ProxyCommonStruct) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *
 					zap.Error(err),
 				)
 			}
+			return nil
 		}
 		pcs.innermux = smuxSession
 		return smuxSession
@@ -429,8 +431,11 @@ func (s *ProxyCommonStruct) GetAdvServer() advLayer.Server {
 }
 
 func (s *ProxyCommonStruct) InitAdvLayer() {
-	if s.AdvancedL == "" {
+	switch s.AdvancedL {
+	case "":
 		return
+	case "quic":
+		s.setNetwork("udp")
 	}
 
 	creator := advLayer.ProtocolsMap[s.AdvancedL]

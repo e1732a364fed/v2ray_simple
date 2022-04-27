@@ -57,6 +57,7 @@ func CloseConn(baseC any) {
 }
 
 var (
+	//h3
 	DefaultAlpnList = []string{"h3"}
 
 	common_ListenConfig = quic.Config{
@@ -77,6 +78,14 @@ var (
 )
 
 type Creator struct{}
+
+func (Creator) GetDefaultAlpn() (alpn string, mustUse bool) {
+	return "h3", false
+}
+
+func (Creator) PackageID() string {
+	return "quic"
+}
 
 func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 	var alpn []string

@@ -166,12 +166,14 @@ func (c *streamClient) multitun_withName(ctx context.Context, name string, opts 
 type Client struct {
 	ServerAddr netLayer.Addr
 	Path       string
+	ismulti    bool
 }
 
-func NewClient(addr netLayer.Addr, path string) (*Client, error) {
+func NewClient(addr netLayer.Addr, path string, ismulti bool) (*Client, error) {
 	return &Client{
 		ServerAddr: addr,
 		Path:       path,
+		ismulti:    ismulti,
 	}, nil
 }
 
@@ -211,7 +213,7 @@ func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 		return nil, utils.ErrNilParameter
 	}
 	if cc, ok := underlay.(ClientConn); ok {
-		return DialNewSubConn(c.Path, cc, &c.ServerAddr, false)
+		return DialNewSubConn(c.Path, cc, &c.ServerAddr, c.ismulti)
 	} else {
 		return nil, utils.ErrInvalidParameter
 	}

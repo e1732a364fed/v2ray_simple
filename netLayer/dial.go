@@ -37,15 +37,7 @@ func (addr *Addr) Dial() (net.Conn, error) {
 
 tcp:
 
-	//dialer := &net.Dialer{
-	//	Timeout: time.Second * 16,
-	//}
 	//本以为直接用 DialTCP 可以加速拨号，结果发现go官方包内部依然还是把地址转换回字符串再拨号
-
-	//另外，为了为以后支持 tproxy、bindToDevice、SO_MARK 作准备，我们还是要选择性使用 net.Dialer.
-
-	//fastopen 不予支持, 因为自己客户端在重重网关之下，不可能让层层网关都支持tcp fast open；
-	// 而自己的远程节点的话因为本来网速就很快, 也不需要fastopen，总之 因为木桶原理，慢的地方在我们层层网关, 所以fastopen 意义不大.
 
 	if addr.IP != nil {
 		if addr.IP.To4() == nil {

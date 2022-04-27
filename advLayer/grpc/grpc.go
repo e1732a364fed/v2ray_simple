@@ -24,7 +24,9 @@ https://github.com/v2fly/v2ray-core/pull/757
 */
 package grpc
 
-import "github.com/e1732a364fed/v2ray_simple/advLayer"
+import (
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
+)
 
 func init() {
 	advLayer.ProtocolsMap["grpc"] = Creator{}
@@ -32,8 +34,27 @@ func init() {
 
 type Creator struct{}
 
+func (Creator) PackageID() string {
+	return "grpc"
+}
+
+func (Creator) GetDefaultAlpn() (alpn string, mustUse bool) {
+	// v2ray 和 xray 的grpc 因为没有自己处理tls，直接用grpc包处理的tls，而grpc包对alpn有严格要求, 要用h2.
+	return "h2", true
+}
+
 func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
-	return NewClient(conf.Addr, conf.Path)
+	grpc_multi := false
+	if extra := conf.Extra; len(extra) > 0 {
+		if thing := extra["grpc_multi"]; thing != nil {
+			if use_multi, ok := thing.(bool); ok {
+				grpc_multi = use_multi
+			}
+
+		}
+	}
+
+	return NewClient(conf.Addr, conf.Path, grpc_multi)
 }
 
 func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {

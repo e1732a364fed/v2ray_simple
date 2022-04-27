@@ -48,5 +48,11 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 }
 
 func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
-	return NewServer(conf.Path, conf.Headers), nil
+	return NewServer(conf.Path, conf.Headers, conf.IsEarly), nil
+}
+func (Creator) GetDefaultAlpn() (alpn string, mustUse bool) {
+	return
+}
+func (Creator) PackageID() string {
+	return "ws"
 }

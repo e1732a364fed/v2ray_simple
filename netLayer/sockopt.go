@@ -10,6 +10,10 @@ type Sockopt struct {
 	TProxy bool   `toml:"tproxy"`
 	Somark int    `toml:"mark"`
 	Device string `toml:"device"`
+
+	//fastopen 不予支持, 因为自己客户端在重重网关之下，不可能让层层网关都支持tcp fast open；
+	// 而自己的远程节点的话因为本来网速就很快, 也不需要fastopen，总之 因为木桶原理，慢的地方在我们层层网关, 所以fastopen 意义不大.
+
 }
 
 //net.TCPListener, net.UnixListener
@@ -32,5 +36,3 @@ func SetSockOptForListener(tcplistener ListenerWithFile, sockopt *Sockopt, isudp
 	defer fileDescriptorSource.Close()
 	SetSockOpt(int(fileDescriptorSource.Fd()), sockopt, isudp, isipv6)
 }
-
-//SetSockOpt 是平台相关的.

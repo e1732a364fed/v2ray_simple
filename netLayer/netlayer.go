@@ -1,9 +1,9 @@
 /*
 Package netLayer contains definitions in network layer AND transport layer.
 
-本包有 geoip, geosite, udp, readv, splice, relay, route, dns 等相关功能。
+本包有 geoip, geosite, route, udp, readv, splice, relay, dns, listen/dial/sockopt 等相关功能。
 
-以后如果要添加 kcp 或 raw socket 等底层协议时，或者要控制tcp/udp拨号的细节时，也要在此包里实现.
+以后如果要添加 kcp 或 raw socket 等底层协议时，也要在此包里实现.
 
 */
 package netLayer
@@ -54,7 +54,12 @@ func HasIpv6Interface() bool {
 			// According to godoc, If ip is not an IPv4 address, To4 returns nil.
 			// This means it's ipv6
 			if ipnet.IP.To4() == nil {
-				utils.Debug("Has Ipv6Interface!")
+
+				if ce := utils.CanLogDebug("Has Ipv6Interface!"); ce != nil {
+					ce.Write()
+				} else {
+					log.Println("Has Ipv6Interface!")
+				}
 
 				return true
 			}

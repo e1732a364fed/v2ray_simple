@@ -4,7 +4,6 @@ package advLayer
 import (
 	"bytes"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,10 +12,11 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-var ErrPreviousFull = errors.New("previous conn full")
+//var ErrPreviousFull = errors.New("previous conn full")
 
 var ProtocolsMap = make(map[string]Creator)
 
+//为了避免黑客攻击,我们固定earlydata最大值为2048
 var MaxEarlyDataLen = 2048 //for ws early data
 
 func PrintAllProtocolNames() {
@@ -31,6 +31,9 @@ type Creator interface {
 	//NewClientFromURL(url *url.URL) (Client, error)
 	NewClientFromConf(conf *Conf) (Client, error)
 	NewServerFromConf(conf *Conf) (Server, error)
+
+	GetDefaultAlpn() (alpn string, mustUse bool)
+	PackageID() string
 }
 
 type Conf struct {
@@ -45,11 +48,11 @@ type Conf struct {
 }
 
 type Client interface {
-	GetPath() string
 	IsMux() bool   //quic and grpc. if IsMux, then Client is a MuxClient, or it's a SingleClient
-	IsEarly() bool //is 0-rtt or not.
-
 	IsSuper() bool // quic handles transport layer dialing and tls layer handshake directly.
+
+	GetPath() string
+	IsEarly() bool //is 0-rtt or not.
 
 }
 
@@ -68,6 +71,7 @@ type MuxClient interface {
 	// If IsSuper, underlay should be nil;
 	//
 	// If not IsSuper and underlay == nil, it will return error if it can't find any extablished connection.
+	// Usually underlay  is tls.Conn.
 	GetCommonConn(underlay net.Conn) (conn any, err error)
 
 	DialSubConn(underlay any) (net.Conn, error)
@@ -76,11 +80,11 @@ type MuxClient interface {
 }
 
 type Server interface {
+	IsMux() bool   //quic and grpc. if IsMux, then Server is a MuxServer, or it's a SingleServer
+	IsSuper() bool //quic
+
 	GetPath() string //for ws and grpc
 
-	IsMux() bool //quic and grpc. if IsMux, then Server is a MuxServer, or it's a SingleServer
-
-	IsSuper() bool //quic
 }
 
 //ws

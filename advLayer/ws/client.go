@@ -15,9 +15,6 @@ import (
 	"github.com/gobwas/ws/wsutil"
 )
 
-//为了避免黑客攻击,我们固定earlydata最大值为2048
-const MaxEarlyDataLen = 2048
-
 //implements advLayer.Client
 type Client struct {
 	requestURL   *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可

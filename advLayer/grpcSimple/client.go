@@ -5,20 +5,19 @@ package grpcSimple
 
 import (
 	"bufio"
-	"context"
 	"crypto/tls"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"net/url"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/atomic"
+	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 )
 
@@ -26,9 +25,10 @@ var (
 	ErrInvalidLength = errors.New("invalid length")
 )
 
-var defaultHeader = http.Header{
+var defaultClientHeader = http.Header{
 	"content-type": []string{"application/grpc"},
-	"user-agent":   []string{"grpc-go/1.36.0"},
+	"user-agent":   []string{"grpc-go/1.41.0"},
+	"Te":           []string{"trailers"},
 }
 
 //implements net.Conn
@@ -44,7 +44,9 @@ type ClientConn struct {
 	br        *bufio.Reader
 
 	// deadlines
-	deadline *time.Timer
+	timeouter
+
+	client *Client
 }
 
 type Config struct {
@@ -52,7 +54,7 @@ type Config struct {
 	Host        string
 }
 
-func (g *ClientConn) initRequest() {
+func (g *ClientConn) handshake() {
 	response, err := g.transport.RoundTrip(g.request)
 	if err != nil {
 		g.err = err
@@ -61,15 +63,33 @@ func (g *ClientConn) initRequest() {
 	}
 
 	if !g.close.Load() {
+		//log.Println("response headers", response.Header)
+
+		if ct := response.Header.Get("Content-Type"); ct != "application/grpc" {
+			if ce := utils.CanLogWarn("GRPC Client got wrong Content-Type"); ce != nil {
+				ce.Write(zap.String("type", ct))
+			}
+
+			g.client.cachedTransport = nil
+
+			response.Body.Close()
+			return
+		}
+
 		g.response = response
 		g.br = bufio.NewReader(response.Body)
 	} else {
+
+		g.client.cachedTransport = nil
+
 		response.Body.Close()
 	}
 }
 
 func (g *ClientConn) Read(b []byte) (n int, err error) {
-	g.once.Do(g.initRequest)
+
+	g.once.Do(g.handshake)
+
 	if g.err != nil {
 		return 0, g.err
 	}
@@ -133,6 +153,10 @@ func (g *ClientConn) Write(b []byte) (n int, err error) {
 	if err == io.ErrClosedPipe && g.err != nil {
 		err = g.err
 	}
+	if err != nil {
+		g.client.dealErr(err)
+
+	}
 
 	return len(b), err
 }
@@ -146,110 +170,101 @@ func (g *ClientConn) Close() error {
 	return g.writer.Close()
 }
 
-func (g *ClientConn) LocalAddr() net.Addr                { return nil }
-func (g *ClientConn) RemoteAddr() net.Addr               { return nil }
-func (g *ClientConn) SetReadDeadline(t time.Time) error  { return g.SetDeadline(t) }
-func (g *ClientConn) SetWriteDeadline(t time.Time) error { return g.SetDeadline(t) }
-
-func (g *ClientConn) SetDeadline(t time.Time) error {
-	d := time.Until(t)
-	if g.deadline != nil {
-		g.deadline.Reset(d)
-		return nil
-	}
-	g.deadline = time.AfterFunc(d, func() {
-		g.Close()
-	})
-	return nil
-}
-
 const tlsTimeout = time.Second * 5
 
-func NewHTTP2Client(
-	rawTCPConn net.Conn,
-	tlsConfig *tls.Config,
-) *http2.Transport {
+type Client struct {
+	Config
 
-	dialFunc := func(_, _ string, cfg *tls.Config) (net.Conn, error) {
+	curBaseConn net.Conn //一般为 tlsConn
 
-		cn := tls.Client(rawTCPConn, cfg)
+	theRequest http.Request
 
-		ctx, cancel := context.WithTimeout(context.Background(), tlsTimeout)
-		defer cancel()
-		if err := cn.HandshakeContext(ctx); err != nil {
-			rawTCPConn.Close()
-			return nil, err
-		}
-		state := cn.ConnectionState()
-		if p := state.NegotiatedProtocol; p != http2.NextProtoTLS {
-			cn.Close()
-			return nil, utils.ErrInErr{
-				ErrDesc:   "grpcHardcore, http2: unexpected ALPN protocol",
-				ErrDetail: utils.ErrInvalidData,
-				Data:      p,
-			}
-		}
-		return cn, nil
-	}
+	cachedTransport *http2.Transport
 
-	return &http2.Transport{
-		DialTLS:            dialFunc,
-		TLSClientConfig:    tlsConfig,
-		AllowHTTP:          false,
-		DisableCompression: true,
-		PingTimeout:        0,
+	path string
+}
+
+func (g *Client) dealErr(err error) {
+	//use of closed connection
+	if strings.Contains(err.Error(), "use of closed") {
+		g.cachedTransport = nil
 	}
 }
 
-func StreamGunWithTransport(transport *http2.Transport, cfg *Config) (net.Conn, error) {
-	serviceName := "GunService"
-	if cfg.ServiceName != "" {
-		serviceName = cfg.ServiceName
+func (c *Client) GetPath() string {
+	return c.ServiceName
+}
+
+func (c *Client) IsSuper() bool {
+	return false
+}
+
+func (c *Client) IsMux() bool {
+	return true
+}
+
+func (c *Client) IsEarly() bool {
+	return false
+}
+
+// 由于 本包应用了 http2包, 无法获取特定连接, 所以返回 underlay 本身
+func (c *Client) GetCommonConn(underlay net.Conn) (any, error) {
+
+	if underlay == nil {
+		if c.cachedTransport != nil {
+			return c.cachedTransport, nil
+		} else {
+			return nil, nil
+		}
+	} else {
+		return underlay, nil
+
+	}
+}
+
+func (c *Client) ProcessWhenFull(underlay any) {}
+
+func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
+
+	if underlay == nil {
+		return nil, utils.ErrNilParameter
+	}
+
+	var transport *http2.Transport
+
+	if t, ok := underlay.(*http2.Transport); ok && t != nil {
+		transport = t
+	} else {
+		transport = &http2.Transport{
+			DialTLS: func(_, _ string, cfg *tls.Config) (net.Conn, error) {
+				return underlay.(net.Conn), nil
+			},
+			AllowHTTP:          false,
+			DisableCompression: true,
+			PingTimeout:        0,
+		}
+		c.cachedTransport = transport
 	}
 
 	reader, writer := io.Pipe()
-	request := &http.Request{
-		Method: http.MethodPost,
-		Body:   reader,
-		URL: &url.URL{
-			Scheme: "https",
-			Host:   cfg.Host,
-			Path:   fmt.Sprintf("/%s/Tun", serviceName),
-			// for unescape path
-			Opaque: fmt.Sprintf("//%s/%s/Tun", cfg.Host, serviceName),
-		},
-		Proto:      "HTTP/2",
-		ProtoMajor: 2,
-		ProtoMinor: 0,
-		Header:     defaultHeader,
-	}
+
+	request := c.theRequest
+	request.Body = reader
 
 	conn := &ClientConn{
-		request:   request,
+		request:   &request,
 		transport: transport,
 		writer:    writer,
 		close:     atomic.NewBool(false),
+		client:    c,
 	}
-
-	go conn.once.Do(conn.initRequest)
-	return conn, nil
-}
-
-func GetNewClientStream(conn net.Conn, tlsConfig *tls.Config, cfg *Config) (net.Conn, error) {
-
-	transport := NewHTTP2Client(conn, tlsConfig)
-	return StreamGunWithTransport(transport, cfg)
-}
-
-func GetNewClientStream_withTlsConn(conn net.Conn, cfg *Config) (net.Conn, error) {
-
-	transport := &http2.Transport{
-		DialTLS: func(_, _ string, cfg *tls.Config) (net.Conn, error) {
-			return conn, nil
+	conn.timeouter = timeouter{
+		closeFunc: func() {
+			conn.Close()
 		},
-		AllowHTTP:          false,
-		DisableCompression: true,
-		PingTimeout:        0,
 	}
-	return StreamGunWithTransport(transport, cfg)
+
+	go conn.once.Do(conn.handshake) //necessary
+
+	return conn, nil
 }

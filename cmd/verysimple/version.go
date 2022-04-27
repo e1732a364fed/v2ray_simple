@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"runtime"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
@@ -22,7 +23,13 @@ const delimiter = "===============================\n"
 var Version string = "[version_undefined]" //版本号可由 -ldflags "-X 'main.Version=v1.x.x'" 指定, 本项目的Makefile就是用这种方式确定版本号
 
 func versionStr() string {
-	return fmt.Sprintf("verysimple %s, %s %s %s", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	//verysimple 可以用 noquic, grpc_full tag 来选择性加载 advLayer的一些包，所以需要注明编译使用了哪些包
+	var advList []string
+	for _, c := range advLayer.ProtocolsMap {
+		advList = append(advList, c.PackageID())
+	}
+
+	return fmt.Sprintf("verysimple %s, %s %s %s, with advLayer packages: %v", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH, advList)
 }
 
 func printVersion_simple() {

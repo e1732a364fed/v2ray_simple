@@ -8,6 +8,9 @@ insecure = true
 fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
+#advancedLayer = "ws"
+#path = "/ohmygod_verysimple_is_very_simple"
+#early = true 
 
 [[dial]]
 protocol = "direct"

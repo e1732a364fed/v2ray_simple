@@ -28,12 +28,13 @@ type Server struct {
 }
 
 // 这里默认: 传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查.
-func NewServer(path string, headers map[string][]string) *Server {
+func NewServer(path string, headers map[string][]string, UseEarlyData bool) *Server {
 
 	return &Server{
 		//upgrader: upgrader,
-		Thepath: path,
-		headers: headers,
+		Thepath:      path,
+		headers:      headers,
+		UseEarlyData: UseEarlyData,
 	}
 }
 

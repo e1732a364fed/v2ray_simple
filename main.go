@@ -21,8 +21,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 
-	_ "github.com/e1732a364fed/v2ray_simple/advLayer/grpc"
-	_ "github.com/e1732a364fed/v2ray_simple/advLayer/quic"
 	_ "github.com/e1732a364fed/v2ray_simple/advLayer/ws"
 
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/dokodemo"
@@ -1030,6 +1028,8 @@ func dialClient(targetAddr netLayer.Addr,
 
 advLayerHandshakeStep:
 
+	//var firstPayloadAlreadyDealt bool
+
 	if adv != "" {
 		switch adv {
 		case "quic":
@@ -1116,7 +1116,11 @@ advLayerHandshakeStep:
 				//若配置了 MaxEarlyDataLen，则我们先读一段;
 				edBuf := utils.GetPacket()
 				edBuf = edBuf[:advLayer.MaxEarlyDataLen]
+
+				wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
 				n, e := wlc.Read(edBuf)
+				wlc.SetReadDeadline(time.Time{})
+
 				if e != nil {
 					if ce := utils.CanLogErr("failed to read ws early data"); ce != nil {
 						ce.Write(zap.Error(e))
@@ -1124,7 +1128,11 @@ advLayerHandshakeStep:
 					result = -1
 					return
 				}
-				ed = edBuf[:n]
+				if n > 0 {
+					//firstPayloadAlreadyDealt = true
+					ed = edBuf[:n]
+
+				}
 
 				if ce := utils.CanLogDebug("will send early data"); ce != nil {
 					ce.Write(
@@ -1165,11 +1173,16 @@ advLayerHandshakeStep:
 		//udp但是有innermux时 依然用handshake, 而不是 EstablishUDPChannel
 		var firstPayload []byte
 
-		if !hasInnerMux { //如果有内层mux，要在dialInnerProxy函数里再读
+		//读取firstPayload
+		if !hasInnerMux {
+			//如果有内层mux，要在dialInnerProxy函数里再读, 而不是在这里读
+
 			firstPayload = utils.GetMTU()
 
 			wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
 			n, err := wlc.Read(firstPayload)
+			wlc.SetReadDeadline(time.Time{})
+
 			if err != nil {
 
 				if !errors.Is(err, os.ErrDeadlineExceeded) {
@@ -1194,7 +1207,7 @@ advLayerHandshakeStep:
 				}
 
 			}
-			wlc.SetReadDeadline(time.Time{})
+
 			firstPayload = firstPayload[:n]
 		}
 

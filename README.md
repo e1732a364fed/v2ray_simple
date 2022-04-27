@@ -1,7 +1,7 @@
 ![GoVersion][10] [![GoDoc][1]][2] [![MIT licensed][3]][4] [![Go Report Card][5]][6] [![Downloads][7]][8] [![release][9]][8] 
 
-[1]: https://godoc.org/github.com/e1732a364fed/v2ray_simple?status.svg
-[2]: https://godoc.org/github.com/e1732a364fed/v2ray_simple
+[1]: https://pkg.go.dev/badge/github.com/e1732a364fed/v2ray_simple.svg
+[2]: https://pkg.go.dev/github.com/e1732a364fed/v2ray_simple#section-readme
 [3]: https://img.shields.io/badge/license-MIT-blue.svg
 [4]: LICENSE
 [5]: https://goreportcard.com/badge/github.com/e1732a364fed/v2ray_simple

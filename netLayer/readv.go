@@ -154,6 +154,7 @@ func ReadBuffersFrom(c io.Reader, rawReadConn syscall.RawConn, mr utils.MultiRea
 	return
 }
 
+// if r!=0, then it means c can be used in readv. 1 means syscall.RawConn, 2 means utils.MultiReader
 func IsConnGoodForReadv(c net.Conn) (r int, rawReadConn syscall.RawConn, mr utils.MultiReader) {
 	rawReadConn = GetRawConn(c)
 	var ok bool
