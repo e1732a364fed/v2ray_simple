@@ -11,6 +11,7 @@ var (
 	ErrNotImplemented      = errors.New("not implemented")
 	ErrNilParameter        = errors.New("nil parameter")
 	ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
+	ErrInvalidParameter    = errors.New("invalid parameter")
 	ErrWrongParameter      = errors.New("wrong parameter")
 	ErrShortRead           = errors.New("short read")
 	ErrInvalidData         = errors.New("invalid data")

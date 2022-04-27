@@ -160,3 +160,52 @@ func (c *streamClient) multitun_withName(ctx context.Context, name string, opts 
 	x := &streamTunMultiClient{stream}
 	return x, nil
 }
+
+//implements advLayer.MuxClient
+type Client struct {
+	ServerAddr netLayer.Addr
+	Path       string
+}
+
+func NewClient(addr netLayer.Addr, path string) (*Client, error) {
+	return &Client{
+		ServerAddr: addr,
+		Path:       path,
+	}, nil
+}
+
+func (c *Client) IsSuper() bool {
+	return false
+}
+
+func (c *Client) IsMux() bool {
+	return true
+}
+
+func (c *Client) IsEarly() bool {
+	return false
+}
+
+func (c *Client) GetCommonConn(underlay net.Conn) (any, error) {
+
+	cc := GetEstablishedConnFor(&c.ServerAddr)
+	if cc != nil {
+		return cc, nil
+	} else {
+		return ClientHandshake(underlay, &c.ServerAddr)
+
+	}
+}
+
+func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
+	if underlay == nil {
+		return nil, utils.ErrNilParameter
+	}
+	if cc, ok := underlay.(ClientConn); ok {
+		return DialNewSubConn(c.Path, cc, &c.ServerAddr, false)
+	} else {
+		return nil, utils.ErrInvalidParameter
+	}
+}
+
+func (c *Client) ProcessWhenFull(underlay any) {}

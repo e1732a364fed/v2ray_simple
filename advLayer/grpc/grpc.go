@@ -27,5 +27,15 @@ package grpc
 import "github.com/e1732a364fed/v2ray_simple/advLayer"
 
 func init() {
-	advLayer.ProtocolsMap["grpc"] = true
+	advLayer.ProtocolsMap["grpc"] = Creator{}
+}
+
+type Creator struct{}
+
+func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
+	return NewClient(conf.Addr, conf.Path)
+}
+
+func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
+	return NewServer(conf.Path), nil
 }

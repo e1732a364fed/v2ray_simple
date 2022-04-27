@@ -17,7 +17,7 @@ func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 type Server struct {
 	UnimplementedStreamServer
 
-	NewConnChan chan net.Conn //会在 main.go 被调用
+	newConnChan chan net.Conn //会在 main.go 被调用
 
 	ctx context.Context
 
@@ -25,10 +25,24 @@ type Server struct {
 	serviceName string
 }
 
+func (s *Server) GetPath() string {
+	return s.serviceName
+}
+
+func (*Server) IsMux() bool {
+	return true
+}
+
+func (*Server) IsSuper() bool {
+	return false
+}
+
 //  StartHandle方法 被用于 手动给 grpc提供新连接.
 // 在本作中  我们不使用 grpc的listen的方法。这样更加灵活.
 //非阻塞.
-func (s *Server) StartHandle(conn net.Conn) {
+func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn) {
+
+	s.newConnChan = theChan
 
 	//非阻塞，因为 grpc.(*Server).handleRawConn 是非阻塞的，里面用了新的goroutine
 	handle_grpcRawConn(s.gs, "", conn)
@@ -51,7 +65,7 @@ func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 	}
 
 	tunCtx, cancel := context.WithCancel(s.ctx)
-	s.NewConnChan <- newConn(stream_TunServer, cancel)
+	s.newConnChan <- newConn(stream_TunServer, cancel)
 	<-tunCtx.Done()
 
 	// 这里需要一个 <-tunCtx.Done() 进行阻塞；只有当 子连接被Close的时候, Done 才能通过, 才意味着本次子连接结束.
@@ -72,7 +86,7 @@ func (s *Server) TunMulti(stream_TunMultiServer Stream_TunMultiServer) error {
 	}
 
 	tunCtx, cancel := context.WithCancel(s.ctx)
-	s.NewConnChan <- newMultiConn(stream_TunMultiServer, cancel)
+	s.newConnChan <- newMultiConn(stream_TunMultiServer, cancel)
 	<-tunCtx.Done()
 
 	return nil
@@ -83,10 +97,10 @@ func (s *Server) TunMulti(stream_TunMultiServer Stream_TunMultiServer) error {
 func NewServer(serviceName string) *Server {
 	gs := grpc.NewServer()
 
-	newConnChan := make(chan net.Conn, 10)
+	//newConnChan := make(chan net.Conn, 10)
 
 	s := &Server{
-		NewConnChan: newConnChan, //该NewConnChan目前是永远不会被关闭的, 因为我们始终在监听新连接
+		//NewConnChan: newConnChan, //该NewConnChan目前是永远不会被关闭的, 因为我们始终在监听新连接
 		gs:          gs,
 		serviceName: serviceName,
 	}

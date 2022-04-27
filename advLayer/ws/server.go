@@ -37,6 +37,18 @@ func NewServer(path string, headers map[string][]string) *Server {
 	}
 }
 
+func (s *Server) GetPath() string {
+	return s.Thepath
+}
+
+func (*Server) IsMux() bool {
+	return false
+}
+
+func (*Server) IsSuper() bool {
+	return false
+}
+
 // Handshake 用于 websocket的 Server 监听端，建立握手. 用到了 gobwas/ws.Upgrader.
 //
 // 返回可直接用于读写 websocket 二进制数据的 net.Conn

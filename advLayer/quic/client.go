@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
+//implements advLayer.MuxClient
 type Client struct {
 	knownServerMaxStreamCount int32
 
@@ -73,8 +74,28 @@ func (c *Client) trimBadConns(ss map[[16]byte]*connState) (s *connState) {
 	return
 }
 
+func (c *Client) ProcessWhenFull(previous any) {
+	if previous != nil && c.knownServerMaxStreamCount == 0 {
+
+		ps, ok := previous.(*connState)
+		if !ok {
+			if ce := utils.CanLogDebug("QUIC: 'previous' parameter was given but with wrong type  "); ce != nil {
+				ce.Write(zap.String("type", reflect.TypeOf(previous).String()))
+			}
+			return
+		}
+
+		c.knownServerMaxStreamCount = ps.openedStreamCount
+
+		if ce := utils.CanLogDebug("QUIC: knownServerMaxStreamCount"); ce != nil {
+			ce.Write(zap.Int32("count", c.knownServerMaxStreamCount))
+		}
+
+	}
+}
+
 //获取已拨号的连接，或者重新从底层拨号。返回一个可作 c.DialSubConn 参数 的值.
-func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any {
+func (c *Client) DialCommonConn(_ any) (any, error) {
 	//返回一个 *sessionState.
 
 	//我们采用预先openStream的策略, 来试出哪些session已经满了, 哪些没满
@@ -82,7 +103,7 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 
 	//我们对每一个session所打开过的stream进行计数，这样就可以探知 服务端 的 最大stream数设置.
 
-	if !openBecausePreviousFull {
+	{
 
 		c.connMapMutex.Lock()
 		var theState *connState
@@ -92,29 +113,13 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 		if len(c.clientconns) > 0 {
 			c.connMapMutex.Unlock()
 			if theState != nil {
-				return theState
+				return theState, nil
 
 			}
 		} else {
 			c.clientconns = make(map[[16]byte]*connState)
 			c.connMapMutex.Unlock()
 		}
-	} else if previous != nil && c.knownServerMaxStreamCount == 0 {
-
-		ps, ok := previous.(*connState)
-		if !ok {
-			if ce := utils.CanLogDebug("QUIC: 'previous' parameter was given but with wrong type  "); ce != nil {
-				ce.Write(zap.String("type", reflect.TypeOf(previous).String()))
-			}
-			return nil
-		}
-
-		c.knownServerMaxStreamCount = ps.openedStreamCount
-
-		if ce := utils.CanLogDebug("QUIC: knownServerMaxStreamCount"); ce != nil {
-			ce.Write(zap.Int32("count", c.knownServerMaxStreamCount))
-		}
-
 	}
 
 	var conn quic.Connection
@@ -133,7 +138,7 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 		if ce := utils.CanLogErr("QUIC:  dial failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
-		return nil
+		return nil, err
 	}
 
 	if c.useHysteria {
@@ -159,7 +164,7 @@ func (c *Client) DialCommonConn(openBecausePreviousFull bool, previous any) any 
 	c.clientconns[id] = result
 	c.connMapMutex.Unlock()
 
-	return result
+	return result, nil
 }
 
 func (c *Client) DialSubConn(thing any) (net.Conn, error) {
@@ -177,4 +182,16 @@ func (c *Client) DialSubConn(thing any) (net.Conn, error) {
 	atomic.AddInt32(&theState.openedStreamCount, 1)
 
 	return StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedConnState: theState}, nil
+}
+
+func (c *Client) IsSuper() bool {
+	return true
+}
+
+func (c *Client) IsMux() bool {
+	return true
+}
+
+func (c *Client) IsEarly() bool {
+	return c.early
 }

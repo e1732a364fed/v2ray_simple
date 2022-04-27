@@ -278,16 +278,6 @@ func mainFunc() (result int) {
 
 	}
 
-	if DefaultOutClient != nil && len(tproxyConfs) > 0 {
-		for _, thisConf := range tproxyConfs {
-			tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), DefaultOutClient)
-			if tm != nil {
-				TproxyList = append(TproxyList, tm)
-			}
-
-		}
-	}
-
 	configFileQualifiedToRun := false
 
 	if (defaultInServer != nil || len(AllServers) > 0 || len(TproxyList) > 0) && (DefaultOutClient != nil) {
@@ -306,6 +296,17 @@ func mainFunc() (result int) {
 					ListenerArray = append(ListenerArray, lis)
 				}
 			}
+
+			if len(tproxyConfs) > 0 {
+				for _, thisConf := range tproxyConfs {
+					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), DefaultOutClient)
+					if tm != nil {
+						TproxyList = append(TproxyList, tm)
+					}
+
+				}
+			}
+
 		}
 
 	}

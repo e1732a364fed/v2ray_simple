@@ -38,5 +38,15 @@ package ws
 import "github.com/e1732a364fed/v2ray_simple/advLayer"
 
 func init() {
-	advLayer.ProtocolsMap["ws"] = true
+	advLayer.ProtocolsMap["ws"] = Creator{}
+}
+
+type Creator struct{}
+
+func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
+	return NewClient(conf.Host, conf.Path, conf.Headers, conf.IsEarly)
+}
+
+func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
+	return NewServer(conf.Path, conf.Headers), nil
 }

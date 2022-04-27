@@ -10,11 +10,12 @@ import (
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 )
 
 func init() {
-	advLayer.ProtocolsMap["quic"] = true
+	advLayer.ProtocolsMap["quic"] = Creator{}
 }
 
 //quic的包装太简单了
@@ -75,3 +76,13 @@ var (
 		KeepAlive:            true,
 	}
 )
+
+type Creator struct{}
+
+func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
+	return NewClient(&conf.Addr, conf.TlsConf.NextProtos, conf.Host, conf.TlsConf.InsecureSkipVerify, false, 0, false, conf.IsEarly), nil
+}
+
+func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
+	return nil, utils.ErrNotImplemented
+}

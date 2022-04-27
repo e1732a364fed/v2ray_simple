@@ -60,8 +60,10 @@ func init() {
 
 }
 
-//非阻塞. 可以 直接使用 ListenSer 函数 来手动开启新的转发流程。
-// 若 env 为 nil, 则不会 进行路由或回落
+// ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
+//
+// 使用方式可以参考 *_test.go 或者 cmd/verysimple.
+// 非阻塞. 若 env 为 nil, 则不会 进行路由或回落
 func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (thisListener net.Listener) {
 
 	var err error
@@ -148,13 +150,9 @@ type incomingInserverConnState struct {
 	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
 
-	//这里说的多路复用指的是grpc/quic 这种包在代理层外部的;  vless内嵌 mux.cool 或者trojan内嵌smux+simplesocks 则不属于这种情况, 它们属于 innerMux
-
-	// 要区分 多路复用的包装 是在 vless等代理的握手验证 的外部 还是 内部
-
-	baseLocalConn net.Conn // baseLocalConn 是来自客户端的原始网络层链接
-	wrappedConn   net.Conn // wrappedConn 是层层握手后,代理层握手前 包装的链接,一般为tls层或者高级层;
-	inServer      proxy.Server
+	baseLocalConn net.Conn     // baseLocalConn 是来自客户端的原始网络层链接
+	wrappedConn   net.Conn     // wrappedConn 是层层握手后,代理层握手前 包装的链接,一般为tls层或者高级层;
+	inServer      proxy.Server //可为 nil
 	defaultClient proxy.Client
 
 	cachedRemoteAddr string
@@ -269,7 +267,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	if adv != "" {
 		switch adv {
 		//quic虽然也是adv层，但是因为根本没调用 handleNewIncomeConnection 函数，所以不在此处理
-		//
+		// 详见 ListenSer
 
 		case "grpc":
 			//grpc不太一样, 它是多路复用的
@@ -283,13 +281,14 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 			grpcs := inServer.GetGRPC_Server() //这个grpc server是在配置阶段初始化好的.
 
-			grpcs.StartHandle(wrappedConn)
+			newConnChan := make(chan net.Conn, 10)
+			grpcs.StartHandle(wrappedConn, newConnChan)
 
 			//start之后，客户端就会利用同一条tcp链接 来发送多个 请求,自此就不能直接用原来的链接了;
 			// 新的子请求被 grpc包 抽象成了 抽象的 conn
 			//遇到chan被关闭的情况后，就会自动关闭底层连接并退出整个函数。
 			for {
-				newGConn, ok := <-grpcs.NewConnChan
+				newGConn, ok := <-newConnChan
 				if !ok {
 					if ce := utils.CanLogWarn("grpc getNewSubConn not ok"); ce != nil {
 						ce.Write()
@@ -943,7 +942,7 @@ func dialClient(targetAddr netLayer.Addr,
 				goto advLayerHandshakeStep
 			}
 		case "quic":
-			dialedCommonConn = client.GetQuic_Client().DialCommonConn(false, nil)
+			dialedCommonConn, _ = client.GetQuic_Client().DialCommonConn(nil)
 			if dialedCommonConn != nil {
 				goto advLayerHandshakeStep
 			} else {
@@ -1050,9 +1049,10 @@ advLayerHandshakeStep:
 							zap.String("full reason", eStr),
 						)
 					}
+					qclient.ProcessWhenFull(dialedCommonConn)
 
 					//第一条连接已满，再开一条session
-					dialedCommonConn = qclient.DialCommonConn(true, dialedCommonConn)
+					dialedCommonConn, _ = qclient.DialCommonConn(nil)
 					if dialedCommonConn == nil {
 						//再dial还是nil，也许是暂时性的网络错误, 先退出
 						result = -1
@@ -1148,13 +1148,7 @@ advLayerHandshakeStep:
 
 			var wc net.Conn
 
-			if len(ed) > 0 {
-				wc, err = wsClient.HandshakeWithEarlyData(clientConn, ed)
-
-			} else {
-				wc, err = wsClient.Handshake(clientConn)
-
-			}
+			wc, err = wsClient.Handshake(clientConn, ed)
 
 			if err != nil {
 				if ce := utils.CanLogErr("failed in handshake ws"); ce != nil {

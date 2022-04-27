@@ -18,10 +18,7 @@ import (
 //为了避免黑客攻击,我们固定earlydata最大值为2048
 const MaxEarlyDataLen = 2048
 
-// 注意，Client并不实现 proxy.Client.
-// Client只是在tcp/tls 的基础上包了一层websocket而已，不管其他内容.
-// 而 proxy.Client 是要 把 需要代理的 真实目标 地址 以某种方式 写入 数据内容的.
-// 这也是 我们ws包 并没有被 放在proxy文件夹中 的原因
+//implements advLayer.Client
 type Client struct {
 	requestURL   *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可
 	UseEarlyData bool
@@ -30,19 +27,48 @@ type Client struct {
 }
 
 // 这里默认，传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查
-func NewClient(hostAddr, path string, headers map[string][]string) (*Client, error) {
+func NewClient(hostAddr, path string, headers map[string][]string, isEarly bool) (*Client, error) {
 	u, err := url.Parse("http://" + hostAddr + path)
 	if err != nil {
 		return nil, err
 	}
 	return &Client{
-		requestURL: u,
-		headers:    headers,
+		requestURL:   u,
+		headers:      headers,
+		UseEarlyData: isEarly,
 	}, nil
 }
 
+func (c *Client) IsSuper() bool {
+	return false
+}
+
+func (c *Client) IsMux() bool {
+	return false
+}
+
+func (c *Client) IsEarly() bool {
+	return c.UseEarlyData
+}
+
 //与服务端进行 websocket握手，并返回可直接用于读写 websocket 二进制数据的 net.Conn
-func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
+func (c *Client) Handshake(underlay net.Conn, ed []byte) (net.Conn, error) {
+
+	if len(ed) > 0 {
+		// 我们要先返回一个 Conn, 然后读取到内层的 vless等协议的握手后，再进行实际的 ws握手
+		return &EarlyDataConn{
+			Conn: underlay,
+
+			earlyData:            ed,
+			requestURL:           c.requestURL,
+			firstHandshakeOkChan: make(chan int, 1),
+			dialer: &ws.Dialer{
+				NetDial: func(ctx context.Context, net, addr string) (net.Conn, error) {
+					return underlay, nil
+				},
+			},
+		}, nil
+	}
 
 	//实测默认的4096过小,因为 实测 tls握手的serverHello 就有可能超过了4096,
 	// 但是仔细思考，发现tls握手是在websocket的外部发生的，而我们传输的是数据的内层tls握手，那么就和Dialer没关系了，dialer只是负责读最初的握手部分；
@@ -95,23 +121,6 @@ func (c *Client) Handshake(underlay net.Conn) (net.Conn, error) {
 	theConn.r.OnIntermediate = wsutil.ControlFrameHandler(underlay, ws.StateClientSide)
 
 	return theConn, nil
-}
-
-// 我们要先返回一个 Conn, 然后读取到内层的 vless等协议的握手后，再进行实际的 ws握手
-func (c *Client) HandshakeWithEarlyData(underlay net.Conn, ed []byte) (net.Conn, error) {
-
-	return &EarlyDataConn{
-		Conn: underlay,
-
-		earlyData:            ed,
-		requestURL:           c.requestURL,
-		firstHandshakeOkChan: make(chan int, 1),
-		dialer: &ws.Dialer{
-			NetDial: func(ctx context.Context, net, addr string) (net.Conn, error) {
-				return underlay, nil
-			},
-		},
-	}, nil
 }
 
 type EarlyDataConn struct {
