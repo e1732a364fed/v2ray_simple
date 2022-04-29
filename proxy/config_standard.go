@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/BurntSushi/toml"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -15,9 +14,10 @@ import (
 )
 
 type AppConf struct {
-	LogLevel          *int   `toml:"loglevel"` //需要为指针, 否则无法判断0到底是未给出的默认值还是 显式声明的0
-	DefaultUUID       string `toml:"default_uuid"`
-	MyCountryISO_3166 string `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
+	LogLevel          *int    `toml:"loglevel"` //需要为指针, 否则无法判断0到底是未给出的默认值还是 显式声明的0
+	LogFile           *string `toml:"logfile"`
+	DefaultUUID       string  `toml:"default_uuid"`
+	MyCountryISO_3166 string  `toml:"mycountry" json:"mycountry"` //加了mycountry后，就会自动按照geoip分流,也会对顶级域名进行国别分流
 
 	NoReadV bool `toml:"noreadv"`
 
@@ -59,7 +59,7 @@ func LoadTomlConfFile(fileNamePath string) (StandardConf, error) {
 
 // 先检查configFileName是否存在，存在就尝试加载文件到 standardConf 或者 simpleConf，否则尝试 listenURL, dialURL 参数.
 // 若 返回的是 simpleConf, 则还可能返回 mainFallback.
-func LoadConfig(configFileName, listenURL, dialURL string) (standardConf StandardConf, simpleConf SimpleConf, confMode int, mainFallback *httpLayer.ClassicFallback, err error) {
+func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (standardConf StandardConf, simpleConf SimpleConf, confMode int, mainFallback *httpLayer.ClassicFallback, err error) {
 
 	fpath := utils.GetFilePath(configFileName)
 	if fpath != "" {
@@ -74,20 +74,6 @@ func LoadConfig(configFileName, listenURL, dialURL string) (standardConf Standar
 			}
 
 			confMode = StandardMode
-
-			//loglevel 和 noreadv这种会被 命令行覆盖的配置，需要直接在 loadConfig函数中先处理一遍
-			if appConf := standardConf.App; appConf != nil {
-
-				if appConf.LogLevel != nil && !utils.IsFlagGiven("ll") {
-					utils.LogLevel = *appConf.LogLevel
-					utils.InitLog()
-
-				}
-				if appConf.NoReadV && !utils.IsFlagGiven("readv") {
-					netLayer.UseReadv = false
-				}
-
-			}
 
 			return
 		} else {
@@ -109,47 +95,5 @@ func LoadConfig(configFileName, listenURL, dialURL string) (standardConf Standar
 			return
 		}
 	}
-	return
-}
-
-func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv, Default_uuid string) {
-
-	if len(standardConf.Fallbacks) != 0 {
-		routingEnv.MainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)
-	}
-
-	if dnsConf := standardConf.DnsConf; dnsConf != nil {
-		routingEnv.DnsMachine = netLayer.LoadDnsMachine(dnsConf)
-	}
-
-	var hasAppLevelMyCountry bool
-
-	if appConf := standardConf.App; appConf != nil {
-
-		Default_uuid = appConf.DefaultUUID
-
-		hasAppLevelMyCountry = appConf.MyCountryISO_3166 != ""
-
-		if appConf.UDP_timeout != nil {
-			minutes := *appConf.UDP_timeout
-			if minutes > 0 {
-				netLayer.UDP_timeout = time.Minute * time.Duration(minutes)
-			}
-		}
-	}
-
-	if standardConf.Route != nil || hasAppLevelMyCountry {
-
-		netLayer.LoadMaxmindGeoipFile("")
-
-		routingEnv.RoutePolicy = netLayer.NewRoutePolicy()
-		if hasAppLevelMyCountry {
-			routingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(standardConf.App.MyCountryISO_3166))
-
-		}
-
-		netLayer.LoadRulesForRoutePolicy(standardConf.Route, routingEnv.RoutePolicy)
-	}
-
 	return
 }

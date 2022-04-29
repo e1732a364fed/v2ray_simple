@@ -5,6 +5,12 @@ Package netLayer contains definitions in network layer AND transport layer.
 
 以后如果要添加 kcp 或 raw socket 等底层协议时，也要在此包 或子包里实现.
 
+Tags
+
+本包提供 embed_geoip 这个 build tag。
+
+若给出 embed_geoip，则会尝试内嵌 GeoLite2-Country.mmdb.tgz 文件；默认不内嵌。
+
 */
 package netLayer
 

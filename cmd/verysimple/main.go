@@ -12,14 +12,15 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/pkg/profile"
+	"go.uber.org/zap"
+
 	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tproxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	"github.com/pkg/profile"
-	"go.uber.org/zap"
 )
 
 var (
@@ -28,7 +29,7 @@ var (
 	startMProf     bool
 	listenURL      string //用于命令行模式
 	dialURL        string //用于命令行模式
-	jsonMode       int
+	//jsonMode       int
 
 	standardConf proxy.StandardConf
 	simpleConf   proxy.SimpleConf
@@ -45,11 +46,15 @@ var (
 	routingEnv proxy.RoutingEnv
 )
 
+const (
+	defaultLogFile = "vs_log"
+)
+
 func init() {
 	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
-	flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
+	//flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
 
 	flag.StringVar(&listenURL, "L", "", "listen URL, only used when no config file is provided.")
 	flag.StringVar(&dialURL, "D", "", "dial URL, only used when no config file is provided.")
@@ -58,7 +63,7 @@ func init() {
 
 	flag.IntVar(&utils.LogLevel, "ll", utils.DefaultLL, "log level,0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal")
 
-	flag.StringVar(&utils.LogOutFileName, "lf", "vs_log", "output file for log; If empty, no log file will be used.")
+	flag.StringVar(&utils.LogOutFileName, "lf", defaultLogFile, "output file for log; If empty, no log file will be used.")
 
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 
@@ -103,30 +108,14 @@ func mainFunc() (result int) {
 		}
 	}()
 
-	flag.Parse()
+	utils.ParseFlags()
 
-	if cmdPrintVer {
-		printVersion_simple()
-		//根据 cmdPrintVer 的定义, 我们直接退出
+	if runExitCommands() {
 		return
 	} else {
 		printVersion()
 
 	}
-
-	if !utils.IsFlagGiven("lf") {
-		if strings.Contains(configFileName, "server") {
-			utils.LogOutFileName += "_server"
-		} else if strings.Contains(configFileName, "client") {
-			utils.LogOutFileName += "_client"
-		}
-	}
-
-	if utils.LogOutFileName != "" {
-		utils.ShouldLogToFile = true
-	}
-
-	utils.InitLog()
 
 	if startPProf {
 		f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
@@ -142,16 +131,57 @@ func mainFunc() (result int) {
 		defer p.Stop()
 	}
 
-	utils.Info("Program started")
-	defer utils.Info("Program exited")
-
-	var err error
 	var mode int
 	var mainFallback *httpLayer.ClassicFallback
 
-	standardConf, simpleConf, mode, mainFallback, err = proxy.LoadConfig(configFileName, listenURL, dialURL)
+	var loadConfigErr error
 
-	if err != nil && !isFlexible() {
+	standardConf, simpleConf, mode, mainFallback, loadConfigErr = proxy.LoadConfig(configFileName, listenURL, dialURL, 0)
+
+	if loadConfigErr == nil {
+
+		if appConf := standardConf.App; appConf != nil {
+
+			if appConf.LogFile != nil && utils.GivenFlags["lf"] == nil {
+				utils.LogOutFileName = *appConf.LogFile
+
+			}
+
+			if appConf.LogLevel != nil && utils.GivenFlags["ll"] == nil {
+				utils.LogLevel = *appConf.LogLevel
+
+			}
+			if appConf.NoReadV && utils.GivenFlags["readv"] == nil {
+				netLayer.UseReadv = false
+			}
+
+		}
+
+	}
+
+	if utils.LogOutFileName == defaultLogFile {
+
+		if strings.Contains(configFileName, "server") {
+			utils.LogOutFileName += "_server"
+		} else if strings.Contains(configFileName, "client") {
+			utils.LogOutFileName += "_client"
+		}
+	}
+
+	utils.InitLog("Program started")
+	defer utils.Info("Program exited")
+
+	{
+		wdir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		if ce := utils.CanLogInfo("Working at"); ce != nil {
+			ce.Write(zap.String("dir", wdir))
+		}
+	}
+
+	if loadConfigErr != nil && !isFlexible() {
 		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
 		return -1
 	}

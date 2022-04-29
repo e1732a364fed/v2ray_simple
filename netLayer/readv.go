@@ -24,6 +24,7 @@ var (
 	// readv pool, 缓存 mr和buffers，进一步减轻内存分配负担
 	readvPool sync.Pool
 
+	// 是否会在转发过程中使用readv
 	UseReadv bool
 )
 

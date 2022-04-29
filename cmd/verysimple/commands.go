@@ -65,12 +65,23 @@ func isFlexible() bool {
 	return interactive_mode || apiServerRunning
 }
 
-//在开始正式代理前, 先运行一些需要运行的命令与函数
-func runPreCommands() {
+//运行一些 执行后立即退出程序的 命令
+func runExitCommands() (atLeastOneCalled bool) {
+	if cmdPrintVer {
+		atLeastOneCalled = true
+		printVersion_simple()
+	}
 
 	if cmdPrintSupportedProtocols {
+		atLeastOneCalled = true
 		printSupportedProtocols()
 	}
+
+	return
+}
+
+//在开始正式代理前, 先运行一些需要运行的命令与函数
+func runPreCommands() {
 
 	if !nodownload {
 		tryDownloadMMDB()
@@ -82,7 +93,7 @@ func generateAndPrintUUID() {
 }
 
 func printSupportedProtocols() {
-
+	fmt.Printf("Support tcp/udp/tproxy/unix domain socket/tls/uTls by default.\n")
 	proxy.PrintAllServerNames()
 	proxy.PrintAllClientNames()
 	advLayer.PrintAllProtocolNames()

@@ -12,7 +12,7 @@ import (
 )
 
 // TryCopy 尝试 循环 从 readConn 读取数据并写入 writeConn, 直到错误发生。
-//会接连尝试 splice、循环readv 以及 原始Copy方法
+//会接连尝试 splice、循环readv 以及 原始Copy方法。如果 UseReadv 的值为false，则不会使用readv。
 func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
 	var multiWriter utils.MultiWriter
 

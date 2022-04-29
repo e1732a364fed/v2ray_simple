@@ -4,11 +4,17 @@
 [app]   # app 项是可选的
 
 # 日志等级,默认为1.  0=debug, 1=info, 2=warning, 3=error, 4=dpanic, 5=panic, 6=fatal, 
-# 推荐开发时用0, 测试时使用1, 日常使用时 使用2或3; 显然日志越少越快, 设为6或者更大值的话性能是最好的.
+# 推荐开发时用0, 日常使用时 使用1或2; 显然日志越少越快, 设为6或者更大值的话性能是最好的.
 #loglevel = 1
 
-# 如果 default_uuid 给出了，且某个 需要uuid的地方没给出，则会使用 default_uuid 的值
+# 日志文件地址, 如果路径不存在，会自动创建父文件夹;
+# 若未给出 或 给出的值为 vs_log，则会自动在工作目录 生成 vs_log文件, 且:
+#   若配置文件名称包含client，则改为生成 vs_log_client 文件;
+#   若配置文件名称包含 server, 则改为生成 vs_log_server 文件;
+#  若设为空字符串，则不生成日志文件.
+#logfile = "/var/log/verysimple/vs_log" 
 
+# 如果 default_uuid 给出了，且某个 需要uuid的地方没给出，则会使用 default_uuid 的值
 # default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 
 # mycountry = "CN" #全局级的 国别分流配置, 见下面route的注释

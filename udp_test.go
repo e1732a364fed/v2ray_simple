@@ -53,7 +53,7 @@ func TestUDP_trojan_through_udp(t *testing.T) {
 //udp测试我们直接使用dns请求来测试.
 func testUDP(t *testing.T, protocol string, version int, network string, multi bool, fullcone bool, mux bool) {
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	//同时监听两个dokodemo, 发向不同raddr, 这样就可以模拟 多raddr目标时的 情况
 	//vless v1的udp_multi的dialfunc 需要单一 client 拨号多个raddr 才能被触发, 所以还要使用socks5测试两次

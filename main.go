@@ -78,7 +78,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 
 		newConnChan, closer = superSer.StartListen()
 		if newConnChan == nil {
-			utils.Error("superSer.StartListen can't extablish baseConn")
+			utils.Error("superSer.StartListen failed ")
 			return
 		}
 
@@ -86,7 +86,9 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 			for {
 				newConn, ok := <-newConnChan
 				if !ok {
-					utils.Error("read from Super AdvLayer not ok")
+					if ce := utils.CanLogErr("Read chan from Super AdvLayer closed"); ce != nil {
+						ce.Write(zap.String("advLayer", inServer.AdvancedLayer()))
+					}
 
 					if closer != nil {
 						closer.Close()
@@ -94,7 +96,6 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 
 					return
 				}
-				//utils.Debug("quic Got New Conn")
 
 				iics := incomingInserverConnState{
 					wrappedConn:   newConn,
@@ -107,7 +108,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 
 		}()
 
-		if ce := utils.CanLogInfo("Listening Super"); ce != nil {
+		if ce := utils.CanLogInfo("Listening Super AdvLayer"); ce != nil {
 
 			ce.Write(
 				zap.String("protocol", proxy.GetFullName(inServer)),

@@ -15,7 +15,7 @@ type testConfStruct struct {
 func testDns_withConf(t *testing.T, config string) {
 
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	config += `
 	[dns.hosts]
@@ -73,7 +73,7 @@ servers = [
 ]
 `
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	var c testConfStruct
 	_, e := toml.Decode(config, &c)

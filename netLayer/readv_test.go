@@ -30,7 +30,7 @@ BenchmarkClassicCopy_SimulateRealWorld_ReadV-8   	   66138	     17907 ns/op
 //我们不断向一个net.Conn 发送大数据
 func TestReadVCopy(t *testing.T) {
 
-	utils.InitLog()
+	utils.InitLog("")
 
 	listenAddr := GetRandLocalAddr(true, false)
 	listener, err := net.Listen("tcp", listenAddr)

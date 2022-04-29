@@ -34,13 +34,21 @@ func IsFlagGiven(name string) bool {
 // 如果我们有大量的参数需要判断是否给出过, 那么不如先提取到到map里。
 //
 // 实际上flag包的底层也是用的一个map, 但是它是私有的, 而且我们也不宜用unsafe暴露出来.
-func GetActualFlags() (m map[string]*flag.Flag) {
+func GetGivenFlags() (m map[string]*flag.Flag) {
 	m = make(map[string]*flag.Flag)
 	flag.Visit(func(f *flag.Flag) {
 		m[f.Name] = f
 	})
 
 	return
+}
+
+var GivenFlags map[string]*flag.Flag
+
+//call flag.Parse() and assign given flags to GivenFlags.
+func ParseFlags() {
+	flag.Parse()
+	GivenFlags = GetGivenFlags()
 }
 
 //移除 = "" 和 = false 的项

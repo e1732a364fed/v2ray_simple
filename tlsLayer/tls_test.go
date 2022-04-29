@@ -18,7 +18,7 @@ func TestVlesss(t *testing.T) {
 
 func testTls(protocol string, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	port := netLayer.RandPortStr(true, false)
 

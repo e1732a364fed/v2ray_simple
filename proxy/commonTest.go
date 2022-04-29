@@ -18,7 +18,7 @@ import (
 
 func TestTCP(protocol string, version int, port string, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	url := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:" + port + "?version=" + strconv.Itoa(version)
 	server, hase, _ := ServerFromURL(url)
@@ -114,7 +114,7 @@ func TestTCP(protocol string, version int, port string, t *testing.T) {
 // 其他tcp测试因为比较简单，不需要第二步测试，而这里需要
 func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	t.Log("fakeServerEndLocalServer port is ", proxyPort)
 

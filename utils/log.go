@@ -29,11 +29,8 @@ var (
 	LogLevel  int
 	ZapLogger *zap.Logger
 
+	//日志输出文件名称
 	LogOutFileName string
-
-	//在 go test时，我们依然想要查看命令行输出, 但是不希望产生多余文件.
-	// 所以只有在main.go 中我们才设置 ShouldLogToFile=true
-	ShouldLogToFile bool
 )
 
 func LogLevelStrList() (sl []string) {
@@ -50,7 +47,7 @@ func LogLevelStr(lvl int) string {
 
 func getZapLogFileWriteSyncer(fn string) zapcore.WriteSyncer {
 	return zapcore.AddSync(&lumberjack.Logger{
-		Filename:   fn,
+		Filename:   fn, //如果给出的路径不存在，则 lumberjack 包 会自动帮助我们创建文件夹
 		MaxSize:    10,
 		MaxBackups: 10,
 		MaxAge:     30,
@@ -84,7 +81,7 @@ func capitalLevelEncoderWith5Chars(l zapcore.Level, enc zapcore.PrimitiveArrayEn
 }
 
 //本作大量用到zap打印输出, 所以必须调用InitLog函数来初始化，否则就会闪退
-func InitLog() {
+func InitLog(firstMsg string) {
 	atomicLevel := zap.NewAtomicLevel()
 	atomicLevel.SetLevel(zapcore.Level(LogLevel - 1))
 
@@ -97,7 +94,9 @@ func InitLog() {
 		EncodeTime:  zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05.000"),
 	}), zapcore.AddSync(os.Stdout), atomicLevel)
 
-	if ShouldLogToFile && LogOutFileName != "" {
+	willLogToFile := LogOutFileName != ""
+
+	if willLogToFile {
 		jsonConf := zap.NewProductionEncoderConfig()
 		jsonConf.EncodeTime = zapcore.TimeEncoderOfLayout("060102 150405.000") //用一种比较简短的方式输出时间,年月日 时分秒.毫秒。 年只需输出后两位数字即可, 不管Y2K问题
 		jsonConf.LevelKey = "L"
@@ -113,7 +112,17 @@ func InitLog() {
 
 	}
 
-	ZapLogger.Info("zap log init complete.")
+	if firstMsg != "" {
+		ZapLogger.Info(firstMsg)
+	}
+
+	if willLogToFile {
+		ZapLogger.Info("zap log init complete.", zap.String("logfile", GetFilePath(LogOutFileName)))
+
+	} else {
+		ZapLogger.Info("zap log init complete.")
+
+	}
 }
 
 func CanLogLevel(l int, msg string) *zapcore.CheckedEntry {

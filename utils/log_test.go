@@ -10,7 +10,7 @@ import (
 func TestZaplog(t *testing.T) {
 
 	LogLevel = Log_info
-	InitLog()
+	InitLog("")
 
 	if ce := CanLogDebug("test1"); ce != nil {
 		ce.Write(

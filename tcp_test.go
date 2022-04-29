@@ -28,7 +28,7 @@ func TestTCP_trojan_mux(t *testing.T) {
 //tcp测试我们直接使用http请求来测试
 func testTCP(t *testing.T, protocol string, version int, network string, innermux bool) {
 	utils.LogLevel = utils.Log_debug
-	utils.InitLog()
+	utils.InitLog("")
 
 	var testClientConfFormatStr = `
 [[listen]]

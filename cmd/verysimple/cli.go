@@ -771,7 +771,7 @@ func interactively_adjust_loglevel() {
 
 	if i < len(list) && i >= 0 {
 		utils.LogLevel = i
-		utils.InitLog()
+		utils.InitLog("")
 
 		fmt.Printf("调节 日志等级完毕. 现在等级为\n")
 		fmt.Printf(list[i])

@@ -41,13 +41,6 @@ func (mh *MuxMarkerConn) IsMux() {}
 // 也有可能是有人通过 nc 来测试，也会遇到这种读不到 firstpayload的情况
 const FirstPayloadTimeout = time.Millisecond * 100
 
-//used in real relay progress. See source code of v2ray_simple for details.
-type RoutingEnv struct {
-	RoutePolicy  *netLayer.RoutePolicy
-	MainFallback *httpLayer.ClassicFallback
-	DnsMachine   *netLayer.DNSMachine
-}
-
 // Client 用于向 服务端 拨号.
 //服务端是一种 “泛目标”代理，所以我们客户端的 Handshake 要传入目标地址, 来告诉它 我们 想要到达的 目标地址.
 // 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
