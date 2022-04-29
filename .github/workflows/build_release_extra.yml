@@ -2,6 +2,10 @@ name: Build For Release Extra
 
 on:
   workflow_dispatch:
+    inputs:
+      tagName:
+        description: 'tagName'     
+        required: true
 
 jobs:
 
@@ -14,14 +18,10 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.18
-
-    - name: Get version
-      id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     
     - name: Build
       run: |
-        cd cmd/verysimple/ && make -f Makefile_release extra PACK=1 BUILD_VERSION=${{ steps.get_version.outputs.VERSION }}
+        cd cmd/verysimple/ && make -f Makefile_release extra PACK=1 BUILD_VERSION=${{ github.event.inputs.tagName }}
     
     - name: touch xz archive
       shell: bash
@@ -33,5 +33,5 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: cmd/verysimple/*.tar.xz
-        tag: ${{ steps.get_version.outputs.VERSION }}
+        tag: ${{ github.event.inputs.tagName }}
         file_glob: true
