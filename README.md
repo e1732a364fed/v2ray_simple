@@ -594,7 +594,7 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码。（clash的gun又是借鉴 Qv2ray的gun的）
 
-tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/， （trojan-go也借鉴了它）
+tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
 以上借鉴的代码都是用的MIT协议。
 

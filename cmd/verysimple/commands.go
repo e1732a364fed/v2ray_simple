@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
 
@@ -158,7 +157,7 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 	}
 
 	var proxyurl string
-	var listener net.Listener
+	var listener io.Closer
 
 	if outClient != nil {
 

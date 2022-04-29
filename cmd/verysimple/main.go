@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -38,7 +38,7 @@ var (
 
 	tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
 
-	listenerArray []net.Listener //储存除tproxy之外 所有运行的 inServer 的 Listener
+	listenerArray []io.Closer //储存除tproxy之外 所有运行的 inServer 的 Listener
 
 	defaultOutClient proxy.Client
 
@@ -51,8 +51,8 @@ func init() {
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
 	flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
 
-	flag.StringVar(&listenURL, "L", "", "listen URL (i.e. the listen part in config file), only enbled when config file is not provided.")
-	flag.StringVar(&dialURL, "D", "", "dial URL (i.e. the dial part in config file), only enbled when config file is not provided.")
+	flag.StringVar(&listenURL, "L", "", "listen URL, only used when no config file is provided.")
+	flag.StringVar(&dialURL, "D", "", "dial URL, only used when no config file is provided.")
 
 	//other packages
 
@@ -94,7 +94,7 @@ func mainFunc() (result int) {
 					zap.String("stacktrace", string(debug.Stack())),
 				)
 			} else {
-				log.Fatalln("panic captured!", r)
+				log.Fatalln("panic captured!", r, "\n", string(debug.Stack()))
 			}
 
 			result = -3

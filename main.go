@@ -59,25 +59,24 @@ func init() {
 // 使用方式可以参考 tcp_test.go, udp_test.go 或者 cmd/verysimple.
 //
 // 非阻塞. 若 env 为 nil, 则不会 进行分流或回落
-func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (thisListener net.Listener) {
-
-	var err error
+func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
 
 	var handleHere bool
-	var advs advLayer.Server
+	advs := inServer.GetAdvServer()
 
-	if advs = inServer.GetAdvServer(); advs != nil {
+	if advs != nil {
 		handleHere = advs.IsSuper() && advs.IsMux()
 	}
 
-	//quic
 	if handleHere {
 		//如果像quic一样自行处理传输层至tls层之间的部分，则我们跳过 handleNewIncomeConnection 函数
 		// 拿到连接后直接调用 handshakeInserver_and_passToOutClient
 
 		superSer := advs.(advLayer.SuperMuxServer)
 
-		newConnChan, closer := superSer.StartListen()
+		var newConnChan chan net.Conn
+
+		newConnChan, closer = superSer.StartListen()
 		if newConnChan == nil {
 			utils.Error("superSer.StartListen can't extablish baseConn")
 			return
@@ -108,7 +107,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 
 		}()
 
-		if ce := utils.CanLogInfo("Listening"); ce != nil {
+		if ce := utils.CanLogInfo("Listening Super"); ce != nil {
 
 			ce.Write(
 				zap.String("protocol", proxy.GetFullName(inServer)),
@@ -118,12 +117,16 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 		return
 	}
 
-	handleFunc := func(conn net.Conn) {
-		handleNewIncomeConnection(inServer, defaultOutClientForThis, conn, env)
-	}
+	var err error
 
-	network := inServer.Network()
-	thisListener, err = netLayer.ListenAndAccept(network, inServer.AddrStr(), inServer.GetSockopt(), handleFunc)
+	closer, err = netLayer.ListenAndAccept(
+		inServer.Network(),
+		inServer.AddrStr(),
+		inServer.GetSockopt(),
+		func(conn net.Conn) {
+			handleNewIncomeConnection(inServer, defaultOutClientForThis, conn, env)
+		},
+	)
 
 	if err == nil {
 		if ce := utils.CanLogInfo("Listening"); ce != nil {
@@ -136,8 +139,12 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 
 	} else {
 		if err != nil {
-			utils.ZapLogger.Error(
-				"can not listen inServer on", zap.String("addr", inServer.AddrStr()), zap.Error(err))
+			if ce := utils.CanLogErr("ListenSer failed"); ce != nil {
+				ce.Write(
+					zap.String("addr", inServer.AddrStr()),
+					zap.Error(err),
+				)
+			}
 
 		}
 	}

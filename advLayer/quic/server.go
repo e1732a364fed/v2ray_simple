@@ -14,7 +14,7 @@ import (
 )
 
 //non-blocking
-func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newConnChan chan net.Conn, baseConn io.Closer) {
+func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newConnChan chan net.Conn, returnCloser io.Closer) {
 
 	thisConfig := common_ListenConfig
 	if arg.customMaxStreamsInOneConn > 0 {
@@ -50,11 +50,11 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newCon
 
 	if arg.early {
 		go loopAcceptEarly(elistener, newConnChan, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
-		baseConn = elistener
+		returnCloser = elistener
 	} else {
 		go loopAccept(listener, newConnChan, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
 
-		baseConn = listener
+		returnCloser = listener
 	}
 
 	return
