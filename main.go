@@ -101,6 +101,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 					wrappedConn:   newConn,
 					inServer:      inServer,
 					defaultClient: defaultOutClientForThis,
+					RoutingEnv:    env,
 				}
 
 				go handshakeInserver_and_passToOutClient(iics)
@@ -585,69 +586,74 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wlc net.Conn) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
 
-	if mf := iics.RoutingEnv.MainFallback; mf != nil {
+	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
+	if iics.RoutingEnv != nil {
 
-		utils.Debug("Fallback check")
+		if mf := iics.RoutingEnv.MainFallback; mf != nil {
 
-		var thisFallbackType byte
+			utils.Debug("Fallback check")
 
-		theRequestPath := iics.theRequestPath
+			var thisFallbackType byte
 
-		if iics.theFallbackFirstBuffer != nil && theRequestPath == "" {
-			var failreason int
+			theRequestPath := iics.theRequestPath
 
-			_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
+			if iics.theFallbackFirstBuffer != nil && theRequestPath == "" {
+				var failreason int
 
-			if failreason != 0 {
-				theRequestPath = ""
-			}
+				_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
 
-		}
-
-		fallback_params := make([]string, 0, 4)
-
-		if theRequestPath != "" {
-			fallback_params = append(fallback_params, theRequestPath)
-			thisFallbackType |= httpLayer.Fallback_path
-		}
-
-		if inServerTlsConn := iics.inServerTlsConn; inServerTlsConn != nil {
-			//默认似乎默认tls不会给出alpn和sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
-			// 而alpn则也是正常的, 不设置肯定就是空值
-			alpn := inServerTlsConn.GetAlpn()
-
-			if alpn != "" {
-				fallback_params = append(fallback_params, alpn)
-				thisFallbackType |= httpLayer.Fallback_alpn
+				if failreason != 0 {
+					theRequestPath = ""
+				}
 
 			}
 
-			sni := inServerTlsConn.GetSni()
-			if sni != "" {
-				fallback_params = append(fallback_params, sni)
-				thisFallbackType |= httpLayer.Fallback_sni
+			fallback_params := make([]string, 0, 4)
+
+			if theRequestPath != "" {
+				fallback_params = append(fallback_params, theRequestPath)
+				thisFallbackType |= httpLayer.Fallback_path
 			}
-		}
 
-		{
-			fbAddr := mf.GetFallback(thisFallbackType, fallback_params...)
+			if inServerTlsConn := iics.inServerTlsConn; inServerTlsConn != nil {
+				//默认似乎默认tls不会给出alpn和sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
+				// 而alpn则也是正常的, 不设置肯定就是空值
+				alpn := inServerTlsConn.GetAlpn()
 
-			if ce := utils.CanLogDebug("Fallback check"); ce != nil {
-				if fbAddr != nil {
-					ce.Write(
-						zap.String("matched", fbAddr.String()),
-					)
-				} else {
-					ce.Write(
-						zap.String("no match", ""),
-					)
+				if alpn != "" {
+					fallback_params = append(fallback_params, alpn)
+					thisFallbackType |= httpLayer.Fallback_alpn
+
+				}
+
+				sni := inServerTlsConn.GetSni()
+				if sni != "" {
+					fallback_params = append(fallback_params, sni)
+					thisFallbackType |= httpLayer.Fallback_sni
 				}
 			}
-			if fbAddr != nil {
-				targetAddr = *fbAddr
-				wlc = iics.wrappedConn
-				return
+
+			{
+				fbAddr := mf.GetFallback(thisFallbackType, fallback_params...)
+
+				if ce := utils.CanLogDebug("Fallback check"); ce != nil {
+					if fbAddr != nil {
+						ce.Write(
+							zap.String("matched", fbAddr.String()),
+						)
+					} else {
+						ce.Write(
+							zap.String("no match", ""),
+						)
+					}
+				}
+				if fbAddr != nil {
+					targetAddr = *fbAddr
+					wlc = iics.wrappedConn
+					return
+				}
 			}
+
 		}
 
 	}
