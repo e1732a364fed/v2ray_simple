@@ -2,12 +2,13 @@ package grpcSimple
 
 import (
 	"bufio"
-	"encoding/binary"
+	"context"
 	"io"
 	"net"
 	"net/http"
 	"sync"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -32,138 +33,130 @@ func (*Server) IsMux() bool {
 func (*Server) IsSuper() bool {
 	return false
 }
-func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn) {
+
+func (s *Server) Stop() {
+
+}
+
+func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
 	go s.Server.ServeConn(underlay, &http2.ServeConnOpts{
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request) {
 
 			//log.Println("request headers", rq.Header)
 
-			//TODO: support fallback
-
-			if rq.URL.Path != s.path {
+			if p := rq.URL.Path; p != s.path {
 				if ce := utils.CanLogWarn("grpc Server got wrong path"); ce != nil {
-					ce.Write(zap.String("path", rq.URL.Path))
+					ce.Write(zap.String("path", p))
+				}
+
+				if fallbackConnChan != nil {
+
+					if ce := utils.CanLogInfo("grpc will fallback"); ce != nil {
+						ce.Write(zap.String("path", p))
+					}
+
+					rq2 := rq.Clone(context.Background())
+					rq2.Body = nil
+					rq2.ContentLength = 0
+					buf := utils.GetBuf()
+					rq2.Write(buf)
+
+					sc := newServerConn(rw, rq)
+
+					fallbackConnChan <- advLayer.FallbackMeta{Path: p, Conn: sc, FirstBuffer: buf}
+
+					<-sc.closeChan
+
+				} else {
+					rw.WriteHeader(http.StatusNotFound)
+
 				}
 
 				return
 			}
 
 			if ct := rq.Header.Get("Content-Type"); ct != "application/grpc" {
-				if ce := utils.CanLogWarn("GRPC Server got wrong Content-Type"); ce != nil {
-					ce.Write(zap.String("type", ct))
+				if ce := utils.CanLogWarn("GRPC Server got right path but with wrong Content-Type"); ce != nil {
+					ce.Write(zap.String("type", ct), zap.String("tips", "you might need to use a more complex path"))
 				}
+
+				rw.WriteHeader(http.StatusUnsupportedMediaType)
 
 				return
 			}
-
-			//https://dzone.com/articles/learning-about-the-headers-used-for-grpc-over-http
 
 			headerMap := rw.Header()
 			headerMap.Add("Content-Type", "application/grpc") //necessary
 			rw.WriteHeader(http.StatusOK)
 
-			cc := make(chan int)
-			sc := &ServerConn{
-				br:        bufio.NewReader(rq.Body),
-				Writer:    rw,
-				Closer:    rq.Body,
-				closeChan: cc,
-			}
-
-			sc.timeouter = timeouter{
-				closeFunc: func() {
-					sc.Close()
-				},
-			}
+			sc := newServerConn(rw, rq)
 			newSubConnChan <- sc
-			<-cc //necessary
+			<-sc.closeChan //necessary
 		}),
 	})
 }
 
+func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
+	sc = &ServerConn{
+		commonReadPart: commonReadPart{
+			br: bufio.NewReader(rq.Body),
+		},
+
+		Writer:    rw,
+		Closer:    rq.Body,
+		closeChan: make(chan int),
+	}
+
+	sc.timeouter = timeouter{
+		closeFunc: func() {
+			sc.Close()
+		},
+	}
+	return
+}
+
 type ServerConn struct {
+	commonReadPart
+	timeouter
+
 	io.Closer
 	io.Writer
 
-	remain int
-	br     *bufio.Reader
-
-	once      sync.Once
+	closeOnce sync.Once
 	closeChan chan int
-
-	timeouter
+	closed    bool
 }
 
 func (g *ServerConn) Close() error {
-	g.once.Do(func() {
+	g.closeOnce.Do(func() {
+		g.closed = true
 		close(g.closeChan)
 		g.Closer.Close()
 	})
 	return nil
 }
 
-func (g *ServerConn) Read(b []byte) (n int, err error) {
-
-	if g.remain > 0 {
-
-		size := g.remain
-		if len(b) < size {
-			size = len(b)
-		}
-
-		n, err = io.ReadFull(g.br, b[:size])
-		g.remain -= n
-		return
-	}
-
-	_, err = g.br.Discard(6)
-	if err != nil {
-
-		return 0, err
-	}
-
-	protobufPayloadLen, err := binary.ReadUvarint(g.br)
-	if err != nil {
-		return 0, ErrInvalidLength
-	}
-
-	size := int(protobufPayloadLen)
-	if len(b) < size {
-		size = len(b)
-	}
-
-	n, err = io.ReadFull(g.br, b[:size])
-	if err != nil {
-		return
-	}
-
-	remain := int(protobufPayloadLen) - n
-	if remain > 0 {
-		g.remain = remain
-	}
-	return n, nil
-}
-
 func (g *ServerConn) Write(b []byte) (n int, err error) {
 
-	protobufHeader := [binary.MaxVarintLen64 + 1]byte{0x0A}
-	varuintSize := binary.PutUvarint(protobufHeader[1:], uint64(len(b)))
-	grpcHeader := make([]byte, 5)
-	grpcPayloadLen := uint32(varuintSize + 1 + len(b))
-	binary.BigEndian.PutUint32(grpcHeader[1:5], grpcPayloadLen)
+	//the determination of g.closed is necessary, or it might panic when calling Write or Flush
 
-	buf := utils.GetBuf()
-	defer utils.PutBuf(buf)
-	buf.Write(grpcHeader)
-	buf.Write(protobufHeader[:varuintSize+1])
-	buf.Write(b)
+	if g.closed {
+		return 0, net.ErrClosed
+	} else {
+		buf := commonWrite(b)
 
-	_, err = g.Writer.Write(buf.Bytes())
+		if g.closed {
+			return 0, net.ErrClosed
+		}
+		_, err = g.Writer.Write(buf.Bytes())
+		utils.PutBuf(buf)
 
-	if err == nil {
-		g.Writer.(http.Flusher).Flush() //necessary
+		if err == nil && !g.closed {
+			g.Writer.(http.Flusher).Flush() //necessary
 
+		}
+
+		return len(b), err
 	}
 
-	return len(b), err
 }

@@ -134,12 +134,12 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, acceptFunc func(net
 	return
 }
 
-func (addr Addr) ListenUDP_withOpt(sockopt *Sockopt) (net.PacketConn, error) {
+func (a Addr) ListenUDP_withOpt(sockopt *Sockopt) (net.PacketConn, error) {
 	var lc net.ListenConfig
 	lc.Control = func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
-			SetSockOpt(int(fd), sockopt, true, addr.IsIpv6())
+			SetSockOpt(int(fd), sockopt, true, a.IsIpv6())
 		})
 	}
-	return lc.ListenPacket(context.Background(), "udp", addr.String())
+	return lc.ListenPacket(context.Background(), "udp", a.String())
 }

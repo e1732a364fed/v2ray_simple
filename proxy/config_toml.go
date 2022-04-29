@@ -112,12 +112,6 @@ func LoadConfig(configFileName, listenURL, dialURL string) (standardConf Standar
 	return
 }
 
-type RoutingEnv struct {
-	RoutePolicy  *netLayer.RoutePolicy      //used in passToOutClient
-	MainFallback *httpLayer.ClassicFallback //used in checkFallback in passToOutClient
-	DnsMachine   *netLayer.DNSMachine       //used in passToOutClient
-}
-
 func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv, Default_uuid string) {
 
 	if len(standardConf.Fallbacks) != 0 {

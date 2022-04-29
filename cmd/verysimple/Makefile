@@ -103,6 +103,6 @@ clean:
 
 rmlog:
 	rm -f vs_log
-	rm -f vs_log_client
-	rm -f vs_log_server
+	rm -f vs_log_client*
+	rm -f vs_log_server*
 	

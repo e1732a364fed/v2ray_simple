@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/congestion"
@@ -13,18 +14,18 @@ import (
 )
 
 //non-blocking
-func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hysteriaMaxByteCount int, hysteria_manual, early bool, customMaxStreamCountInOneConn int64) (newConnChan chan net.Conn, baseConn io.Closer) {
+func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newConnChan chan net.Conn, baseConn io.Closer) {
 
 	thisConfig := common_ListenConfig
-	if customMaxStreamCountInOneConn > 0 {
-		thisConfig.MaxIncomingStreams = customMaxStreamCountInOneConn
+	if arg.customMaxStreamsInOneConn > 0 {
+		thisConfig.MaxIncomingStreams = arg.customMaxStreamsInOneConn
 	}
 
 	var listener quic.Listener
 	var elistener quic.EarlyListener
 	var err error
 
-	if early {
+	if arg.early {
 		utils.Info("quic Listen Early")
 		elistener, err = quic.ListenAddrEarly(addr, &tlsConf, &thisConfig)
 
@@ -39,19 +40,19 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 		return
 	}
 
-	if useHysteria {
-		if hysteriaMaxByteCount <= 0 {
-			hysteriaMaxByteCount = Default_hysteriaMaxByteCount
+	if arg.useHysteria {
+		if arg.hysteriaMaxByteCount <= 0 {
+			arg.hysteriaMaxByteCount = Default_hysteriaMaxByteCount
 		}
 	}
 
 	newConnChan = make(chan net.Conn, 10)
 
-	if early {
-		go loopAcceptEarly(elistener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
+	if arg.early {
+		go loopAcceptEarly(elistener, newConnChan, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
 		baseConn = elistener
 	} else {
-		go loopAccept(listener, newConnChan, useHysteria, hysteria_manual, hysteriaMaxByteCount)
+		go loopAccept(listener, newConnChan, arg.useHysteria, arg.hysteria_manual, arg.hysteriaMaxByteCount)
 
 		baseConn = listener
 	}
@@ -62,6 +63,7 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, useHysteria bool, hyst
 //阻塞
 func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
 	for {
+
 		conn, err := l.Accept(context.Background())
 		if err != nil {
 			if ce := utils.CanLogErr("quic accept failed"); ce != nil {
@@ -76,6 +78,7 @@ func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hyster
 		}
 
 		go dealNewConn(conn, theChan)
+
 	}
 }
 
@@ -83,6 +86,7 @@ func loopAccept(l quic.Listener, theChan chan net.Conn, useHysteria bool, hyster
 func loopAcceptEarly(el quic.EarlyListener, theChan chan net.Conn, useHysteria bool, hysteria_manual bool, hysteriaMaxByteCount int) {
 
 	for {
+
 		conn, err := el.Accept(context.Background())
 		if err != nil {
 			if ce := utils.CanLogErr("quic early accept failed"); ce != nil {
@@ -96,6 +100,7 @@ func loopAcceptEarly(el quic.EarlyListener, theChan chan net.Conn, useHysteria b
 		}
 
 		go dealNewConn(conn, theChan)
+
 	}
 }
 
@@ -130,17 +135,16 @@ func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
 			}
 			break
 		}
-		theChan <- StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false}
+		theChan <- &StreamConn{stream, conn.LocalAddr(), conn.RemoteAddr(), nil, false}
 	}
 }
 
 type Server struct {
-	addr                          string
-	tlsConf                       tls.Config
-	useHysteria                   bool
-	hysteriaMaxByteCount          int
-	hysteria_manual, early        bool
-	customMaxStreamCountInOneConn int64
+	addr    string
+	tlsConf tls.Config
+	args    arguments
+
+	listener io.Closer
 }
 
 func (s *Server) GetPath() string {
@@ -155,10 +159,23 @@ func (*Server) IsSuper() bool {
 	return true
 }
 
-func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer) {
-	return ListenInitialLayers(s.addr, s.tlsConf, s.useHysteria, s.hysteriaMaxByteCount, s.hysteria_manual, s.early, s.customMaxStreamCountInOneConn)
+func (s *Server) Stop() {
+
+	if s.listener != nil {
+		s.listener.Close()
+
+	}
+
 }
 
-func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn) {
+func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer) {
+
+	newSubConnChan, baseConn = ListenInitialLayers(s.addr, s.tlsConf, s.args)
+	s.listener = baseConn
+	return
+}
+
+//非阻塞，不支持回落。
+func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
 	go dealNewConn(underlay.(quic.Connection), newSubConnChan)
 }

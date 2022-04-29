@@ -23,7 +23,6 @@ type Conn struct {
 	stream      StreamConn
 	cacheReader io.Reader
 	closeFunc   context.CancelFunc
-	local       net.Addr
 	remote      net.Addr
 }
 
@@ -59,7 +58,10 @@ func (c *Conn) Close() error {
 	return nil
 }
 func (c *Conn) LocalAddr() net.Addr {
-	return c.local
+	return &net.TCPAddr{
+		IP:   []byte{0, 0, 0, 0},
+		Port: 0,
+	}
 }
 func (c *Conn) RemoteAddr() net.Addr {
 	return c.remote
@@ -83,10 +85,6 @@ func newConn(service StreamConn, cancelFunc context.CancelFunc) *Conn {
 		closeFunc:   cancelFunc,
 	}
 
-	conn.local = &net.TCPAddr{
-		IP:   []byte{0, 0, 0, 0},
-		Port: 0,
-	}
 	ad, ok := peer.FromContext(service.Context())
 	if ok {
 		conn.remote = ad.Addr

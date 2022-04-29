@@ -32,7 +32,7 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 socks5(包括 udp associate)/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
 
-ws(以及earlydata)/grpc(以及multiMode 以及uTls)/quic(以及hy阻控 和 0-rtt)/smux, 
+ws(以及earlydata)/grpc(以及multiMode,uTls，以及 可支持回落的 grpcSimple)/quic(以及hy阻控 和 0-rtt)/smux, 
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
 
@@ -198,12 +198,6 @@ verysimple -c server.toml
 
 如果你不是放在path里的，则要 `./verysimple`, 前面要加一个点和一个斜杠。windows没这个要求。
 
-注意，如果你是自己直接 go build 编译的，则可执行文件与项目名称一致，为 v2ray_simple；
-
-如果用的下载的官方编译版本，则可执行文件叫做 verysimple. 可以通过文件名称判断是自己编译的还是下载的。
-
-官方发布版统一叫做verysimple是为了与 v2ray区别开。
-
 ## 关于证书
 
 自己生成证书！而且最好是用 自己真实拥有的域名，使用acme.sh等脚本申请免费证书，特别是建站等情况。
@@ -286,12 +280,13 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，应该是与现有xray/v2ray兼容的
 
-支持grpc，与 xray/v2ray兼容
+支持grpc，与 xray/v2ray兼容; 还在clash的代码基础上实现了 grpcSimple, 遵循了极简的理念，不引用谷歌的grpc包，而且可以支持 分流 和 回落。
 
 支持 quic以及hysteria 阻控，与xray/v2ray兼容（详情见wiki）,还新开发了“手动挡”模式
 
 api服务器；tproxy 透明代理； http伪装头
 
+总之，可以看到，几乎在每一个技术上 本作都有一定的优化，非常 Nice。
 ## 技术详情
 ### 关于vless v1
 
@@ -301,7 +296,7 @@ api服务器；tproxy 透明代理； http伪装头
 
 verysimple 实现了 一种独创的 非mux型“分离信道”方法的 udp over tcp 的fullcone
 
-v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1](docs/vless_v1.md)
+v1还有很多其他新设计，比如用于 连接池和 dns等，详见 [vless_v1_discussion](docs/vless_v1_discussion.md)
 
 vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 
@@ -543,7 +538,9 @@ verysimple 版本 v1.0.3
 
 详细测速还可以参考另外几个文件，docs/speed_macos.md 和 docs/speed_ubuntu.md。
 
-总之目前可以看到，verysimple是绝对的王者。虽然有时还不够稳定，但是我会进一步优化这个问题的。
+总之目前可以看到，verysimple是绝对的王者。虽然有时lazy还不够稳定，但是我会进一步优化这个问题的。
+
+测速时，打开的窗口尽量少，且只留浏览器的窗口在最前方。已经证明多余的窗口会影响速率。尤其是这种消耗cpu性能的情况，在核显的电脑上确实要保证cpu其它压力减到最小。
 
 ## 交流
 

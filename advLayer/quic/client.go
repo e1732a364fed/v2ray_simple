@@ -3,7 +3,8 @@ package quic
 import (
 	"crypto/tls"
 	"net"
-	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -16,19 +17,19 @@ import (
 
 //implements advLayer.MuxClient
 type Client struct {
+	arguments
+
 	knownServerMaxStreamCount int32
 
 	serverAddrStr string
 
-	tlsConf                             tls.Config
-	useHysteria, hysteria_manual, early bool
-	maxbyteCount                        int
+	tlsConf tls.Config
 
 	clientconns  map[[16]byte]*connState
 	connMapMutex sync.RWMutex
 }
 
-func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, useHysteria bool, maxbyteCount int, hysteria_manual, early bool) *Client {
+func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, args arguments) *Client {
 	return &Client{
 		serverAddrStr: addr.String(),
 		tlsConf: tls.Config{
@@ -36,10 +37,7 @@ func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure boo
 			ServerName:         host,
 			NextProtos:         alpnList,
 		},
-		useHysteria:     useHysteria,
-		hysteria_manual: hysteria_manual,
-		maxbyteCount:    maxbyteCount,
-		early:           early,
+		arguments: args,
 	}
 }
 
@@ -71,21 +69,17 @@ func (c *Client) trimBadConns() (bestConn *connState) {
 		}
 	}
 
+	if c.knownServerMaxStreamCount != 0 && minSessionNum >= int(c.knownServerMaxStreamCount) {
+		return nil
+	}
+
 	return
 }
 
-func (c *Client) ProcessWhenFull(previous any) {
+func (c *Client) processWhenFull(previous *connState) {
 	if previous != nil && c.knownServerMaxStreamCount == 0 {
 
-		ps, ok := previous.(*connState)
-		if !ok {
-			if ce := utils.CanLogDebug("QUIC: 'previous' parameter was given but with wrong type  "); ce != nil {
-				ce.Write(zap.String("type", reflect.TypeOf(previous).String()))
-			}
-			return
-		}
-
-		c.knownServerMaxStreamCount = ps.openedStreamCount
+		c.knownServerMaxStreamCount = previous.openedStreamCount
 
 		if ce := utils.CanLogDebug("QUIC: knownServerMaxStreamCount"); ce != nil {
 			ce.Write(zap.Int32("count", c.knownServerMaxStreamCount))
@@ -96,6 +90,10 @@ func (c *Client) ProcessWhenFull(previous any) {
 
 //获取已拨号的连接，或者重新从底层拨号。返回一个可作 c.DialSubConn 参数 的值.
 func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
+	return c.getCommonConn(nil)
+}
+
+func (c *Client) getCommonConn(_ net.Conn) (*connState, error) {
 	//返回一个 *sessionState.
 
 	//我们采用预先openStream的策略, 来试出哪些session已经满了, 哪些没满
@@ -113,6 +111,7 @@ func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
 		if len(c.clientconns) > 0 {
 			c.connMapMutex.Unlock()
 			if theState != nil {
+				utils.Debug("quic use old " + strconv.Itoa(int(theState.openedStreamCount)))
 				return theState, nil
 
 			}
@@ -126,10 +125,12 @@ func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
 	var err error
 
 	if c.early {
-		utils.Info("quic Dial Early")
+		utils.Debug("quic Dialing Early")
 		conn, err = quic.DialAddrEarly(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
 
 	} else {
+
+		utils.Debug("quic Dialing Connection")
 		conn, err = quic.DialAddr(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
 
 	}
@@ -142,16 +143,16 @@ func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
 	}
 
 	if c.useHysteria {
-		if c.maxbyteCount <= 0 {
-			c.maxbyteCount = Default_hysteriaMaxByteCount
+		if c.hysteriaMaxByteCount <= 0 {
+			c.hysteriaMaxByteCount = Default_hysteriaMaxByteCount
 		}
 
 		if c.hysteria_manual {
-			bs := NewBrutalSender_M(congestion.ByteCount(c.maxbyteCount))
+			bs := NewBrutalSender_M(congestion.ByteCount(c.hysteriaMaxByteCount))
 			conn.SetCongestionControl(bs)
 
 		} else {
-			bs := NewBrutalSender(congestion.ByteCount(c.maxbyteCount))
+			bs := NewBrutalSender(congestion.ByteCount(c.hysteriaMaxByteCount))
 			conn.SetCongestionControl(bs)
 
 		}
@@ -169,19 +170,55 @@ func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
 
 func (c *Client) DialSubConn(thing any) (net.Conn, error) {
 	theState, ok := thing.(*connState)
-	if !ok {
+	if !ok || theState == nil {
 		return nil, utils.ErrNilOrWrongParameter
 	}
+	return c.dialSubConn(theState)
+}
+
+func (c *Client) dialSubConn(theState *connState) (net.Conn, error) {
+
 	stream, err := theState.OpenStream()
 	if err != nil {
+
+		if theState.redialing {
+			theState.redialing = false
+			return nil, err
+		}
+
+		const tooManyOpenStreamsStr = "too many open streams"
+		eStr := err.Error()
+
+		if eStr == tooManyOpenStreamsStr || strings.Contains(eStr, tooManyOpenStreamsStr) {
+
+			if ce := utils.CanLogDebug("DialSubConn session full, open another one"); ce != nil {
+				ce.Write(
+					zap.String("reason", eStr),
+				)
+			}
+
+			c.processWhenFull(theState)
+
+			theState2, err := c.getCommonConn(nil)
+			if theState2 == nil {
+				//再dial还是nil，也许是暂时性的网络错误, 先退出
+
+				return nil, utils.ErrInErr{ErrDesc: "Quic Redialing failed when full session", ErrDetail: err}
+			}
+
+			theState2.redialing = true
+			return c.dialSubConn(theState2)
+		}
 
 		return nil, err
 
 	}
 
+	theState.redialing = false
+
 	atomic.AddInt32(&theState.openedStreamCount, 1)
 
-	return StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedConnState: theState}, nil
+	return &StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedConnState: theState}, nil
 }
 
 func (c *Client) IsSuper() bool {

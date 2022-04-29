@@ -33,14 +33,14 @@ func PrintAllClientNames() {
 	}
 }
 
+//可通过两种配置方式来初始化。
 type ClientCreator interface {
-	//程序从某种配置文件格式中读取出 DialConf
 	NewClient(*DialConf) (Client, error)
 	NewClientFromURL(url *url.URL) (Client, error)
 }
 
+//可通过两种配置方式来初始化。
 type ServerCreator interface {
-	//程序从某种配置文件格式中读取出 ListenConf
 	NewServer(*ListenConf) (Server, error)
 	NewServerFromURL(url *url.URL) (Server, error)
 }

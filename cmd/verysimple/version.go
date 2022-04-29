@@ -1,11 +1,10 @@
 /*Package main 读取配置文件，将其内容转化为 proxy.Client和 proxy.Server，然后进行代理转发.
 
+生成 Dail、Listen 、 RoutePolicy 和 Fallback等 对象后，开始监听，并顺便选择性打开交互模式和 apiServer；
+
 命令行参数请使用 --help查看详情。
 
-如果一个命令行参数无法在标准配置中进行配置，那么它就属于高级选项，或者不推荐的选项，或者正在开发中的功能.
-
-
-main.go 中，读取配置文件，生成 Dail、Listen 、 RoutePolicy 和 Fallback等 对象后，开始监听，并顺便选择性打开交互模式和 apiServer；
+如果一个命令行参数无法在标准配置中进行配置，那么它就属于高级/开发者选项，或者不推荐的选项，或者正在开发中的功能.
 
 */
 package main

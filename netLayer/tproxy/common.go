@@ -103,6 +103,7 @@ import (
 )
 
 //一个tproxy状态机 具有 监听端口、tcplistener、udpConn 这三个要素。
+// 目前仅用于关闭。
 type Machine struct {
 	netLayer.Addr
 	net.Listener //tcpListener

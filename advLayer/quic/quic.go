@@ -1,7 +1,10 @@
 //Package quic defines functions to listen and dial quic, with some customizable congestion settings.
 //
+// 我们这里暂时使用 quic-go包。注意该包是不完美的，对阻塞控制支持不好，而且cpu占用率高。以后有更好的包的话要及时切换到好包。
+//
 // 这里我们 还选择性 使用 hysteria的 brutal阻控.
 // 见 https://github.com/tobyxdd/quic-go 中 toby的 *-mod 分支, 里面会多一个 congestion 文件夹.
+//
 package quic
 
 import (
@@ -38,24 +41,6 @@ const (
 	server_maxStreamCountInOneConn = 4 //一个 Connection 中 stream越多, 性能越低, 因此我们这里限制为4
 )
 
-func isActive(s quic.Connection) bool {
-	select {
-	case <-s.Context().Done():
-		return false
-	default:
-		return true
-	}
-}
-
-func CloseConn(baseC any) {
-	qc, ok := baseC.(quic.Connection)
-	if ok {
-		qc.CloseWithError(0, "")
-	} else {
-		log.Panicln("quic.CloseConn called with illegal parameter", reflect.TypeOf(baseC).String(), baseC)
-	}
-}
-
 var (
 	//h3
 	DefaultAlpnList = []string{"h3"}
@@ -76,6 +61,30 @@ var (
 		KeepAlive:            true,
 	}
 )
+
+func isActive(s quic.Connection) bool {
+	select {
+	case <-s.Context().Done():
+		return false
+	default:
+		return true
+	}
+}
+
+func CloseConn(baseC any) {
+	qc, ok := baseC.(quic.Connection)
+	if ok {
+		qc.CloseWithError(0, "")
+	} else {
+		log.Panicln("quic.CloseConn called with illegal parameter", reflect.TypeOf(baseC).String(), baseC)
+	}
+}
+
+type arguments struct {
+	useHysteria, hysteria_manual, early bool
+	customMaxStreamsInOneConn           int64
+	hysteriaMaxByteCount                int
+}
 
 type Creator struct{}
 
@@ -105,14 +114,19 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 		useHysteria, hysteria_manual, maxbyteCount, _ = getExtra(conf.Extra)
 	}
 
-	return NewClient(&conf.Addr, alpn, conf.Host, conf.TlsConf.InsecureSkipVerify, useHysteria, maxbyteCount, hysteria_manual, conf.IsEarly), nil
+	return NewClient(&conf.Addr, alpn, conf.Host, conf.TlsConf.InsecureSkipVerify, arguments{
+		early:                conf.IsEarly,
+		useHysteria:          useHysteria,
+		hysteria_manual:      hysteria_manual,
+		hysteriaMaxByteCount: maxbyteCount,
+	}), nil
 }
 
 func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
 
 	var useHysteria, hysteria_manual bool
 	var maxbyteCount int
-	var maxStreamCountInOneSession int64
+	var maxStreamCountInOneConn int64
 
 	tlsConf := *conf.TlsConf
 	if len(tlsConf.NextProtos) == 0 {
@@ -121,28 +135,31 @@ func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
 
 	if conf.Extra != nil {
 
-		useHysteria, hysteria_manual, maxbyteCount, maxStreamCountInOneSession = getExtra(conf.Extra)
+		useHysteria, hysteria_manual, maxbyteCount, maxStreamCountInOneConn = getExtra(conf.Extra)
 
 	}
 
 	return &Server{
-		addr:                          conf.Addr.String(),
-		tlsConf:                       tlsConf,
-		useHysteria:                   useHysteria,
-		hysteria_manual:               hysteria_manual,
-		hysteriaMaxByteCount:          maxbyteCount,
-		customMaxStreamCountInOneConn: maxStreamCountInOneSession,
+		addr:    conf.Addr.String(),
+		tlsConf: tlsConf,
+		args: arguments{
+			useHysteria:               useHysteria,
+			hysteria_manual:           hysteria_manual,
+			hysteriaMaxByteCount:      maxbyteCount,
+			customMaxStreamsInOneConn: maxStreamCountInOneConn,
+			early:                     conf.IsEarly,
+		},
 	}, nil
 }
 
 func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 	maxbyteCount int,
-	maxStreamCountInOneSession int64) {
+	maxStreamsInOneConn int64) {
 
-	if thing := extra["maxStreamCountInOneSession"]; thing != nil {
+	if thing := extra["maxStreamsInOneConn"]; thing != nil {
 		if count, ok := thing.(int64); ok && count > 0 {
-			log.Println("maxStreamCountInOneSession,", count)
-			maxStreamCountInOneSession = count
+			log.Println("maxStreamsInOneConn,", count)
+			maxStreamsInOneConn = count
 
 		}
 

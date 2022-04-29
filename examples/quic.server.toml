@@ -11,12 +11,16 @@ key = "cert.key"
 advancedLayer = "quic"
 #alpn = ["asdfsadf"]    #如果指定alpn，则客户端和服务端都要指定，而且要相同
 
+# early = true # 开启 quic 0-rtt功能。注意, 两端都要开启，且 v2ray/xray没有这个功能.
+
 # hy_manual的意思是手动挡, 注意, 你要想提高下载速度，需要手动调节服务端的挡;
 #extra = { congestion_control = "hy", mbps = 100, hy_manual = true } 
 #extra = { congestion_control = "hy", mbps = 3000 } 
-#extra = { maxStreamCountInOneSession = 6 }  # maxStreamCountInOneSession默认为4. 该值越大, 对浏览网页的延迟降低越多，但是对下载、测速等情况的负优化越大. 鱼和熊掌不可兼得. 自行调节. 如果调为1, 就相当于 单路单用
+#extra = { maxStreamsInOneConn = 6 }  
 
-# early = true # 开启 quic 0-rtt功能。注意, 两端都要开启，且 v2ray/xray没有这个功能.
+# maxStreamsInOneConn 默认为4. 该值越大, 对浏览网页的延迟降低越多， 特征越隐蔽； 
+# 但是对下载、测速等情况的负优化越大. 鱼和熊掌不可兼得. 自行调节. 如果调为1, 就相当于 单路单用
+
 
 [[dial]]
 protocol = "direct"

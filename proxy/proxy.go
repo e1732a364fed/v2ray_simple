@@ -41,6 +41,13 @@ func (mh *MuxMarkerConn) IsMux() {}
 // 也有可能是有人通过 nc 来测试，也会遇到这种读不到 firstpayload的情况
 const FirstPayloadTimeout = time.Millisecond * 100
 
+//used for realy relay progress. See source code of v2ray_simple for details.
+type RoutingEnv struct {
+	RoutePolicy  *netLayer.RoutePolicy
+	MainFallback *httpLayer.ClassicFallback
+	DnsMachine   *netLayer.DNSMachine
+}
+
 // Client 用于向 服务端 拨号.
 //服务端是一种 “泛目标”代理，所以我们客户端的 Handshake 要传入目标地址, 来告诉它 我们 想要到达的 目标地址.
 // 一个Client 掌握从最底层的tcp等到最上层的 代理协议间的所有数据;
@@ -164,13 +171,13 @@ type ProxyCommon interface {
 	//默认回落地址.
 	GetFallback() *netLayer.Addr
 
-	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
+	CanFallback() bool //如果能fallback，则handshake失败后，可能会专门返回 httpLayer.FallbackErr,如监测到返回了 FallbackErr, 则main函数会进行 回落处理.
 
-	Path() string
+	Path() string //指定的 path
 
 	/////////////////// 高级层 ///////////////////
 
-	AdvancedLayer() string //如果使用了ws或者grpc，这个要返回 ws 或 grpc
+	AdvancedLayer() string //所使用的高级层的协议名称
 
 	GetAdvClient() advLayer.Client
 	GetAdvServer() advLayer.Server

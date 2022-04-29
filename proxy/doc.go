@@ -87,10 +87,10 @@ New Model - VSI 新的VSI 模型
 		"layer5_settings": {	//或者叫 tls_settings，
 			"tls":{"insecure": true},
 			"utls":{}
-			// 可以配置tls 层分流（sni 和 alpn）
+			// 可以配置tls 层分流/回落（sni 和 alpn）
 		},
 		"layer6_settings": {	//或者叫 http_settings
-			//可以配置http path分流 或者 host分流
+			//可以配置http path分流 /回落或者 header分流/回落
 		},
 		"layer7_settings": {	//或者叫 advancedLayer_settings
 			"ws":{},
@@ -141,8 +141,6 @@ Contents of proxy package - proxy包内容
 而 Client 和 Server 接口 是 具体利用该架构的 客户端 和 服务端，都位于VSI中的第八层.
 
 使用 RegisterClient 和 RegisterServer 来注册新的实现.
-
-还定义了关于udp 转发 的机制，该部分直接参考 relay_udp.go 即可.
 
 Server and Client
 

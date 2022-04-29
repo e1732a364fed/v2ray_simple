@@ -249,25 +249,25 @@ func (uc *UDPConn) Close() error {
 	return nil
 }
 
-func (u *UDPConn) CloseConnWithRaddr(_ Addr) error {
-	return u.Close()
+func (uc *UDPConn) CloseConnWithRaddr(_ Addr) error {
+	return uc.Close()
 
 }
 
-func (b *UDPConn) LocalAddr() net.Addr         { return b.realConn.LocalAddr() }
-func (b *UDPConn) RemoteAddr() net.Addr        { return b.peerAddr }
-func (b *UDPConn) RemoteUDPAddr() *net.UDPAddr { return b.peerAddr }
+func (uc *UDPConn) LocalAddr() net.Addr         { return uc.realConn.LocalAddr() }
+func (uc *UDPConn) RemoteAddr() net.Addr        { return uc.peerAddr }
+func (uc *UDPConn) RemoteUDPAddr() *net.UDPAddr { return uc.peerAddr }
 
-func (b *UDPConn) SetWriteDeadline(t time.Time) error {
-	b.writeDeadline.Set(t)
+func (uc *UDPConn) SetWriteDeadline(t time.Time) error {
+	uc.writeDeadline.Set(t)
 	return nil
 }
-func (b *UDPConn) SetReadDeadline(t time.Time) error {
-	b.readDeadline.Set(t)
+func (uc *UDPConn) SetReadDeadline(t time.Time) error {
+	uc.readDeadline.Set(t)
 	return nil
 }
-func (b *UDPConn) SetDeadline(t time.Time) error {
-	b.readDeadline.Set(t)
-	b.writeDeadline.Set(t)
+func (uc *UDPConn) SetDeadline(t time.Time) error {
+	uc.readDeadline.Set(t)
+	uc.writeDeadline.Set(t)
 	return nil
 }

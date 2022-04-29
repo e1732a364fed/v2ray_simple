@@ -149,18 +149,15 @@ UMFURS 信息内容：1字节atype，几字节的IP（视ip为ipv4和ipv6. 因�
 自己拨过的号所使用的地址（A）和该拨号产生的 UDPConn （U）作为一对 存入 map ；然后向（A）传来的任何其它未知地址（B）也和 （U）一起作为一对 存入 map
 
 
-
-这个行为可以直接参考  direct/client.go 里的 RelayUDP_to_Direct(extractor proxy.UDP_Extractor) 函数。该函数就实现了fullcone
-
-
-我规定，如果一个vless v1客户端 第一次想要发起 udp请求，必须先 发送 Cmd_CRUMFURS 命令
-
 CRUMFURS 信道与普通UDP信道一样，要传 udp长度头。在应用ws或者grpc后则应不传，这个等我实现ws或grpc了再说
 
 ### 流量特征的避免
-不过，为了避免 【同时具有两个tcp链接，且一个tcp链接只有入方向，没有出方向】 的流量特征，我们实际上不能让crumfurs成为真正的单独通道。
 
-所以, 我们 crumfurs信息的传输要隐藏在普通链接中。 所以我们udp数据头部除了长度头之外，还要有一字节的 crumfurs标识，如果为0 则意味着没有 crumfurs信息产生，而如果为1的话，后面会附带crumfurs信息。
+不过，为了避免 【同时具有两个tcp链接，且一个tcp链接只有入方向，没有出方向】 的流量特征，我们实际上不能让crumfurs成为真正的单独通道，否则会被审查者轻易察觉。
+
+所以上面讨论中 crumfurs 放在一个单独信道 实际上不切实际的。
+
+我们 crumfurs信息的传输要隐藏在普通链接中。 所以我们udp数据头部除了长度头之外，还要有一字节的 crumfurs标识，如果为0 则意味着没有 crumfurs信息产生，而如果为1的话，后面会附带crumfurs信息。
 
 这样的话，也不用单独一个 crumfurs命令, 也不用单独拨号crumfurs信道。
 

@@ -5,6 +5,7 @@ import (
 	"net"
 	_ "unsafe"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"google.golang.org/grpc"
 )
@@ -17,7 +18,7 @@ func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 type Server struct {
 	UnimplementedStreamServer
 
-	newConnChan chan net.Conn //会在 main.go 被调用
+	newConnChan chan net.Conn
 
 	ctx context.Context
 
@@ -37,10 +38,14 @@ func (*Server) IsSuper() bool {
 	return false
 }
 
+func (s *Server) Stop() {
+
+}
+
 //  StartHandle方法 被用于 手动给 grpc提供新连接.
 // 在本作中  我们不使用 grpc的listen的方法。这样更加灵活.
-//非阻塞.
-func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn) {
+//非阻塞. 暂不支持回落。
+func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
 
 	s.newConnChan = theChan
 
@@ -60,10 +65,6 @@ func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 
 	utils.Info("Grpc Got New Tun")
 
-	if s.ctx == nil {
-		s.ctx = context.Background()
-	}
-
 	tunCtx, cancel := context.WithCancel(s.ctx)
 	s.newConnChan <- newConn(stream_TunServer, cancel)
 	<-tunCtx.Done()
@@ -81,10 +82,6 @@ func (s *Server) TunMulti(stream_TunMultiServer Stream_TunMultiServer) error {
 
 	utils.Info("Grpc Got New MultiTun")
 
-	if s.ctx == nil {
-		s.ctx = context.Background()
-	}
-
 	tunCtx, cancel := context.WithCancel(s.ctx)
 	s.newConnChan <- newMultiConn(stream_TunMultiServer, cancel)
 	<-tunCtx.Done()
@@ -93,16 +90,13 @@ func (s *Server) TunMulti(stream_TunMultiServer Stream_TunMultiServer) error {
 }
 
 // NewServer 以 自定义 serviceName 来创建一个新 Server
-// 返回一个 NewConnChan 用于接收新连接
 func NewServer(serviceName string) *Server {
 	gs := grpc.NewServer()
 
-	//newConnChan := make(chan net.Conn, 10)
-
 	s := &Server{
-		//NewConnChan: newConnChan, //该NewConnChan目前是永远不会被关闭的, 因为我们始终在监听新连接
 		gs:          gs,
 		serviceName: serviceName,
+		ctx:         context.Background(),
 	}
 
 	registerStreamServer_withName(gs, s, serviceName)

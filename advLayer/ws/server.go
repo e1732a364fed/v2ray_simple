@@ -49,6 +49,7 @@ func (*Server) IsMux() bool {
 func (*Server) IsSuper() bool {
 	return false
 }
+func (*Server) Stop() {}
 
 // Handshake 用于 websocket的 Server 监听端，建立握手. 用到了 gobwas/ws.Upgrader.
 //

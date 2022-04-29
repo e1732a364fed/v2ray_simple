@@ -1,4 +1,7 @@
-//Package advLayer contains subpackages for Advanced Layer in VSI model.
+/*Package advLayer contains subpackages for Advanced Layer in VSI model.
+
+实现包 用 ProtocolsMap 注册 Creator。
+*/
 package advLayer
 
 import (
@@ -28,12 +31,12 @@ func PrintAllProtocolNames() {
 }
 
 type Creator interface {
-	//NewClientFromURL(url *url.URL) (Client, error)
+	//NewClientFromURL(url *url.URL) (Client, error)	//todo: support url
 	NewClientFromConf(conf *Conf) (Client, error)
 	NewServerFromConf(conf *Conf) (Server, error)
 
 	GetDefaultAlpn() (alpn string, mustUse bool)
-	PackageID() string
+	PackageID() string //unique for each package
 }
 
 type Conf struct {
@@ -42,9 +45,9 @@ type Conf struct {
 	Host    string
 	Addr    netLayer.Addr
 	Path    string
-	Headers map[string][]string
-	IsEarly bool           //is 0-rtt; for quic and ws.
-	Extra   map[string]any //quic: useHysteria, hysteria_manual, maxbyte; grpc: multiMode
+	Headers map[string][]string //http headers
+	IsEarly bool                //is 0-rtt or not; for quic and ws.
+	Extra   map[string]any      //quic: useHysteria, hysteria_manual, maxbyte; grpc: multiMode
 }
 
 type Client interface {
@@ -68,15 +71,14 @@ type SingleClient interface {
 type MuxClient interface {
 	Client
 
-	// If IsSuper, underlay should be nil;
+	// If IsSuper, underlay should be nil; conn must be non nil when err==nil.
 	//
 	// If not IsSuper and underlay == nil, it will return error if it can't find any extablished connection.
 	// Usually underlay  is tls.Conn.
 	GetCommonConn(underlay net.Conn) (conn any, err error)
 
+	//underlay is conn returned from  GetCommonConn
 	DialSubConn(underlay any) (net.Conn, error)
-
-	ProcessWhenFull(underlay any) //for quic
 }
 
 type Server interface {
@@ -85,6 +87,7 @@ type Server interface {
 
 	GetPath() string //for ws and grpc
 
+	Stop()
 }
 
 //ws
@@ -92,16 +95,24 @@ type SingleServer interface {
 	Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn) (net.Conn, error)
 }
 
+// http level fallback metadata
+type FallbackMeta struct {
+	FirstBuffer *bytes.Buffer
+	Path        string
+	Conn        net.Conn
+}
+
 //grpc
 type MuxServer interface {
-	//non-blocking
-	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn)
+
+	//non-blocking. if fallbackChan is not nil, then it can serve for fallback feature.
+	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackChan chan FallbackMeta)
 }
 
 //quic
 type SuperMuxServer interface {
 	MuxServer
 
-	//non-blocking.  Super会直接掌控 原始链接的 监听过程, 并直接向 newSubConnChan 传递 子连接。
+	//non-blocking.  Super will listen raw conn directly, and pass subStreamConn to newSubConnChan。Can stop the listening progress by closer.Close().
 	StartListen() (newSubConnChan chan net.Conn, closer io.Closer)
 }

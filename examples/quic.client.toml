@@ -27,6 +27,8 @@ advancedLayer = "quic"
 
 # tls = true
 
+# early = true # 0-rtt
+
 # 我们可以选择性使用 “hysteria 阻塞控制” 方法, 但是协议依然为quic协议。具体请参考本作作者对hysteria的讨论
 # 不想用hy阻控的话就注释掉. 
 #extra = { congestion_control = "hy", mbps = 3000 } 
@@ -39,7 +41,3 @@ advancedLayer = "quic"
 # 这里我们配置为所在网络最大上传带宽即可.
 
 # 比如我们client.toml里配置 那就是 【客户端的最大上传速度、服务端的最大下载速度】的最小值，server.toml里配置对我们客户端来说就是 【客户端的最大下载速度、服务端的最大上传速度】的最小值.
-
-# 实测似乎mac上quic最大的网速就只能够达到 1400mbps左右，配置再大的数也没用
-
-# early = true 
