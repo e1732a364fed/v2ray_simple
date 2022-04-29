@@ -30,6 +30,11 @@ type Client struct {
 }
 
 func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, args arguments) *Client {
+
+	if args.hysteriaMaxByteCount <= 0 {
+		args.hysteriaMaxByteCount = Default_hysteriaMaxByteCount
+	}
+
 	return &Client{
 		serverAddrStr: addr.String(),
 		tlsConf: tls.Config{
@@ -143,9 +148,6 @@ func (c *Client) getCommonConn(_ net.Conn) (*connState, error) {
 	}
 
 	if c.useHysteria {
-		if c.hysteriaMaxByteCount <= 0 {
-			c.hysteriaMaxByteCount = Default_hysteriaMaxByteCount
-		}
 
 		if c.hysteria_manual {
 			bs := NewBrutalSender_M(congestion.ByteCount(c.hysteriaMaxByteCount))

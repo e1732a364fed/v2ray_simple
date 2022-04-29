@@ -41,7 +41,7 @@ func (mh *MuxMarkerConn) IsMux() {}
 // 也有可能是有人通过 nc 来测试，也会遇到这种读不到 firstpayload的情况
 const FirstPayloadTimeout = time.Millisecond * 100
 
-//used for realy relay progress. See source code of v2ray_simple for details.
+//used in real relay progress. See source code of v2ray_simple for details.
 type RoutingEnv struct {
 	RoutePolicy  *netLayer.RoutePolicy
 	MainFallback *httpLayer.ClassicFallback
@@ -222,8 +222,6 @@ type ProxyCommonStruct struct {
 
 	advC advLayer.Client
 	advS advLayer.Server
-
-	//grpc_multi   bool
 
 	FallbackAddr *netLayer.Addr
 

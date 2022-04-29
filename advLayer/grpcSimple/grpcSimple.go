@@ -1,4 +1,4 @@
-/*Package grpcHardcore implements grpc tunnel without importing google.golang.org/grpc.
+/*Package grpcSimple implements grpc tunnel without importing google.golang.org/grpc.
 
 Reference
 

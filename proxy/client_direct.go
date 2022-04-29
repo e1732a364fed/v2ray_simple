@@ -9,15 +9,12 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-const directName = "direct"
+const DirectName = "direct"
 
-func init() {
-	RegisterClient(directName, &DirectClientCreator{})
-}
+//implements ClientCreator for direct
+type DirectCreator struct{}
 
-type DirectClientCreator struct{}
-
-func (DirectClientCreator) NewClientFromURL(url *url.URL) (Client, error) {
+func (DirectCreator) NewClientFromURL(url *url.URL) (Client, error) {
 	d := &DirectClient{}
 
 	nStr := url.Query().Get("fullcone")
@@ -28,7 +25,7 @@ func (DirectClientCreator) NewClientFromURL(url *url.URL) (Client, error) {
 	return d, nil
 }
 
-func (DirectClientCreator) NewClient(dc *DialConf) (Client, error) {
+func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 	d := &DirectClient{}
 	d.isfullcone = dc.Fullcone
 	return d, nil
@@ -40,7 +37,7 @@ type DirectClient struct {
 	isfullcone bool
 }
 
-func (*DirectClient) Name() string { return directName }
+func (*DirectClient) Name() string { return DirectName }
 
 //若 underlay 为nil，则会对target进行拨号, 否则直接返回underlay。
 func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {

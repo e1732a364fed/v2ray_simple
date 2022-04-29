@@ -112,13 +112,15 @@ func TestTCP(protocol string, version int, port string, t *testing.T) {
 
 // 完整模拟整个 protocol 的udp请求 过程，即 客户端连接代理服务器，代理服务器试图访问远程服务器，这里是使用的模拟的办法模拟出一个远程udp服务器；
 // 其他tcp测试因为比较简单，不需要第二步测试，而这里需要
-func TestUDP(protocol string, version int, port string, use_multi int, t *testing.T) {
+func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *testing.T) {
 	utils.LogLevel = utils.Log_debug
 	utils.InitLog()
 
+	t.Log("fakeServerEndLocalServer port is ", proxyPort)
+
 	fmtStr := protocol + "://a684455c-b14f-11ea-bf0d-42010aaa0003@127.0.0.1:%s?version=%d&vless1_udp_multi=%d"
 
-	url := fmt.Sprintf(fmtStr, port, version, use_multi)
+	url := fmt.Sprintf(fmtStr, proxyPort, version, use_multi)
 	fakeServerEndLocalServer, hase, errx := ServerFromURL(url)
 	if hase {
 		t.Log("fakeClientEndLocalServer parse err", errx)
@@ -131,13 +133,13 @@ func TestUDP(protocol string, version int, port string, use_multi int, t *testin
 		t.FailNow()
 	}
 
-	thePort := netLayer.RandPort(true, true)
+	fakeRealUDPServerPort := netLayer.RandPort(true, true)
 
-	t.Log("fake remote udp server port is ", thePort)
+	t.Log("fake remote udp server port is ", fakeRealUDPServerPort)
 
 	fakeRealUDPServerListener, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
-		Port: thePort,
+		Port: fakeRealUDPServerPort,
 	})
 	if err != nil {
 		t.Log("监听失败 udp ", err)
@@ -194,10 +196,10 @@ func TestUDP(protocol string, version int, port string, use_multi int, t *testin
 
 	}()
 
-	targetStr_forFakeUDPServer := "127.0.0.1:" + strconv.Itoa(thePort)
+	targetStr_forFakeUDPServer := "127.0.0.1:" + strconv.Itoa(fakeRealUDPServerPort)
 	targetStruct_forFakeUDPServer := netLayer.Addr{
 		IP:      net.IPv4(127, 0, 0, 1),
-		Port:    thePort,
+		Port:    fakeRealUDPServerPort,
 		Network: "udp",
 	}
 	// 监听 Client End LocalServer

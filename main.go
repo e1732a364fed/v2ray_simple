@@ -38,7 +38,7 @@ var (
 )
 
 var (
-	DirectClient, _, _ = proxy.ClientFromURL("direct://")
+	DirectClient, _, _ = proxy.ClientFromURL(proxy.DirectName + "://")
 
 	ServersTagMap = make(map[string]proxy.Server)
 	ClientsTagMap = make(map[string]proxy.Client)
@@ -188,14 +188,14 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 	//通过err找出 并赋值给 iics.theFallbackFirstBuffer
 	{
 
-		fe, ok := err.(*utils.ErrFirstBuffer)
+		fe, ok := err.(*utils.ErrBuffer)
 		if !ok {
 			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
 			iics.wrappedConn.Close()
 			return false
 		}
 
-		if firstbuffer := fe.First; firstbuffer == nil {
+		if firstbuffer := fe.Buf; firstbuffer == nil {
 			//不应该，至少能读到1字节的。
 
 			panic("No FirstBuffer")
@@ -727,7 +727,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 		outtag := iics.RoutingEnv.RoutePolicy.GetOutTag(desc)
 
-		if outtag == "direct" {
+		if outtag == proxy.DirectName {
 			client = DirectClient
 			iics.routedToDirect = true
 			routed = true
@@ -838,7 +838,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 }
 
 //dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手。
-// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux )。
+// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux ); -10 标识因为client为reject而关闭了连接。
 // 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到
 func dialClient(targetAddr netLayer.Addr,
 	client proxy.Client,
@@ -853,6 +853,12 @@ func dialClient(targetAddr netLayer.Addr,
 	realTargetAddr netLayer.Addr,
 	clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder,
 	result int) {
+
+	if client.Name() == "reject" && wlc != nil {
+		client.Handshake(wlc, nil, netLayer.Addr{})
+		result = -10
+		return
+	}
 
 	isudp := targetAddr.IsUDP()
 
@@ -917,16 +923,18 @@ func dialClient(targetAddr netLayer.Addr,
 	}
 	var clientConn net.Conn
 
-	//var grpcClientConn any//grpc.ClientConn
 	var dialedCommonConn any
 
-	not_udp_direct := !(client.Name() == "direct" && isudp)
+	not_udp_direct := !(client.Name() == proxy.DirectName && isudp)
 
-	// direct 的udp 是自己拨号的,因为要考虑到fullcone。
-	//
-	// 不是direct的udp的话，也要分情况:
-	//如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
-	// Instead, 我们要试图从grpc中取出已经拨号好了的 grpc链接，获取不到现有连接时，再拨号
+	/*
+		direct 的udp 是自己拨号的,因为要考虑到fullcone。
+
+		不是direct的udp的话，也要分情况:
+		如果是单路的, 则我们在此dial, 如果是多路复用, 则不行, 因为要复用同一个连接
+		Instead, 我们要试图 取出已经拨号好了的 连接 ，获取不到现有连接后 再拨号
+	*/
+
 	adv := client.AdvancedLayer()
 	advClient := client.GetAdvClient()
 

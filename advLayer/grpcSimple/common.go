@@ -26,37 +26,39 @@ func commonWrite(b []byte) *bytes.Buffer {
 	return buf
 }
 
-type commonReadPart struct {
+type commonPart struct {
 	remain int
 	br     *bufio.Reader
+
+	la, ra net.Addr
 }
 
-func (*commonReadPart) LocalAddr() net.Addr  { return nil }
-func (*commonReadPart) RemoteAddr() net.Addr { return nil }
+func (c *commonPart) LocalAddr() net.Addr  { return c.la }
+func (c *commonPart) RemoteAddr() net.Addr { return c.ra }
 
-func (g *commonReadPart) Read(b []byte) (n int, err error) {
+func (c *commonPart) Read(b []byte) (n int, err error) {
 
-	if g.remain > 0 {
+	if c.remain > 0 {
 
-		size := g.remain
+		size := c.remain
 		if len(b) < size {
 			size = len(b)
 		}
 
-		n, err = io.ReadFull(g.br, b[:size])
-		g.remain -= n
+		n, err = io.ReadFull(c.br, b[:size])
+		c.remain -= n
 		return
 	}
 
-	_, err = g.br.Discard(6)
+	_, err = c.br.Discard(6)
 	if err != nil {
 
 		return 0, err
 	}
 
-	protobufPayloadLen, err := binary.ReadUvarint(g.br)
+	protobufPayloadLen, err := binary.ReadUvarint(c.br)
 	if err != nil {
-		return 0, ErrInvalidLength
+		return 0, utils.ErrInErr{ErrDesc: "binary.ReadUvarint failed", ErrDetail: err, ExtraIs: []error{utils.ErrInvalidData}}
 	}
 
 	size := int(protobufPayloadLen)
@@ -64,18 +66,24 @@ func (g *commonReadPart) Read(b []byte) (n int, err error) {
 		size = len(b)
 	}
 
-	n, err = io.ReadFull(g.br, b[:size])
+	n, err = io.ReadFull(c.br, b[:size])
 	if err != nil {
 		return
 	}
 
 	remain := int(protobufPayloadLen) - n
 	if remain > 0 {
-		g.remain = remain
+		c.remain = remain
 	}
 	return n, nil
 }
 
+//timeouter 修改自 clash的gun.go, 是一种简单且不完美的deadline实现。
+// clash的代码没有考虑到 设置 time.Time{} 空结构时要stop timer，我们加上了。
+//
+// timeouter一旦超时，就会直接关闭连接，这是无法恢复的。而且 读和写共用同一个deadline。
+// 如果要求高的话，还是建议使用 netLayer.EasyDeadline.
+// 但因为比较极简，所以我们保留了下来。
 type timeouter struct {
 	deadline *time.Timer
 
@@ -93,19 +101,22 @@ func (g *timeouter) SetDeadline(t time.Time) error {
 
 		if t == (time.Time{}) {
 			g.deadline.Stop()
+			g.deadline = nil
 			return nil
 		}
 
+		d = time.Until(t)
 		g.deadline.Reset(d)
-		return nil
+
 	} else {
 		if t == (time.Time{}) {
 			return nil
 		}
-		d = time.Until(t)
 
+		d = time.Until(t)
+		g.deadline = time.AfterFunc(d, g.closeFunc)
 	}
 
-	g.deadline = time.AfterFunc(d, g.closeFunc)
 	return nil
+
 }

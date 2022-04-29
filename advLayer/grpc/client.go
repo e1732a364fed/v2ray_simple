@@ -102,7 +102,7 @@ func DialNewSubConn(path string, clientconn ClientConn, addr *netLayer.Addr, isM
 
 	ctx, cancelF := context.WithCancel(context.Background())
 	if isMulti {
-		stream_multiTunClient, err := streamClient.multitun_withName(ctx, path)
+		stream_multiTunClient, err := streamClient.tunMulti_withName(ctx, path)
 		if err != nil {
 			clientconnMutex.Lock()
 			delete(clientconnMap, addr.GetHashable())
@@ -131,7 +131,8 @@ type streamClient_withName interface {
 	StreamClient
 
 	tun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunClient, error)
-	multitun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error)
+
+	tunMulti_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error)
 }
 
 //比照 protoc生成的 stream_grpc.pb.go 中的 Tun方法
@@ -141,7 +142,7 @@ func (c *streamClient) tun_withName(ctx context.Context, name string, opts ...gr
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	stream, err := c.cc.NewStream(ctx, &ServerDesc_withName(name).Streams[0], "/"+name+"/Tun", opts...)
+	stream, err := c.cc.NewStream(ctx, &desc_withName(name).Streams[0], "/"+name+"/Tun", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -149,12 +150,12 @@ func (c *streamClient) tun_withName(ctx context.Context, name string, opts ...gr
 	return x, nil
 }
 
-func (c *streamClient) multitun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error) {
+func (c *streamClient) tunMulti_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error) {
 	//这里ctx不能为nil，否则会报错
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	stream, err := c.cc.NewStream(ctx, &ServerDesc_withName(name).Streams[1], "/"+name+"/TunMulti", opts...)
+	stream, err := c.cc.NewStream(ctx, &desc_withName(name).Streams[1], "/"+name+"/TunMulti", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -215,8 +216,6 @@ func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 	if cc, ok := underlay.(ClientConn); ok {
 		return DialNewSubConn(c.Path, cc, &c.ServerAddr, c.ismulti)
 	} else {
-		return nil, utils.ErrInvalidParameter
+		return nil, utils.ErrWrongParameter
 	}
 }
-
-func (c *Client) ProcessWhenFull(underlay any) {}

@@ -596,10 +596,10 @@ func interactively_hotRemoveServerOrClient() {
 	printAllState(os.Stdout)
 
 	var items []string
-	if len(AllServers) > 0 {
+	if len(allServers) > 0 {
 		items = append(items, "listen")
 	}
-	if len(AllClients) > 0 {
+	if len(allClients) > 0 {
 		items = append(items, "dial")
 	}
 
@@ -629,7 +629,7 @@ func interactively_hotRemoveServerOrClient() {
 
 	var theInt int64
 
-	if (will_delete_dial && len(AllClients) > 1) || (will_delete_listen && len(AllServers) > 1) {
+	if (will_delete_dial && len(allClients) > 1) || (will_delete_listen && len(allServers) > 1) {
 
 		validateFunc := func(input string) error {
 			theInt, err = strconv.ParseInt(input, 10, 64)
@@ -637,11 +637,11 @@ func interactively_hotRemoveServerOrClient() {
 				return errors.New("Invalid number")
 			}
 
-			if will_delete_dial && int(theInt) >= len(AllClients) {
+			if will_delete_dial && int(theInt) >= len(allClients) {
 				return errors.New("must with in len of dial array")
 			}
 
-			if will_delete_listen && int(theInt) >= len(AllServers) {
+			if will_delete_listen && int(theInt) >= len(allServers) {
 				return errors.New("must with in len of listen array")
 			}
 
@@ -669,15 +669,15 @@ func interactively_hotRemoveServerOrClient() {
 	will_delete_index = int(theInt)
 
 	if will_delete_dial {
-		AllClients[will_delete_index].Stop()
-		AllClients = utils.TrimSlice(AllClients, will_delete_index)
+		allClients[will_delete_index].Stop()
+		allClients = utils.TrimSlice(allClients, will_delete_index)
 	}
 	if will_delete_listen {
-		ListenerArray[will_delete_index].Close()
-		AllServers[will_delete_index].Stop()
+		listenerArray[will_delete_index].Close()
+		allServers[will_delete_index].Stop()
 
-		AllServers = utils.TrimSlice(AllServers, will_delete_index)
-		ListenerArray = utils.TrimSlice(ListenerArray, will_delete_index)
+		allServers = utils.TrimSlice(allServers, will_delete_index)
+		listenerArray = utils.TrimSlice(listenerArray, will_delete_index)
 
 	}
 

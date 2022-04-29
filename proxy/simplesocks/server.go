@@ -65,9 +65,9 @@ func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer
 errorPart:
 
 	//所返回的 buffer 必须包含所有数据，而 bytes.Buffer 是不支持回退的，所以只能重新 New
-	returnErr = &utils.ErrFirstBuffer{
-		Err:   returnErr,
-		First: bytes.NewBuffer(readbs[:wholeReadLen]),
+	returnErr = &utils.ErrBuffer{
+		Err: returnErr,
+		Buf: bytes.NewBuffer(readbs[:wholeReadLen]),
 	}
 	return
 

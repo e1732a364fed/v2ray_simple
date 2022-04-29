@@ -8,7 +8,8 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//trojan比较简洁，这个 UserTCPConn 只是用于读取握手读取时读到的剩余的缓存
+//trojan比较简洁，这个 UserTCPConn 只是用于读取握手读取时读到的剩余的缓存。
+//实现 net.Conn, io.ReaderFrom, utils.MultiWriter, netLayer.Splicer
 type UserTCPConn struct {
 	net.Conn
 	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader

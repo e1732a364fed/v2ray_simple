@@ -49,9 +49,9 @@ type TargetDescription struct {
 }
 
 // Set 是 “集合” 的意思, 是一组相同类型的数据放到一起。
-//  这里的相同点，就是它们同属于 将发往一个方向, 即同属一个路由策略
-// 任意一个参数匹配后，都将发往相同的方向，由该方向OutTag 指定
-// RouteSet 只负责把一些属性相同的 “网络层/传输层 特征” 放到一起
+//  这里的相同点，就是它们同属于 将发往一个方向, 即同属一个路由策略。
+// 任意一个参数匹配后，都将发往相同的方向，由该方向OutTag 指定。
+// RouteSet 只负责把一些属性相同的 “网络层/传输层 特征” 放到一起。
 type RouteSet struct {
 	//网络层
 	NetRanger cidranger.Ranger    //一个范围
@@ -215,7 +215,7 @@ func (sg *RouteSet) IsAddrIn(a Addr) bool {
 	return false
 }
 
-//一个完整的 所有RouteSet的列表，进行路由时，直接遍历即可
+//一个完整的 所有RouteSet的列表，进行路由时，直接遍历即可。
 // 所谓的路由实际上就是分流。
 type RoutePolicy struct {
 	List []*RouteSet
@@ -231,9 +231,9 @@ func (rp *RoutePolicy) AddRouteSet(rs *RouteSet) {
 	rp.List = append(rp.List, rs)
 }
 
-// 返回一个 proxy.Client 的 tag
-// 默认情况下，始终具有direct这个tag以及 proxy这个tag，无需用户额外在配置文件中指定
-// 默认如果不匹配任何值的话，就会流向 "proxy" tag，也就是客户设置的 remoteClient的值
+// 返回一个 proxy.Client 的 tag。
+// 默认情况下，始终具有direct这个tag以及 proxy这个tag，无需用户额外在配置文件中指定。
+// 默认如果不匹配任何值的话，就会流向 "proxy" tag，也就是客户设置的 remoteClient的值。
 func (rp *RoutePolicy) GetOutTag(td *TargetDescription) string {
 	for _, s := range rp.List {
 		if s.IsIn(td) {

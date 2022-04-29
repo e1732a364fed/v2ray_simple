@@ -18,11 +18,12 @@ type connState struct {
 	redialing bool
 }
 
-//给 quic.Stream 添加 方法使其满足 net.Conn.
-// quic.Stream 唯独不支持 LocalAddr 和 RemoteAddr 方法.
-// 因为它是通过 StreamID 来识别连接. 不过session是有的。
+//implements net.Conn.
 type StreamConn struct {
 	quic.Stream
+
+	// quic.Stream 与 net.Conn对比， 唯独不支持 LocalAddr 和 RemoteAddr 方法.
+	// 因为它是通过 StreamID 来识别连接. 不过我们只要设置为 Connection的地址即可。
 	laddr, raddr     net.Addr
 	relatedConnState *connState
 	isclosed         bool

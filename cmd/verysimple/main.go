@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"runtime/pprof"
 	"strings"
 	"syscall"
@@ -32,16 +33,16 @@ var (
 	standardConf proxy.StandardConf
 	simpleConf   proxy.SimpleConf
 
-	AllServers = make([]proxy.Server, 0, 8) //储存除tproxy之外 所有运行的 inServer
-	AllClients = make([]proxy.Client, 0, 8)
+	allServers = make([]proxy.Server, 0, 8) //储存除tproxy之外 所有运行的 inServer
+	allClients = make([]proxy.Client, 0, 8)
 
-	TproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
+	tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
 
-	ListenerArray []net.Listener //储存除tproxy之外 所有运行的 inServer 的 Listener
+	listenerArray []net.Listener //储存除tproxy之外 所有运行的 inServer 的 Listener
 
-	DefaultOutClient proxy.Client
+	defaultOutClient proxy.Client
 
-	RoutingEnv proxy.RoutingEnv
+	routingEnv proxy.RoutingEnv
 )
 
 func init() {
@@ -65,6 +66,21 @@ func init() {
 
 }
 
+func cleanup() {
+	//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
+	// 用下面代码以试图解决端口占用问题.
+
+	for _, listener := range listenerArray {
+		if listener != nil {
+			listener.Close()
+		}
+	}
+
+	for _, tm := range tproxyList {
+		tm.Stop()
+	}
+}
+
 func main() {
 	os.Exit(mainFunc())
 }
@@ -73,7 +89,10 @@ func mainFunc() (result int) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ce := utils.CanLogFatal("Captured panic!"); ce != nil {
-				ce.Write(zap.Any("err:", r))
+				ce.Write(
+					zap.Any("err:", r),
+					zap.String("stacktrace", string(debug.Stack())),
+				)
 			} else {
 				log.Fatalln("panic captured!", r)
 			}
@@ -162,7 +181,7 @@ func mainFunc() (result int) {
 	var Default_uuid string
 
 	if mainFallback != nil {
-		RoutingEnv.MainFallback = mainFallback
+		routingEnv.MainFallback = mainFallback
 	}
 
 	var tproxyConfs []*proxy.ListenConf
@@ -185,15 +204,15 @@ func mainFunc() (result int) {
 			netLayer.LoadMaxmindGeoipFile("")
 
 			//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
-			RoutingEnv.RoutePolicy = netLayer.NewRoutePolicy()
+			routingEnv.RoutePolicy = netLayer.NewRoutePolicy()
 			if simpleConf.MyCountryISO_3166 != "" {
-				RoutingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
+				routingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
 
 			}
 		}
 	case proxy.StandardMode:
 
-		RoutingEnv, Default_uuid = proxy.LoadEnvFromStandardConf(&standardConf)
+		routingEnv, Default_uuid = proxy.LoadEnvFromStandardConf(&standardConf)
 
 		//虽然标准模式支持多个Server，目前先只考虑一个
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
@@ -223,7 +242,7 @@ func mainFunc() (result int) {
 				continue
 			}
 
-			AllServers = append(AllServers, thisServer)
+			allServers = append(allServers, thisServer)
 			if tag := thisServer.GetTag(); tag != "" {
 				vs.ServersTagMap[tag] = thisServer
 			}
@@ -236,7 +255,7 @@ func mainFunc() (result int) {
 	case proxy.SimpleMode:
 		var hase bool
 		var eie utils.ErrInErr
-		DefaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
+		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
 		if hase {
 			if ce := utils.CanLogErr("can not create remote client"); ce != nil {
 				ce.Write(zap.Error(eie))
@@ -262,46 +281,46 @@ func mainFunc() (result int) {
 				}
 				continue
 			}
-			AllClients = append(AllClients, thisClient)
+			allClients = append(allClients, thisClient)
 
 			if tag := thisClient.GetTag(); tag != "" {
 				vs.ClientsTagMap[tag] = thisClient
 			}
 		}
 
-		if len(AllClients) > 0 {
-			DefaultOutClient = AllClients[0]
+		if len(allClients) > 0 {
+			defaultOutClient = allClients[0]
 
 		} else {
-			DefaultOutClient = vs.DirectClient
+			defaultOutClient = vs.DirectClient
 		}
 
 	}
 
 	configFileQualifiedToRun := false
 
-	if (defaultInServer != nil || len(AllServers) > 0 || len(TproxyList) > 0) && (DefaultOutClient != nil) {
+	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyList) > 0) {
 		configFileQualifiedToRun = true
 
 		if mode == proxy.SimpleMode {
-			lis := vs.ListenSer(defaultInServer, DefaultOutClient, &RoutingEnv)
+			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
 			if lis != nil {
-				ListenerArray = append(ListenerArray, lis)
+				listenerArray = append(listenerArray, lis)
 			}
 		} else {
-			for _, inServer := range AllServers {
-				lis := vs.ListenSer(inServer, DefaultOutClient, &RoutingEnv)
+			for _, inServer := range allServers {
+				lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
 
 				if lis != nil {
-					ListenerArray = append(ListenerArray, lis)
+					listenerArray = append(listenerArray, lis)
 				}
 			}
 
 			if len(tproxyConfs) > 0 {
 				for _, thisConf := range tproxyConfs {
-					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), DefaultOutClient)
+					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), defaultOutClient)
 					if tm != nil {
-						TproxyList = append(TproxyList, tm)
+						tproxyList = append(tproxyList, tm)
 					}
 
 				}
@@ -312,7 +331,7 @@ func mainFunc() (result int) {
 	}
 	//没配置可用的listen或者dial，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
-		utils.Error("No valid proxy settings available, exit now.")
+		utils.Error("No valid proxy settings available, and no cli or apiServer feature enabled, exit now.")
 		return -1
 	}
 
@@ -335,19 +354,4 @@ func mainFunc() (result int) {
 		cleanup()
 	}
 	return
-}
-
-func cleanup() {
-	//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
-	// 用下面代码以试图解决端口占用问题.
-
-	for _, listener := range ListenerArray {
-		if listener != nil {
-			listener.Close()
-		}
-	}
-
-	for _, tm := range TproxyList {
-		tm.Stop()
-	}
 }

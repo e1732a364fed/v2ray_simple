@@ -28,8 +28,7 @@ type UDPConn struct {
 	inMsgChan       chan UDPAddrData
 	inMsgChanClosed bool
 
-	readDeadline  PipeDeadline
-	writeDeadline PipeDeadline
+	EasyDeadline
 
 	clientFirstWriteChan       chan int
 	clientFirstWriteChanClosed bool
@@ -54,8 +53,16 @@ func DialUDP(raddr *net.UDPAddr) (*UDPConn, error) {
 // 在客户端没有Write之前，该udp连接实际上根本没有被建立, Read也就不可能/不应该 读到任何东西.
 func NewUDPConn(raddr *net.UDPAddr, conn *net.UDPConn, isClient bool) *UDPConn {
 	inDataChan := make(chan UDPAddrData, 20)
-	theUDPConn := &UDPConn{raddr, conn, inDataChan, false, MakePipeDeadline(),
-		MakePipeDeadline(), make(chan int), false, []byte{}, isClient}
+	theUDPConn := &UDPConn{
+		peerAddr:             raddr,
+		realConn:             conn,
+		inMsgChan:            inDataChan,
+		clientFirstWriteChan: make(chan int),
+		unread:               []byte{},
+		isClient:             isClient,
+	}
+
+	theUDPConn.InitEasyDeadline()
 
 	//不设置缓存的话，会导致发送过快 而导致丢包
 	conn.SetReadBuffer(MaxUDP_packetLen)
@@ -257,17 +264,3 @@ func (uc *UDPConn) CloseConnWithRaddr(_ Addr) error {
 func (uc *UDPConn) LocalAddr() net.Addr         { return uc.realConn.LocalAddr() }
 func (uc *UDPConn) RemoteAddr() net.Addr        { return uc.peerAddr }
 func (uc *UDPConn) RemoteUDPAddr() *net.UDPAddr { return uc.peerAddr }
-
-func (uc *UDPConn) SetWriteDeadline(t time.Time) error {
-	uc.writeDeadline.Set(t)
-	return nil
-}
-func (uc *UDPConn) SetReadDeadline(t time.Time) error {
-	uc.readDeadline.Set(t)
-	return nil
-}
-func (uc *UDPConn) SetDeadline(t time.Time) error {
-	uc.readDeadline.Set(t)
-	uc.writeDeadline.Set(t)
-	return nil
-}

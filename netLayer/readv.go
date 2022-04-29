@@ -78,25 +78,13 @@ func put_readvMem(rm *readvMem) {
 	readvPool.Put(rm)
 }
 
-/*
-//目前我们使用内存池，所以暂时不需要手动释放内存，
-//如果真需要手动申请、释放，可参考  https://studygolang.com/articles/9721
-func (rm *readvMem) destroy() {
-	rm.mr.Clear()
-	rm.mr = nil
-	rm.buffers = nil
-}*/
+/* readvFrom 用于读端 为rawRead的情况，如 从socks5或者direct读取 数据, 等裸协议的情况。
 
-/* readvFrom 用于读端实现了 readv但是写端的情况，比如 从socks5读取 数据, 等裸协议的情况。
+rm可为nil，但不建议，因为提供非nil的readvMem 可以节省内存分配开销。
 
-若 rm 未给出，会使用 get_readvMem 来初始化 缓存。
-
-返回错误时，依然会返回 原buffer 或者 在函数内部新分配的buffer.
+返回错误时，会返回 原buffer 或者 在函数内部新分配的buffer.
 
 本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
-
-小贴士：将该 [][]byte 写入io.Writer的话，只需使用 net.Buffers.WriteTo方法, 即可自动适配writev。
-不过实测writev没什么太大效果，还会造成不稳定。因为 WriteTo会篡改cap
 
 TryCopy函数使用到了本函数 来进行readv相关操作。
 */

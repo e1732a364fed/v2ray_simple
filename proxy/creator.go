@@ -13,7 +13,10 @@ import (
 
 var (
 	serverCreatorMap = make(map[string]ServerCreator)
-	clientCreatorMap = make(map[string]ClientCreator)
+	clientCreatorMap = map[string]ClientCreator{
+		DirectName: DirectCreator{},
+		RejectName: RejectCreator{},
+	}
 )
 
 func PrintAllServerNames() {
@@ -45,9 +48,15 @@ type ServerCreator interface {
 	NewServerFromURL(url *url.URL) (Server, error)
 }
 
-// 规定，每个 实现Client的包必须使用本函数进行注册
+// 规定，每个 实现Client的包必须使用本函数进行注册。
+// direct 和 reject 统一使用本包提供的方法, 自定义协议不得覆盖 direct 和 reject。
 func RegisterClient(name string, c ClientCreator) {
+	switch name {
+	case DirectName, RejectName:
+		return
+	}
 	clientCreatorMap[name] = c
+
 }
 
 // 规定，每个 实现 Server 的包必须使用本函数进行注册

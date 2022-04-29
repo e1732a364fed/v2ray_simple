@@ -14,6 +14,22 @@ import (
 //go:linkname handle_grpcRawConn google.golang.org/grpc.(*Server).handleRawConn
 func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 
+// NewServer 以 自定义 serviceName 来创建一个新 Server
+func NewServer(serviceName string) *Server {
+	gs := grpc.NewServer()
+
+	s := &Server{
+		gs:          gs,
+		serviceName: serviceName,
+		ctx:         context.Background(),
+	}
+
+	desc := desc_withName(serviceName)
+	gs.RegisterService(&desc, s)
+
+	return s
+}
+
 //Server实现 grpc生成的 StreamServer 接口，用于不断处理一个客户端传来的新需求
 type Server struct {
 	UnimplementedStreamServer
@@ -89,25 +105,10 @@ func (s *Server) TunMulti(stream_TunMultiServer Stream_TunMultiServer) error {
 	return nil
 }
 
-// NewServer 以 自定义 serviceName 来创建一个新 Server
-func NewServer(serviceName string) *Server {
-	gs := grpc.NewServer()
-
-	s := &Server{
-		gs:          gs,
-		serviceName: serviceName,
-		ctx:         context.Background(),
-	}
-
-	registerStreamServer_withName(gs, s, serviceName)
-
-	return s
-}
-
-// ServerDesc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
+// desc_withName 用于生成指定ServiceName名称 的 grpc.ServiceDesc.
 // 默认proto生成的 Stream_ServiceDesc 变量 的名称是固定的, 没办法进行自定义, 见 stream_grpc.pb.go 的最下方.
 // 所以我们才使用这个办法自定义 serviceName。
-func ServerDesc_withName(name string) grpc.ServiceDesc {
+func desc_withName(name string) grpc.ServiceDesc {
 	return grpc.ServiceDesc{
 		ServiceName: name,
 		HandlerType: (*StreamServer)(nil),
@@ -128,9 +129,4 @@ func ServerDesc_withName(name string) grpc.ServiceDesc {
 		},
 		Metadata: "gun.proto",
 	}
-}
-
-func registerStreamServer_withName(s *grpc.Server, srv StreamServer, name string) {
-	desc := ServerDesc_withName(name)
-	s.RegisterService(&desc, srv)
 }

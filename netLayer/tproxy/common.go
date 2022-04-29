@@ -69,9 +69,9 @@ https://toutyrater.github.io/app/tproxy.html
 	iptables -t mangle -A OUTPUT -j V2RAY_MASK
 
 
-Persistant iptables
+Persistent iptables
 
-单独设置iptables，重启后会消失. 下面是持久化方法
+单独设置iptables，重启后会消失. 下面是 有systemd 的系统的 持久化方法
 
 	mkdir -p /etc/iptables && iptables-save > /etc/iptables/rules.v4
 

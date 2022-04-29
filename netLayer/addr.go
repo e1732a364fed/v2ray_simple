@@ -55,44 +55,46 @@ type AddrData struct {
 // isudp is used to determine whether you want to use udp
 func RandPort(mustValid, isudp bool) (p int) {
 	p = rand.Intn(60000) + 4096
-	if mustValid {
-		if isudp {
-			listener, err := net.ListenUDP("udp", &net.UDPAddr{
-				IP:   net.IPv4(0, 0, 0, 0),
-				Port: p,
-			})
+	if !mustValid {
+		return
+	}
+	if isudp {
+		listener, err := net.ListenUDP("udp", &net.UDPAddr{
+			IP:   net.IPv4(0, 0, 0, 0),
+			Port: p,
+		})
 
-			if listener != nil {
-				listener.Close()
+		if listener != nil {
+			listener.Close()
+		}
+
+		if err != nil {
+			if ce := utils.CanLogDebug("Get RandPort udp but got err, trying again"); ce != nil {
+				ce.Write()
 			}
 
-			if err != nil {
-				if ce := utils.CanLogDebug("Get RandPort udp but got err, trying again"); ce != nil {
-					ce.Write()
-				}
+			return RandPort(mustValid, true)
+		}
+	} else {
+		listener, err := net.ListenTCP("tcp", &net.TCPAddr{
+			IP:   net.IPv4(0, 0, 0, 0),
+			Port: p,
+		})
 
-				return RandPort(mustValid, true)
-			}
-		} else {
-			listener, err := net.ListenTCP("tcp", &net.TCPAddr{
-				IP:   net.IPv4(0, 0, 0, 0),
-				Port: p,
-			})
-
-			if listener != nil {
-				listener.Close()
-
-			}
-			if err != nil {
-				if ce := utils.CanLogDebug("Get RandPort tcp but got err, trying again"); ce != nil {
-					ce.Write()
-				}
-
-				return RandPort(mustValid, false)
-			}
+		if listener != nil {
+			listener.Close()
 
 		}
+		if err != nil {
+			if ce := utils.CanLogDebug("Get RandPort tcp but got err, trying again"); ce != nil {
+				ce.Write()
+			}
+
+			return RandPort(mustValid, false)
+		}
+
 	}
+
 	return
 }
 

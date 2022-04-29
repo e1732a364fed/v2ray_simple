@@ -149,5 +149,8 @@ Server and Client
 这两个词的含义和 v2ray的 inbound 和 outbound 是等价的.
 
 在 inServer 中，我们负责监听未知连接；在 outClient 中，我们负责拨号特定目标服务器.
+
+proxy中默认实现了 direct 和 reject 这两种 Client
+
 */
 package proxy

@@ -9,12 +9,9 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
-const rejectName = "reject"
+const RejectName = "reject"
 
-func init() {
-	RegisterClient(rejectName, &RejectCreator{})
-}
-
+//implements ClientCreator for reject
 type RejectCreator struct{}
 
 func (RejectCreator) NewClientFromURL(url *url.URL) (Client, error) {
@@ -41,9 +38,9 @@ func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 	return r, nil
 }
 
-//实现了 Client, 选择性返回http403错误, 然后立即关闭连接。
+// RejectClient implements Client, optionally response a 403 and close the underlay immediately.
 //
-// "blackhole" 名字不准确，verysimple将使用 "reject"
+// "blackhole" 名字不准确, 本作 使用 "reject".
 //
 //正常的 blackhole，并不会立即关闭连接，而是悄无声息地 读 数据，并舍弃。
 //而 v2ray的 blackhole是 选择性返回 403错误 后立即关闭连接. 完全是 Reject的特性。
@@ -53,7 +50,7 @@ type RejectClient struct {
 	theType string
 }
 
-func (*RejectClient) Name() string { return rejectName }
+func (*RejectClient) Name() string { return RejectName }
 
 func (b *RejectClient) tryResponseAndClose(underlay net.Conn) {
 	switch b.theType {
@@ -64,11 +61,13 @@ func (b *RejectClient) tryResponseAndClose(underlay net.Conn) {
 	underlay.Close()
 }
 
+//optionally response a 403 and close the underlay.
 func (b *RejectClient) Handshake(underlay net.Conn, _ []byte, _ netLayer.Addr) (result io.ReadWriteCloser, err error) {
 	b.tryResponseAndClose(underlay)
 	return nil, io.EOF
 }
 
+//function the same as Handshake
 func (b *RejectClient) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLayer.MsgConn, error) {
 	b.tryResponseAndClose(underlay)
 	return nil, io.EOF

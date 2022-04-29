@@ -19,19 +19,20 @@ import (
 	"golang.org/x/net/http2"
 )
 
-var (
-	ErrInvalidLength = errors.New("invalid length")
-)
-
 var defaultClientHeader = http.Header{
 	"content-type": []string{"application/grpc"},
 	"user-agent":   []string{"grpc-go/1.41.0"},
 	"Te":           []string{"trailers"},
 }
 
+type Config struct {
+	ServiceName string
+	Host        string
+}
+
 //implements net.Conn
 type ClientConn struct {
-	commonReadPart
+	commonPart
 	timeouter
 
 	client *Client
@@ -43,11 +44,6 @@ type ClientConn struct {
 	handshakeOnce sync.Once
 	shouldClose   *atomic.Bool
 	err           error
-}
-
-type Config struct {
-	ServiceName string
-	Host        string
 }
 
 func (g *ClientConn) handshake() {
@@ -94,7 +90,7 @@ func (g *ClientConn) Read(b []byte) (n int, err error) {
 		return 0, net.ErrClosed
 	}
 
-	return g.commonReadPart.Read(b)
+	return g.commonPart.Read(b)
 
 }
 

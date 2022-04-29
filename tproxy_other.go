@@ -11,6 +11,6 @@ import (
 
 //非阻塞。
 func ListenTproxy(string, proxy.Client) (_ *tproxy.Machine) {
-	utils.Warn("Tproxy not possible on non-linux device")
+	utils.Error("Tproxy not possible on non-linux device")
 	return
 }

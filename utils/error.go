@@ -11,15 +11,15 @@ var (
 	ErrNotImplemented      = errors.New("not implemented")
 	ErrNilParameter        = errors.New("nil parameter")
 	ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
-	ErrInvalidParameter    = errors.New("invalid parameter")
 	ErrWrongParameter      = errors.New("wrong parameter")
-	ErrShortRead           = errors.New("short read")
 	ErrInvalidData         = errors.New("invalid data")
-	ErrHandled             = errors.New("handled")
-	ErrFailed              = errors.New("failed") //最无脑的Err, 在能描述清楚错误时不要使用 ErrFailed
+
+	ErrShortRead = errors.New("short read")
+	ErrHandled   = errors.New("handled")
+	ErrFailed    = errors.New("failed") //最无脑的Err, 在能描述清楚错误时不要使用 ErrFailed
 )
 
-//没啥特殊的
+//nothing special
 type NumErr struct {
 	N      int
 	Prefix string
@@ -30,18 +30,18 @@ func (ne NumErr) Error() string {
 	return ne.Prefix + strconv.Itoa(ne.N)
 }
 
-//就是带个buffer的普通ErrInErr，没啥特殊的
-type ErrFirstBuffer struct {
-	Err   error
-	First *bytes.Buffer
+//a err with buffer, nothing special
+type ErrBuffer struct {
+	Err error
+	Buf *bytes.Buffer
 }
 
-func (ef ErrFirstBuffer) Unwarp() error {
+func (ef ErrBuffer) Unwarp() error {
 
 	return ef.Err
 }
 
-func (ef ErrFirstBuffer) Error() string {
+func (ef ErrBuffer) Error() string {
 
 	return ef.Err.Error()
 }
@@ -51,6 +51,8 @@ type ErrInErr struct {
 	ErrDesc   string
 	ErrDetail error
 	Data      any
+
+	ExtraIs []error
 }
 
 func (e ErrInErr) Error() string {
@@ -66,6 +68,12 @@ func (e ErrInErr) Is(err error) bool {
 		return true
 	} else if errors.Is(e.ErrDetail, err) {
 		return true
+	} else if len(e.ExtraIs) > 0 {
+		for _, v := range e.ExtraIs {
+			if errors.Is(v, err) {
+				return true
+			}
+		}
 	}
 	return false
 }

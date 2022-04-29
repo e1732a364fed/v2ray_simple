@@ -134,12 +134,12 @@ func printAllState(w io.Writer) {
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
 
-	for i, s := range AllServers {
+	for i, s := range allServers {
 		fmt.Fprintln(w, "inServer", i, proxy.GetFullName(s), s.AddrStr())
 
 	}
 
-	for i, c := range AllClients {
+	for i, c := range allClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
 	}
 }
@@ -150,8 +150,8 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 
 	var outClient proxy.Client
 
-	if DefaultOutClient != nil {
-		outClient = DefaultOutClient
+	if defaultOutClient != nil {
+		outClient = defaultOutClient
 		fmt.Println("trying to download geosite through your proxy dial")
 	} else {
 		fmt.Println("trying to download geosite directly")
@@ -202,10 +202,10 @@ func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
 			log.Println("can not create outClient: ", err)
 			return
 		}
-		if DefaultOutClient == nil {
-			DefaultOutClient = outClient
+		if defaultOutClient == nil {
+			defaultOutClient = outClient
 		}
-		AllClients = append(AllClients, outClient)
+		allClients = append(allClients, outClient)
 	}
 
 }
@@ -217,10 +217,10 @@ func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 			log.Println("can not create inServer: ", i, err)
 			return
 		}
-		lis := vs.ListenSer(inServer, DefaultOutClient, &RoutingEnv)
+		lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
 		if lis != nil {
-			ListenerArray = append(ListenerArray, lis)
-			AllServers = append(AllServers, inServer)
+			listenerArray = append(listenerArray, lis)
+			allServers = append(allServers, inServer)
 
 		}
 

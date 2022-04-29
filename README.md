@@ -586,24 +586,18 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 ## 引用的外部包
 
-```
-github.com/oschwald/maxminddb-golang v1.8.0
-github.com/yl2chen/cidranger v1.0.2
-github.com/BurntSushi/toml v1.0.0
-github.com/gobwas/ws v1.1.0
-gonum.org/v1/gonum v0.11.0
-google.golang.org/grpc v1.45.0
-github.com/miekg/dns v1.1.47
-github.com/lucas-clemente/quic-go
-github.com/tobyxdd/quic-go
-go.uber.org/zap
-github.com/manifoldco/promptui
-github.com/xtaci/smux v1.5.16
-```
+详见 go.mod 文件
 
-可能不全，详见 go.mod 文件
+## 鸣谢
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
+
+grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码。（clash的gun又是借鉴 Qv2ray的gun的）
+
+tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/， （trojan-go也借鉴了它）
+
+以上借鉴的代码都是用的MIT协议。
+
 
 ## Stargazers over time
 

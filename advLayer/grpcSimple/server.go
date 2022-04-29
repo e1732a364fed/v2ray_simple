@@ -98,13 +98,18 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 	sc = &ServerConn{
-		commonReadPart: commonReadPart{
+		commonPart: commonPart{
 			br: bufio.NewReader(rq.Body),
 		},
 
 		Writer:    rw,
 		Closer:    rq.Body,
 		closeChan: make(chan int),
+	}
+
+	ta, e := net.ResolveTCPAddr("tcp", rq.RemoteAddr)
+	if e == nil {
+		sc.ra = ta
 	}
 
 	sc.timeouter = timeouter{
@@ -116,7 +121,7 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 }
 
 type ServerConn struct {
-	commonReadPart
+	commonPart
 	timeouter
 
 	io.Closer

@@ -5,6 +5,43 @@ import (
 	"time"
 )
 
+//must call InitEasyDeadline before use.
+// Can be embed to a struct to make it have SetWriteDeadline, SetReadDeadline and SetDeadline method.
+// And use select and ReadTimeoutChan or WriteTimeoutChan when reading or writing.
+type EasyDeadline struct {
+	readDeadline  PipeDeadline
+	writeDeadline PipeDeadline
+}
+
+func (ed *EasyDeadline) InitEasyDeadline() {
+	ed.readDeadline.cancel = make(chan struct{})
+	ed.writeDeadline.cancel = make(chan struct{})
+}
+
+// try receive this to see if read timeout happens
+func (ed *EasyDeadline) ReadTimeoutChan() chan struct{} {
+	return ed.readDeadline.Wait()
+}
+
+// try receive this to see if write timeout happens
+func (ed *EasyDeadline) WriteTimeoutChan() chan struct{} {
+	return ed.writeDeadline.Wait()
+}
+
+func (ed *EasyDeadline) SetWriteDeadline(t time.Time) error {
+	ed.writeDeadline.Set(t)
+	return nil
+}
+func (ed *EasyDeadline) SetReadDeadline(t time.Time) error {
+	ed.readDeadline.Set(t)
+	return nil
+}
+func (ed *EasyDeadline) SetDeadline(t time.Time) error {
+	ed.readDeadline.Set(t)
+	ed.writeDeadline.Set(t)
+	return nil
+}
+
 // PipeDeadline is an abstraction for handling timeouts.
 //copied from golang standard package net
 type PipeDeadline struct {

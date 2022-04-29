@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
+	"go.uber.org/zap"
 )
 
 func init() {
@@ -71,12 +73,15 @@ func isActive(s quic.Connection) bool {
 	}
 }
 
-func CloseConn(baseC any) {
-	qc, ok := baseC.(quic.Connection)
-	if ok {
+func CloseConn(conn any) {
+	qc, ok := conn.(quic.Connection)
+	if ok && qc != nil {
 		qc.CloseWithError(0, "")
 	} else {
-		log.Panicln("quic.CloseConn called with illegal parameter", reflect.TypeOf(baseC).String(), baseC)
+		if ce := utils.CanLogErr("quic.CloseConn called with illegal parameter"); ce != nil {
+			ce.Write(zap.String("type", reflect.TypeOf(conn).String()), zap.Any("value", conn))
+		}
+
 	}
 }
 
@@ -100,15 +105,13 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 	var alpn []string
 	if conf.TlsConf != nil {
 		alpn = conf.TlsConf.NextProtos
-
+	}
+	if len(alpn) == 0 {
+		alpn = DefaultAlpnList
 	}
 
 	var useHysteria, hysteria_manual bool
 	var maxbyteCount int
-
-	if len(alpn) == 0 {
-		alpn = DefaultAlpnList
-	}
 
 	if conf.Extra != nil {
 		useHysteria, hysteria_manual, maxbyteCount, _ = getExtra(conf.Extra)
@@ -158,7 +161,12 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 
 	if thing := extra["maxStreamsInOneConn"]; thing != nil {
 		if count, ok := thing.(int64); ok && count > 0 {
-			log.Println("maxStreamsInOneConn,", count)
+			if ce := utils.CanLogInfo("maxStreamsInOneConn"); ce != nil {
+				ce.Write(zap.Int("maxStreamsInOneConn,", int(count)))
+			} else {
+				log.Println("maxStreamsInOneConn,", count)
+
+			}
 			maxStreamsInOneConn = count
 
 		}
@@ -172,13 +180,15 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 			if thing := extra["mbps"]; thing != nil {
 				if mbps, ok := thing.(int64); ok && mbps > 1 {
 					maxbyteCount = int(mbps) * 1024 * 1024 / 8
-
-					log.Println("Using Hysteria Congestion Control, max upload mbps: ", mbps)
-
 				}
 			} else {
+				maxbyteCount = Default_hysteriaMaxByteCount
+			}
 
-				log.Println("Using Hysteria Congestion Control, max upload mbps:", Default_hysteriaMaxByteCount, "mbps")
+			if ce := utils.CanLogInfo("Using Hysteria Congestion Control"); ce != nil {
+				ce.Write(zap.Int("max upload mbps,", int(maxbyteCount)))
+			} else {
+				log.Println("Using Hysteria Congestion Control, max upload mbps: ", maxbyteCount)
 
 			}
 
@@ -186,7 +196,13 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 				if ismanual, ok := thing.(bool); ok {
 					hysteria_manual = ismanual
 					if ismanual {
-						log.Println("Using Hysteria Manual Control Mode")
+
+						if ce := utils.CanLogInfo("Using Hysteria Manual Control Mode"); ce != nil {
+							ce.Write()
+						} else {
+							log.Println("Using Hysteria Manual Control Mode")
+						}
+
 					}
 				}
 			}

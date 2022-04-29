@@ -15,8 +15,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//var ErrPreviousFull = errors.New("previous conn full")
-
 var ProtocolsMap = make(map[string]Creator)
 
 //为了避免黑客攻击,我们固定earlydata最大值为2048
