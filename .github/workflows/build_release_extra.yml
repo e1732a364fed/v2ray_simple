@@ -1,4 +1,4 @@
-name: Build For Release
+name: Build For Release Extra
 
 on:
   workflow_dispatch:
@@ -33,5 +33,5 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: cmd/verysimple/*.tar.xz
-        tag: ${{ github.ref }}
+        tag: ${{ steps.get_version.outputs.VERSION }}
         file_glob: true

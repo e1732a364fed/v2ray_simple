@@ -1,7 +1,7 @@
 /*
-Package httpLayer provides methods and definitions for http layer
+Package httpLayer provides methods and definitions for http layer.
 
-fallback 由 本 httpLayer 包 处理. 因为回落的目标只可能是http服务器.
+Fallback 由 本包 处理. 因为回落的目标只可能是http服务器.
 
 http头 格式 可以参考：
 

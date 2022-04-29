@@ -521,7 +521,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 							wlc1, udp_wlc1, targetAddr1, err1 := innerSer.Handshake(stream)
 
 							if err1 != nil {
-								if ce := utils.CanLogDebug("mux inner proxy handshake failed"); ce != nil {
+								if ce := utils.CanLogDebug("inServer mux inner proxy handshake failed"); ce != nil {
 									ce.Write(zap.Error(err1))
 								}
 								newiics := *iics
