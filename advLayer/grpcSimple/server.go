@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -22,7 +22,7 @@ type Server struct {
 	path string
 
 	newSubConnChan   chan net.Conn
-	fallbackConnChan chan advLayer.FallbackMeta
+	fallbackConnChan chan httpLayer.FallbackMeta
 
 	stopOnce sync.Once
 
@@ -58,7 +58,7 @@ func (s *Server) Stop() {
 	})
 }
 
-func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
+func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
 	s.underlay = underlay
 	s.fallbackConnChan = fallbackConnChan
 	s.newSubConnChan = newSubConnChan
@@ -132,7 +132,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 					if s.closed {
 						return
 					}
-					fallbackConnChan <- advLayer.FallbackMeta{Path: p, Conn: sc, FirstBuffer: buf}
+					fallbackConnChan <- httpLayer.FallbackMeta{Path: p, Conn: sc, FirstBuffer: buf}
 
 					<-sc.CloseChan
 

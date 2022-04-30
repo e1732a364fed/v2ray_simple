@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"net"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 
@@ -103,4 +104,12 @@ func (rhr *RequestParser) ReadAndParse(r io.Reader) error {
 		return utils.ErrInErr{ErrDesc: "httpLayer ReadAndParse failed", ErrDetail: ErrNotHTTP_Request, Data: rhr.Failreason}
 	}
 	return nil
+}
+
+// http level fallback metadata
+type FallbackMeta struct {
+	net.Conn
+	FirstBuffer *bytes.Buffer
+	Path        string
+	Method      string
 }

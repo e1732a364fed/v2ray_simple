@@ -5,12 +5,12 @@
 package advLayer
 
 import (
-	"bytes"
 	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
 
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
@@ -90,21 +90,14 @@ type Server interface {
 
 //ws
 type SingleServer interface {
-	Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn) (net.Conn, error)
-}
-
-// http level fallback metadata
-type FallbackMeta struct {
-	FirstBuffer *bytes.Buffer
-	Path        string
-	Conn        net.Conn
+	Handshake(underlay net.Conn) (net.Conn, error)
 }
 
 //grpc
 type MuxServer interface {
 
 	//non-blocking. if fallbackChan is not nil, then it can serve for fallback feature.
-	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackChan chan FallbackMeta)
+	StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackChan chan httpLayer.FallbackMeta)
 }
 
 //quic

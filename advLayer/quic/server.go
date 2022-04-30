@@ -6,7 +6,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/congestion"
@@ -176,6 +176,6 @@ func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer
 }
 
 //非阻塞，不支持回落。
-func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
+func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
 	go dealNewConn(underlay.(quic.Connection), newSubConnChan)
 }

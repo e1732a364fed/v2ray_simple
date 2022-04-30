@@ -2,6 +2,7 @@ package httpLayer
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -34,6 +35,8 @@ const (
 	alpn_http11 = 1 << iota
 	alpn_http20
 )
+
+var ErrShouldFallback = errors.New("will fallback")
 
 func getfallbacktype_byindex(i int) byte {
 	return 1 << (i + 1)

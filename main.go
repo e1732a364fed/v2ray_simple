@@ -323,7 +323,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			muxSer := advSer.(advLayer.MuxServer)
 
 			newConnChan := make(chan net.Conn, 10)
-			fallbackChan := make(chan advLayer.FallbackMeta, 10)
+			fallbackChan := make(chan httpLayer.FallbackMeta, 10)
 			muxSer.StartHandle(wrappedConn, newConnChan, fallbackChan)
 
 			go func() {
@@ -364,57 +364,33 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			}
 
 		default: //ws
+			wsSer := advSer.(advLayer.SingleServer)
 
-			var rp httpLayer.RequestParser
-			re := rp.ReadAndParse(wrappedConn)
-			if re != nil {
-				if re == httpLayer.ErrNotHTTP_Request {
-					if ce := utils.CanLogErr("WS check ErrNotHTTP_Request"); ce != nil {
-						ce.Write(
-							zap.String("handler", inServer.AddrStr()),
-						)
-					}
+			wsConn, err := wsSer.Handshake(wrappedConn)
 
-				} else {
-					if ce := utils.CanLogErr("WS check handshake read failed"); ce != nil {
+			if errors.Is(err, httpLayer.ErrShouldFallback) {
 
-						ce.Write(
-							zap.String("handler", inServer.AddrStr()),
-						)
-					}
-				}
+				meta := wsConn.(httpLayer.FallbackMeta)
 
-				wrappedConn.Close()
-				return
-			}
+				iics.theRequestPath = meta.Path
+				iics.theFallbackFirstBuffer = meta.FirstBuffer
+				iics.wrappedConn = meta.Conn
 
-			if rp.Method != "GET" || advSer.GetPath() != rp.Path {
-				iics.theRequestPath = rp.Path
-				iics.theFallbackFirstBuffer = rp.WholeRequestBuf
-
-				if ce := utils.CanLogDebug("WS check err"); ce != nil {
+				if ce := utils.CanLogDebug("Single AdvLayer Check failed, will fallback."); ce != nil {
 
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
-						zap.String("reason", "path/method not match"),
+						zap.String("advLayer", inServer.AdvancedLayer()),
 						zap.String("validPath", advSer.GetPath()),
-						zap.String("gotMethod", rp.Method),
-						zap.String("gotPath", rp.Path),
+						zap.String("gotMethod", meta.Method),
+						zap.String("gotPath", meta.Path),
 					)
 				}
 
 				passToOutClient(iics, true, nil, nil, netLayer.Addr{})
 				return
 
-			}
-
-			wsSer := advSer.(advLayer.SingleServer)
-
-			//此时path和method都已经匹配了, 如果还不能通过那就说明后面的header等数据不满足ws的upgrade请求格式, 肯定是非法数据了,也不用再回落
-
-			wsConn, err := wsSer.Handshake(rp.WholeRequestBuf, wrappedConn)
-
-			if err != nil {
+			} else if err != nil {
 				if ce := utils.CanLogErr("InServer ws handshake failed"); ce != nil {
 
 					ce.Write(
@@ -426,8 +402,10 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				wrappedConn.Close()
 				return
 
+			} else {
+				wrappedConn = wsConn
+
 			}
-			wrappedConn = wsConn
 		} // switch adv
 
 	} //if adv !=""

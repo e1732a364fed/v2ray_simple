@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"bytes"
 	"encoding/base64"
 	"io"
 	"net"
@@ -53,8 +52,37 @@ func (*Server) Stop() {}
 
 // Handshake 用于 websocket的 Server 监听端，建立握手. 用到了 gobwas/ws.Upgrader.
 //
-// 返回可直接用于读写 websocket 二进制数据的 net.Conn
-func (s *Server) Handshake(optionalFirstBuffer *bytes.Buffer, underlay net.Conn) (net.Conn, error) {
+// 返回可直接用于读写 websocket 二进制数据的 net.Conn. 如果遇到不符合的http1.1请求，会返回 httpLayer.FallbackMeta 和 httpLayer.ErrShouldFallback
+func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
+
+	//我们目前只支持 ws on http1.1
+
+	var rp httpLayer.RequestParser
+	re := rp.ReadAndParse(underlay)
+	if re != nil {
+		if re == httpLayer.ErrNotHTTP_Request {
+			if ce := utils.CanLogErr("WS check ErrNotHTTP_Request"); ce != nil {
+				ce.Write()
+			}
+
+		} else {
+			if ce := utils.CanLogErr("WS check handshake read failed"); ce != nil {
+				ce.Write(zap.Error(re))
+			}
+		}
+		return nil, utils.ErrInvalidData
+	}
+
+	optionalFirstBuffer := rp.WholeRequestBuf
+
+	if rp.Method != "GET" || s.Thepath != rp.Path {
+		return httpLayer.FallbackMeta{
+			Conn:        underlay,
+			FirstBuffer: optionalFirstBuffer,
+			Path:        rp.Path,
+			Method:      rp.Method,
+		}, httpLayer.ErrShouldFallback
+	}
 
 	theWrongPath := ""
 	var thePotentialEarlyData []byte

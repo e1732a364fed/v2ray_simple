@@ -5,7 +5,7 @@ import (
 	"net"
 	_ "unsafe"
 
-	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"google.golang.org/grpc"
 )
@@ -61,7 +61,7 @@ func (s *Server) Stop() {
 //  StartHandle方法 被用于 手动给 grpc提供新连接.
 // 在本作中  我们不使用 grpc的listen的方法。这样更加灵活.
 //非阻塞. 暂不支持回落。
-func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
+func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
 
 	s.newConnChan = theChan
 
