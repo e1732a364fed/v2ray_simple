@@ -128,10 +128,10 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	if s.UseEarlyData {
 
 		//xray和v2ray中，使用了 header中的
-		// Sec-WebSocket-Protocol 字段 来传输 earlydata，来实现 0-rtt;我们为了兼容同样用此字段
+		// Sec-WebSocket-Protocol 字段 来传输 earlydata，来实现 0-rtt;我们为了兼容,同样用此字段
 		// (websocket标准是没有定义 0-rtt的方法的，但是ws的握手包头部是可以自定义header的)
 
-		// gobwas 的upgrader 用 ProtocolCustom 这个函数来检查 protocol的内容
+		// gobwas 的 Upgrader 用 ProtocolCustom 这个函数来检查 protocol的内容
 		// 它会遍历客户端给出的所有 protocol，然后选择一个来返回
 
 		//我们若提供了此函数，则必须返回true，否则 gobwas会返回 ErrMalformedRequest 错误

@@ -90,6 +90,8 @@ type Server interface {
 
 //ws
 type SingleServer interface {
+
+	//如果遇到不符合握手条件但是却合法的http请求，可返回 httpLayer.FallbackMeta 和 httpLayer.ErrShouldFallback
 	Handshake(underlay net.Conn) (net.Conn, error)
 }
 

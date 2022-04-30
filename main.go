@@ -2,16 +2,20 @@ package v2ray_simple
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
-	"log"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/net/http2"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -169,6 +173,8 @@ type incomingInserverConnState struct {
 	inServerTlsConn            *tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
 
+	isFallbackH2           bool
+	fallbackH2Request      *http.Request
 	theFallbackFirstBuffer *bytes.Buffer
 
 	isTlsLazyServerEnd bool
@@ -290,6 +296,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	}
 
 	adv := inServer.AdvancedLayer()
+	advSer := inServer.GetAdvServer()
 
 	////////////////////////////// header 层 /////////////////////////////////////
 
@@ -310,7 +317,6 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	////////////////////////////// 高级层 /////////////////////////////////////
 
 	if adv != "" {
-		advSer := inServer.GetAdvServer()
 		//这里分 super, mux 和 default 三种情况，实际上对应了 quic，grpc 和ws
 
 		switch {
@@ -337,11 +343,15 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 						return
 					}
 
-					iics.theRequestPath = fallbackMeta.Path
-					iics.theFallbackFirstBuffer = fallbackMeta.FirstBuffer
-					iics.wrappedConn = fallbackMeta.Conn
+					newiics := iics
 
-					passToOutClient(iics, true, nil, nil, netLayer.Addr{})
+					newiics.theRequestPath = fallbackMeta.Path
+					newiics.theFallbackFirstBuffer = fallbackMeta.FirstBuffer
+					newiics.wrappedConn = fallbackMeta.Conn
+					newiics.isFallbackH2 = fallbackMeta.IsH2
+					newiics.fallbackH2Request = fallbackMeta.H2Request
+
+					passToOutClient(newiics, true, nil, nil, netLayer.Addr{})
 				}
 			}()
 
@@ -561,7 +571,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 //查看当前配置 是否支持fallback, 并获得回落地址。
 // 被 passToOutClient 调用
-func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wlc net.Conn) {
+func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, willfallback bool) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
 
 	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
@@ -627,7 +637,8 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wl
 				}
 				if fbAddr != nil {
 					targetAddr = *fbAddr
-					wlc = iics.wrappedConn
+					//wlc = iics.wrappedConn
+					willfallback = true
 					return
 				}
 			}
@@ -641,7 +652,9 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wl
 	if defaultFallbackAddr := iics.inServer.GetFallback(); defaultFallbackAddr != nil {
 
 		targetAddr = *defaultFallbackAddr
-		wlc = iics.wrappedConn
+		//wlc = iics.wrappedConn
+
+		willfallback = true
 
 	}
 	return
@@ -654,10 +667,39 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	if isfallback {
 
-		fallbackTargetAddr, fallbackWlc := checkfallback(iics)
-		if fallbackWlc != nil {
+		fallbackTargetAddr, willfallback := checkfallback(iics)
+		if willfallback {
 			targetAddr = fallbackTargetAddr
-			wlc = fallbackWlc
+			wlc = iics.wrappedConn
+
+			if iics.isFallbackH2 {
+				//h2 的fallback 非常特殊，要单独处理
+
+				transport := &http2.Transport{
+					DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+						return net.Dial(n, a)
+					},
+					AllowHTTP: true,
+				}
+				rq := iics.fallbackH2Request
+				rq.Host = targetAddr.Name
+				url, _ := url.Parse("https://" + targetAddr.String() + iics.theRequestPath)
+				rq.URL = url
+
+				rsp, err := transport.RoundTrip(iics.fallbackH2Request)
+				if err != nil {
+					if ce := utils.CanLogErr("fallback h2 RoundTrip failed"); ce != nil {
+						ce.Write(zap.Error(err), zap.String("url", rq.URL.String()))
+					}
+
+					return
+				}
+
+				netLayer.TryCopy(wlc, rsp.Body)
+				wlc.Close()
+
+				return
+			}
 		}
 	}
 
@@ -783,7 +825,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	if isTlsLazy_clientEnd || iics.isTlsLazyServerEnd {
 
 		if tlsLayer.PDD {
-			log.Printf("loading TLS SniffConn %t %t\n", isTlsLazy_clientEnd, iics.isTlsLazyServerEnd)
+			utils.Debug(fmt.Sprintf("loading TLS SniffConn %t %t\n", isTlsLazy_clientEnd, iics.isTlsLazyServerEnd))
+
 		}
 
 		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, Tls_lazy_secure)
@@ -1255,7 +1298,7 @@ advLayerHandshakeStep:
 	return
 } //dialClient
 
-//在 dialClient 中调用。 如果调用不成功，则result == -1
+//在 dialClient 中调用。 如果调用不成功，则result < 0. 若成功, 则 result == 0.
 func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
 
 	smuxSession := client.GetClientInnerMuxSession(wrc)

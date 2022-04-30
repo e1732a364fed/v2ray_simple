@@ -112,4 +112,7 @@ type FallbackMeta struct {
 	FirstBuffer *bytes.Buffer
 	Path        string
 	Method      string
+	IsH2        bool
+
+	H2Request *http.Request
 }

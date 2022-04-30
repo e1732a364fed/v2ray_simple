@@ -28,6 +28,8 @@ var defaultClientHeader = http.Header{
 type Config struct {
 	ServiceName string
 	Host        string
+
+	FallbackToH1 bool //默认会回落到h2, 如果指定 FallbackToH1， 则会回落到 http/1.1
 }
 
 //implements net.Conn

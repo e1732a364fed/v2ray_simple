@@ -2,6 +2,7 @@ package grpcSimple
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"net"
 	"net/http"
@@ -117,22 +118,36 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 							zap.String("raddr", rq.RemoteAddr))
 					}
 
-					buf := utils.GetBuf()
+					var buf *bytes.Buffer
 
-					rq.Write(buf)
-					//log.Println("ContentLength", rq.ContentLength, buf.String())
+					// 如果使用 rq.Write， 那么实际上就是回落到 http1.1, 只有用 http2.Transport.RoundTrip 才是 h2 请求
+
+					//因为h2的特殊性，要建立子连接, 所以要配合调用者 进行特殊处理。
 
 					sc := &netLayer.IOWrapper{
-						Reader:         utils.DummyReadCloser{},
-						Writer:         rw,
-						CloseChan:      make(chan struct{}),
-						FirstWriteChan: make(chan struct{}),
+						Reader:    rq.Body,
+						Writer:    rw,
+						CloseChan: make(chan struct{}),
+					}
+
+					if s.FallbackToH1 {
+						buf = utils.GetBuf()
+						rq.Write(buf)
+
+						sc.FirstWriteChan = make(chan struct{})
 					}
 
 					if s.closed {
 						return
 					}
-					fallbackConnChan <- httpLayer.FallbackMeta{Path: p, Conn: sc, FirstBuffer: buf}
+
+					fallbackConnChan <- httpLayer.FallbackMeta{
+						IsH2:        !s.FallbackToH1,
+						Path:        p,
+						Conn:        sc,
+						FirstBuffer: buf,
+						H2Request:   rq,
+					}
 
 					<-sc.CloseChan
 

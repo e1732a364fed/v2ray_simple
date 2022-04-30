@@ -157,7 +157,7 @@ func createGeositeIncludeAttrEntrys(list *GeositeRawList, matchAttr GeositeAttr)
 	return newEntryList
 }
 
-//这里从v2fly改动了一些. 因为我发现 Inclusion最终不会被用到
+//这里从v2fly改动了一些. 因为发现 Inclusion最终不会被用到
 func ParseGeositeList(list *GeositeRawList, ref map[string]*GeositeRawList) (*GeositeRawList, error) {
 	inclu := make(map[string]bool)
 	pl := &GeositeRawList{

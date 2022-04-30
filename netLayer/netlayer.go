@@ -200,8 +200,8 @@ func (iw *IOWrapper) Write(p []byte) (int, error) {
 }
 
 func (iw *IOWrapper) Close() error {
-	if iw.Closer != nil {
-		return iw.Close()
+	if c := iw.Closer; c != nil {
+		return c.Close()
 	}
 	if iw.CloseChan != nil {
 		iw.closeOnce.Do(func() {
