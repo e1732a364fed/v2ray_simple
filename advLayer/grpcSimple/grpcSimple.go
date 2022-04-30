@@ -30,6 +30,8 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 )
 
+const grpcContentType = "application/grpc"
+
 func init() {
 	advLayer.ProtocolsMap["grpc"] = Creator{}
 }

@@ -1192,13 +1192,9 @@ advLayerHandshakeStep:
 			//如果有内层mux，要在dialInnerProxy函数里再读, 而不是在这里读
 
 			if fallbackFirstBuf != nil {
-				//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-				//wrc.Write(fallbackFirstBuf.Bytes())
+
 				firstPayload = fallbackFirstBuf.Bytes()
 
-				//本来fallback buffer 只来自 vless/trojan，但是现在支持了 ws/grpc的fallback，buf的来源就变的复杂了。
-
-				//utils.PutBytes(fallbackFirstBuf.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
 			} else {
 				firstPayload = utils.GetMTU()
 

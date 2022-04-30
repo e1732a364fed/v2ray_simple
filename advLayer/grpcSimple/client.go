@@ -20,7 +20,7 @@ import (
 )
 
 var defaultClientHeader = http.Header{
-	"content-type": []string{"application/grpc"},
+	"content-type": []string{grpcContentType},
 	"user-agent":   []string{"grpc-go/1.41.0"},
 	"Te":           []string{"trailers"},
 }

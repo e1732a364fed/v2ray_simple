@@ -2,7 +2,6 @@ package grpcSimple
 
 import (
 	"bufio"
-	"context"
 	"io"
 	"net"
 	"net/http"
@@ -21,6 +20,15 @@ type Server struct {
 	http2.Server
 
 	path string
+
+	newSubConnChan   chan net.Conn
+	fallbackConnChan chan advLayer.FallbackMeta
+
+	stopOnce sync.Once
+
+	closed bool
+
+	underlay net.Conn
 }
 
 func (s *Server) GetPath() string {
@@ -36,16 +44,35 @@ func (*Server) IsSuper() bool {
 }
 
 func (s *Server) Stop() {
+	s.stopOnce.Do(func() {
+		s.closed = true
 
+		s.underlay.Close()
+
+		if s.fallbackConnChan != nil {
+			close(s.fallbackConnChan)
+		}
+		if s.newSubConnChan != nil {
+			close(s.newSubConnChan)
+		}
+	})
 }
 
 func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan advLayer.FallbackMeta) {
+	s.underlay = underlay
+	s.fallbackConnChan = fallbackConnChan
+	s.newSubConnChan = newSubConnChan
+
 	go s.Server.ServeConn(underlay, &http2.ServeConnOpts{
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request) {
+			if s.closed {
+				return
+			}
 
 			//log.Println("request headers", rq.Header)
-
 			/*
+				we will try to fallback to h2c.
+
 				about h2c
 
 				https://pkg.go.dev/golang.org/x/net/http2/h2c#example-NewHandler
@@ -53,16 +80,35 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 				test h2c:
 
-				curl -v --http2-prior-knowledge http://localhost:1010
-				curl -v --http2 http://localhost:1010
+				curl -k -v --http2-prior-knowledge https://localhost:4434/sfd
+
+				curl -k -v --http2-prior-knowledge -X POST -F 'asdf=1234'  https://localhost:4434/sfd
+
 			*/
 
-			if p := rq.URL.Path; p != s.path {
+			shouldFallback := false
+
+			p := rq.URL.Path
+
+			if p != s.path {
 				if ce := utils.CanLogWarn("grpc Server got wrong path"); ce != nil {
 					ce.Write(zap.String("path", p))
 				}
 
-				if fallbackConnChan != nil {
+				shouldFallback = true
+			} else if ct := rq.Header.Get("Content-Type"); ct != grpcContentType {
+				if ce := utils.CanLogWarn("GRPC Server got right path but with wrong Content-Type"); ce != nil {
+					ce.Write(zap.String("type", ct), zap.String("tips", "you might want to use a more complex path"))
+				}
+
+				shouldFallback = true
+			}
+
+			if shouldFallback {
+				if fallbackConnChan == nil {
+					rw.WriteHeader(http.StatusNotFound)
+
+				} else {
 
 					if ce := utils.CanLogInfo("grpc will fallback"); ce != nil {
 						ce.Write(
@@ -72,46 +118,37 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 					}
 
 					buf := utils.GetBuf()
-					rq2 := rq.Clone(context.Background())
-					rq2.Body = nil
-					rq2.ContentLength = 0
-					rq2.Write(buf)
+
+					rq.Write(buf)
+					//log.Println("ContentLength", rq.ContentLength, buf.String())
 
 					sc := &netLayer.IOWrapper{
-						Reader:    rq.Body,
-						Writer:    rw,
-						CloseChan: make(chan struct{}),
+						Reader:         utils.DummyReadCloser{},
+						Writer:         rw,
+						CloseChan:      make(chan struct{}),
+						FirstWriteChan: make(chan struct{}),
 					}
-					if rq.ContentLength == 0 {
-						sc.FirstWriteChan = make(chan struct{})
+
+					if s.closed {
+						return
 					}
 					fallbackConnChan <- advLayer.FallbackMeta{Path: p, Conn: sc, FirstBuffer: buf}
 
 					<-sc.CloseChan
 
-				} else {
-					rw.WriteHeader(http.StatusNotFound)
-
 				}
-
-				return
-			}
-
-			if ct := rq.Header.Get("Content-Type"); ct != "application/grpc" {
-				if ce := utils.CanLogWarn("GRPC Server got right path but with wrong Content-Type"); ce != nil {
-					ce.Write(zap.String("type", ct), zap.String("tips", "you might need to use a more complex path"))
-				}
-
-				rw.WriteHeader(http.StatusUnsupportedMediaType)
 
 				return
 			}
 
 			headerMap := rw.Header()
-			headerMap.Add("Content-Type", "application/grpc") //necessary
+			headerMap.Add("Content-Type", grpcContentType) //necessary
 			rw.WriteHeader(http.StatusOK)
 
 			sc := newServerConn(rw, rq)
+			if s.closed {
+				return
+			}
 			newSubConnChan <- sc
 			<-sc.closeChan //necessary
 		}),

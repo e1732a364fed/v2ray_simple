@@ -143,20 +143,20 @@ func (rw *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
 
 //一个自定义的由多个组件组成的实现 net.Conn 的结构
 type IOWrapper struct {
-	io.Reader
-	io.Writer
-	io.Closer
-	LA, RA net.Addr
+	io.Reader //不可为nil
+	io.Writer //不可为nil
+	io.Closer //不可为nil
+	LA, RA    net.Addr
 
 	EasyDeadline
+	FirstWriteChan chan struct{} //用于确保先Write然后再Read，可为nil
+
+	CloseChan chan struct{} //可为nil，用于接收关闭信号
 
 	deadlineInited bool
 
-	CloseChan      chan struct{} //可为nil，用于接收关闭信号
 	closeOnce      sync.Once
 	firstWriteOnce sync.Once
-
-	FirstWriteChan chan struct{} //用于确保先Write然后再Read，可为nil
 }
 
 func (iw *IOWrapper) Read(p []byte) (int, error) {
