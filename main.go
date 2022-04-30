@@ -855,7 +855,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 // result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux ); -10 标识因为client为reject而关闭了连接。
 // 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到
 func dialClient(targetAddr netLayer.Addr,
-	client proxy.Client,
+	client proxy.Client, fallbackFirstBuf *bytes.Buffer,
 	baseLocalConn,
 	wlc net.Conn,
 	cachedRemoteAddr string,
@@ -1191,38 +1191,49 @@ advLayerHandshakeStep:
 		if !hasInnerMux {
 			//如果有内层mux，要在dialInnerProxy函数里再读, 而不是在这里读
 
-			firstPayload = utils.GetMTU()
+			if fallbackFirstBuf != nil {
+				//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
+				//wrc.Write(fallbackFirstBuf.Bytes())
+				firstPayload = fallbackFirstBuf.Bytes()
 
-			wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
-			n, err := wlc.Read(firstPayload)
-			wlc.SetReadDeadline(time.Time{})
+				//本来fallback buffer 只来自 vless/trojan，但是现在支持了 ws/grpc的fallback，buf的来源就变的复杂了。
 
-			if err != nil {
+				//utils.PutBytes(fallbackFirstBuf.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
+			} else {
+				firstPayload = utils.GetMTU()
 
-				if !errors.Is(err, os.ErrDeadlineExceeded) {
-					if ce := utils.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
-						ce.Write(
-							zap.String("target", targetAddr.String()),
-							zap.Error(err),
-						)
+				wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
+				n, err := wlc.Read(firstPayload)
+				wlc.SetReadDeadline(time.Time{})
+
+				if err != nil {
+
+					if !errors.Is(err, os.ErrDeadlineExceeded) {
+						if ce := utils.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
+							ce.Write(
+								zap.String("target", targetAddr.String()),
+								zap.Error(err),
+							)
+						}
+
+						clientConn.Close()
+						wlc.Close()
+						result = -1
+						return
+					} else {
+						if ce := utils.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
+							ce.Write(
+								zap.String("target", targetAddr.String()),
+								zap.Error(err),
+							)
+						}
 					}
 
-					clientConn.Close()
-					wlc.Close()
-					result = -1
-					return
-				} else {
-					if ce := utils.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
-						ce.Write(
-							zap.String("target", targetAddr.String()),
-							zap.Error(err),
-						)
-					}
 				}
 
+				firstPayload = firstPayload[:n]
 			}
 
-			firstPayload = firstPayload[:n]
 		}
 
 		if len(firstPayload) > 0 {
@@ -1386,7 +1397,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		}
 	}
 
-	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
+	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.theFallbackFirstBuffer, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
 	if result != 0 {
 		return
 	}
@@ -1422,11 +1433,13 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		}
 
-		if iics.theFallbackFirstBuffer != nil {
-			//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-			wrc.Write(iics.theFallbackFirstBuffer.Bytes())
-			utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
-		}
+		/*
+			if iics.theFallbackFirstBuffer != nil {
+				//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
+				wrc.Write(iics.theFallbackFirstBuffer.Bytes())
+				utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
+			}
+		*/
 
 		atomic.AddInt32(&ActiveConnectionCount, 1)
 
@@ -1453,7 +1466,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
 				utils.Debug("Relaying UDP with MultiChannel,dialfunc called")
 
-				_, udp_wrc, _, _, result := dialClient(raddr, client, iics.baseLocalConn, nil, "", false)
+				_, udp_wrc, _, _, result := dialClient(raddr, client, iics.theFallbackFirstBuffer, iics.baseLocalConn, nil, "", false)
 
 				if ce := utils.CanLogDebug("Relaying UDP with MultiChannel, dialfunc call returned"); ce != nil {
 					ce.Write(zap.Int("result", result))

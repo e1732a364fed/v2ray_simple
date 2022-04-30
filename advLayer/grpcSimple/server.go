@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -45,13 +46,15 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 			//log.Println("request headers", rq.Header)
 
 			/*
-				关于h2c
+				about h2c
 
 				https://pkg.go.dev/golang.org/x/net/http2/h2c#example-NewHandler
-
 				https://github.com/thrawn01/h2c-golang-example
 
-				https://gist.github.com/tom-code/698b20b342be7bbf6ab692884b8476d5
+				test h2c:
+
+				curl -v --http2-prior-knowledge http://localhost:1010
+				curl -v --http2 http://localhost:1010
 			*/
 
 			if p := rq.URL.Path; p != s.path {
@@ -62,20 +65,29 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 				if fallbackConnChan != nil {
 
 					if ce := utils.CanLogInfo("grpc will fallback"); ce != nil {
-						ce.Write(zap.String("path", p))
+						ce.Write(
+							zap.String("path", p),
+							zap.String("method", rq.Method),
+							zap.String("raddr", rq.RemoteAddr))
 					}
 
+					buf := utils.GetBuf()
 					rq2 := rq.Clone(context.Background())
 					rq2.Body = nil
 					rq2.ContentLength = 0
-					buf := utils.GetBuf()
 					rq2.Write(buf)
 
-					sc := newServerConn(rw, rq)
-
+					sc := &netLayer.IOWrapper{
+						Reader:    rq.Body,
+						Writer:    rw,
+						CloseChan: make(chan struct{}),
+					}
+					if rq.ContentLength == 0 {
+						sc.FirstWriteChan = make(chan struct{})
+					}
 					fallbackConnChan <- advLayer.FallbackMeta{Path: p, Conn: sc, FirstBuffer: buf}
 
-					<-sc.closeChan
+					<-sc.CloseChan
 
 				} else {
 					rw.WriteHeader(http.StatusNotFound)
@@ -146,7 +158,10 @@ func (g *ServerConn) Close() error {
 	g.closeOnce.Do(func() {
 		g.closed = true
 		close(g.closeChan)
-		g.Closer.Close()
+		if g.Closer != nil {
+			g.Closer.Close()
+
+		}
 	})
 	return nil
 }
