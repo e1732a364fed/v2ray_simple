@@ -145,8 +145,8 @@ func (rw *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
 type IOWrapper struct {
 	io.Reader //不可为nil
 	io.Writer //不可为nil
-	io.Closer //不可为nil
-	LA, RA    net.Addr
+	io.Closer
+	LA, RA net.Addr
 
 	EasyDeadline
 	FirstWriteChan chan struct{} //用于确保先Write然后再Read，可为nil

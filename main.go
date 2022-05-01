@@ -657,6 +657,15 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 	return
 }
 
+var (
+	h2c_transport = &http2.Transport{
+		DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+			return net.Dial(n, a)
+		},
+		AllowHTTP: true,
+	}
+)
+
 //被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用，会调用 dialClient_andRelay
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
@@ -672,19 +681,13 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			if iics.isFallbackH2 {
 				//h2 的fallback 非常特殊，要单独处理. 下面进行h2c拨号并向真实h2c服务器发起请求。
 
-				transport := &http2.Transport{
-					DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
-						return net.Dial(n, a)
-					},
-					AllowHTTP: true,
-				}
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
 				urlStr := "https://" + targetAddr.String() + iics.theRequestPath
 				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
-				rsp, err := transport.RoundTrip(iics.fallbackH2Request)
+				rsp, err := h2c_transport.RoundTrip(iics.fallbackH2Request)
 				if err != nil {
 					if ce := utils.CanLogErr("fallback h2 RoundTrip failed"); ce != nil {
 						ce.Write(zap.Error(err), zap.String("url", urlStr))

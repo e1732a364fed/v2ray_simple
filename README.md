@@ -240,6 +240,11 @@ openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 
 本项目 发明了独特的非魔改tls包的 双向splice，本作称之为 tls lazy encrypt, 简称lazy
 
+### grpcSimple
+
+在clash的gun.go (MIT协议) grpc客户端 代码基础上实现了 grpcSimple, 包含完整的服务端, 遵循了极简的理念，不引用谷歌的grpc包，减小编译大小4MB，**而且支持 回落到 h2c**。
+
+
 ### 架构
 
 使用了简单的架构，单单因为架构简单 就可以 提升不少性能。
@@ -280,7 +285,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，应该是与现有xray/v2ray兼容的
 
-支持grpc，与 xray/v2ray兼容; 还在clash的代码基础上实现了 grpcSimple, 遵循了极简的理念，不引用谷歌的grpc包，而且可以支持 分流 和 回落。
+支持grpc，与 xray/v2ray兼容; 还有 grpcSimple，见上文。
 
 支持 quic以及hysteria 阻控，与xray/v2ray兼容（详情见wiki）,还新开发了“手动挡”模式
 
@@ -288,7 +293,7 @@ api服务器；tproxy 透明代理； http伪装头.
 
 本作也是支持 trojan-go 声称的 “可插拔模块”的，没什么复杂的。而且还可以用build tag 来开启或关闭某项功能，更胜一筹。
 
-本作也是支持 clash 的 "use as library" 的，而且非常简单，你看文档就懂了。
+本作也是支持 clash 的 "use as library" 的，而且非常简单，你看godoc文档就懂了。
 
 总之，可以看到，几乎在每一个技术上 本作都有一定的优化，超越其他内核，非常 Nice。
 
@@ -569,12 +574,14 @@ verysimple 版本 v1.0.3
 
 我们的思想 生生不息，追求自由的人们啊，一起奋斗吧！
 
+>鱼，我所欲也；熊掌，亦我所欲也。二者不可得兼，舍鱼而取熊掌者也。生，亦我所欲也；义，亦我所欲也。二者不可得兼，舍生而取义者也。
+
 >砍头不要紧，
 只要主义真。
 杀了夏明翰，
 还有后来人。
 
->鱼，我所欲也；熊掌，亦我所欲也。二者不可得兼，舍鱼而取熊掌者也。生，亦我所欲也；义，亦我所欲也。二者不可得兼，舍生而取义者也。
+
 
 
 # 免责声明与鸣谢
