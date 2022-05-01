@@ -10,7 +10,11 @@ Advantages
 
 grpcSimple包 比grpc包 小很多，替代grpc包的话，可以减小 4MB 左右的可执行文件大小。但是目前不支持 multiMode。
 
-grpcSimple包 是很棒 很有用的 实现，未来可以添加 针对 grpc的ServiceName的回落。
+grpcSimple包 是很棒 很有用的 实现，而且支持  grpc的 path 的回落。
+
+grpc虽然是定义 serviceName的，但是实际上和其他http请求一样，是用的一个path，
+
+path就是  /serviceName/Tun
 
 Off Topic
 

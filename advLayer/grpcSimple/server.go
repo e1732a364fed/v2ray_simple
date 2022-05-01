@@ -206,7 +206,7 @@ type ServerConn struct {
 	timeouter
 
 	io.Closer
-	io.Writer
+	Writer http.ResponseWriter
 
 	closeOnce sync.Once
 	closeChan chan int

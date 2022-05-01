@@ -26,13 +26,13 @@ verysimple项目大大简化了 转发机制，能提高运行速度。本项目
 
 verysimple 研发了一些新技术，使用自研架构，可以加速，目前基本上是全网最快，且有用户报告内存占用 比v2ray/xray 小1/3。
 
-vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，交互模式等。
+vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻控，更广泛等utls支持，grpc回落，交互模式等。
 
 支持的功能有:
 
 socks5(包括 udp associate)/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
 
-ws(以及earlydata)/grpc(以及multiMode,uTls，以及 可支持回落的 grpcSimple)/quic(以及hy阻控 和 0-rtt)/smux, 
+ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控 和 0-rtt)/smux, 
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
 
@@ -329,6 +329,10 @@ vless v1协议还处在开发阶段，我随时可能新增、修改定义。
 **注意，因为技术实现不同，该功能不兼容xtls。**, 因为为了能够在tls包外进行过滤，我们需要做很多工作，所以技术实现与xtls是不一样的。
 
 **lazy功能是对标xtls的，但是不兼容xtls，你用lazy的话，两端必须全用verysimple**
+
+关于xtls，你还可以阅读我对 xtls的233漏洞的研究文章
+
+https://github.com/e1732a364fed/xtls-
 
 
 在最新代码里，实现了 双向 tls lazy encrypt, 即另一种 xtls的 splice的实现，底层也是会调用splice，本包为了加以区分，就把这种方式叫做 tls lazy encrypt。
