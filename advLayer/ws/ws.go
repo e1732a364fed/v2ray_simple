@@ -23,7 +23,7 @@ HTTP/1.1 101 Switching Protocols
     Sec-WebSocket-Accept: HSmrc0sMlYUkAGmm5OPpG2HaGWk=
     Sec-WebSocket-Protocol: chat
 
-总之，一个websocket的请求头直接就是一个 合法的http请求头，所以也没必要额外包一个http连接，
+总之，一个websocket的请求头直接就是一个 合法的http请求头，所以也没必要额外包一个http层，
 直接使用tcp/tls 连接即可。
 
 websocket 库比较 https://yalantis.com/blog/how-to-build-websockets-in-go/

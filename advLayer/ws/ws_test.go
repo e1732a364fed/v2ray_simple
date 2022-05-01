@@ -15,6 +15,9 @@ func TestBase64Len(t *testing.T) {
 	var arr [2048]byte
 	str := base64.StdEncoding.EncodeToString(arr[:])
 	t.Log(len(str)) //2732
+	if len(str) != ws.MaxEarlyDataLen_Base64 {
+		t.FailNow()
+	}
 	//t.Log((str))	//一堆A后面跟一个等号
 }
 

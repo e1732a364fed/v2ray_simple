@@ -44,9 +44,6 @@ var (
 var (
 	DirectClient, _, _ = proxy.ClientFromURL(proxy.DirectName + "://")
 
-	ServersTagMap = make(map[string]proxy.Server)
-	ClientsTagMap = make(map[string]proxy.Client)
-
 	Tls_lazy_encrypt bool
 	Tls_lazy_secure  bool
 )
@@ -774,18 +771,21 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			}
 		} else {
 
-			if tagC, ok := ClientsTagMap[outtag]; ok {
-				client = tagC
-				routed = true
-				if ce := utils.CanLogInfo("Route"); ce != nil {
-					ce.Write(
-						zap.String("to outtag", outtag),
-						zap.String("with addr", client.AddrStr()),
-						zap.String("and protocol", proxy.GetFullName(client)),
-						zap.Any("for source", desc),
-					)
+			if len(iics.RoutingEnv.ClientsTagMap) > 0 {
+				if tagC, ok := iics.RoutingEnv.ClientsTagMap[outtag]; ok {
+					client = tagC
+					routed = true
+					if ce := utils.CanLogInfo("Route"); ce != nil {
+						ce.Write(
+							zap.String("to outtag", outtag),
+							zap.String("with addr", client.AddrStr()),
+							zap.String("and protocol", proxy.GetFullName(client)),
+							zap.Any("for source", desc),
+						)
+					}
 				}
 			}
+
 		}
 	}
 

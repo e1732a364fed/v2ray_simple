@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// 2048 /3 = 682.6666 ,
+// 2048 /3 = 682.6666...  (682 又 三分之二),
 // 683 * 4 = 2732, 若你不信，运行 we_test.go中的 TestBase64Len
 const MaxEarlyDataLen_Base64 = 2732
 
@@ -91,11 +91,12 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 		//因为我们vs的架构，先统一监听tcp；然后再调用Handshake函数
 		// 所以我们不能直接用http.Handle, 这也彰显了 用 gobwas/ws 包的好处
-		// 给Upgrader提供的 OnRequest 专门用于过滤 path, 也不需要我们的 httpLayer 去过滤
+		// 给Upgrader提供的 OnRequest 专门用于过滤 path, 也不一定 需要我们的 httpLayer 去过滤
 
 		// 我们的 httpLayer 的 过滤方法仍然是最安全的，可以杜绝 所有非法数据；
 		// 而 ws.Upgrader.Upgrade 使用了 readLine 函数。如果客户提供一个非法的超长的一行的话，它就会陷入泥淖
-		// 这个以后 可以先用 httpLayer的过滤方法，过滤掉后，再用 MultiReader组装回来，提供给 upgrader.Upgrade
+
+		//我们这里就是先用 httpLayer 过滤 再和 buffer一起传入 ws 包
 		// ReadBufferSize默认是 4096，已经够大
 
 		OnRequest: func(uri []byte) error {
@@ -178,14 +179,11 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 		return nil, err
 	}
 
-	//log.Println("thePotentialEarlyData", len(thePotentialEarlyData))
-
 	theConn := &Conn{
 		Conn:            underlay,
 		underlayIsBasic: netLayer.IsBasicConn(underlay),
 		state:           ws.StateServerSide,
-		//w:     wsutil.NewWriter(underlay, ws.StateServerSide, ws.OpBinary),
-		r: wsutil.NewServerSideReader(underlay),
+		r:               wsutil.NewServerSideReader(underlay),
 	}
 	//不想客户端；服务端是不怕客户端在握手阶段传来任何多余数据的
 	// 因为我们还没实现 0-rtt

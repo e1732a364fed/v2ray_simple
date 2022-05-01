@@ -4,7 +4,7 @@ import "testing"
 
 func TestGeosite(t *testing.T) {
 	//DownloadCommunity_DomainListFiles()
-	// 这个需要从github下载，所以如果你的网无法访问gituhb的话是会失败的, 所以就先不测了,否则再怨我说go test不通过. 我已经试了好使.
+	// 这个需要从github下载，所以如果你的网无法访问gituhb的话是会失败的, 所以就不在代码里下载了,否则再怨我说go test不通过. 我已经试了好使.
 
 	err := LoadGeositeFiles()
 	if err != nil {

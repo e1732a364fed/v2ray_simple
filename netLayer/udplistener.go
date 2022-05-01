@@ -118,7 +118,9 @@ func (ul *UDPListener) run() {
 	for {
 		buf := utils.GetPacket()
 		n, raddr, err := conn.ReadFromUDP(buf)
-
+		if ul.isclosed {
+			return
+		}
 		go func(theraddr *net.UDPAddr, thebuf []byte) {
 			addrport := UDPAddr2AddrPort(theraddr)
 			var oldConn *UDPConn
@@ -129,6 +131,9 @@ func (ul *UDPListener) run() {
 
 			if oldConn == nil {
 				oldConn = ul.newConn(raddr, addrport)
+				if ul.isclosed {
+					return
+				}
 
 				ul.newConnChan <- oldConn //此时 ul 的 Accept的调用者就会收到一个新Conn
 			}

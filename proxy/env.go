@@ -9,12 +9,15 @@ import (
 
 //used in real relay progress. See source code of v2ray_simple for details.
 type RoutingEnv struct {
-	RoutePolicy  *netLayer.RoutePolicy
-	MainFallback *httpLayer.ClassicFallback
-	DnsMachine   *netLayer.DNSMachine
+	RoutePolicy   *netLayer.RoutePolicy
+	MainFallback  *httpLayer.ClassicFallback
+	DnsMachine    *netLayer.DNSMachine
+	ClientsTagMap map[string]Client //用于分流到某个tag的Client, 所以需要知道所有的client
 }
 
 func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv, Default_uuid string) {
+
+	routingEnv.ClientsTagMap = make(map[string]Client)
 
 	if len(standardConf.Fallbacks) != 0 {
 		routingEnv.MainFallback = httpLayer.NewClassicFallbackFromConfList(standardConf.Fallbacks)

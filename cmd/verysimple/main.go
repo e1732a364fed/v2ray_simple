@@ -50,7 +50,14 @@ const (
 	defaultLogFile = "vs_log"
 )
 
+func initRouteEnv() {
+	routingEnv.ClientsTagMap = make(map[string]proxy.Client)
+
+}
+
 func init() {
+	initRouteEnv()
+
 	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
@@ -94,9 +101,16 @@ func mainFunc() (result int) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ce := utils.CanLogFatal("Captured panic!"); ce != nil {
+
+				stack := debug.Stack()
+
+				stackStr := string(stack)
+
+				log.Println(stackStr)
+
 				ce.Write(
 					zap.Any("err:", r),
-					zap.String("stacktrace", string(debug.Stack())),
+					zap.String("stacktrace", stackStr),
 				)
 			} else {
 				log.Fatalln("panic captured!", r, "\n", string(debug.Stack()))
@@ -244,6 +258,8 @@ func mainFunc() (result int) {
 
 		routingEnv, Default_uuid = proxy.LoadEnvFromStandardConf(&standardConf)
 
+		initRouteEnv()
+
 		//虽然标准模式支持多个Server，目前先只考虑一个
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
 
@@ -273,9 +289,9 @@ func mainFunc() (result int) {
 			}
 
 			allServers = append(allServers, thisServer)
-			if tag := thisServer.GetTag(); tag != "" {
-				vs.ServersTagMap[tag] = thisServer
-			}
+			//if tag := thisServer.GetTag(); tag != "" {
+			//	vs.ServersTagMap[tag] = thisServer
+			//}
 		}
 
 	}
@@ -314,7 +330,7 @@ func mainFunc() (result int) {
 			allClients = append(allClients, thisClient)
 
 			if tag := thisClient.GetTag(); tag != "" {
-				vs.ClientsTagMap[tag] = thisClient
+				routingEnv.ClientsTagMap[tag] = thisClient
 			}
 		}
 

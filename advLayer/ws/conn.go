@@ -11,10 +11,8 @@ import (
 )
 
 // 实现 net.Conn, io.ReaderFrom, utils.MultiWriter, netLayer.Splicer
-// 因为 gobwas/ws 不包装conn，在写入和读取二进制时需要使用 较为底层的函数才行，并未被提供标准的Read和Write
+// 因为 gobwas/ws 不包装conn，在写入和读取二进制时需要使用 较为底层的函数才行，并未被提供标准的Read和Write。
 // 因此我们包装一下，统一使用Read和Write函数 来读写 二进制数据。因为我们这里是代理，
-// 所以我们默认 抛弃 websocket的 数据帧 长度。
-// 如果以后考虑与 vless v1的 udp 相结合的话，则数据包长度 不能丢弃，需要使用另外的实现。
 type Conn struct {
 	net.Conn
 	first_nextFrameCalled bool
@@ -48,7 +46,7 @@ func (c *Conn) Read(p []byte) (int, error) {
 	// (使用了 Extended payload length 字段)
 	// 肯定会有多读的情况，此时如果一次用 wsutil.ReadServerBinary()的话，那么服务器缓存就超大，不可能如此实现
 	// ( wsutil.ReadServerBinary内部使用了 io.ReadAll, 而ReadAll是会无限增长内存的 )
-	// 所以我们肯定要分段读， 直接用 wsutil.Reader.Read 即可， 但是每个Read前必须要有 NextFrame调用
+	// 所以我们肯定要分段读， 直接用 wsutil.Reader.Read 即可， 注意 每个Read前必须要有 NextFrame调用
 	//
 	//关于读 的完整过程，建议参考 ws/example.autoban.go 里的 wsHandler 函数
 

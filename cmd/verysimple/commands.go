@@ -216,6 +216,10 @@ func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
 			defaultOutClient = outClient
 		}
 		allClients = append(allClients, outClient)
+		if tag := outClient.GetTag(); tag != "" {
+			routingEnv.ClientsTagMap[tag] = outClient
+
+		}
 	}
 
 }
