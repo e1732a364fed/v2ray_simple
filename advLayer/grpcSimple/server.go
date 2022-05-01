@@ -122,7 +122,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 					var buf *bytes.Buffer
 
-					sc := &netLayer.IOWrapper{
+					respConn := &netLayer.IOWrapper{
 						Reader:    rq.Body,
 						Writer:    rw,
 						CloseChan: make(chan struct{}),
@@ -130,7 +130,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 					fm := httpLayer.FallbackMeta{
 						Path: p,
-						Conn: sc,
+						Conn: respConn,
 					}
 
 					// 如果使用 rq.Write， 那么实际上就是回落到 http1.1, 只有用 http2.Transport.RoundTrip 才是 h2 请求
@@ -141,9 +141,9 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 						buf = utils.GetBuf()
 						rq.Write(buf)
 
-						sc.FirstWriteChan = make(chan struct{})
+						respConn.FirstWriteChan = make(chan struct{})
 
-						fm.FirstBuffer = buf
+						fm.H1RequestBuf = buf
 
 					} else {
 						fm.IsH2 = true
@@ -156,7 +156,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 					fallbackConnChan <- fm
 
-					<-sc.CloseChan
+					<-respConn.CloseChan
 
 				}
 

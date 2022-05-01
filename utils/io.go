@@ -17,6 +17,7 @@ type ByteWriter interface {
 	Write(p []byte) (n int, err error)
 }
 
+//optionally read from OptionalReader
 type ReadWrapper struct {
 	io.Reader
 	OptionalReader    io.Reader
@@ -47,6 +48,7 @@ type DummyReadCloser struct {
 	ReadCount int
 }
 
+// ReadCount -= 1 at each call.
 //if ReadCount<0, return 0, io.EOF
 func (d *DummyReadCloser) Read(p []byte) (int, error) {
 	d.ReadCount -= 1
@@ -68,6 +70,7 @@ type DummyWriteCloser struct {
 	WriteCount int
 }
 
+// WriteCount -= 1 at each call.
 //if WriteCount<0, return 0, io.EOF
 func (d *DummyWriteCloser) Write(p []byte) (int, error) {
 	d.WriteCount -= 1
@@ -86,10 +89,12 @@ func (DummyWriteCloser) Close() error {
 	return nil
 }
 
+//先从Old读，若SwitchChan被关闭, 立刻改为从New读
 type ReadSwitcher struct {
-	Old, New io.Reader
+	Old, New   io.Reader     //non-nil
+	SwitchChan chan struct{} //non-nil
+
 	io.Closer
-	SwitchChan chan struct{}
 
 	readOnce sync.Once
 
@@ -129,7 +134,6 @@ func (d *ReadSwitcher) Read(p []byte) (int, error) {
 	}
 }
 
-//return nil
 func (d *ReadSwitcher) Close() error {
 	if d.Closer != nil {
 		return d.Closer.Close()
@@ -137,10 +141,11 @@ func (d *ReadSwitcher) Close() error {
 	return nil
 }
 
+//先向Old写，若SwitchChan被关闭, 改为向New写
 type WriteSwitcher struct {
-	Old, New io.Writer
+	Old, New   io.Writer     //non-nil
+	SwitchChan chan struct{} //non-nil
 	io.Closer
-	SwitchChan chan struct{}
 }
 
 func (d *WriteSwitcher) Write(p []byte) (int, error) {
@@ -154,7 +159,6 @@ func (d *WriteSwitcher) Write(p []byte) (int, error) {
 	}
 }
 
-//return nil
 func (d *WriteSwitcher) Close() error {
 	if d.Closer != nil {
 		return d.Closer.Close()

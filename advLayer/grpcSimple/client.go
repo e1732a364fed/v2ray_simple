@@ -1,8 +1,5 @@
 package grpcSimple
 
-// Modified from: https://github.com/Dreamacro/clash/blob/master/transport/gun/gun.go
-// License: MIT
-
 import (
 	"bufio"
 	"crypto/tls"
@@ -173,8 +170,6 @@ func (c *Client) GetCommonConn(underlay net.Conn) (any, error) {
 	}
 
 }
-
-func (c *Client) ProcessWhenFull(underlay any) {}
 
 func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 

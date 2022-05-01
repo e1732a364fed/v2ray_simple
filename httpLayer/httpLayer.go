@@ -16,6 +16,7 @@ import (
 	"errors"
 	"io"
 	"net"
+	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 
@@ -72,13 +73,34 @@ type RequestErr struct {
 	Method string
 }
 
-func (pe *RequestErr) Error() string {
-	return "InvaidRequest " + pe.Method + "," + pe.Path
+func (e *RequestErr) Is(err error) bool {
+	if err == nil {
+		return false
+	}
+	if re, ok := err.(*RequestErr); ok && re != nil {
+		return (e.Path == re.Path && e.Method == re.Path)
+	}
+	if err == utils.ErrInvalidData {
+		return true
+	}
+	return false
 }
 
-// RequestParser被用于 预读一个链接，判断该连接是否是有效的http请求,
+func (pe *RequestErr) Error() string {
+	var sb strings.Builder
+	sb.WriteString("InvaidRequest ")
+	sb.WriteString(pe.Method)
+	sb.WriteString(",")
+	sb.WriteString(pe.Path)
+
+	return sb.String()
+}
+
+// H1RequestParser被用于 预读一个链接，判断该连接是否是有效的http请求,
 // 并将Version，Path，Method 记录在结构中.
-type RequestParser struct {
+//
+// 只能过滤 http 0.9, 1.0 和 1.1. 无法过滤h2和h3.
+type H1RequestParser struct {
 	Version         string
 	Path            string
 	Method          string
@@ -88,7 +110,7 @@ type RequestParser struct {
 
 // 尝试读取数据并解析HTTP请求, 解析道道 数据会存入 RequestParser 结构中.
 //如果读取错误,会返回该错误; 如果读到的不是HTTP请求，返回 ErrNotHTTP_Request;
-func (rhr *RequestParser) ReadAndParse(r io.Reader) error {
+func (rhr *H1RequestParser) ReadAndParse(r io.Reader) error {
 	bs := utils.GetPacket()
 
 	n, e := r.Read(bs)
@@ -109,10 +131,10 @@ func (rhr *RequestParser) ReadAndParse(r io.Reader) error {
 // http level fallback metadata
 type FallbackMeta struct {
 	net.Conn
-	FirstBuffer *bytes.Buffer
-	Path        string
-	Method      string
-	IsH2        bool
+	H1RequestBuf *bytes.Buffer
+	Path         string
+	Method       string
+	IsH2         bool
 
 	H2Request *http.Request
 }

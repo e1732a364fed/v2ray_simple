@@ -11,6 +11,9 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+// Modified from: https://github.com/Dreamacro/clash/blob/master/transport/gun/gun.go
+// License: MIT
+
 func commonWrite(b []byte) *bytes.Buffer {
 	protobufHeader := [binary.MaxVarintLen64 + 1]byte{0x0A}
 	varuintSize := binary.PutUvarint(protobufHeader[1:], uint64(len(b)))
@@ -58,7 +61,7 @@ func (c *commonPart) Read(b []byte) (n int, err error) {
 
 	protobufPayloadLen, err := binary.ReadUvarint(c.br)
 	if err != nil {
-		return 0, utils.ErrInErr{ErrDesc: "binary.ReadUvarint failed", ErrDetail: err, ExtraIs: []error{utils.ErrInvalidData}}
+		return 0, utils.ErrInErr{ErrDesc: "grpc Read, binary.ReadUvarint failed", ErrDetail: err, ExtraIs: []error{utils.ErrInvalidData}}
 	}
 
 	size := int(protobufPayloadLen)

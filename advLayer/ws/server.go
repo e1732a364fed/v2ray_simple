@@ -57,7 +57,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 	//我们目前只支持 ws on http1.1
 
-	var rp httpLayer.RequestParser
+	var rp httpLayer.H1RequestParser
 	re := rp.ReadAndParse(underlay)
 	if re != nil {
 		if re == httpLayer.ErrNotHTTP_Request {
@@ -77,10 +77,10 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 	if rp.Method != "GET" || s.Thepath != rp.Path {
 		return httpLayer.FallbackMeta{
-			Conn:        underlay,
-			FirstBuffer: optionalFirstBuffer,
-			Path:        rp.Path,
-			Method:      rp.Method,
+			Conn:         underlay,
+			H1RequestBuf: optionalFirstBuffer,
+			Path:         rp.Path,
+			Method:       rp.Method,
 		}, httpLayer.ErrShouldFallback
 	}
 

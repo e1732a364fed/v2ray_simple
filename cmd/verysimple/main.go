@@ -354,12 +354,19 @@ func mainFunc() (result int) {
 					}
 
 				}
+
+				//如果在非linux系统 上，仅设置了tproxy，则会遇到下面情况
+				if len(tproxyList) == 0 {
+					if !(defaultInServer != nil || len(allServers) > 0) {
+						configFileQualifiedToRun = false
+					}
+				}
 			}
 
 		}
 
 	}
-	//没配置可用的listen或者dial，而且还无法动态更改配置
+	//没可用的listen或者dial，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
 		utils.Error("No valid proxy settings available, nor cli or apiServer feature enabled, exit now.")
 		return -1

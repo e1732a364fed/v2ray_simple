@@ -346,7 +346,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 					newiics := iics
 
 					newiics.theRequestPath = fallbackMeta.Path
-					newiics.theFallbackFirstBuffer = fallbackMeta.FirstBuffer
+					newiics.theFallbackFirstBuffer = fallbackMeta.H1RequestBuf
 					newiics.wrappedConn = fallbackMeta.Conn
 					newiics.isFallbackH2 = fallbackMeta.IsH2
 					newiics.fallbackH2Request = fallbackMeta.H2Request
@@ -383,7 +383,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				meta := wsConn.(httpLayer.FallbackMeta)
 
 				iics.theRequestPath = meta.Path
-				iics.theFallbackFirstBuffer = meta.FirstBuffer
+				iics.theFallbackFirstBuffer = meta.H1RequestBuf
 				iics.wrappedConn = meta.Conn
 
 				if ce := utils.CanLogDebug("Single AdvLayer Check failed, will fallback."); ce != nil {
