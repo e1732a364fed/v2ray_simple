@@ -673,7 +673,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			wlc = iics.wrappedConn
 
 			if iics.isFallbackH2 {
-				//h2 的fallback 非常特殊，要单独处理
+				//h2 的fallback 非常特殊，要单独处理. 下面进行h2c拨号并向真实h2c服务器发起请求。
 
 				transport := &http2.Transport{
 					DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
@@ -683,13 +683,14 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				}
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
-				url, _ := url.Parse("https://" + targetAddr.String() + iics.theRequestPath)
+				urlStr := "https://" + targetAddr.String() + iics.theRequestPath
+				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
 				rsp, err := transport.RoundTrip(iics.fallbackH2Request)
 				if err != nil {
 					if ce := utils.CanLogErr("fallback h2 RoundTrip failed"); ce != nil {
-						ce.Write(zap.Error(err), zap.String("url", rq.URL.String()))
+						ce.Write(zap.Error(err), zap.String("url", urlStr))
 					}
 
 					return

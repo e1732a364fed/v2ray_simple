@@ -52,6 +52,8 @@ type TargetDescription struct {
 //  这里的相同点，就是它们同属于 将发往一个方向, 即同属一个路由策略。
 // 任意一个参数匹配后，都将发往相同的方向，由该方向OutTag 指定。
 // RouteSet 只负责把一些属性相同的 “网络层/传输层 特征” 放到一起。
+//
+//这里主要通过 ip，域名 和 inTag 进行分流。域名的匹配又分多种方式。
 type RouteSet struct {
 	//网络层
 	NetRanger cidranger.Ranger    //一个范围

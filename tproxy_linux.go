@@ -11,7 +11,7 @@ import (
 )
 
 //非阻塞。监听透明代理, 返回一个 值 用于 关闭.
-func ListenTproxy(addr string, defaultOutClientForThis proxy.Client) (tm *tproxy.Machine) {
+func ListenTproxy(addr string, defaultOutClientForThis proxy.Client, routePolicy *netLayer.RoutePolicy) (tm *tproxy.Machine) {
 	utils.Info("Start running Tproxy")
 
 	ad, err := netLayer.NewAddr(addr)
@@ -19,14 +19,18 @@ func ListenTproxy(addr string, defaultOutClientForThis proxy.Client) (tm *tproxy
 		panic(err)
 	}
 	//因为 tproxy比较特殊, 不属于 proxy.Server, 所以 需要 独立的 转发过程去处理.
-	lis, err := startLoopTCP(ad, defaultOutClientForThis)
+	lis, err := startLoopTCP(ad, defaultOutClientForThis, &proxy.RoutingEnv{
+		RoutePolicy: routePolicy,
+	})
 	if err != nil {
 		if ce := utils.CanLogErr("TProxy startLoopTCP failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return
 	}
-	udpConn := startLoopUDP(ad, defaultOutClientForThis)
+	udpConn := startLoopUDP(ad, defaultOutClientForThis, &proxy.RoutingEnv{
+		RoutePolicy: routePolicy,
+	})
 
 	tm = &tproxy.Machine{Addr: ad, Listener: lis, UDPConn: udpConn}
 
@@ -34,7 +38,7 @@ func ListenTproxy(addr string, defaultOutClientForThis proxy.Client) (tm *tproxy
 }
 
 //非阻塞
-func startLoopTCP(ad netLayer.Addr, defaultOutClientForThis proxy.Client) (net.Listener, error) {
+func startLoopTCP(ad netLayer.Addr, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (net.Listener, error) {
 	return netLayer.ListenAndAccept("tcp", ad.String(), &netLayer.Sockopt{TProxy: true}, func(conn net.Conn) {
 		tcpconn := conn.(*net.TCPConn)
 		targetAddr := tproxy.HandshakeTCP(tcpconn)
@@ -46,13 +50,14 @@ func startLoopTCP(ad netLayer.Addr, defaultOutClientForThis proxy.Client) (net.L
 		passToOutClient(incomingInserverConnState{
 			wrappedConn:   tcpconn,
 			defaultClient: defaultOutClientForThis,
+			RoutingEnv:    env,
 		}, false, tcpconn, nil, targetAddr)
 	})
 
 }
 
 //非阻塞
-func startLoopUDP(ad netLayer.Addr, defaultOutClientForThis proxy.Client) *net.UDPConn {
+func startLoopUDP(ad netLayer.Addr, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) *net.UDPConn {
 	ad.Network = "udp"
 	conn, err := ad.ListenUDP_withOpt(&netLayer.Sockopt{TProxy: true})
 	if err != nil {
@@ -79,6 +84,7 @@ func startLoopUDP(ad netLayer.Addr, defaultOutClientForThis proxy.Client) *net.U
 
 			go passToOutClient(incomingInserverConnState{
 				defaultClient: defaultOutClientForThis,
+				RoutingEnv:    env,
 			}, false, nil, msgConn, raddr)
 		}
 

@@ -329,7 +329,7 @@ func mainFunc() (result int) {
 
 	configFileQualifiedToRun := false
 
-	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyList) > 0) {
+	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
 		configFileQualifiedToRun = true
 
 		if mode == proxy.SimpleMode {
@@ -348,7 +348,7 @@ func mainFunc() (result int) {
 
 			if len(tproxyConfs) > 0 {
 				for _, thisConf := range tproxyConfs {
-					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), defaultOutClient)
+					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), defaultOutClient, routingEnv.RoutePolicy)
 					if tm != nil {
 						tproxyList = append(tproxyList, tm)
 					}
@@ -361,7 +361,7 @@ func mainFunc() (result int) {
 	}
 	//没配置可用的listen或者dial，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
-		utils.Error("No valid proxy settings available, and no cli or apiServer feature enabled, exit now.")
+		utils.Error("No valid proxy settings available, nor cli or apiServer feature enabled, exit now.")
 		return -1
 	}
 

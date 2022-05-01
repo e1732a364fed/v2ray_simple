@@ -48,7 +48,9 @@ func (s *Server) Stop() {
 	s.stopOnce.Do(func() {
 		s.closed = true
 
-		s.underlay.Close()
+		if s.underlay != nil {
+			s.underlay.Close()
+		}
 
 		if s.fallbackConnChan != nil {
 			close(s.fallbackConnChan)
@@ -120,34 +122,39 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 					var buf *bytes.Buffer
 
-					// 如果使用 rq.Write， 那么实际上就是回落到 http1.1, 只有用 http2.Transport.RoundTrip 才是 h2 请求
-
-					//因为h2的特殊性，要建立子连接, 所以要配合调用者 进行特殊处理。
-
 					sc := &netLayer.IOWrapper{
 						Reader:    rq.Body,
 						Writer:    rw,
 						CloseChan: make(chan struct{}),
 					}
 
+					fm := httpLayer.FallbackMeta{
+						Path: p,
+						Conn: sc,
+					}
+
+					// 如果使用 rq.Write， 那么实际上就是回落到 http1.1, 只有用 http2.Transport.RoundTrip 才是 h2 请求
+
+					//因为h2的特殊性，要建立子连接, 所以要配合调用者 进行特殊处理。
+
 					if s.FallbackToH1 {
 						buf = utils.GetBuf()
 						rq.Write(buf)
 
 						sc.FirstWriteChan = make(chan struct{})
+
+						fm.FirstBuffer = buf
+
+					} else {
+						fm.IsH2 = true
+						fm.H2Request = rq
 					}
 
 					if s.closed {
 						return
 					}
 
-					fallbackConnChan <- httpLayer.FallbackMeta{
-						IsH2:        !s.FallbackToH1,
-						Path:        p,
-						Conn:        sc,
-						FirstBuffer: buf,
-						H2Request:   rq,
-					}
+					fallbackConnChan <- fm
 
 					<-sc.CloseChan
 
