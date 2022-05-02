@@ -5,13 +5,13 @@ import (
 	"sync"
 )
 
-// bufio.Reader 和 bytes.Buffer 都实现了 ByteReader
+// bufio.Reader and bytes.Buffer implemented ByteReader
 type ByteReader interface {
 	ReadByte() (byte, error)
 	Read(p []byte) (n int, err error)
 }
 
-// bytes.Buffer 实现了 ByteWriter
+// bytes.Buffer implemented ByteWriter
 type ByteWriter interface {
 	WriteByte(byte) error
 	Write(p []byte) (n int, err error)
@@ -141,7 +141,7 @@ func (d *ReadSwitcher) Close() error {
 	return nil
 }
 
-//先向Old写，若SwitchChan被关闭, 改为向New写
+//先向Old写，若SwitchChan被关闭, 改向New写
 type WriteSwitcher struct {
 	Old, New   io.Writer     //non-nil
 	SwitchChan chan struct{} //non-nil
@@ -166,7 +166,7 @@ func (d *WriteSwitcher) Close() error {
 	return nil
 }
 
-//简单的用chan来发出关闭信号的结构。
+//simple structure that send a signal by chan when Close called.
 type ChanCloser struct {
 	closeChan chan struct{}
 	once      sync.Once

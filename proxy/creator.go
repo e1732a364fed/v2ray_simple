@@ -106,7 +106,6 @@ func NewClient(dc *DialConf) (Client, error) {
 }
 
 // ClientFromURL calls the registered creator to create client.
-// dialer is the default upstream dialer so cannot be nil, we can use Default when calling this function.
 func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {
@@ -201,9 +200,6 @@ func NewServer(lc *ListenConf) (Server, error) {
 }
 
 // ServerFromURL calls the registered creator to create proxy servers.
-// dialer is the default upstream dialer so cannot be nil, we can use Default when calling this function.
-// 所有的server都可有 "norule"参数，标明无需路由 or 此server不可使用路由，在监听多个ip时是有用的;
-// 路由配置可以在json的其他配置里面设置，如 mycountry项
 func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {

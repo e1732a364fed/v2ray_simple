@@ -14,9 +14,9 @@ var testf = httpLayer.FallbackConditionSet{
 	AlpnMask: 1,
 }
 
-var testMap = make(map[httpLayer.FallbackConditionSet]*netLayer.Addr)
-var testMap2 = make(map[httpLayer.FallbackConditionSet]*netLayer.Addr)
-var testMap3 = make(map[httpLayer.FallbackConditionSet]*netLayer.Addr)
+var testMap = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
+var testMap2 = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
+var testMap3 = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
 
 const map2Mask = httpLayer.Fallback_sni | httpLayer.Fallback_alpn
 
@@ -24,19 +24,22 @@ func init() {
 
 	testMap[httpLayer.FallbackConditionSet{
 		Sni: "fake.www.verysimple.com",
-	}] = &netLayer.Addr{
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 443,
+	}] = &httpLayer.FallbackResult{
+		Addr: netLayer.Addr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: 443,
+		},
 	}
 
 	testMap2[httpLayer.FallbackConditionSet{
 		Sni:      "fake.www.verysimple.com",
 		AlpnMask: 1,
-	}] = &netLayer.Addr{
-		IP:   net.ParseIP("127.0.0.1"),
-		Port: 443,
+	}] = &httpLayer.FallbackResult{
+		Addr: netLayer.Addr{
+			IP:   net.ParseIP("127.0.0.1"),
+			Port: 443,
+		},
 	}
-
 }
 
 func TestGetFallbackAllSubsets(t *testing.T) {

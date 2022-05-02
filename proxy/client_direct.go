@@ -31,7 +31,6 @@ func (DirectCreator) NewClient(dc *DialConf) (Client, error) {
 	return d, nil
 }
 
-//实现了 DirectClient
 type DirectClient struct {
 	ProxyCommonStruct
 	isfullcone bool

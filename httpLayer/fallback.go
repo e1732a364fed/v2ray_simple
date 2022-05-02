@@ -1,13 +1,11 @@
 package httpLayer
 
 import (
-	"bytes"
 	"errors"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
-	"gonum.org/v1/gonum/stat/combin"
 )
 
 const (
@@ -49,250 +47,50 @@ func HasFallbackType(ftype, b byte) bool {
 
 //实现 Fallback. 这里的fallback只与http协议有关，所以只能按path,alpn 和 sni 进行分类
 type Fallback interface {
-	GetFallback(ftype byte, params ...string) *netLayer.Addr
-	SupportType() byte          //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
-	FirstBuffer() *bytes.Buffer //因为能确认fallback一定是读取过数据的，所以需要给出之前所读的数据，fallback时要用到，要重新传输给目标服务器
+	GetFallback(ftype byte, params ...string) *FallbackResult
+	SupportType() byte //参考Fallback_开头的常量。如果支持多个，则返回它们 按位与 的结果
 }
 
-type SingleFallback struct {
-	Addr  *netLayer.Addr
-	First *bytes.Buffer
+type FallbackResult struct {
+	Addr netLayer.Addr
+	Xver int
 }
 
-func (ef *SingleFallback) GetFallback(ftype byte, _ ...string) *netLayer.Addr {
-	return ef.Addr
+func (ef *FallbackResult) GetFallback(ftype byte, _ ...string) *FallbackResult {
+	return ef
 }
 
-func (ef *SingleFallback) SupportType() byte {
+func (FallbackResult) SupportType() byte {
 	return FallBack_default
 }
 
-func (ef *SingleFallback) FirstBuffer() *bytes.Buffer {
-	return ef.First
-}
-
-//实现 Fallback,支持 path,alpn, sni 分流
+//实现 Fallback,支持 path, alpn, sni 分流。
 // 内部 map 我们使用通用的集合办法, 而不是多层map嵌套;
 //虽然目前就三个fallback类型，但是谁知道以后会加几个？所以这样更通用.
 // 目前3种fallback性能是没问题的，不过如果 fallback继续增加的话，
 // 最差情况下集合的子集总数会急剧上升,导致最差情况下性能不如多重 map;不过一般没人那么脑残会给出那种配置.
 type ClassicFallback struct {
-	First   *bytes.Buffer
-	Default *netLayer.Addr
+	Default FallbackResult
 
 	supportedTypeMask byte
 
-	Map map[FallbackConditionSet]*netLayer.Addr
-}
-
-type FallbackConditionSet struct {
-	Path, Sni string
-	AlpnMask  byte
-}
-
-func (fcs *FallbackConditionSet) GetType() (r byte) {
-	if fcs.Path != "" {
-		r |= (Fallback_path)
-	}
-	if fcs.Sni != "" {
-		r |= Fallback_sni
-	}
-	if fcs.AlpnMask > 0 {
-		r |= Fallback_alpn
-	}
-	return r
-}
-
-func (fcs *FallbackConditionSet) GetSub(subType byte) (r FallbackConditionSet) {
-
-	for thisType := byte(Fallback_path); thisType < fallback_end; thisType++ {
-		if !HasFallbackType(subType, thisType) {
-			continue
-		}
-		switch thisType {
-		case Fallback_alpn:
-			r.AlpnMask = fcs.AlpnMask
-
-		case Fallback_path:
-			r.Path = fcs.Path
-		case Fallback_sni:
-			r.Sni = fcs.Sni
-		}
-	}
-	return
-}
-
-func (fcs *FallbackConditionSet) getSingle(t byte) (s string, b byte) {
-	switch t {
-	case Fallback_path:
-		s = fcs.Path
-	case Fallback_sni:
-		s = fcs.Sni
-	case Fallback_alpn:
-		b = fcs.AlpnMask
-	}
-	return
-}
-
-func (fcs *FallbackConditionSet) getSingleByInt(t int) (s string, b byte) {
-	switch t {
-	case 0:
-		s = fcs.Path
-	case 1:
-		b = fcs.AlpnMask
-	case 2:
-		s = fcs.Sni
-
-	}
-	return
-}
-
-func (fcs *FallbackConditionSet) setSingle(t byte, s string, b byte) {
-	switch t {
-	case Fallback_sni:
-		fcs.Sni = s
-	case Fallback_path:
-		fcs.Path = s
-	case Fallback_alpn:
-		fcs.AlpnMask = b
-	}
-	return
-}
-
-func (fcs *FallbackConditionSet) setSingleByInt(t int, s string, b byte) {
-	switch t {
-	case 0:
-		fcs.Path = s
-	case 1:
-		fcs.AlpnMask = b
-
-	case 2:
-		fcs.Sni = s
-
-	}
-	return
-}
-
-func (fcs *FallbackConditionSet) extractSingle(t byte) (r FallbackConditionSet) {
-	s, b := fcs.getSingle(t)
-	r.setSingle(t, s, b)
-	return
-}
-
-//返回不包括自己的所有子集
-func (fcs *FallbackConditionSet) GetAllSubSets() (rs []FallbackConditionSet) {
-
-	alltypes := make([]byte, 0, all_non_default_fallbacktype_count)
-	ftype := fcs.GetType()
-	for thisType := byte(Fallback_path); thisType < fallback_end; thisType <<= 1 {
-		if !HasFallbackType(ftype, thisType) {
-			continue
-		}
-		alltypes = append(alltypes, thisType)
-	}
-
-	switch len(alltypes) {
-	case 0, 1:
-
-		return nil
-
-	case 2:
-		rs = make([]FallbackConditionSet, 2)
-		rs[0] = fcs.extractSingle(alltypes[0])
-		rs[1] = fcs.extractSingle(alltypes[1])
-
-		return
-	default:
-		allss := utils.AllSubSets_improve1(alltypes)
-
-		rs = make([]FallbackConditionSet, len(allss))
-		for i, sList := range allss {
-			for _, singleType := range sList {
-				s, b := fcs.getSingle(singleType)
-				rs[i].setSingle(singleType, s, b)
-			}
-		}
-	}
-
-	return
-}
-
-// TestAllSubSets 传入一个map, 对fcs自己以及其所有子集依次测试, 看是否有匹配的。
-// 对比 GetAllSubSets 内存占用较大, 本方法开销则小很多, 因为1是复用内存, 2是匹配到就会返回，一般不会到遍历全部子集.
-func (fcs *FallbackConditionSet) TestAllSubSets(allsupportedTypeMask byte, theMap map[FallbackConditionSet]*netLayer.Addr) *netLayer.Addr {
-
-	if addr := theMap[*fcs]; addr != nil {
-		return addr
-	}
-
-	ftype := fcs.GetType()
-
-	// 该 FallbackConditionSet 所支持的所有类型
-	alltypes := make([]byte, 0, all_non_default_fallbacktype_count)
-	for thisType := byte(Fallback_path); thisType < fallback_end; thisType <<= 1 {
-		if !HasFallbackType(ftype, thisType) {
-			continue
-		}
-		alltypes = append(alltypes, thisType)
-	}
-
-	switch N := len(alltypes); N {
-	case 0, 1:
-		return nil
-	case 2:
-		if addr := theMap[fcs.extractSingle(alltypes[0])]; addr != nil {
-			return addr
-		}
-		if addr := theMap[fcs.extractSingle(alltypes[1])]; addr != nil {
-			return addr
-		}
-
-	default:
-
-		fullbuf := make([]int, N-1)
-
-		for K := N - 1; K > 0; K-- { //对每一种数量的组合方式进行遍历
-			indexList := fullbuf[:K]
-
-			cg := combin.NewCombinationGenerator(N, K)
-
-		nextCombination:
-			for cg.Next() { //每一个组合实例情况都判断一遍
-
-				cg.Combination(indexList)
-				curSet := FallbackConditionSet{}
-
-				for _, typeIndex := range indexList { //按得到的type索引生成本curSet
-
-					//有的单个元素种类不可能在map中出现过
-					if !HasFallbackType(allsupportedTypeMask, getfallbacktype_byindex(typeIndex)) {
-						continue nextCombination
-					}
-
-					s, b := fcs.getSingleByInt(typeIndex)
-					curSet.setSingleByInt(typeIndex, s, b)
-				}
-
-				if addr := theMap[curSet]; addr != nil {
-					return addr
-				}
-			}
-		}
-
-	}
-
-	return nil
+	Map map[FallbackConditionSet]*FallbackResult
 }
 
 func NewClassicFallback() *ClassicFallback {
 	return &ClassicFallback{
-		Map: make(map[FallbackConditionSet]*netLayer.Addr),
+		Map: make(map[FallbackConditionSet]*FallbackResult),
 	}
 }
 
 type FallbackConf struct {
+	//可选
+	FromTag string `toml:"from" json:"from"` //which inServer triggered this fallback
+
+	Xver int `toml:"xver" json:"xver"` //if fallback, whether to use PROXY protocol, and which version
+
 	//必填
-	Dest interface{} `toml:"dest" json:"dest"` //可为数字端口号，or string "ip:port"
+	Dest interface{} `toml:"dest" json:"dest"` //number port，or string "ip:port"
 
 	//几种匹配方式，可选
 
@@ -333,25 +131,22 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 			AlpnMask: aMask,
 		}
 
-		cfb.InsertFallbackConditionSet(condition, addr)
+		cfb.InsertFallbackConditionSet(condition, addr, fc.Xver)
 
 	}
 	return cfb
 }
 
-func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, addr netLayer.Addr) {
+func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, addr netLayer.Addr, xver int) {
 
 	theMap := cfb.Map
 
 	ftype := condition.GetType()
 	cfb.supportedTypeMask |= ftype
 
-	theMap[condition] = &addr
+	theMap[condition] = &FallbackResult{Addr: addr, Xver: xver}
 }
 
-func (cfb *ClassicFallback) FirstBuffer() *bytes.Buffer {
-	return cfb.First
-}
 func (cfb *ClassicFallback) SupportType() byte {
 
 	return cfb.supportedTypeMask
@@ -360,13 +155,13 @@ func (cfb *ClassicFallback) SupportType() byte {
 // GetFallback 使用给出的 ftype mask 和 对应参数 来试图匹配到 回落地址.
 // ss 必须按 FallBack_* 类型 从小到大顺序排列
 //
-func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *netLayer.Addr {
+func (cfb *ClassicFallback) GetFallback(ftype byte, ss ...string) *FallbackResult {
 	if !HasFallbackType(cfb.supportedTypeMask, ftype) {
 		return nil
 	}
 
 	if ftype == FallBack_default {
-		return cfb.Default
+		return &cfb.Default
 	}
 
 	//log.Println("GetFallback.", cfb.supportedTypeMask, ftype, ss)

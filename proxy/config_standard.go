@@ -28,6 +28,7 @@ type AppConf struct {
 
 //标准配置，使用toml格式。
 // toml：https://toml.io/cn/
+//
 // English: https://toml.io/en/
 type StandardConf struct {
 	App     *AppConf          `toml:"app"`

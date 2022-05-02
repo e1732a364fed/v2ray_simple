@@ -627,7 +627,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 				if ce := utils.CanLogDebug("Fallback check"); ce != nil {
 					if fbAddr != nil {
 						ce.Write(
-							zap.String("matched", fbAddr.String()),
+							zap.String("matched", fbAddr.Addr.String()),
 						)
 					} else {
 						ce.Write(
@@ -636,7 +636,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 					}
 				}
 				if fbAddr != nil {
-					targetAddr = *fbAddr
+					targetAddr = fbAddr.Addr
 					//wlc = iics.wrappedConn
 					willfallback = true
 					return
@@ -669,7 +669,8 @@ var (
 	}
 )
 
-//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用，会调用 dialClient_andRelay
+//被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。
+// 会调用 dialClient_andRelay
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
 	////////////////////////////// 回落阶段 /////////////////////////////////////
