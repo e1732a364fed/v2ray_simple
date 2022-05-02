@@ -28,7 +28,8 @@ import (
 //
 // geosite数据格式可参考
 // https://github.com/v2fly/v2ray-core/blob/master/app/router/routercommon/common.proto
-// 或者xray的 app/router/config.proto
+//
+// or xray的 app/router/config.proto
 // 然而我们不引用任何v2ray和xray的代码, 也不使用protobuf
 /*
 我们只能自行读取该项目原始文件，然后生成自己的数据结构

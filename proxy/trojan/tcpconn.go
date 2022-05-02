@@ -72,7 +72,7 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 	if c.isServerEnd || c.remainFirstBufLen <= 0 {
 
-		//底层连接可以是 ws，或者 tls，或者 基本连接; tls 我们暂不支持 utils.MultiWriter
+		//底层连接可以是 ws，/ tls / 基本连接; tls 我们暂不支持 utils.MultiWriter
 		// 理论上tls是可以支持的，但是要我们魔改tls库
 
 		//本作的 ws.Conn 实现了 utils.MultiWriter

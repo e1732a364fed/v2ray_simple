@@ -13,7 +13,7 @@ const (
 	Log_debug = iota
 	Log_info
 	Log_warning
-	Log_error //error一般用于输出一些 连接错误或者客户端协议错误之类的, 但不致命
+	Log_error //error一般用于输出 some 连接/客户端协议 错误, 但不致命
 	Log_dpanic
 	Log_panic
 	Log_fatal

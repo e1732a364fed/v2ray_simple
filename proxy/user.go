@@ -27,7 +27,7 @@ type UserContainer interface {
 	UserBytesLen() int
 }
 
-// 可以控制 User 登入和登出 的接口, 就像一辆公交车一样，或者一座航站楼。Bus也可以理解为总线。
+// 可以控制 User 登入和登出 的接口
 type UserBus interface {
 	AddUser(User) error
 	DelUser(User)

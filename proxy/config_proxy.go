@@ -28,7 +28,7 @@ type CommonConf struct {
 
 	HttpHeader *httpLayer.HeaderPreset `toml:"header"` //http伪装头; 可选
 
-	AdvancedLayer string `toml:"advancedLayer"` //高级层; 可不填，或者为ws，或者为grpc
+	AdvancedLayer string `toml:"advancedLayer"` //高级层; 可不填
 
 	IsEarly bool `toml:"early"` //是否启用 0-rtt
 
@@ -74,11 +74,11 @@ func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 
 }
 
-// 监听所使用的设置, 使用者可被称为 listener 或者 inServer
+// 监听所使用的设置, 使用者可被称为 listener or inServer
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为监听地址与端口
 type ListenConf struct {
 	CommonConf
-	Fallback any    `toml:"fallback"` //可选，默认回落的地址，一般可以是ip:port,数字port 或者 unix socket的文件名
+	Fallback any    `toml:"fallback"` //可选，默认回落的地址，一般可为 ip:port,数字port or unix socket的文件名
 	TLSCert  string `toml:"cert"`
 	TLSKey   string `toml:"key"`
 
@@ -90,7 +90,7 @@ type ListenConf struct {
 
 }
 
-// 拨号所使用的设置, 使用者可被称为 dialer 或者 outClient
+// 拨号所使用的设置, 使用者可被称为 dialer or outClient
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port  为拨号地址与端口
 type DialConf struct {
 	CommonConf

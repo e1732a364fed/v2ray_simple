@@ -52,7 +52,7 @@ type Client interface {
 	ProxyCommon
 
 	//进行 tcp承载数据的传输的握手。firstPayload 用于如 vless/trojan 这种 没有握手包的协议，可为空。
-	//规定, firstPayload 由 utils.GetMTU或者 GetPacket获取, 所以写入之后可以用 utils.PutBytes 放回
+	//规定, firstPayload 由 utils.GetMTU or GetPacket获取, 所以写入之后可以用 utils.PutBytes 放回
 	Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
 	//建立一个通道, 然后在这个通道上 不断地申请发送到 各个远程udp地址 的连接。理论上target可为空值。
@@ -130,7 +130,7 @@ func GetVSI_url(pc ProxyCommon) string {
 // 一个 ProxyCommon 会包含 VSI 中所有层级的信息;
 type ProxyCommon interface {
 	Name() string       //代理协议名称, 如vless
-	MiddleName() string //其它VSI层 所使用的协议，前后被加了加号，如 +tls+ws+
+	MiddleName() string //不包含传输层 和 代理层的 其它VSI层 所使用的协议，前后被加了加号，如 +tls+ws+
 
 	Stop()
 
@@ -179,7 +179,7 @@ type ProxyCommon interface {
 
 	// 判断是否有内层mux。
 	//0 为不会有 innermux, 1 为有可能有 innermux, 2 为总是使用 innerMux;
-	// 规定是，客户端 只能返回0或者2， 服务端 只能返回 0或者1（除非服务端协议不支持不mux的情况，此时可以返回2）。
+	// 规定是，客户端 只能返回0/2， 服务端 只能返回 0/1（除非服务端协议不支持不mux的情况，此时可以返回2）。
 	// string 为 innermux内部的 代理 协议 名称。（一般用simplesocks）
 	HasInnerMux() (int, string)
 }

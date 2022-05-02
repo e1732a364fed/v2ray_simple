@@ -36,7 +36,7 @@ func ATypeToSocks5Standard(atype byte) byte {
 // Addr 还可以用Dial 方法直接进行拨号
 type Addr struct {
 	Network string
-	Name    string // domain name, 或者 unix domain socket 的 文件路径
+	Name    string // domain name, or unix domain socket 的 文件路径
 	IP      net.IP
 	Port    int
 }
@@ -126,7 +126,7 @@ func NewAddrFromUDPAddr(addr *net.UDPAddr) Addr {
 //addrStr格式一般为 host:port ；如果不含冒号，将直接认为该字符串是域名或文件名
 func NewAddr(addrStr string) (Addr, error) {
 	if !strings.Contains(addrStr, ":") {
-		//unix domain socket, 或者域名默认端口的情况
+		//unix domain socket, or 域名默认端口的情况
 		return Addr{Name: addrStr}, nil
 	}
 
@@ -188,7 +188,7 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 	return a, nil
 }
 
-//会根据thing的类型 生成实际addr； 可以为数字端口，或者带冒号的字符串，或者一个 文件路径(unix domain socket)
+//会根据thing的类型 生成实际addr； 可以为数字端口，或带冒号的字符串，或一个 文件路径(unix domain socket)
 func NewAddrFromAny(thing any) (addr Addr, err error) {
 	var integer int
 	var dest_type byte = 0 //0: port, 1: ip:port, 2: unix domain socket
@@ -215,7 +215,7 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 			err = nil
 		}
 
-		//不是url时，有两种情况, 带冒号的 ip:port, 或者 unix domain socket 的文件路径
+		//不是url时，有两种情况, 带冒号的 ip:port, or unix domain socket 的文件路径
 
 		if strings.Contains(value, ":") {
 			dest_type = 1

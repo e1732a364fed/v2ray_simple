@@ -57,7 +57,7 @@ func LoadTomlConfFile(fileNamePath string) (StandardConf, error) {
 
 }
 
-// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf 或者 simpleConf，否则尝试 listenURL, dialURL 参数.
+// 先检查configFileName是否存在，存在就尝试加载文件到 standardConf or simpleConf，否则尝试 listenURL, dialURL 参数.
 // 若 返回的是 simpleConf, 则还可能返回 mainFallback.
 func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (standardConf StandardConf, simpleConf SimpleConf, confMode int, mainFallback *httpLayer.ClassicFallback, err error) {
 

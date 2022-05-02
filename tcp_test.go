@@ -137,7 +137,7 @@ protocol = "direct"
 	tryGetHttp(t, client, "http://www.msftconnecttest.com/connecttest.txt")
 
 	//联通性测试 可参考 https://imldy.cn/posts/99d42f85/
-	// 用这种 captive 测试 不容易遇到 网站无法在 某些地区 如 github action 所在的地区 访问 或者卡顿等情况.
+	// 用这种 captive 测试 不容易遇到 网站无法在 某些地区 如 github action 所在的地区 访问 or卡顿等情况.
 }
 
 func tryGetHttp(t *testing.T, client *http.Client, path string) {

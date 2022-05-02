@@ -57,7 +57,7 @@ tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli(交互模式)/apiServ
 
 默认第一次运行是会自动下载mmdb文件的，所以不用太担心。
 
-不过geosite的话，也是需要下载的，可以通过交互模式进行下载，或者通过如下命令下载
+不过geosite的话，也是需要下载的，可以通过交互模式进行下载，或通过如下命令下载
 
 ```sh
 #在verysimple可执行文件所在目录
@@ -206,7 +206,7 @@ verysimple -c server.toml
 
 使用自签名证书是会被中间人攻击的，再次特地提醒。如果被中间人攻击，就能直接获取你的uuid，然后你的服务器 攻击者就也能用了。
 
-要想申请真实证书，仅有ip是不够的，要拥有一个域名。本项目提供的自签名证书仅供快速测试使用，切勿用于实际场合。
+要想申请真实证书，仅有ip是不够的，要拥有一个域名。本项目提供的 生成随机证书功能 仅供快速测试使用，切勿用于实际场合。
 
 ### shell 命令 生成自签名证书
 
@@ -307,13 +307,13 @@ api服务器；tproxy 透明代理； http伪装头.
 
 同时，vmess这种 信息熵 太大 的协议已经 应该退出历史舞台，本作予以淘汰，不再支持。
 
-目前认为只有外层为 tls 的，支持回落的 协议才是主流。
+目前认为只有外层为 tls 的、支持回落的 协议才是主流。
 
 ### 关于vless v1
 
 这里的v1是 verysimple 自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)
 
-总之，强制tls，简单修订了一下协议格式，然后重点完善了fullcone。
+总之，简单修订了一下协议格式，然后重点完善了fullcone。
 
 verysimple 实现了 一种独创的 非mux型“分离信道”方法的 udp over tcp 的fullcone
 
@@ -398,17 +398,17 @@ tls lazy encrypt 特性 运行时可以用 -lazy 参数打开（服务端客户�
 
 而且后面可以考虑，如果底层是使用的tls1.2，那么我们上层也可以用 tls1.2来握手。这个是可以做到的，因为底层的判断在客户端握手刚发生时就可以做到，而此时我们先判断，然后再发起对 服务端的连接，即可。
 
-也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或者特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/e1732a364fed/v2ray_simple/discussions/2
+也有一种可能是，客户端的申请是带tls1.3的，但是目标服务器却返回的是tls1.2，这也是有可能的，比如目标服务器比较老，或特意关闭了tls1.3功能；此时我们可以考虑研发新技术来绕过，也要放到vless v1技术栈里。参见 https://github.com/e1732a364fed/v2ray_simple/discussions/2
 
 在不使用新协议时，lazy只能通过不lazy tls1.2的方式来解决此问题, 即裸奔转发 tls1.3、加密转发 tls1.2. 
 
 ## 关于内嵌geoip 文件
 
-默认的Makefile或者直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
+默认的Makefile 或 直接 go build 是不开启内嵌功能的，需要加载外部mmdb文件，就是说你要自己去下载mmdb文件，
 
 **不过，最新的版本会自动检测，如果你没有mmdb文件，会自动给你从cdn下载下来，所以已经很方便了，不需要自己动手.**
 
-可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或者类似项目 进行下载
+可以从 https://github.com/P3TERX/GeoLite.mmdb 项目，https://github.com/Loyalsoldier/geoip 项目， 或类似项目 进行下载
 
 加载的外部文件 必须使用原始 mmdb格式。
 
@@ -447,9 +447,9 @@ https://github.com/e1732a364fed/v2ray_simple/discussions
 
 **想要为本作贡献的同学，要学习本作的这些理念，并能够贯彻你的代码。**
 
-**不够极简或者解释不够清晰的代码我们将会进行淘汰或修正。**
+**不够极简或解释不够清晰的代码我们将会进行淘汰或修正。**
 
-有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) 或者issue中的【开发者贡献指南】.
+有贡献想法的同学，阅读 [CONTRIBUTING](CONTRIBUTING.md) / issue中的【开发者贡献指南】.
 
 #### 开发者入门指导
 

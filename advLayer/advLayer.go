@@ -28,20 +28,22 @@ func PrintAllProtocolNames() {
 	}
 }
 
+//Creator represents supported features of a advLayer sub-package, and it can create New Client and Server.
 type Creator interface {
+	ProtocolName() string
+	PackageID() string //unique for each package, sub packages in v2ray_simple don't need to apply prefix, but if you want to implement your own package, you should use full git path, like github.com/somebody/mypackage
+
 	//NewClientFromURL(url *url.URL) (Client, error)	//todo: support url
 	NewClientFromConf(conf *Conf) (Client, error)
 	NewServerFromConf(conf *Conf) (Server, error)
 
 	GetDefaultAlpn() (alpn string, mustUse bool)
-	ProtocolName() string
-	PackageID() string //unique for each package, sub packages in v2ray_simple don't need to apply prefix, but if you want to implement your own package, you should use full git path, like github.com/somebody/mypackage
 
 	CanHandleHeaders() bool //If true, there won't be an extra http header layer during the relay progress, and the matching progress of the customized http headers will be handled inside this package.
 
-	IsMux() bool // if IsMux, if is client, then Client is a MuxClient, or it's a SingleClient; if is server, then Server is a MuxServer, or it's a SingleServer
+	IsMux() bool // if IsMux, if is Client, then it is a MuxClient, or it's a SingleClient; if is Server, then it is a MuxServer, or it's a SingleServer
 
-	IsSuper() bool // quic is a super protocol, which handles transport layer dialing and tls layer handshake directly.
+	IsSuper() bool // quic is a super protocol, which handles transport layer dialing and tls layer handshake directly. If IsSuper, then it's a SuperMuxServer
 
 }
 
@@ -59,7 +61,7 @@ type Conf struct {
 type Common interface {
 	Creator
 
-	GetPath() string
+	GetPath() string // for logging procedure to get the path settings. Doesn't have to be the full path, as long as different settings can be distinguished. For example, grpc's GetPath() might return its ServiceName.
 }
 
 type Client interface {

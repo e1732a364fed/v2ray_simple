@@ -292,7 +292,7 @@ func NewClassicFallback() *ClassicFallback {
 
 type FallbackConf struct {
 	//必填
-	Dest interface{} `toml:"dest" json:"dest"` //可为数字端口号，或者 字符串的ip:port
+	Dest interface{} `toml:"dest" json:"dest"` //可为数字端口号，or string "ip:port"
 
 	//几种匹配方式，可选
 

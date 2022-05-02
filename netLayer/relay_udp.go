@@ -71,7 +71,7 @@ type MsgConn interface {
 	5. vless v1 的 crumfurs 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
 		如果是未知的, 则不会再使用原来的rc，而是要拨号新通道
 
-		也就是说，lc是有且仅有一个的, 因为是socks5 或者dokodemo都是采用的单信道的方式,
+		也就是说，lc是有且仅有一个的, 因为是socks5 / dokodemo都是采用的单信道的方式,
 
 		而在 vless v1时, udp的rc的拨号可以采用多信道方式。
 

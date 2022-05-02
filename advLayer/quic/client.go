@@ -49,7 +49,7 @@ func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure boo
 	}
 }
 
-//trimBadConns removes non-Active sessions, 并试图返回一个 最佳的可用于新stream的session
+//trimBadConns removes non-Active sessions, 并试图返回 最佳的可用于新stream的session
 func (c *Client) trimBadConns() (bestConn *connState) {
 	minSessionNum := 10000
 	for id, thisState := range c.clientconns {
@@ -96,18 +96,18 @@ func (c *Client) processWhenFull(previous *connState) {
 	}
 }
 
-//获取已拨号的连接，或者重新从底层拨号。返回一个可作 c.DialSubConn 参数 的值.
+//获取已拨号的连接 / 重新从底层拨号。返回 可作 c.DialSubConn 参数 的值.
 func (c *Client) GetCommonConn(_ net.Conn) (any, error) {
 	return c.getCommonConn(nil)
 }
 
 func (c *Client) getCommonConn(_ net.Conn) (*connState, error) {
-	//返回一个 *sessionState.
+	//返回 *sessionState.
 
 	//我们采用预先openStream的策略, 来试出哪些session已经满了, 哪些没满
-	// 已知的是, 一个session满了之后, 要等待 0～45秒 或以上的时间, 才能它才可能腾出空位
+	// 已知的是, a session满了之后, 要等待 0～45秒 或以上的时间, 才能它才可能腾出空位
 
-	//我们对每一个session所打开过的stream进行计数，这样就可以探知 服务端 的 最大stream数设置.
+	//我们对 each session所打开过的stream进行计数，这样就可以探知 服务端 的 最大stream数设置.
 
 	{
 

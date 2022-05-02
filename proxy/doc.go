@@ -78,33 +78,33 @@ New Model - VSI 新的VSI 模型
 对应的理想配置文件应该如下.
 
 	{
-		"layer3_settings": {	//或者叫 network_settings，
+		"layer3_settings": {	//or network_settings，
 				//可以配置一些网络层分流（ip）
 		},
-		"layer4_settings": {	//或者叫 transportLayer_settings，
+		"layer4_settings": {	//or transportLayer_settings，
 			"tcp":{}	//可以设置一些缓存大小等配置. 和传输层协议分流（tcp/udp）
 		},
-		"layer5_settings": {	//或者叫 tls_settings，
+		"layer5_settings": {	//or tls_settings，
 			"tls":{"insecure": true},
 			"utls":{}
 			// 可以配置tls 层分流/回落（sni 和 alpn）
 		},
-		"layer6_settings": {	//或者叫 http_settings
-			//可以配置http path分流 /回落或者 header分流/回落
+		"layer6_settings": {	//or http_settings
+			//可以配置http path分流 /回落 or header分流/回落
 		},
-		"layer7_settings": {	//或者叫 advancedLayer_settings
+		"layer7_settings": {	//or advancedLayer_settings
 			"ws":{},
 			"grpc":{},
 			"quic":{}
 		},
-		"layer8_settings": {	//或者叫 proxy_settings
+		"layer8_settings": {	//or proxy_settings
 			"vless":{},
 			"trojan":{}
 		},
-		"layer9_settings": {	//或者叫 innerMux_settings
+		"layer9_settings": {	//or innerMux_settings
 			"smux":{}
 		},
-		"layer10_settings": {	//或者叫 innerProxy_settings
+		"layer10_settings": {	//or innerProxy_settings
 			"simplesocks":{}
 		},
 	}
@@ -122,7 +122,7 @@ advLayer文件夹 代表第七层, proxy文件夹代表第8层或第10层, 同�
 
 也可以程序指定一种 特定的情况，比如开始运行程序时，冒出交互界面，自己按项选择好后，就自动运行，然后自动生成客户端分享url.
 
-可以在脑海里想象 “穿鞋带” 的画面，有很多洞可以经过，都穿好了，鞋带就系好了。或者手机手势解锁的情况.
+可以在脑海里想象 “穿鞋带” 的画面，有很多洞可以经过，都穿好了 鞋带就系好了。或手机手势解锁的情况.
 
 这种好处是，每次运行都可以采用不同的配置，不同的uuid，手机一扫码就能连上.
 

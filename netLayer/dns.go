@@ -160,7 +160,7 @@ func (c *DnsConn) Dial() error {
 	return nil
 }
 
-//建立一个与dns服务器连接, 可为纯udp的dns, 或者 DoT的. 如果是DoT的, 则要求 addr.Network == "tls",
+//建立一个与dns服务器连接, 可为纯udp dns or DoT. if DoT, 则要求 addr.Network == "tls",
 // 如果是纯udp的，要求 addr.IsUDP() == true
 func DialDnsAddr(addr *Addr) (conn net.Conn, err error) {
 

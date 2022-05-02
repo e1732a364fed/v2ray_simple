@@ -18,7 +18,7 @@
 注意，本命令只会下载正式版，不会下载beta版。如果你要测试beta版，到github上找到对应的下载链接下载，而不是使用jq所读到的版本。
 
 注意，如果你以前用过verysimple，则最好在运行前将自己配置文件先拷贝到其它地方，防止下面代码将你原来配置误删除。
-或者你可以先解压 新版verysimple可执行文件 到其他位置，然后再用 mv 覆盖掉老版本 的可执行文件 和 examples 目录。
+或你可以先解压 新版verysimple可执行文件 到其他位置，然后再用 mv 覆盖掉老版本 的可执行文件 和 examples 目录。
 
 ### 命令
 
@@ -55,7 +55,7 @@ sudo cp examples/vlesss.server.toml server.toml
 
 生成的证书会为 yourcert.pem 和 yourcert.key
 
-你可以重命名为 cert.pem 和 cert.key 来匹配示例文件，或者反过来，修改示例文件里的证书名称以匹配 yourcert这个名称.
+你可以重命名为 cert.pem 和 cert.key 来匹配示例文件，或反过来，修改示例文件里的证书名称以匹配 yourcert这个名称.
 
 当然，你也可以通过README.md 里的指导自行使用openssl生成证书。
 

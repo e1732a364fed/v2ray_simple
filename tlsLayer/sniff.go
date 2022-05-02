@@ -110,7 +110,7 @@ type ComSniff struct {
 
 	handshakeFailReason int
 
-	cantBeTLS13 bool //clienthello如果没有 supported_versions项，或者该项没有0304，则不可能协商出tls1.3。如果协商出了则是错误的;
+	cantBeTLS13 bool //clienthello如果没有 supported_versions项，or 该项没有0304，则不可能协商出tls1.3。如果协商出了则是错误的;
 
 	peer *ComSniff //握手是需要判断clienthello+serverhello的，而它们一个是读一个是写，所以要能够让它们相互访问到之前判断好的数据
 }
@@ -431,7 +431,7 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 			}
 		} else {
 			// Read也是同理，也是发送特殊指令，只不过Read的话，是客户端向 服务端 发送特殊指令
-			// 这里是不会被黑客攻击的，因为事件发生在第二个或者更往后的 数据包中，而vless的uuid检验则是从第一个就要开始检验。也不会遇到重放攻击，因为tls每次加密的秘文都是不一样的。
+			// 这里是不会被黑客攻击的，因为事件发生在第二个/更往后的 数据包中，而vless的uuid检验则是从第一个就要开始检验。也不会遇到重放攻击，因为tls每次加密的秘文都是不一样的。
 
 			//这里就是服务端来读取 特殊指令
 			if !cd.isclient {
@@ -507,7 +507,7 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 }
 
 func commonFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
-	if !OnlyTest && (cd.DefinitelyNotTLS || cd.IsTls) { //确定了是TLS 或者肯定不是 tls了的话，就直接return掉
+	if !OnlyTest && (cd.DefinitelyNotTLS || cd.IsTls) { //确定了TLS / 肯定 not tls了的话，就直接return掉
 		return
 	}
 	if err != nil {

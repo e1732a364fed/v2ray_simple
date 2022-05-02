@@ -79,11 +79,11 @@ func put_readvMem(rm *readvMem) {
 	readvPool.Put(rm)
 }
 
-/* readvFrom 用于读端 为rawRead的情况，如 从socks5或者direct读取 数据, 等裸协议的情况。
+/* readvFrom 用于读端 为rawRead的情况，如 从socks5或direct读取 数据, 等裸协议的情况。
 
 rm可为nil，但不建议，因为提供非nil的readvMem 可以节省内存分配开销。
 
-返回错误时，会返回 原buffer 或者 在函数内部新分配的buffer.
+返回错误时，会返回 原buffer 或 在函数内部新分配的buffer.
 
 本函数不负责 释放分配的内存. 因为有时需要重复利用缓存。
 

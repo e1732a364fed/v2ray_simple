@@ -38,7 +38,7 @@ func canNetwork_tlsLazy(n string) bool {
 
 // tryTlsLazyRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发.
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
-// 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice 或者退化为普通拷贝.
+// 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice / 退化为普通拷贝.
 //
 // 第一个参数仅用于 tls_lazy_secure
 func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
@@ -117,7 +117,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 	go func(wrcPtr *io.ReadWriteCloser) {
 		//从 wlccc 读取，向 wrc 写入
 		// 此时如果ReadFrom，那就是 wrc.ReadFrom(wlccc)
-		//wrc 要实现 ReaderFrom才行, 或者把最底层TCPConn暴露，然后 wlccc 也要把最底层 TCPConn暴露出来
+		//wrc 要实现 ReaderFrom才行, or把最底层TCPConn暴露，然后 wlccc 也要把最底层 TCPConn暴露出来
 		// 这里就直接采取底层方式
 
 		p := utils.GetPacket()

@@ -34,7 +34,7 @@ import (
 	_ "github.com/e1732a364fed/v2ray_simple/proxy/vless"
 )
 
-//统计数据
+//statistics
 var (
 	ActiveConnectionCount      int32
 	AllDownloadBytesSinceStart uint64
@@ -59,7 +59,7 @@ func init() {
 // 监听 inServer, 然后试图转发到一个 proxy.Client。如果env没给出，则会转发到 defaultOutClient。
 // 若 env 不为 nil, 则会 进行分流或回落。具有env的情况下，可能会转发到 非 defaultOutClient 的其他 proxy.Client.
 //
-// 使用方式可以参考 tcp_test.go, udp_test.go 或者 cmd/verysimple.
+// 使用方式可以参考 tcp_test.go, udp_test.go or cmd/verysimple.
 //
 // 非阻塞. 返回的closer 用于 停止监听，若为 nil则表示监听失败。
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
@@ -162,7 +162,7 @@ type incomingInserverConnState struct {
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
 
 	baseLocalConn net.Conn     // baseLocalConn 是来自客户端的原始网络层链接
-	wrappedConn   net.Conn     // wrappedConn 是层层握手后,代理层握手前 包装的链接,一般为tls层或者高级层;
+	wrappedConn   net.Conn     // wrappedConn 是层层握手后,代理层握手前 包装的链接,一般为tls层or高级层;
 	inServer      proxy.Server //可为 nil
 	defaultClient proxy.Client
 
@@ -302,7 +302,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	if header := inServer.HasHeader(); header != nil {
 
 		//websocket 可以自行处理header, 不需要额外http包装
-		if adv != "ws" {
+		if !(advSer != nil && advSer.CanHandleHeaders()) {
 			wrappedConn = &httpLayer.HeaderConn{
 				Conn:        wrappedConn,
 				H:           header,
@@ -373,9 +373,9 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 			}
 
 		default: //ws
-			wsSer := advSer.(advLayer.SingleServer)
+			singleSer := advSer.(advLayer.SingleServer)
 
-			wsConn, err := wsSer.Handshake(wrappedConn)
+			wsConn, err := singleSer.Handshake(wrappedConn)
 
 			if errors.Is(err, httpLayer.ErrShouldFallback) {
 
@@ -389,7 +389,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
-						zap.String("advLayer", inServer.AdvancedLayer()),
+						zap.String("advLayer", adv),
 						zap.String("validPath", advSer.GetPath()),
 						zap.String("gotMethod", meta.Method),
 						zap.String("gotPath", meta.Path),
@@ -400,10 +400,11 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				return
 
 			} else if err != nil {
-				if ce := utils.CanLogErr("InServer ws handshake failed"); ce != nil {
+				if ce := utils.CanLogErr("InServer Single AdvLayer handshake failed"); ce != nil {
 
 					ce.Write(
 						zap.String("handler", inServer.AddrStr()),
+						zap.String("advLayer", adv),
 						zap.Error(err),
 					)
 				}
@@ -571,7 +572,7 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 //查看当前配置 是否支持fallback, 并获得回落地址。
 // 被 passToOutClient 调用
 func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, willfallback bool) {
-	//先检查 mainFallback，如果mainFallback中各项都不满足 或者根本没有 mainFallback 再检查 defaultFallback
+	//先检查 mainFallback，如果mainFallback中各项都不满足 or根本没有 mainFallback 再检查 defaultFallback
 
 	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
 	if iics.RoutingEnv != nil {
@@ -1082,7 +1083,7 @@ func dialClient(targetAddr netLayer.Addr,
 
 	////////////////////////////// header 层 /////////////////////////////////////
 
-	if header := client.HasHeader(); header != nil && adv != "ws" {
+	if header := client.HasHeader(); header != nil && !(advClient != nil && advClient.CanHandleHeaders()) {
 		clientConn = &httpLayer.HeaderConn{
 			Conn: clientConn,
 			H:    header,
@@ -1163,8 +1164,11 @@ advLayerHandshakeStep:
 				wlc.SetReadDeadline(time.Time{})
 
 				if e != nil {
-					if ce := utils.CanLogErr("failed to read ws early data"); ce != nil {
-						ce.Write(zap.Error(e))
+					if ce := utils.CanLogErr("failed to read Single AdvLayer early data"); ce != nil {
+						ce.Write(
+							zap.String("advLayer", adv),
+							zap.Error(e),
+						)
 					}
 					result = -1
 					return
@@ -1177,6 +1181,7 @@ advLayerHandshakeStep:
 
 				if ce := utils.CanLogDebug("will send early data"); ce != nil {
 					ce.Write(
+						zap.String("advLayer", adv),
 						zap.Int("len", n),
 					)
 				}
@@ -1194,8 +1199,9 @@ advLayerHandshakeStep:
 			wc, err = wcs.Handshake(clientConn, ed)
 
 			if err != nil {
-				if ce := utils.CanLogErr("failed in handshake ws"); ce != nil {
+				if ce := utils.CanLogErr("failed in handshake Single AdvLayer"); ce != nil {
 					ce.Write(
+						zap.String("advLayer", adv),
 						zap.String("target", targetAddr.String()),
 						zap.Error(err),
 					)

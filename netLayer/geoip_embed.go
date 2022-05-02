@@ -19,7 +19,7 @@ import (
 //使用 go build -tags embed_geoip 来将文件 编译进 可执行文件
 
 //文件来自 https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
-// 需要自行下载，或者到其他提供该文件的github项目下载，然后放入我们的 netLayer 文件夹中
+// 需要自行下载，or 到其他提供该文件的github项目下载，然后放入我们的 netLayer 文件夹中
 
 //go:embed GeoLite2-Country.mmdb.tgz
 var geoLite2Country_embed_tgz []byte

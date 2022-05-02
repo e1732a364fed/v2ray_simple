@@ -382,7 +382,7 @@ func mainFunc() (result int) {
 		}
 
 	}
-	//没可用的listen或者dial，而且还无法动态更改配置
+	//没可用的listen/dial，而且还无法动态更改配置
 	if !configFileQualifiedToRun && !isFlexible() {
 		utils.Error("No valid proxy settings available, nor cli or apiServer feature enabled, exit now.")
 		return -1
