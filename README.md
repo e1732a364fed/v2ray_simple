@@ -34,7 +34,7 @@ socks5(包括 udp associate)/http/dokodemo/tproxy(透明代理)/trojan/simplesoc
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控 和 0-rtt)/smux, 
 
-dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn), 
+dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn/PROXY protocol v1/v2), 
 
 tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli(交互模式)/apiServer
 

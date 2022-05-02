@@ -695,7 +695,19 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
-				rsp, err := h2c_transport.RoundTrip(iics.fallbackH2Request)
+				transport := h2c_transport
+				if fbResult > 0 {
+					transport = &http2.Transport{
+						DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+							conn, e := net.Dial(n, a)
+							netLayer.WritePROXYprotocol(fbResult, wlc, conn)
+							return conn, e
+						},
+						AllowHTTP: true,
+					}
+				}
+
+				rsp, err := transport.RoundTrip(iics.fallbackH2Request)
 				if err != nil {
 					if ce := utils.CanLogErr("fallback h2 RoundTrip failed"); ce != nil {
 						ce.Write(zap.Error(err), zap.String("url", urlStr))
