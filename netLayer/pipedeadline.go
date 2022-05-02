@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//must call InitEasyDeadline before use.
+//implements NetDeadliner. Must call InitEasyDeadline before use.
 // Can be embed to a struct to make it have SetWriteDeadline, SetReadDeadline and SetDeadline method.
 // And use select and ReadTimeoutChan or WriteTimeoutChan when reading or writing.
 type EasyDeadline struct {

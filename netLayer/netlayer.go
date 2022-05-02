@@ -19,10 +19,9 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"reflect"
-	"sync"
 	"syscall"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -110,106 +109,33 @@ func IsStrUDP_network(s string) bool {
 	return false
 }
 
-//选择性从 OptionalReader读取, 直到 RemainFirstBufLen 小于等于0 为止；
-type ReadWrapper struct {
-	net.Conn
-	OptionalReader    io.Reader
-	RemainFirstBufLen int
+// part of net.Conn
+type NetAddresser interface {
+	LocalAddr() net.Addr
+	RemoteAddr() net.Addr
 }
 
-func (rw *ReadWrapper) Read(p []byte) (n int, err error) {
+// part of net.Conn
+type NetDeadliner interface {
+	SetDeadline(t time.Time) error
 
-	if rw.RemainFirstBufLen > 0 {
-		n, err := rw.OptionalReader.Read(p)
-		if n > 0 {
-			rw.RemainFirstBufLen -= n
-		}
-		return n, err
-	} else {
-		return rw.Conn.Read(p)
-	}
+	// SetReadDeadline sets the deadline for future Read calls
+	// and any currently-blocked Read call.
+	// A zero value for t means Read will not time out.
+	SetReadDeadline(t time.Time) error
 
+	// SetWriteDeadline sets the deadline for future Write calls
+	// and any currently-blocked Write call.
+	// Even if write times out, it may return n > 0, indicating that
+	// some of the data was successfully written.
+	// A zero value for t means Write will not time out.
+	SetWriteDeadline(t time.Time) error
 }
 
-func (rw *ReadWrapper) WriteBuffers(buffers [][]byte) (int64, error) {
-	bigbs, dup := utils.MergeBuffers(buffers)
-	n, e := rw.Write(bigbs)
-	if dup {
-		utils.PutPacket(bigbs)
-	}
-	return int64(n), e
-
-}
-
-//一个自定义的由多个组件组成的实现 net.Conn 的结构
-type IOWrapper struct {
-	io.Reader //不可为nil
-	io.Writer //不可为nil
-	io.Closer
+//实现 NetAddresser
+type EasyNetAddresser struct {
 	LA, RA net.Addr
-
-	EasyDeadline
-	FirstWriteChan chan struct{} //用于确保先Write然后再Read，可为nil
-
-	CloseChan chan struct{} //可为nil，用于接收关闭信号
-
-	deadlineInited bool
-
-	closeOnce      sync.Once
-	firstWriteOnce sync.Once
 }
 
-func (iw *IOWrapper) Read(p []byte) (int, error) {
-	if !iw.deadlineInited {
-		iw.InitEasyDeadline()
-		iw.deadlineInited = true
-	}
-	select {
-	case <-iw.ReadTimeoutChan():
-		return 0, os.ErrDeadlineExceeded
-	default:
-		if iw.FirstWriteChan != nil {
-			<-iw.FirstWriteChan
-			return iw.Reader.Read(p)
-		} else {
-			return iw.Reader.Read(p)
-
-		}
-	}
-}
-
-func (iw *IOWrapper) Write(p []byte) (int, error) {
-
-	if iw.FirstWriteChan != nil {
-		defer iw.firstWriteOnce.Do(func() {
-			close(iw.FirstWriteChan)
-		})
-
-	}
-
-	if !iw.deadlineInited {
-		iw.InitEasyDeadline()
-		iw.deadlineInited = true
-	}
-	select {
-	case <-iw.WriteTimeoutChan():
-		return 0, os.ErrDeadlineExceeded
-	default:
-		return iw.Writer.Write(p)
-	}
-}
-
-func (iw *IOWrapper) Close() error {
-	if c := iw.Closer; c != nil {
-		return c.Close()
-	}
-	if iw.CloseChan != nil {
-		iw.closeOnce.Do(func() {
-			close(iw.CloseChan)
-		})
-
-	}
-	return nil
-}
-func (iw *IOWrapper) LocalAddr() net.Addr  { return iw.LA }
-func (iw *IOWrapper) RemoteAddr() net.Addr { return iw.RA }
+func (iw *EasyNetAddresser) LocalAddr() net.Addr  { return iw.LA }
+func (iw *EasyNetAddresser) RemoteAddr() net.Addr { return iw.RA }

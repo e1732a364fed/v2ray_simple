@@ -69,7 +69,7 @@ type FallbackConf struct {
 	Xver int `toml:"xver" json:"xver"` //if fallback, whether to use PROXY protocol, and which version
 
 	//必填
-	Dest interface{} `toml:"dest" json:"dest"` //number port，or string "ip:port"
+	Dest any `toml:"dest" json:"dest"` //number port，or string "ip:port"
 
 	//几种匹配方式，可选
 
@@ -77,12 +77,3 @@ type FallbackConf struct {
 	Sni  string   `toml:"sni" json:"sni"`
 	Alpn []string `toml:"alpn" json:"alpn"`
 }
-
-/*
-// FallbackErr 可以在返回错误时，同时给定一个 指定的 Fallback
-type FallbackErr interface {
-	Error() string
-	Fallback() Fallback
-}
-
-*/

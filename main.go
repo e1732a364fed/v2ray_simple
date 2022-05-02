@@ -176,6 +176,8 @@ type incomingInserverConnState struct {
 	fallbackH2Request      *http.Request
 	theFallbackFirstBuffer *bytes.Buffer
 
+	fallbackXver int
+
 	isTlsLazyServerEnd bool
 
 	shouldCloseInSerBaseConnWhenFinish bool
@@ -570,8 +572,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 }
 
 //查看当前配置 是否支持fallback, 并获得回落地址。
-// 被 passToOutClient 调用
-func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, willfallback bool) {
+// 被 passToOutClient 调用. 若 无fallback则 result < 0, 否则返回所使用的 PROXY protocol 版本, 0 表示 回落但是不用 PROXY protocol.
+func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, result int) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 or根本没有 mainFallback 再检查 defaultFallback
 
 	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
@@ -622,15 +624,15 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 			{
 				fromTag := iics.inServer.GetTag()
 
-				fbAddr := mf.GetFallback(fromTag, thisFallbackType, fallback_params...)
-				if fbAddr == nil {
-					fbAddr = mf.GetFallback("", thisFallbackType, fallback_params...)
+				fbResult := mf.GetFallback(fromTag, thisFallbackType, fallback_params...)
+				if fbResult == nil {
+					fbResult = mf.GetFallback("", thisFallbackType, fallback_params...)
 				}
 
 				if ce := utils.CanLogDebug("Fallback check"); ce != nil {
-					if fbAddr != nil {
+					if fbResult != nil {
 						ce.Write(
-							zap.String("matched", fbAddr.Addr.String()),
+							zap.String("matched", fbResult.Addr.String()),
 						)
 					} else {
 						ce.Write(
@@ -638,9 +640,9 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 						)
 					}
 				}
-				if fbAddr != nil {
-					targetAddr = fbAddr.Addr
-					willfallback = true
+				if fbResult != nil {
+					targetAddr = fbResult.Addr
+					result = fbResult.Xver
 					return
 				}
 			}
@@ -654,7 +656,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 	if defaultFallbackAddr := iics.inServer.GetFallback(); defaultFallbackAddr != nil {
 
 		targetAddr = *defaultFallbackAddr
-		willfallback = true
+		result = 0
 
 	}
 	return
@@ -670,20 +672,22 @@ var (
 )
 
 //被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。
-// 会调用 dialClient_andRelay
+// 会调用 dialClient_andRelay。若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
 	////////////////////////////// 回落阶段 /////////////////////////////////////
 
 	if isfallback {
 
-		fallbackTargetAddr, willfallback := checkfallback(iics)
-		if willfallback {
+		fallbackTargetAddr, fbResult := checkfallback(iics)
+		if fbResult >= 0 {
 			targetAddr = fallbackTargetAddr
 			wlc = iics.wrappedConn
 
 			if iics.isFallbackH2 {
 				//h2 的fallback 非常特殊，要单独处理. 下面进行h2c拨号并向真实h2c服务器发起请求。
+
+				//暂时不知道如何为 h2 设置 PROXY protocol
 
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
@@ -705,6 +709,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 				return
 			}
+
+			iics.fallbackXver = fbResult
 		}
 	}
 
@@ -1463,13 +1469,9 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		}
 
-		/*
-			if iics.theFallbackFirstBuffer != nil {
-				//这里注意，因为是把 tls解密了之后的数据发送到目标地址，所以这种方式只支持转发到本机纯http服务器
-				wrc.Write(iics.theFallbackFirstBuffer.Bytes())
-				utils.PutBytes(iics.theFallbackFirstBuffer.Bytes()) //这个Buf不是从utils.GetBuf创建的，而是从一个 GetBytes的[]byte 包装 的，所以我们要PutBytes，而不是PutBuf
-			}
-		*/
+		if xver := iics.fallbackXver; xver > 0 && xver < 3 {
+			netLayer.WritePROXYprotocol(xver, wlc, wrc)
+		}
 
 		atomic.AddInt32(&ActiveConnectionCount, 1)
 

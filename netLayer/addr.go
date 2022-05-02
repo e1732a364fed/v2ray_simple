@@ -122,6 +122,13 @@ func NewAddrFromUDPAddr(addr *net.UDPAddr) Addr {
 		Network: "udp",
 	}
 }
+func NewAddrFromTCPAddr(addr *net.TCPAddr) Addr {
+	return Addr{
+		IP:      addr.IP,
+		Port:    addr.Port,
+		Network: "tcp",
+	}
+}
 
 //addrStr格式一般为 host:port ；如果不含冒号，将直接认为该字符串是域名或文件名
 func NewAddr(addrStr string) (Addr, error) {
@@ -188,7 +195,7 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 	return a, nil
 }
 
-//会根据thing的类型 生成实际addr； 可以为数字端口，或带冒号的字符串，或一个 文件路径(unix domain socket)
+//会根据thing的类型 生成实际addr； 可以为数字端口, 或 类似tcp://ip:port的url, 或ip:port字符串，或一个 文件路径(unix domain socket), or *net.TCPAddr / *net.UDPAddr / net.Addr
 func NewAddrFromAny(thing any) (addr Addr, err error) {
 	var integer int
 	var dest_type byte = 0 //0: port, 1: ip:port, 2: unix domain socket
@@ -197,15 +204,70 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 	switch value := thing.(type) {
 	case float64: //json 默认把数字转换成float64，就算是整数也一样
 
-		if value > 65535 || value < 1 {
-			err = utils.ErrInErr{ErrDesc: "int port not valid", Data: value}
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
 			return
 		}
 
 		integer = int(value)
+	case float32:
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
 
-	case int64: //toml包 默认把整数转换成int64
 		integer = int(value)
+	case int64: //toml包 默认把整数转换成int64
+
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
+		integer = int(value)
+	case int:
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
+
+		integer = value
+	case int32:
+
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
+		integer = int(value)
+	case int16:
+		integer = int(value)
+	case int8:
+		integer = int(value)
+
+	case uint64:
+
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
+		integer = int(value)
+	case uint:
+
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
+		integer = int(value)
+	case uint32:
+		if value > 65535 || value < 0 {
+			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
+			return
+		}
+		integer = int(value)
+	case uint16:
+		integer = int(value)
+	case uint8:
+		integer = int(value)
+
 	case string:
 		//先判断是不是url
 		addr, err = NewAddrByURL(value)
@@ -226,6 +288,21 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 			dest_type = 2
 			dest_string = value
 		}
+	case *net.TCPAddr:
+		return NewAddrFromTCPAddr(value), nil
+
+	case *net.UDPAddr:
+		return NewAddrFromUDPAddr(value), nil
+	case net.Addr:
+		var host, port string
+		host, port, err = net.SplitHostPort(value.String())
+		if err != nil {
+			return
+		}
+		addr.Network = value.Network()
+		addr.IP = net.ParseIP(host)
+		addr.Port, err = strconv.Atoi(port)
+		return
 
 	default:
 		err = utils.ErrInErr{ErrDesc: "Fallback dest config type err", Data: reflect.TypeOf(thing)}
