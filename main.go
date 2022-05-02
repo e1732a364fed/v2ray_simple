@@ -579,8 +579,6 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 
 		if mf := iics.RoutingEnv.MainFallback; mf != nil {
 
-			utils.Debug("Fallback check")
-
 			var thisFallbackType byte
 
 			theRequestPath := iics.theRequestPath
@@ -622,7 +620,12 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 			}
 
 			{
-				fbAddr := mf.GetFallback(thisFallbackType, fallback_params...)
+				fromTag := iics.inServer.GetTag()
+
+				fbAddr := mf.GetFallback(fromTag, thisFallbackType, fallback_params...)
+				if fbAddr == nil {
+					fbAddr = mf.GetFallback("", thisFallbackType, fallback_params...)
+				}
 
 				if ce := utils.CanLogDebug("Fallback check"); ce != nil {
 					if fbAddr != nil {
@@ -637,7 +640,6 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 				}
 				if fbAddr != nil {
 					targetAddr = fbAddr.Addr
-					//wlc = iics.wrappedConn
 					willfallback = true
 					return
 				}
@@ -652,8 +654,6 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, wi
 	if defaultFallbackAddr := iics.inServer.GetFallback(); defaultFallbackAddr != nil {
 
 		targetAddr = *defaultFallbackAddr
-		//wlc = iics.wrappedConn
-
 		willfallback = true
 
 	}

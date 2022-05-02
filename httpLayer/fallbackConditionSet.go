@@ -20,6 +20,9 @@ func (fcs *FallbackConditionSet) GetType() (r byte) {
 	if fcs.AlpnMask > 0 {
 		r |= Fallback_alpn
 	}
+	if r == 0 {
+		r = FallBack_default
+	}
 	return r
 }
 
@@ -138,10 +141,10 @@ func (fcs *FallbackConditionSet) GetAllSubSets() (rs []FallbackConditionSet) {
 }
 
 // TestAllSubSets 传入一个map, 对fcs自己以及其所有子集依次测试, 看是否有匹配的。
-// 对比 GetAllSubSets 内存占用较大, 本方法开销则小很多, 因为1是复用内存, 2是匹配到就会返回，一般不会到遍历全部子集.
-func (fcs *FallbackConditionSet) TestAllSubSets(allsupportedTypeMask byte, theMap map[FallbackConditionSet]*FallbackResult) *FallbackResult {
+// 对比 GetAllSubSets 内存占用较大, 而本方法开销则小很多, 因为1是复用内存, 2是匹配到就会返回，一般不会到遍历全部子集.
+func (fcs FallbackConditionSet) TestAllSubSets(allsupportedTypeMask byte, theMap map[FallbackConditionSet]*FallbackResult) *FallbackResult {
 
-	if addr := theMap[*fcs]; addr != nil {
+	if addr := theMap[fcs]; addr != nil {
 		return addr
 	}
 

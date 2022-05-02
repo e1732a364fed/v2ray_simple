@@ -8,7 +8,7 @@ protocol = "vlesss"
 host = "0.0.0.0"
 port = 4433
 insecure = true
-fallback = ":80"
+fallback = ":80"    #默认回落。当[[fallback]]给出的回落都无法匹配后，使用该值进行回落。
 cert = "cert.pem"
 key = "cert.key"
 
@@ -42,11 +42,16 @@ protocol = "direct"
 
 
 [[fallback]]
-path = "/asf"   # 按path 匹配此 回落
-dest = 6060     # 回落到本机端口 6060
-alpn = ["http/1.1"]
+from = "my_ws1" # 可选， 标明该fallback用于 哪个tag的 listen。 如果未给出，则所有listen都会用到该fallback。
+
+dest = 6060     # 必填，回落到本机端口 6060
+
+path = "/asf"   # 可选，按path 匹配此 回落
+alpn = ["http/1.1"] # 可选，按 alpn 匹配此 回落
 
 
+
+# 比如此fallback就是所有 listen 共用的一个 fallback
 [[fallback]]
 path = "/ohmygod_i_love_verysimple" 
 dest = 8080
