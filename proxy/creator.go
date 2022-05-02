@@ -281,35 +281,34 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 	}
 }
 
-//SetAddrStr,setAdvancedLayer
+//SetAddrStr
 func configCommonByURL(ser ProxyCommon, u *url.URL) {
 	if u.Scheme != "direct" {
 		ser.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们“默认”, 配置里肯定给了port
 
 	}
-	q := u.Query()
-	wsStr := q.Get("ws")
-	if wsStr != "" && wsStr != "0" && wsStr != "false" {
-		ser.getCommon().setAdvancedLayer("ws")
-	}
-	grpcStr := q.Get("grpc")
-	if grpcStr != "" && grpcStr != "0" && grpcStr != "false" {
-		pathStr := q.Get("path")
-		if pathStr != "" && pathStr != "0" && pathStr != "false" {
-
-			ser.getCommon().setAdvancedLayer("grpc")
-			ser.getCommon().setPath(pathStr)
+	/*
+		q := u.Query()
+		wsStr := q.Get("ws")
+		if wsStr != "" && wsStr != "0" && wsStr != "false" {
+			ser.getCommon().setAdvancedLayer("ws")
 		}
+		grpcStr := q.Get("grpc")
+		if grpcStr != "" && grpcStr != "0" && grpcStr != "false" {
+			pathStr := q.Get("path")
+			if pathStr != "" && pathStr != "0" && pathStr != "false" {
 
-	}
+				ser.getCommon().setAdvancedLayer("grpc")
+				ser.getCommon().setPath(pathStr)
+			}
+
+		}
+	*/
 }
 
-//setAdvancedLayer, setPath
+//setAdvancedLayer
 func configCommon(this ProxyCommon, cc *CommonConf) {
 	this.getCommon().setAdvancedLayer(cc.AdvancedLayer)
-	if cc.Path != "" {
-		this.getCommon().setPath(cc.Path)
-	}
 
 }
 

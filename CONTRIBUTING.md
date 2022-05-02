@@ -78,7 +78,7 @@ Package级别的 包的一句话描述 要用英文。 其他文档的规则如�
 
 如果一个文档比较简单，建议直接用英文描述。
 
-### If Chinese is not your first Language
+### If Chinese is Not Your First Language
 
-Use English
+Use English.
 
