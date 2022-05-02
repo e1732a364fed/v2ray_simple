@@ -890,7 +890,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 // result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux ); -10 标识因为client为reject而关闭了连接。
 // 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到
 func dialClient(targetAddr netLayer.Addr,
-	client proxy.Client, fallbackFirstBuf *bytes.Buffer,
+	client proxy.Client, xver int, fallbackFirstBuf *bytes.Buffer,
 	baseLocalConn,
 	wlc net.Conn,
 	cachedRemoteAddr string,
@@ -1044,6 +1044,13 @@ func dialClient(targetAddr netLayer.Addr,
 			return
 		}
 
+	}
+
+	if xver > 0 && xver < 3 {
+		utils.Debug("Trying to write proxy protocol head")
+
+		netLayer.WritePROXYprotocol(xver, wlc, clientConn)
+		//log.Println("write proxy protocol result", err, wlc.LocalAddr(), wlc.RemoteAddr(), clientConn.LocalAddr(), clientConn.RemoteAddr())
 	}
 
 	////////////////////////////// tls握手阶段 /////////////////////////////////////
@@ -1433,7 +1440,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		}
 	}
 
-	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.theFallbackFirstBuffer, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
+	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.fallbackXver, iics.theFallbackFirstBuffer, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
 	if result != 0 {
 		return
 	}
@@ -1469,10 +1476,6 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 		}
 
-		if xver := iics.fallbackXver; xver > 0 && xver < 3 {
-			netLayer.WritePROXYprotocol(xver, wlc, wrc)
-		}
-
 		atomic.AddInt32(&ActiveConnectionCount, 1)
 
 		netLayer.Relay(&realTargetAddr, wrc, wlc, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart)
@@ -1498,7 +1501,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
 				utils.Debug("Relaying UDP with MultiChannel,dialfunc called")
 
-				_, udp_wrc, _, _, result := dialClient(raddr, client, iics.theFallbackFirstBuffer, iics.baseLocalConn, nil, "", false)
+				_, udp_wrc, _, _, result := dialClient(raddr, client, -1, iics.theFallbackFirstBuffer, iics.baseLocalConn, nil, "", false)
 
 				if ce := utils.CanLogDebug("Relaying UDP with MultiChannel, dialfunc call returned"); ce != nil {
 					ce.Write(zap.Int("result", result))

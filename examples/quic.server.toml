@@ -5,10 +5,16 @@ host = "0.0.0.0"
 port = 4434
 version = 0
 insecure = true
-fallback = "udp://127.0.0.1:80"  #试图回落到 nginx的 无tls 的 udp的 http3 服务端口 (目前尚未支持quic的回落功能，请期待)
+
+
+#fallback = "udp://127.0.0.1:80"  #试图回落到 nginx的 无tls 的 udp的 http3 服务端口 (quic目前是做不到的, 没办法, 除非能出一个 quicSimple; 这里只是吊一下胃口)
+
 cert = "cert.pem"
 key = "cert.key"
 advancedLayer = "quic"
+
+# network = udp # 只要 advancedLayer 设成了quic，network 就会自动被配置为udp，所以不需手动指定udp
+
 #alpn = ["asdfsadf"]    #如果指定alpn，则客户端和服务端都要指定，而且要相同
 
 #early = true # 开启 quic 0-rtt功能。注意, 两端都要开启，且 v2ray/xray没有这个功能.

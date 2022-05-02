@@ -69,7 +69,7 @@ type FallbackConf struct {
 	Xver int `toml:"xver" json:"xver"` //if fallback, whether to use PROXY protocol, and which version
 
 	//必填
-	Dest any `toml:"dest" json:"dest"` //number port，or string "ip:port"
+	Dest any `toml:"dest" json:"dest"` //see netLayer.NewAddrFromAny for details about "any" addr
 
 	//几种匹配方式，可选
 

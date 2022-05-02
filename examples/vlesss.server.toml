@@ -21,7 +21,7 @@ protocol = "direct"
 # fallback这一项是可选的，如果没有的话，或者未匹配，则默认使用listen提供的fallback
 # 如果listen也没提供fallback，那就会直接断开连接
 [[fallback]]
-dest = 6060     # 必填, 这里的意思是 回落到本机端口 6060, 格式和上方的 默认回落地址 的格式相同。
+dest = "192.168.8.105:80"     # 必填, 这里的意思是 回落到本机端口 6060, 格式和上方的 默认回落地址 的格式相同。
 
 # 如果一个 fallback 只给出了 dest，那么它就和 listen里的 fallback 等价。当然，如果有多个listen的话就不等价了，此时可用 from 指出 fallback用于哪一个 server，详见 multi.server.toml
 
@@ -39,7 +39,7 @@ dest = 6060     # 必填, 这里的意思是 回落到本机端口 6060, 格式�
 
 # 另外，sni和alpn的 匹配 只在 我们listen配置使用了 tls时才会有效，比如如果nginx前置的话，那么我们就是无法匹配这两项的.
 
-#xver = 1   # 可选，如果为1，则表示 使用 PROXY protocol version 1, 如果为 2, 则表示 PROXY protocol version 2, 其他值无效。
+xver = 1   # 可选，如果为1，则表示 使用 PROXY protocol version 1, 如果为 2, 则表示 PROXY protocol version 2, 其他值无效。
 
 [[fallback]]
 dest = 80 
