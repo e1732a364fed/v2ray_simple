@@ -140,6 +140,8 @@ func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
 }
 
 type Server struct {
+	Creator
+
 	addr    string
 	tlsConf tls.Config
 	args    arguments
@@ -149,14 +151,6 @@ type Server struct {
 
 func (s *Server) GetPath() string {
 	return ""
-}
-
-func (*Server) IsMux() bool {
-	return true
-}
-
-func (*Server) IsSuper() bool {
-	return true
 }
 
 func (s *Server) Stop() {

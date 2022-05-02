@@ -101,6 +101,22 @@ func (Creator) PackageID() string {
 	return "quic"
 }
 
+func (Creator) ProtocolName() string {
+	return "quic"
+}
+
+func (Creator) CanHandleHeaders() bool {
+	return false
+}
+
+func (Creator) IsSuper() bool {
+	return true
+}
+
+func (Creator) IsMux() bool {
+	return true
+}
+
 func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 	var alpn []string
 	if conf.TlsConf != nil {

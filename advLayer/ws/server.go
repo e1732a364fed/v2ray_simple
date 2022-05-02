@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -19,6 +20,7 @@ import (
 const MaxEarlyDataLen_Base64 = 2732
 
 type Server struct {
+	Creator
 	//upgrader     *ws.Upgrader
 	UseEarlyData bool
 	Thepath      string
@@ -37,17 +39,13 @@ func NewServer(path string, headers map[string][]string, UseEarlyData bool) *Ser
 	}
 }
 
+func (*Server) GetCreator() advLayer.Creator {
+	return Creator{}
+}
 func (s *Server) GetPath() string {
 	return s.Thepath
 }
 
-func (*Server) IsMux() bool {
-	return false
-}
-
-func (*Server) IsSuper() bool {
-	return false
-}
 func (*Server) Stop() {}
 
 // Handshake 用于 websocket的 Server 监听端，建立握手. 用到了 gobwas/ws.Upgrader.

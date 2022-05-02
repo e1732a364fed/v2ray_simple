@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/lucas-clemente/quic-go"
@@ -17,6 +18,8 @@ import (
 
 //implements advLayer.MuxClient
 type Client struct {
+	Creator
+
 	arguments
 
 	knownServerMaxStreamCount int32
@@ -223,17 +226,12 @@ func (c *Client) dialSubConn(theState *connState) (net.Conn, error) {
 	return &StreamConn{Stream: stream, laddr: theState.LocalAddr(), raddr: theState.RemoteAddr(), relatedConnState: theState}, nil
 }
 
-func (c *Client) IsSuper() bool {
-	return true
-}
-
-func (c *Client) IsMux() bool {
-	return true
-}
-
 func (c *Client) IsEarly() bool {
 	return c.early
 }
 func (c *Client) GetPath() string {
 	return ""
+}
+func (*Client) GetCreator() advLayer.Creator {
+	return Creator{}
 }

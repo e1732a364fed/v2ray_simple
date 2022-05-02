@@ -127,7 +127,7 @@ func GetVSI_url(pc ProxyCommon) string {
 
 // 给一个节点 提供 VSI中 第 5-7层 的支持, server和 client通用. 个别方法只能用于某一端.
 //
-// 一个 ProxyCommon 会内嵌proxy以及上面各层的所有信息;
+// 一个 ProxyCommon 会包含 VSI 中所有层级的信息;
 type ProxyCommon interface {
 	Name() string       //代理协议名称, 如vless
 	MiddleName() string //其它VSI层 所使用的协议，前后被加了加号，如 +tls+ws+
@@ -174,8 +174,6 @@ type ProxyCommon interface {
 
 	GetAdvClient() advLayer.Client
 	GetAdvServer() advLayer.Server
-
-	//IsGrpcClientMultiMode() bool
 
 	/////////////////// 内层mux层 ///////////////////
 

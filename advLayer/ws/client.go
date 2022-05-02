@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/gobwas/ws"
@@ -17,6 +18,7 @@ import (
 
 //implements advLayer.Client
 type Client struct {
+	Creator
 	requestURL   *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可
 	path         string
 	UseEarlyData bool
@@ -38,16 +40,12 @@ func NewClient(hostAddr, path string, headers map[string][]string, isEarly bool)
 	}, nil
 }
 
+func (*Client) GetCreator() advLayer.Creator {
+	return Creator{}
+}
+
 func (c *Client) GetPath() string {
 	return c.path
-}
-
-func (c *Client) IsSuper() bool {
-	return false
-}
-
-func (c *Client) IsMux() bool {
-	return false
 }
 
 func (c *Client) IsEarly() bool {

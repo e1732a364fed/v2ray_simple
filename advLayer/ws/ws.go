@@ -56,3 +56,19 @@ func (Creator) GetDefaultAlpn() (alpn string, mustUse bool) {
 func (Creator) PackageID() string {
 	return "ws"
 }
+
+func (Creator) ProtocolName() string {
+	return "ws"
+}
+
+func (Creator) CanHandleHeaders() bool {
+	return true
+}
+
+func (Creator) IsMux() bool {
+	return false
+}
+
+func (Creator) IsSuper() bool {
+	return false
+}

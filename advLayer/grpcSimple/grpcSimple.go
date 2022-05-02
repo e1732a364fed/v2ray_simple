@@ -46,9 +46,25 @@ func (Creator) PackageID() string {
 	return "grpcSimple"
 }
 
+func (Creator) ProtocolName() string {
+	return "grpc"
+}
+
 func (Creator) GetDefaultAlpn() (alpn string, mustUse bool) {
 	// v2ray 和 xray 的grpc 因为没有自己处理tls，直接用grpc包处理的tls，且grpc包对alpn有严格要求, 要用h2.
 	return "h2", true
+}
+
+func (Creator) CanHandleHeaders() bool {
+	return false
+}
+
+func (Creator) IsSuper() bool {
+	return false
+}
+
+func (Creator) IsMux() bool {
+	return true
 }
 
 func getTunPath(sn string) string {

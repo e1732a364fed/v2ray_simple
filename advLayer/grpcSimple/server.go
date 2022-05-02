@@ -16,6 +16,8 @@ import (
 )
 
 type Server struct {
+	Creator
+
 	Config
 
 	http2.Server
@@ -34,14 +36,6 @@ type Server struct {
 
 func (s *Server) GetPath() string {
 	return s.ServiceName
-}
-
-func (*Server) IsMux() bool {
-	return true
-}
-
-func (*Server) IsSuper() bool {
-	return false
 }
 
 func (s *Server) Stop() {

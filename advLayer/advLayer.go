@@ -1,6 +1,6 @@
 /*Package advLayer contains subpackages for Advanced Layer in VSI model.
 
-实现包 用 ProtocolsMap 注册 Creator。
+The implementations should use ProtocolsMap to regiester their Creator。
 */
 package advLayer
 
@@ -34,7 +34,15 @@ type Creator interface {
 	NewServerFromConf(conf *Conf) (Server, error)
 
 	GetDefaultAlpn() (alpn string, mustUse bool)
-	PackageID() string //unique for each package
+	ProtocolName() string
+	PackageID() string //unique for each package, sub packages in v2ray_simple don't need to apply prefix, but if you want to implement your own package, you should use full git path, like github.com/somebody/mypackage
+
+	CanHandleHeaders() bool //If true, there won't be an extra http header layer during the relay progress, and the matching progress of the customized http headers will be handled inside this package.
+
+	IsMux() bool // if IsMux, if is client, then Client is a MuxClient, or it's a SingleClient; if is server, then Server is a MuxServer, or it's a SingleServer
+
+	IsSuper() bool // quic is a super protocol, which handles transport layer dialing and tls layer handshake directly.
+
 }
 
 type Conf struct {
@@ -48,11 +56,15 @@ type Conf struct {
 	Extra   map[string]any      //quic: useHysteria, hysteria_manual, maxbyte; grpc: multiMode
 }
 
-type Client interface {
-	IsMux() bool   //quic and grpc. if IsMux, then Client is a MuxClient, or it's a SingleClient
-	IsSuper() bool // quic handles transport layer dialing and tls layer handshake directly.
+type Common interface {
+	Creator
 
 	GetPath() string
+}
+
+type Client interface {
+	Common
+
 	IsEarly() bool //is 0-rtt or not.
 
 }
@@ -80,10 +92,7 @@ type MuxClient interface {
 }
 
 type Server interface {
-	IsMux() bool   //quic and grpc. if IsMux, then Server is a MuxServer, or it's a SingleServer
-	IsSuper() bool //quic
-
-	GetPath() string //for ws and grpc
+	Common
 
 	Stop()
 }

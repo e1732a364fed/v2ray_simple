@@ -281,7 +281,7 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 按 geoip,geosite,ip,cidr,domain,inTag,network 分流，以及 按国别 顶级域名分流，用到了 mmdb和 v2fly的社区维护版域名列表
 
-支持utls伪装tls指纹，本作的 utls 还可以在 用 webscoket和grpc 时使用
+支持utls伪装tls指纹，本作的 utls 还可以在 用 websocket和grpc 时使用
 
 支持websocket, 使用性能最高的 gobwas/ws 包，支持 early data 这种 0-rtt方式，应该是与现有xray/v2ray兼容的
 
@@ -291,13 +291,24 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 api服务器；tproxy 透明代理； http伪装头.
 
-本作也是支持 trojan-go 声称的 “可插拔模块”的，没什么复杂的。而且还可以用build tag 来开启或关闭某项功能，更胜一筹。
+本作也是支持 trojan-go 声称的 “可插拔模块”的，没什么复杂的。而且也可以用build tag 来开启或关闭某项功能。
 
 本作也是支持 clash 的 "use as library" 的，而且非常简单，你看godoc文档就懂了。
 
 总之，可以看到，几乎在每一个技术上 本作都有一定的优化，超越其他内核，非常 Nice。
 
+
+
 ## 技术详情
+
+本作虽然声称 v2ray_simple, 但是实际的理念 与 clash 和 trojan-go 更加靠近，我也更欣赏这两个包，而不是 v2ray。
+
+这也是我单独写一个 v2ray_simple 的原因。 v2ray的架构实在是非常落后，无法施展拳脚，而clash 和 trojan-go 则先进很多。
+
+同时，vmess这种 信息熵 太大 的协议已经 应该退出历史舞台，本作予以淘汰，不再支持。
+
+目前认为只有外层为 tls 的，支持回落的 协议才是主流。
+
 ### 关于vless v1
 
 这里的v1是 verysimple 自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)

@@ -165,6 +165,7 @@ func (c *streamClient) tunMulti_withName(ctx context.Context, name string, opts 
 
 //implements advLayer.MuxClient
 type Client struct {
+	Creator
 	ServerAddr netLayer.Addr
 	Path       string
 	ismulti    bool
@@ -180,14 +181,6 @@ func NewClient(addr netLayer.Addr, path string, ismulti bool) (*Client, error) {
 
 func (c *Client) GetPath() string {
 	return c.Path
-}
-
-func (c *Client) IsSuper() bool {
-	return false
-}
-
-func (c *Client) IsMux() bool {
-	return true
 }
 
 func (c *Client) IsEarly() bool {

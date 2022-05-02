@@ -56,11 +56,13 @@ func init() {
 }
 
 // ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
+// 监听 inServer, 然后试图转发到一个 proxy.Client。如果env没给出，则会转发到 defaultOutClient。
+// 若 env 不为 nil, 则会 进行分流或回落。具有env的情况下，可能会转发到 非 defaultOutClient 的其他 proxy.Client.
 //
 // 使用方式可以参考 tcp_test.go, udp_test.go 或者 cmd/verysimple.
 //
-// 非阻塞. 若 env 为 nil, 则不会 进行分流或回落
-func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
+// 非阻塞. 返回的closer 用于 停止监听，若为 nil则表示监听失败。
+func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
 
 	var handleHere bool
 	advs := inServer.GetAdvServer()
@@ -101,7 +103,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 				iics := incomingInserverConnState{
 					wrappedConn:   newConn,
 					inServer:      inServer,
-					defaultClient: defaultOutClientForThis,
+					defaultClient: defaultOutClient,
 					RoutingEnv:    env,
 				}
 
@@ -127,7 +129,7 @@ func ListenSer(inServer proxy.Server, defaultOutClientForThis proxy.Client, env 
 		inServer.AddrStr(),
 		inServer.GetSockopt(),
 		func(conn net.Conn) {
-			handleNewIncomeConnection(inServer, defaultOutClientForThis, conn, env)
+			handleNewIncomeConnection(inServer, defaultOutClient, conn, env)
 		},
 	)
 

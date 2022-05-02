@@ -120,6 +120,8 @@ func (g *ClientConn) Close() error {
 }
 
 type Client struct {
+	Creator
+
 	Config
 
 	curBaseConn net.Conn //一般为 tlsConn
@@ -143,14 +145,6 @@ func (g *Client) dealErr(err error) {
 
 func (c *Client) GetPath() string {
 	return c.ServiceName
-}
-
-func (c *Client) IsSuper() bool {
-	return false
-}
-
-func (c *Client) IsMux() bool {
-	return true
 }
 
 func (c *Client) IsEarly() bool {

@@ -165,3 +165,23 @@ func (d *WriteSwitcher) Close() error {
 	}
 	return nil
 }
+
+//简单的用chan来发出关闭信号的结构。
+type ChanCloser struct {
+	closeChan chan struct{}
+	once      sync.Once
+}
+
+func NewChanCloser() (*ChanCloser, chan struct{}) {
+	cc := make(chan struct{})
+	return &ChanCloser{
+		closeChan: cc,
+	}, cc
+}
+
+func (cc *ChanCloser) Close() error {
+	cc.once.Do(func() {
+		close(cc.closeChan)
+	})
+	return nil
+}

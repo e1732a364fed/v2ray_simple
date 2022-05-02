@@ -32,6 +32,8 @@ func NewServer(serviceName string) *Server {
 
 //Server实现 grpc生成的 StreamServer 接口，用于不断处理一个客户端传来的新需求
 type Server struct {
+	Creator
+
 	UnimplementedStreamServer
 
 	newConnChan chan net.Conn
@@ -44,14 +46,6 @@ type Server struct {
 
 func (s *Server) GetPath() string {
 	return s.serviceName
-}
-
-func (*Server) IsMux() bool {
-	return true
-}
-
-func (*Server) IsSuper() bool {
-	return false
 }
 
 func (s *Server) Stop() {
