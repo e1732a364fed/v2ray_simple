@@ -687,8 +687,6 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			if iics.isFallbackH2 {
 				//h2 的fallback 非常特殊，要单独处理. 下面进行h2c拨号并向真实h2c服务器发起请求。
 
-				//暂时不知道如何为 h2 设置 PROXY protocol
-
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
 				urlStr := "https://" + targetAddr.String() + iics.theRequestPath

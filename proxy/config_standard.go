@@ -71,6 +71,7 @@ func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (standa
 			if err != nil {
 
 				log.Printf("can not load standard config file: %s\n", err)
+				confMode = -1
 				return
 			}
 
@@ -93,6 +94,7 @@ func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (standa
 		} else {
 			log.Printf("no -L listen URL provided \n")
 			err = errors.New("no -L listen URL provided")
+			confMode = -1
 			return
 		}
 	}
