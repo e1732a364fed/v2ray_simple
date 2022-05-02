@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -669,6 +670,9 @@ var (
 		},
 		AllowHTTP: true,
 	}
+
+	h2c_PROXYprotocolAddrMap       = make(map[string]*http2.Transport)
+	h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
 )
 
 //被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。
@@ -689,20 +693,34 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
-				urlStr := "https://" + targetAddr.String() + iics.theRequestPath
+				targetAddrStr := targetAddr.String()
+				urlStr := "https://" + targetAddrStr + iics.theRequestPath
 				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
 				transport := h2c_transport
 				if fbResult > 0 {
-					transport = &http2.Transport{
-						DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
-							conn, e := net.Dial(n, a)
-							netLayer.WritePROXYprotocol(fbResult, wlc, conn)
-							return conn, e
-						},
-						AllowHTTP: true,
+
+					h2c_PROXYprotocolAddrMap_mutex.RLock()
+					transport = h2c_PROXYprotocolAddrMap[targetAddrStr]
+					h2c_PROXYprotocolAddrMap_mutex.RUnlock()
+
+					if transport == nil {
+						transport = &http2.Transport{
+							DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+								conn, e := net.Dial(n, a)
+								netLayer.WritePROXYprotocol(fbResult, wlc, conn)
+								return conn, e
+							},
+							AllowHTTP: true,
+						}
+
+						h2c_PROXYprotocolAddrMap_mutex.Lock()
+						h2c_PROXYprotocolAddrMap[targetAddrStr] = transport
+						h2c_PROXYprotocolAddrMap_mutex.Unlock()
+
 					}
+
 				}
 
 				rsp, err := transport.RoundTrip(iics.fallbackH2Request)

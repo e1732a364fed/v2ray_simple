@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"net/url"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -51,10 +52,20 @@ type AddrData struct {
 	Data []byte
 }
 
+var (
+	randPortBase int = 60000
+)
+
+func init() {
+	if runtime.GOOS == "windows" {
+		randPortBase = 45000 //windows在测试中发现高于五万的端口经常被占用
+	}
+}
+
 //if mustValid is true, a valid port is assured.
 // isudp is used to determine whether you want to use udp
 func RandPort(mustValid, isudp bool) (p int) {
-	p = rand.Intn(60000) + 4096
+	p = rand.Intn(randPortBase) + 4096
 	if !mustValid {
 		return
 	}
