@@ -56,7 +56,7 @@ func (Creator) GetDefaultAlpn() (alpn string, mustUse bool) {
 }
 
 func (Creator) CanHandleHeaders() bool {
-	return false
+	return true
 }
 
 func (Creator) IsSuper() bool {
@@ -97,7 +97,7 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 		path: getTunPath(conf.Path),
 	}
 
-	c.theRequest = http.Request{
+	c.handshakeRequest = http.Request{
 		Method: http.MethodPost,
 		URL: &url.URL{
 			Scheme: "https",
@@ -111,14 +111,16 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 		ProtoMinor: 0,
 	}
 
-	if conf.Headers != nil {
-		h := c.theRequest.Header.Clone()
+	if conf.Headers != nil && conf.Headers.Request != nil && len(conf.Headers.Request.Headers) > 0 {
+		h := http.Header(conf.Headers.Request.Headers).Clone()
+
 		for k, vs := range defaultClientHeader {
 			h.Add(k, vs[0])
 		}
-		c.theRequest.Header = h
+		c.handshakeRequest.Header = h
+
 	} else {
-		c.theRequest.Header = defaultClientHeader
+		c.handshakeRequest.Header = defaultClientHeader
 	}
 
 	return c, nil

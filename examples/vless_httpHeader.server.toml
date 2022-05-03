@@ -16,13 +16,12 @@ path = "/very"
 # 完全兼容v2ray, 可参考 https://www.v2fly.org/config/transport/tcp.html#httprequestobject
 
 
-# content不需要给出, 因为一切都有默认值, 如果你要定制, 可以给出.
 [listen.header.request]
 version = "1.1"
 method = "GET"
 path = ["/very","/simple"]  # 每次请求随机选择一个值。
 
-# headers里的数组, 每次请求随机选择一个值。 
+# 每个header所配置的 数组, 每次请求随机选择一个值。 
 
 #headers.Connection = [  "keep-alive"   ]
 

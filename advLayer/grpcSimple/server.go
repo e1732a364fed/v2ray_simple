@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"sync"
@@ -101,6 +102,35 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 				}
 
 				shouldFallback = true
+			} else {
+				//try check customized header
+
+				if s.Headers != nil && s.Headers.Request != nil && len(s.Headers.Request.Headers) > 0 {
+					for k, vs := range s.Headers.Request.Headers {
+						log.Println("checking", k)
+						this := rq.Header.Get(k)
+
+						matched := false
+
+						if this != "" {
+							for _, v := range vs {
+								if v == this {
+									matched = true
+									break
+								}
+							}
+						}
+
+						if !matched {
+							if ce := utils.CanLogWarn("GRPC Server has custom header configured, but the client request doesn't have this"); ce != nil {
+								ce.Write(zap.String("supposed header", k), zap.Any("supposed value list", vs), zap.String("got value", this))
+							}
+
+							shouldFallback = true
+						}
+
+					}
+				}
 			}
 
 			if shouldFallback {

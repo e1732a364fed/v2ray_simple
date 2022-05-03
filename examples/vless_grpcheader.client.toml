@@ -1,0 +1,33 @@
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10800
+
+
+[[dial]]
+protocol = "vlesss"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "127.0.0.1"
+port = 4434
+version = 0
+insecure = true
+utls = true
+advancedLayer = "grpc"  # grpc也可应用我们的http header
+
+path = "verysimple_serviceName"
+
+# 只有 grpcSimple (即默认情况下) 才支持 自定义内嵌 header。 如果你使用了 go build -tags grpc_full, 
+# 则 无法使用内嵌 header。此时也是可以设header的，但是该header就不是内嵌在grpc请求中的 真的header了，
+# 而是我们硬生生 额外加了一个 http头。也就是说，非 grpcSimple 的情况下, 你加一个header, 情况是,
+#  外层有一层http，有我们的header，然后内层 是http2，然后还有grpc自己的header。
+
+# 我们额外加header, 实际就类似设一个复杂的 serverName(别忘了在我们这里serverName直接填到path 里), 都是用于验证的
+
+[dial.header.request]
+
+
+headers.Mycustom1 = ["verysimple"]
+
+[dial.header.response]
+
+headers.mycustom2 = ["verysimple_is_so_good"]

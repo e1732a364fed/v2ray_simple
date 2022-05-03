@@ -126,7 +126,7 @@ type Client struct {
 
 	curBaseConn net.Conn //一般为 tlsConn
 
-	theRequest http.Request
+	handshakeRequest http.Request
 
 	cachedTransport *http2.Transport //一个 transport 对应 一个提供的 dial好的 tls 连接，正好作为CommonConn。
 
@@ -189,7 +189,7 @@ func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 
 	reader, writer := io.Pipe()
 
-	request := c.theRequest
+	request := c.handshakeRequest
 	request.Body = reader
 
 	conn := &ClientConn{

@@ -558,6 +558,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				}
 
 				rsp, err := transport.RoundTrip(iics.fallbackH2Request)
+				defer wlc.Close()
+
 				if err != nil {
 					if ce := utils.CanLogErr("fallback h2 RoundTrip failed"); ce != nil {
 						ce.Write(zap.Error(err), zap.String("url", urlStr))
@@ -567,7 +569,6 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				}
 
 				netLayer.TryCopy(wlc, rsp.Body)
-				wlc.Close()
 
 				return
 			}
