@@ -38,7 +38,7 @@ type DirectClient struct {
 
 func (*DirectClient) Name() string { return DirectName }
 
-//若 underlay 为nil，则会对target进行拨号, 否则直接返回underlay。
+//若 underlay 为nil，则会对target进行拨号, 否则返回underlay本身
 func (d *DirectClient) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {

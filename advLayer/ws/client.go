@@ -10,6 +10,7 @@ import (
 	"net/url"
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/gobwas/ws"
@@ -23,11 +24,11 @@ type Client struct {
 	path         string
 	UseEarlyData bool
 
-	headers map[string][]string
+	headers *httpLayer.HeaderPreset
 }
 
 // 这里默认，传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查
-func NewClient(hostAddr, path string, headers map[string][]string, isEarly bool) (*Client, error) {
+func NewClient(hostAddr, path string, headers *httpLayer.HeaderPreset, isEarly bool) (*Client, error) {
 	u, err := url.Parse("http://" + hostAddr + path)
 	if err != nil {
 		return nil, err
@@ -82,8 +83,11 @@ func (c *Client) Handshake(underlay net.Conn, ed []byte) (net.Conn, error) {
 		// 默认不给出Protocols的话, gobwas就不会发送这个header, 另一端也收不到此header
 
 	}
-	if len(c.headers) > 0 {
-		d.Header = ws.HandshakeHeaderHTTP(c.headers)
+
+	if c.headers != nil && c.headers.Request != nil && len(c.headers.Request.Headers) > 0 {
+		d.Header = ws.HandshakeHeaderHTTP(c.headers.Request.Headers)
+
+		//实测Header里的Connection会被用到。
 	}
 
 	br, _, err := d.Upgrade(underlay, c.requestURL)

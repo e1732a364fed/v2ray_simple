@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"crypto/tls"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"sync"
@@ -44,25 +42,28 @@ var (
 
 var (
 	DirectClient, _, _ = proxy.ClientFromURL(proxy.DirectName + "://")
-
-	Tls_lazy_encrypt bool
-	Tls_lazy_secure  bool
 )
 
-func init() {
+//用于回落到h2c
+var (
+	h2c_transport = &http2.Transport{
+		DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
+			return net.Dial(n, a)
+		},
+		AllowHTTP: true,
+	}
 
-	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
-	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
-
-}
+	h2c_PROXYprotocolAddrMap       = make(map[string]*http2.Transport)
+	h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
+)
 
 // ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
 // 监听 inServer, 然后试图转发到一个 proxy.Client。如果env没给出，则会转发到 defaultOutClient。
 // 若 env 不为 nil, 则会 进行分流或回落。具有env的情况下，可能会转发到 非 defaultOutClient 的其他 proxy.Client.
 //
-// 使用方式可以参考 tcp_test.go, udp_test.go or cmd/verysimple.
+// Use cases: refer to tcp_test.go, udp_test.go or cmd/verysimple.
 //
-// 非阻塞. 返回的closer 用于 停止监听，若为 nil则表示监听失败。
+// non-blocking. closer used to stop listening. It means listening failed if closer == nil,
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
 
 	var handleHere bool
@@ -155,74 +156,6 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		}
 	}
 	return
-}
-
-type incomingInserverConnState struct {
-
-	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
-	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
-
-	baseLocalConn net.Conn     // baseLocalConn 是来自客户端的原始网络层链接
-	wrappedConn   net.Conn     // wrappedConn 是层层握手后,代理层握手前 包装的链接,一般为tls层or高级层;
-	inServer      proxy.Server //可为 nil
-	defaultClient proxy.Client
-
-	cachedRemoteAddr string
-	theRequestPath   string
-
-	inServerTlsConn            *tlsLayer.Conn
-	inServerTlsRawReadRecorder *tlsLayer.Recorder
-
-	isFallbackH2           bool
-	fallbackH2Request      *http.Request
-	theFallbackFirstBuffer *bytes.Buffer
-
-	fallbackXver int
-
-	isTlsLazyServerEnd bool
-
-	shouldCloseInSerBaseConnWhenFinish bool
-
-	routedToDirect bool
-
-	RoutingEnv *proxy.RoutingEnv //used in passToOutClient
-}
-
-// 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
-func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
-	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
-		ce.Write(
-			zap.String("handler", iics.inServer.AddrStr()),
-			zap.Error(err),
-		)
-	}
-
-	if !iics.inServer.CanFallback() {
-		iics.wrappedConn.Close()
-		return false
-	}
-
-	//通过err找出 并赋值给 iics.theFallbackFirstBuffer
-	{
-
-		fe, ok := err.(*utils.ErrBuffer)
-		if !ok {
-			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
-			iics.wrappedConn.Close()
-			return false
-		}
-
-		if firstbuffer := fe.Buf; firstbuffer == nil {
-			//不应该，至少能读到1字节的。
-
-			panic("No FirstBuffer")
-
-		} else {
-			iics.theFallbackFirstBuffer = firstbuffer
-
-		}
-	}
-	return true
 }
 
 // handleNewIncomeConnection 会处理 网络层至高级层的数据，
@@ -572,111 +505,8 @@ func handshakeInserver_and_passToOutClient(iics incomingInserverConnState) {
 
 }
 
-//查看当前配置 是否支持fallback, 并获得回落地址。
-// 被 passToOutClient 调用. 若 无fallback则 result < 0, 否则返回所使用的 PROXY protocol 版本, 0 表示 回落但是不用 PROXY protocol.
-func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, result int) {
-	//先检查 mainFallback，如果mainFallback中各项都不满足 or根本没有 mainFallback 再检查 defaultFallback
-
-	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
-	if iics.RoutingEnv != nil {
-
-		if mf := iics.RoutingEnv.MainFallback; mf != nil {
-
-			var thisFallbackType byte
-
-			theRequestPath := iics.theRequestPath
-
-			if iics.theFallbackFirstBuffer != nil && theRequestPath == "" {
-				var failreason int
-
-				_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
-
-				if failreason != 0 {
-					theRequestPath = ""
-				}
-
-			}
-
-			fallback_params := make([]string, 0, 4)
-
-			if theRequestPath != "" {
-				fallback_params = append(fallback_params, theRequestPath)
-				thisFallbackType |= httpLayer.Fallback_path
-			}
-
-			if inServerTlsConn := iics.inServerTlsConn; inServerTlsConn != nil {
-				//默认似乎默认tls不会给出alpn和sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
-				// 而alpn则也是正常的, 不设置肯定就是空值
-				alpn := inServerTlsConn.GetAlpn()
-
-				if alpn != "" {
-					fallback_params = append(fallback_params, alpn)
-					thisFallbackType |= httpLayer.Fallback_alpn
-
-				}
-
-				sni := inServerTlsConn.GetSni()
-				if sni != "" {
-					fallback_params = append(fallback_params, sni)
-					thisFallbackType |= httpLayer.Fallback_sni
-				}
-			}
-
-			{
-				fromTag := iics.inServer.GetTag()
-
-				fbResult := mf.GetFallback(fromTag, thisFallbackType, fallback_params...)
-				if fbResult == nil {
-					fbResult = mf.GetFallback("", thisFallbackType, fallback_params...)
-				}
-
-				if ce := utils.CanLogDebug("Fallback check"); ce != nil {
-					if fbResult != nil {
-						ce.Write(
-							zap.String("matched", fbResult.Addr.String()),
-						)
-					} else {
-						ce.Write(
-							zap.String("no match", ""),
-						)
-					}
-				}
-				if fbResult != nil {
-					targetAddr = fbResult.Addr
-					result = fbResult.Xver
-					return
-				}
-			}
-
-		}
-
-	}
-
-	//默认回落, 每个listen配置 都可 有一个自己独享的默认回落
-
-	if defaultFallbackAddr := iics.inServer.GetFallback(); defaultFallbackAddr != nil {
-
-		targetAddr = *defaultFallbackAddr
-		result = 0
-
-	}
-	return
-}
-
-var (
-	h2c_transport = &http2.Transport{
-		DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
-			return net.Dial(n, a)
-		},
-		AllowHTTP: true,
-	}
-
-	h2c_PROXYprotocolAddrMap       = make(map[string]*http2.Transport)
-	h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
-)
-
 //被 handshakeInserver_and_passToOutClient 和 handshakeInserver 的innerMux部分 调用。
-// 会调用 dialClient_andRelay。若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
+// 会调用 dialClient_andRelay. 若isfallback为true，传入的 wlc 和 udp_wlc 必须为nil，targetAddr必须为空值。
 func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Conn, udp_wlc netLayer.MsgConn, targetAddr netLayer.Addr) {
 
 	////////////////////////////// 回落阶段 /////////////////////////////////////
@@ -698,8 +528,12 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
-				transport := h2c_transport
-				if fbResult > 0 {
+				var transport *http2.Transport
+
+				if fbResult == 0 {
+					transport = h2c_transport
+
+				} else if fbResult > 0 {
 
 					h2c_PROXYprotocolAddrMap_mutex.RLock()
 					transport = h2c_PROXYprotocolAddrMap[targetAddrStr]
@@ -915,13 +749,11 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 }
 
 //dialClient 对实际client进行拨号，处理传输层, tls层, 高级层等所有层级后，进行代理层握手。
-// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux ); -10 标识因为client为reject而关闭了连接。
-// 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到
-func dialClient(targetAddr netLayer.Addr,
-	client proxy.Client, xver int, fallbackFirstBuf *bytes.Buffer,
-	baseLocalConn,
+// result = 0 表示拨号成功, result = -1 表示 拨号失败, result = 1 表示 拨号成功 并 已经自行处理了转发阶段(用于lazy和 innerMux ); -10 标识 因为 client为reject 而关闭了连接。
+// 在 dialClient_andRelay 中被调用。在udp为multi channel时也有用到.
+func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
+	client proxy.Client,
 	wlc net.Conn,
-	cachedRemoteAddr string,
 	isTlsLazy_clientEnd bool) (
 
 	//return values:
@@ -979,7 +811,7 @@ func dialClient(targetAddr netLayer.Addr,
 	if ce := utils.CanLogInfo("Request"); ce != nil {
 
 		ce.Write(
-			zap.String("from", cachedRemoteAddr),
+			zap.String("from", iics.cachedRemoteAddr),
 			zap.String("target", targetAddr.UrlString()),
 			zap.String("through", proxy.GetVSI_url(client)),
 		)
@@ -1074,7 +906,7 @@ func dialClient(targetAddr netLayer.Addr,
 
 	}
 
-	if xver > 0 && xver < 3 {
+	if xver := iics.fallbackXver; xver > 0 && xver < 3 {
 		utils.Debug("Trying to write proxy protocol head")
 
 		netLayer.WritePROXYprotocol(xver, wlc, clientConn)
@@ -1184,8 +1016,8 @@ advLayerHandshakeStep:
 					// rpc error: code = Unavailable desc = connection error: desc = "transport: failed to write client preface: tls: use of closed connection"
 
 				}
-				if baseLocalConn != nil {
-					baseLocalConn.Close()
+				if iics.baseLocalConn != nil {
+					iics.baseLocalConn.Close()
 				}
 				result = -1
 				return
@@ -1266,9 +1098,9 @@ advLayerHandshakeStep:
 		if !hasInnerMux {
 			//如果有内层mux，要在dialInnerProxy函数里再读, 而不是在这里读
 
-			if fallbackFirstBuf != nil {
+			if iics.theFallbackFirstBuffer != nil {
 
-				firstPayload = fallbackFirstBuf.Bytes()
+				firstPayload = iics.theFallbackFirstBuffer.Bytes()
 
 			} else {
 				firstPayload = utils.GetMTU()
@@ -1468,7 +1300,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 		}
 	}
 
-	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(targetAddr, client, iics.fallbackXver, iics.theFallbackFirstBuffer, iics.baseLocalConn, wlc, iics.cachedRemoteAddr, isTlsLazy_clientEnd)
+	wrc, udp_wrc, realTargetAddr, clientEndRemoteClientTlsRawReadRecorder, result := dialClient(iics, targetAddr, client, wlc, isTlsLazy_clientEnd)
 	if result != 0 {
 		return
 	}
@@ -1514,11 +1346,8 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 	} else {
 
-		if iics.theFallbackFirstBuffer != nil {
-
-			udp_wrc.WriteMsgTo(iics.theFallbackFirstBuffer.Bytes(), targetAddr)
-			utils.PutBytes(iics.theFallbackFirstBuffer.Bytes())
-
+		if ffb := iics.theFallbackFirstBuffer; ffb != nil {
+			udp_wrc.WriteMsgTo(ffb.Bytes(), targetAddr)
 		}
 
 		atomic.AddInt32(&ActiveConnectionCount, 1)
@@ -1529,7 +1358,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 			netLayer.RelayUDP_separate(udp_wrc, udp_wlc, &targetAddr, &AllDownloadBytesSinceStart, &AllUploadBytesSinceStart, func(raddr netLayer.Addr) netLayer.MsgConn {
 				utils.Debug("Relaying UDP with MultiChannel,dialfunc called")
 
-				_, udp_wrc, _, _, result := dialClient(raddr, client, -1, iics.theFallbackFirstBuffer, iics.baseLocalConn, nil, "", false)
+				_, udp_wrc, _, _, result := dialClient(iics, raddr, client, nil, false)
 
 				if ce := utils.CanLogDebug("Relaying UDP with MultiChannel, dialfunc call returned"); ce != nil {
 					ce.Write(zap.Int("result", result))

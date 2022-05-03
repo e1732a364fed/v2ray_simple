@@ -25,11 +25,11 @@ type Server struct {
 	UseEarlyData bool
 	Thepath      string
 
-	headers map[string][]string
+	headers *httpLayer.HeaderPreset
 }
 
 // 这里默认: 传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查.
-func NewServer(path string, headers map[string][]string, UseEarlyData bool) *Server {
+func NewServer(path string, headers *httpLayer.HeaderPreset, UseEarlyData bool) *Server {
 
 	return &Server{
 		//upgrader: upgrader,
@@ -85,6 +85,28 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	theWrongPath := ""
 	var thePotentialEarlyData []byte
 
+	var requestHeaderNotGivenCount int
+
+	noNeedToCheckRequestHeaders := s.headers == nil || s.headers.Request == nil || len(s.headers.Request.Headers) == 0
+
+	if !noNeedToCheckRequestHeaders {
+		requestHeaderNotGivenCount = len(s.headers.Request.Headers)
+
+		for k := range s.headers.Request.Headers {
+			switch k {
+			case "Host", "Connection", "Upgrade", "Sec-WebSocket-Version", "Sec-WebSocket-Key", "Sec-WebSocket-Protocol", "Sec-WebSocket-Accept", "Sec-WebSocket-Extensions":
+				requestHeaderNotGivenCount -= 1
+			}
+		}
+
+	}
+
+	var responseHeader ws.HandshakeHeader
+
+	if s.headers != nil && s.headers.Response != nil && len(s.headers.Response.Headers) > 0 {
+		responseHeader = ws.HandshakeHeaderHTTP(s.headers.Response.Headers)
+	}
+
 	var theUpgrader *ws.Upgrader = &ws.Upgrader{
 
 		//因为我们vs的架构，先统一监听tcp；然后再调用Handshake函数
@@ -118,10 +140,32 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			}
 			return nil
 		},
-	}
+		OnHeader: func(key, value []byte) error {
+			if noNeedToCheckRequestHeaders {
+				return nil
+			}
+			vs := s.headers.Request.Headers[string(key)]
+			if len(vs) > 0 {
+				for _, v := range vs {
+					if v == (string(value)) {
+						requestHeaderNotGivenCount -= 1
+						break
+					}
+				}
+			}
 
-	if len(s.headers) > 0 {
-		theUpgrader.Header = ws.HandshakeHeaderHTTP(s.headers)
+			return nil
+		},
+		Header: responseHeader,
+		OnBeforeUpgrade: func() (header ws.HandshakeHeader, err error) {
+			if requestHeaderNotGivenCount > 0 {
+				if ce := utils.CanLogWarn("ws headers not match"); ce != nil {
+					ce.Write(zap.Int("requestHeaderNotGivenCount", requestHeaderNotGivenCount))
+				}
+				return nil, ws.RejectConnectionError(ws.RejectionStatus(http.StatusBadRequest))
+			}
+			return responseHeader, nil
+		},
 	}
 
 	if s.UseEarlyData {

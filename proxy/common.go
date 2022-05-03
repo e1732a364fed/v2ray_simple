@@ -318,11 +318,9 @@ func (s *ProxyCommonStruct) InitAdvLayer() {
 
 	if dc := s.dialConf; dc != nil {
 
-		var Headers map[string][]string
-		if dc.HttpHeader != nil {
-			if dc.HttpHeader.Request != nil {
-				Headers = dc.HttpHeader.Request.Headers
-			}
+		var Headers *httpLayer.HeaderPreset
+		if creator.CanHandleHeaders() {
+			Headers = dc.HttpHeader
 		}
 
 		advClient, err := creator.NewClientFromConf(&advLayer.Conf{
@@ -355,11 +353,10 @@ func (s *ProxyCommonStruct) InitAdvLayer() {
 
 	if lc := s.listenConf; lc != nil {
 
-		var Headers map[string][]string
-		if lc.HttpHeader != nil {
-			if lc.HttpHeader.Request != nil {
-				Headers = lc.HttpHeader.Response.Headers
-			}
+		var Headers *httpLayer.HeaderPreset
+
+		if creator.CanHandleHeaders() {
+			Headers = lc.HttpHeader
 		}
 
 		var certArray []tls.Certificate

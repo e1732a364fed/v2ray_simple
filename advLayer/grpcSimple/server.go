@@ -20,6 +20,8 @@ type Server struct {
 
 	Config
 
+	Headers *httpLayer.HeaderPreset
+
 	http2.Server
 
 	path string

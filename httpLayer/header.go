@@ -41,6 +41,34 @@ type HeaderPreset struct {
 	Response *ResponseHeader `toml:"response"`
 }
 
+// 将Header改为首字母大写
+func (hh *HeaderPreset) Prepare() {
+	if hh.Request != nil && len(hh.Request.Headers) > 0 {
+
+		var realHeaders http.Header = make(http.Header)
+		for k, vs := range hh.Request.Headers {
+			for _, v := range vs {
+				realHeaders.Add(k, v)
+
+			}
+		}
+
+		hh.Request.Headers = realHeaders
+	}
+	if hh.Response != nil && len(hh.Response.Headers) > 0 {
+
+		var realHeaders http.Header = make(http.Header)
+		for k, vs := range hh.Response.Headers {
+			for _, v := range vs {
+				realHeaders.Add(k, v)
+
+			}
+		}
+
+		hh.Response.Headers = realHeaders
+	}
+}
+
 //默认值保持与v2ray的配置相同
 func (hh *HeaderPreset) AssignDefaultValue() {
 	if hh.Request == nil {
@@ -89,6 +117,8 @@ func (hh *HeaderPreset) AssignDefaultValue() {
 			"Pragma":            {"no-cache"},
 		}
 	}
+
+	hh.Prepare()
 }
 
 func (h *HeaderPreset) ReadRequest(underlay net.Conn) (err error, leftBuf *bytes.Buffer) {

@@ -51,9 +51,9 @@ type Conf struct {
 	Host    string
 	Addr    netLayer.Addr
 	Path    string
-	Headers map[string][]string //http headers
-	IsEarly bool                //is 0-rtt or not; for quic and ws.
-	Extra   map[string]any      //quic: useHysteria, hysteria_manual, maxbyte; grpc: multiMode
+	Headers *httpLayer.HeaderPreset
+	IsEarly bool           //is 0-rtt or not; for quic and ws.
+	Extra   map[string]any //quic: useHysteria, hysteria_manual, maxbyte; grpc: multiMode
 }
 
 type Common interface {

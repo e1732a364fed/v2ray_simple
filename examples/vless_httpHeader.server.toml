@@ -9,8 +9,8 @@ fallback = ":80"
 cert = "cert.pem"
 key = "cert.key"
 
-# advancedLayer = "ws"
-
+ advancedLayer = "ws"
+path = "/very"
 
 # 下面是 http伪装头的 配置
 # 完全兼容v2ray, 可参考 https://www.v2fly.org/config/transport/tcp.html#httprequestobject
@@ -24,22 +24,28 @@ path = ["/very","/simple"]  # 每次请求随机选择一个值。
 
 # headers里的数组, 每次请求随机选择一个值。 
 
-# 如果使用 ws, 则 Connection头必须指明为 Upgrade
-#headers.Connection = [  "Upgrade"   ]
-
-
-#headers.Host = ["www.baidu.com","www.bing.com"]
-#headers.User-Agent = [ "Mozilla/5.0 (my fake system)"]
-#headers.Accept-Encoding = [ "gzip, deflate"  ]
 #headers.Connection = [  "keep-alive"   ]
-#headers.Pragma = ["no-cache"]
+
+# 如果使用 ws, 则 listen的 Connection头 不用给出，因为必须是Upgrade; 你给出也是可以的，但是会被无视。
+
+# 如果你给出的Header的首字母小写的，则首字母自动被转换成大写.
+headers.mycustom1 = ["verysimple"]
+
+
+headers.Host = ["www.baidu.com","www.bing.com"]
+headers.User-Agent = [ "Mozilla/5.0 (my fake system)"]
+headers.Accept-Encoding = [ "gzip, deflate"  ]
+headers.Pragma = ["no-cache"]
+
+
 
 # 还可以配置 response, 道理一样。这里直接省略了,就是使用默认值, 参考 v2ray文档。
 
-#[listen.header.response]
-# 如果使用 ws, 则 Connection头必须指明为 Upgrade, response 也一样
-#headers.Connection = [  "Upgrade"   ]
+[listen.header.response]
+# 如果使用 ws, 则 listen.header.response 的 Connection头必须指明为 Upgrade
+headers.Connection = [  "Upgrade"   ]
 
+headers.mycustom2 = ["verysimple_is_so_good"]
 
 [[dial]]
 protocol = "direct"

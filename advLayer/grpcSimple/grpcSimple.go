@@ -67,23 +67,27 @@ func (Creator) IsMux() bool {
 	return true
 }
 
-func getTunPath(sn string) string {
+func getServiceNameFromConf(conf *advLayer.Conf) (serviceName string) {
+	if conf.Path != "" {
+		serviceName = conf.Path
+	} else {
+		serviceName = "GunService"
+	}
+	return
+}
+
+func getTunPath(serviceName string) string {
 	var sb strings.Builder
-	sb.Grow(1 + len(sn) + 4)
+	sb.Grow(1 + len(serviceName) + 4)
 	sb.WriteString("/")
-	sb.WriteString(sn)
+	sb.WriteString(serviceName)
 	sb.WriteString("/Tun")
 	return sb.String()
 }
 
 func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 
-	var serviceName string
-	if conf.Path != "" {
-		serviceName = conf.Path
-	} else {
-		serviceName = "GunService"
-	}
+	serviceName := getServiceNameFromConf(conf)
 
 	c := &Client{
 		Config: Config{
@@ -105,19 +109,30 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 		Proto:      "HTTP/2",
 		ProtoMajor: 2,
 		ProtoMinor: 0,
-		Header:     defaultClientHeader,
+	}
+
+	if conf.Headers != nil {
+		h := c.theRequest.Header.Clone()
+		for k, vs := range defaultClientHeader {
+			h.Add(k, vs[0])
+		}
+		c.theRequest.Header = h
+	} else {
+		c.theRequest.Header = defaultClientHeader
 	}
 
 	return c, nil
 }
 
 func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {
+	serviceName := getServiceNameFromConf(conf)
 	s := &Server{
 		Config: Config{
-			ServiceName: conf.Path,
+			ServiceName: serviceName,
 			Host:        conf.Host,
 		},
-		path: getTunPath(conf.Path),
+		path:    getTunPath(serviceName),
+		Headers: conf.Headers,
 	}
 
 	return s, nil

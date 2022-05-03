@@ -1,6 +1,7 @@
 package v2ray_simple
 
 import (
+	"flag"
 	"io"
 	"log"
 	"net"
@@ -15,7 +16,19 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	Tls_lazy_encrypt bool
+	Tls_lazy_secure  bool
+)
+
 const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
+
+func init() {
+
+	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
+	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
+
+}
 
 //grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，但暂不考虑
 func canLazyEncryptServer(inServer proxy.Server) bool {
