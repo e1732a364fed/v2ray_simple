@@ -363,6 +363,24 @@ func mainFunc() (result int) {
 			}
 
 			if len(tproxyConfs) > 0 {
+				autoIptable := false
+				if len(tproxyConfs) == 1 {
+					conf := tproxyConfs[0]
+					if thing := conf.Extra["auto_iptables"]; thing != nil {
+						if auto, ok := thing.(bool); ok && auto {
+							autoIptable = true
+						}
+					}
+
+					if autoIptable {
+						tproxy.SetIPTablesByPort(conf.Port)
+
+						defer func() {
+							tproxy.CleanupIPTables()
+						}()
+					}
+				}
+
 				for _, thisConf := range tproxyConfs {
 					tm := vs.ListenTproxy(thisConf.GetAddrStrForListenOrDial(), defaultOutClient, routingEnv.RoutePolicy)
 					if tm != nil {

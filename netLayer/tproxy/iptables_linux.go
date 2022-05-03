@@ -10,13 +10,13 @@ import (
 )
 
 func execCmd(cmdStr string) (err error) {
-	utils.ZapLogger.Info("IPTABLES run cmd", zap.String("cmd", cmdStr))
+	utils.ZapLogger.Info("tproxy run cmd", zap.String("cmd", cmdStr))
 
 	strs := strings.Split(cmdStr, " ")
 
 	cmd1 := exec.Command(strs[0], strs[1:]...)
 	if err = cmd1.Run(); err != nil {
-		utils.ZapLogger.Error("IPTABLES run cmd failed", zap.Error(err))
+		utils.ZapLogger.Error("tproxy run cmd failed", zap.Error(err))
 	}
 
 	return

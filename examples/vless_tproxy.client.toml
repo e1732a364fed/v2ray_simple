@@ -15,6 +15,9 @@ port = 12345
 
 # 不用指明network, 只要指明了tproxy, 就会同时自动监听 tcp和 dup.
 
+#extra = { auto_iptables = true } # 如果给出了 auto_iptables, 且只有一个 tproxy的listen, 则程序会自动在开始监听前配置好iptables，并在程序退出前 清除iptables中被程序改动的部分。
+
+
 [[dial]]
 protocol = "vlesss"
 uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
