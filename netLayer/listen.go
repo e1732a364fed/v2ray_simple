@@ -12,7 +12,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func loopAccept(listener net.Listener, acceptFunc func(net.Conn)) {
+func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 	for {
 		newc, err := listener.Accept()
 		if err != nil {
@@ -80,7 +80,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 			SetSockOptForListener(tcplistener, sockopt, false, ta.IP.To4() == nil)
 		}
 
-		go loopAccept(tcplistener, acceptFunc)
+		go loopAccept(tcplistener, xver, acceptFunc)
 
 	case "udp", "udp4", "udp6":
 
@@ -96,7 +96,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 		if err != nil {
 			return
 		}
-		go loopAccept(listener, acceptFunc)
+		go loopAccept(listener, xver, acceptFunc)
 
 	case "unix":
 		// 参考 https://eli.thegreenplace.net/2019/unix-domain-sockets-in-go/
@@ -128,7 +128,7 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 			return
 		}
 
-		go loopAccept(listener, acceptFunc)
+		go loopAccept(listener, xver, acceptFunc)
 
 	}
 	return
