@@ -130,6 +130,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 		inServer.Network(),
 		inServer.AddrStr(),
 		inServer.GetSockopt(),
+		inServer.GetXver(),
 		func(conn net.Conn) {
 			handleNewIncomeConnection(inServer, defaultOutClient, conn, env)
 		},
@@ -198,10 +199,11 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	if inServer.IsUseTLS() {
 
 		if iics.isTlsLazyServerEnd {
-			iics.inServerTlsRawReadRecorder = tlsLayer.NewRecorder()
+			tlsRecorder := tlsLayer.NewRecorder()
+			iics.inServerTlsRawReadRecorder = tlsRecorder
 
-			iics.inServerTlsRawReadRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
-			teeConn := tlsLayer.NewTeeConn(wrappedConn, iics.inServerTlsRawReadRecorder)
+			tlsRecorder.StopRecord() //先不记录，因为一开始是我们自己的tls握手包，没有意义
+			teeConn := tlsLayer.NewTeeConn(wrappedConn, tlsRecorder)
 
 			wrappedConn = teeConn
 		}
@@ -281,7 +283,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 					newiics := iics
 
 					newiics.theRequestPath = fallbackMeta.Path
-					newiics.theFallbackFirstBuffer = fallbackMeta.H1RequestBuf
+					newiics.fallbackFirstBuffer = fallbackMeta.H1RequestBuf
 					newiics.wrappedConn = fallbackMeta.Conn
 					newiics.isFallbackH2 = fallbackMeta.IsH2
 					newiics.fallbackH2Request = fallbackMeta.H2Request
@@ -318,7 +320,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 				meta := wsConn.(httpLayer.FallbackMeta)
 
 				iics.theRequestPath = meta.Path
-				iics.theFallbackFirstBuffer = meta.H1RequestBuf
+				iics.fallbackFirstBuffer = meta.H1RequestBuf
 				iics.wrappedConn = meta.Conn
 
 				if ce := utils.CanLogDebug("Single AdvLayer Check failed, will fallback."); ce != nil {
@@ -388,7 +390,7 @@ func handshakeInserver(iics *incomingInserverConnState) (wlc net.Conn, udp_wlc n
 				return
 			}
 
-			iics.theFallbackFirstBuffer = bytes.NewBuffer(firstSocks5RequestData)
+			iics.fallbackFirstBuffer = bytes.NewBuffer(firstSocks5RequestData)
 
 			targetAddr = firstSocks5RequestAddr
 		}
@@ -1099,9 +1101,9 @@ advLayerHandshakeStep:
 		if !hasInnerMux {
 			//如果有内层mux，要在dialInnerProxy函数里再读, 而不是在这里读
 
-			if iics.theFallbackFirstBuffer != nil {
+			if iics.fallbackFirstBuffer != nil {
 
-				firstPayload = iics.theFallbackFirstBuffer.Bytes()
+				firstPayload = iics.fallbackFirstBuffer.Bytes()
 
 			} else {
 				firstPayload = utils.GetMTU()
@@ -1347,7 +1349,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 	} else {
 
-		if ffb := iics.theFallbackFirstBuffer; ffb != nil {
+		if ffb := iics.fallbackFirstBuffer; ffb != nil {
 			udp_wrc.WriteMsgTo(ffb.Bytes(), targetAddr)
 		}
 

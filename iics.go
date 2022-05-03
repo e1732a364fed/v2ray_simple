@@ -13,11 +13,12 @@ import (
 	"go.uber.org/zap"
 )
 
-//一个贯穿转发流程的关键结构
+//一个贯穿转发流程的关键结构,简称iics
 type incomingInserverConnState struct {
 
 	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
+	// 所以一般我们不使用 指针传递 iics.
 
 	baseLocalConn net.Conn     // baseLocalConn 是来自客户端的原始传输层链接
 	wrappedConn   net.Conn     // wrappedConn 是层层握手后,代理层握手前 包装的链接,一般为tls层/高级层;
@@ -30,9 +31,9 @@ type incomingInserverConnState struct {
 	inServerTlsConn            *tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
 
-	isFallbackH2           bool
-	fallbackH2Request      *http.Request
-	theFallbackFirstBuffer *bytes.Buffer
+	isFallbackH2        bool
+	fallbackH2Request   *http.Request
+	fallbackFirstBuffer *bytes.Buffer
 
 	fallbackXver int
 
@@ -75,7 +76,7 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 			panic("No FirstBuffer")
 
 		} else {
-			iics.theFallbackFirstBuffer = firstbuffer
+			iics.fallbackFirstBuffer = firstbuffer
 
 		}
 	}
@@ -96,10 +97,10 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 
 			theRequestPath := iics.theRequestPath
 
-			if iics.theFallbackFirstBuffer != nil && theRequestPath == "" {
+			if iics.fallbackFirstBuffer != nil && theRequestPath == "" {
 				var failreason int
 
-				_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.theFallbackFirstBuffer.Bytes(), false)
+				_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.fallbackFirstBuffer.Bytes(), false)
 
 				if failreason != 0 {
 					theRequestPath = ""

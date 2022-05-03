@@ -13,6 +13,13 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+//配置文件格式
+const (
+	SimpleMode = iota
+	StandardMode
+	V2rayCompatibleMode
+)
+
 type AppConf struct {
 	LogLevel          *int    `toml:"loglevel"` //需要为指针, 否则无法判断0到底是未给出的默认值还是 显式声明的0
 	LogFile           *string `toml:"logfile"`

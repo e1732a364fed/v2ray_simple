@@ -25,12 +25,30 @@ func ListenInitialLayers(addr string, tlsConf tls.Config, arg arguments) (newCon
 	var elistener quic.EarlyListener
 	var err error
 
+	//自己listen，而不是调用 quic.ListenAddr, 这样可以为以后支持 udp的 proxy protocol v2 作准备。
+
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		if ce := utils.CanLogErr("quic, ResolveUDPAddr failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		return
+	}
+	conn, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		if ce := utils.CanLogErr("quic, listen udp failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		return
+	}
+
 	if arg.early {
 		utils.Info("quic Listen Early")
-		elistener, err = quic.ListenAddrEarly(addr, &tlsConf, &thisConfig)
+		elistener, err = quic.ListenEarly(conn, &tlsConf, &thisConfig)
 
 	} else {
-		listener, err = quic.ListenAddr(addr, &tlsConf, &thisConfig)
+
+		listener, err = quic.Listen(conn, &tlsConf, &thisConfig)
 
 	}
 	if err != nil {
@@ -165,7 +183,10 @@ func (s *Server) Stop() {
 func (s *Server) StartListen() (newSubConnChan chan net.Conn, baseConn io.Closer) {
 
 	newSubConnChan, baseConn = ListenInitialLayers(s.addr, s.tlsConf, s.args)
-	s.listener = baseConn
+	if baseConn != nil {
+		s.listener = baseConn
+
+	}
 	return
 }
 

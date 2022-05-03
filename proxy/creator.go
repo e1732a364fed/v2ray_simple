@@ -105,7 +105,7 @@ func NewClient(dc *DialConf) (Client, error) {
 
 }
 
-// ClientFromURL calls the registered creator to create client.
+// ClientFromURL calls the registered creator to create client. The returned bool is true if has err.
 func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 	u, err := url.Parse(s)
 	if err != nil {
@@ -253,11 +253,14 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 	if q.Get("noroute") != "" {
 		nr = true
 	}
-
-	ser.getCommon().setCantRoute(nr)
-	ser.getCommon().setTag(u.Fragment)
-
 	configCommonByURL(ser, u)
+
+	serc := ser.getCommon()
+	if serc == nil {
+		return
+	}
+	serc.cantRoute = nr
+	serc.Tag = u.Fragment
 
 	fallbackStr := q.Get("fallback")
 
@@ -273,14 +276,14 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 			}
 		}
 
-		ser.getCommon().setFallback(fa)
+		serc.FallbackAddr = &fa
 	}
 }
 
 //SetAddrStr
 func configCommonByURL(ser ProxyCommon, u *url.URL) {
-	if u.Scheme != "direct" {
-		ser.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们“默认”, 配置里肯定给了port
+	if u.Scheme != DirectName {
+		ser.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们 默认 配置里肯定给了port
 
 	}
 	/*
@@ -302,63 +305,37 @@ func configCommonByURL(ser ProxyCommon, u *url.URL) {
 	*/
 }
 
-//setAdvancedLayer
-func configCommon(this ProxyCommon, cc *CommonConf) {
-	this.getCommon().setAdvancedLayer(cc.AdvancedLayer)
-
-}
-
-//SetAddrStr,setTag, setHeader, setNetwork, setIsDial(true),setDialConf(dc), call  configCommon(setAdvancedLayer)
+//SetAddrStr,call  configCommon
 func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
+	if cli.Name() != DirectName {
+		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
+	}
+
 	clic := cli.getCommon()
 	if clic == nil {
 		return nil
 	}
 
-	clic.setNetwork(dc.Network)
-	clic.setDialConf(dc)
-	clic.setTag(dc.Tag)
-	clic.Sockopt = dc.Sockopt
-	if dc.HttpHeader != nil {
-		dc.HttpHeader.AssignDefaultValue()
-		clic.setHeader(dc.HttpHeader)
-	}
+	clic.dialConf = dc
 
-	if cli.Name() != "direct" {
-		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
-	}
+	clic.ConfigCommon(&dc.CommonConf)
 
-	configCommon(cli, &dc.CommonConf)
-
-	clic.InitAdvLayer()
 	return nil
 }
 
-//SetAddrStr,setNetwork, setTag,setHeader, setCantRoute,setListenConf(lc),setFallback, call configCommon
+//SetAddrStr, setCantRoute,setFallback, call configCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	serc := ser.getCommon()
 	if serc == nil {
 		return nil
 	}
-	serc.setNetwork(lc.Network)
-	serc.setListenConf(lc)
-	serc.setTag(lc.Tag)
-	serc.setCantRoute(lc.NoRoute)
-	serc.Sockopt = lc.Sockopt
+	serc.listenConf = lc
+	serc.cantRoute = lc.NoRoute
 
-	configCommon(ser, &lc.CommonConf)
+	serc.ConfigCommon(&lc.CommonConf)
 
-	if lc.HttpHeader != nil {
-		lc.HttpHeader.AssignDefaultValue()
-		serc.setHeader(lc.HttpHeader)
-	}
-
-	serc.InitAdvLayer()
-
-	fallbackThing := lc.Fallback
-
-	if fallbackThing != nil {
+	if fallbackThing := lc.Fallback; fallbackThing != nil {
 		fa, err := netLayer.NewAddrFromAny(fallbackThing)
 
 		if err != nil {
@@ -366,7 +343,7 @@ func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 
 		}
 
-		serc.setFallback(fa)
+		serc.FallbackAddr = &fa
 	}
 
 	return nil

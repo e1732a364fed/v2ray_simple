@@ -12,6 +12,7 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/oschwald/maxminddb-golang v1.9.0
+	github.com/pires/go-proxyproto v0.6.2
 	github.com/pkg/profile v1.6.0
 	github.com/refraction-networking/utls v1.1.0
 	github.com/xtaci/smux v1.5.16

@@ -54,7 +54,7 @@ func loopAcceptUDP(uc net.UDPConn, acceptFunc func([]byte, *net.UDPAddr)) {
 // ListenAndAccept 试图监听 tcp, udp 和 unix domain socket 这三种传输层协议.
 //
 // 非阻塞，在自己的goroutine中监听.
-func ListenAndAccept(network, addr string, sockopt *Sockopt, acceptFunc func(net.Conn)) (listener net.Listener, err error) {
+func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFunc func(net.Conn)) (listener net.Listener, err error) {
 	if addr == "" || acceptFunc == nil {
 		return nil, utils.ErrNilParameter
 	}

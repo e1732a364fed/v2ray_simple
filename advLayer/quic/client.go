@@ -132,14 +132,25 @@ func (c *Client) getCommonConn(_ net.Conn) (*connState, error) {
 	var conn quic.Connection
 	var err error
 
+	rudpAddr, err := net.ResolveUDPAddr("udp", c.serverAddrStr)
+	if err != nil {
+		return nil, err
+	}
+	udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4zero, Port: 0})
+	if err != nil {
+		return nil, err
+	}
+
 	if c.early {
 		utils.Debug("quic Dialing Early")
-		conn, err = quic.DialAddrEarly(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+		//conn, err = quic.DialAddrEarly(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+		conn, err = quic.DialEarly(udpConn, rudpAddr, c.serverAddrStr, &c.tlsConf, &common_DialConfig)
 
 	} else {
 
 		utils.Debug("quic Dialing Connection")
-		conn, err = quic.DialAddr(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+		//conn, err = quic.DialAddr(c.serverAddrStr, &c.tlsConf, &common_DialConfig)
+		conn, err = quic.Dial(udpConn, rudpAddr, c.serverAddrStr, &c.tlsConf, &common_DialConfig)
 
 	}
 

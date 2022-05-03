@@ -2,15 +2,20 @@ package netLayer
 
 import (
 	"io"
+	"net"
 	"strconv"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"github.com/pires/go-proxyproto"
 )
+
+var proxyProtocolListenPolicyFunc = func(upstream net.Addr) (proxyproto.Policy, error) { return proxyproto.REQUIRE, nil }
 
 //PROXY protocol。
 //Reference： http://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
 //
 //xver 必须是 1或者2, 本函数若遇到其他值会直接panic。wlc 为监听的连接，wrc为转发的连接。
+// 另外，本函数只支持tcp。proxy protocol的 v2 是支持 udp的，但是本函数不支持udp。
 func WritePROXYprotocol(xver int, wlc NetAddresser, wrc io.Writer) (n int, err error) {
 
 	clientAddr, _ := NewAddrFromAny(wlc.RemoteAddr())

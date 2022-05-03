@@ -32,7 +32,7 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 socks5(包括 udp associate)/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
 
-ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控 和 0-rtt)/smux, 
+ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn/PROXY protocol v1/v2), 
 

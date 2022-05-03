@@ -55,6 +55,7 @@ type Conf struct {
 	Path    string
 	Headers *httpLayer.HeaderPreset
 	IsEarly bool           //is 0-rtt or not; for quic and ws.
+	Xver    int            //for Super, like quic, PROXY protocol
 	Extra   map[string]any //quic: useHysteria, hysteria_manual, maxbyte; grpc: multiMode
 }
 

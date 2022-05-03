@@ -7,8 +7,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
 
-// CommonConf 是标准配置中 Listen和Dial 都有的部分
-//如果新协议有其他新项，可以放入 Extra.
+// CommonConf is the common part of ListenConf and DialConf.
 type CommonConf struct {
 	Tag      string `toml:"tag"`      //可选
 	Protocol string `toml:"protocol"` //代理层; 约定，如果一个Protocol尾缀去掉了's'后仍然是一个有效协议，则该协议使用了 tls。这种方法继承自 v2simple，适合极简模式
@@ -20,7 +19,8 @@ type CommonConf struct {
 
 	Network string `toml:"network"` //传输层协议; 默认使用tcp, network可选值为 tcp, udp, unix; 理论上来说应该用 transportLayer，但是怕小白不懂，所以使用 network作为名称。而且也不算错，因为go的net包 也是用 network来指示 传输层/网络层协议的. 比如 net.Listen()第一个参数可以用 ip, tcp, udp 等。
 
-	Sockopt *netLayer.Sockopt `toml:"sockopt"`
+	Sockopt *netLayer.Sockopt `toml:"sockopt"` //可选
+	Xver    int               `toml:"xver"`    //可选，只能为0/1/2. 若不为0, 则使用 PROXY protocol 协议头.
 
 	TLS      bool     `toml:"tls"`      //tls层; 可选. 如果不使用 's' 后缀法，则还可以配置这一项来更清晰第标明使用tls
 	Insecure bool     `toml:"insecure"` //tls 是否安全
@@ -55,7 +55,7 @@ func (cc *CommonConf) GetAddrStr() string {
 
 }
 
-//若为unix, 返回Host，否则返回 ip:port / host:port; 和 GetAddr的区别是，它优先使用ip，其次再使用host
+//if network is unix domain socket, return Host，or return ip:port / host:port; 和 GetAddr的区别是，它优先使用ip，其次再使用host
 func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 	switch cc.Network {
 	case "unix":
@@ -74,8 +74,8 @@ func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 
 }
 
-// 监听所使用的设置, 使用者可被称为 listener or inServer
-//  CommonConf.Host , CommonConf.IP, CommonConf.Port  为监听地址与端口
+// config for listening, the user can be called as listener or inServer.
+//  CommonConf.Host , CommonConf.IP, CommonConf.Port is the addr and port for listening
 type ListenConf struct {
 	CommonConf
 	Fallback any    `toml:"fallback"` //可选，默认回落的地址，一般可为 ip:port,数字port or unix socket的文件名
@@ -90,8 +90,8 @@ type ListenConf struct {
 
 }
 
-// 拨号所使用的设置, 使用者可被称为 dialer or outClient
-//  CommonConf.Host , CommonConf.IP, CommonConf.Port  为拨号地址与端口
+// config for dialing, user can be called dialer or outClient.
+//  CommonConf.Host , CommonConf.IP, CommonConf.Port  is the addr and port for dialing.
 type DialConf struct {
 	CommonConf
 	Utls     bool `toml:"utls"`     //是否使用 uTls 库 替换 go官方tls库

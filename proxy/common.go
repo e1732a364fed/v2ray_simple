@@ -26,6 +26,7 @@ type ProxyCommon interface {
 	/////////////////// 网络层/传输层 ///////////////////
 
 	GetSockopt() *netLayer.Sockopt
+	GetXver() int
 
 	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是 unix domain socket 则是文件路径 ，
 	// 在 inServer就是监听地址，在 outClient就是拨号地址
@@ -84,6 +85,7 @@ type ProxyCommonStruct struct {
 	network string
 
 	Sockopt *netLayer.Sockopt
+	xver    int
 
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
@@ -111,19 +113,16 @@ func (pcs *ProxyCommonStruct) Network() string {
 	return pcs.network
 }
 
+func (pcs *ProxyCommonStruct) GetXver() int {
+	return pcs.xver
+}
+
 func (pcs *ProxyCommonStruct) HasHeader() *httpLayer.HeaderPreset {
 	return pcs.header
 }
 
-func (pcs *ProxyCommonStruct) setHeader(h *httpLayer.HeaderPreset) {
-	pcs.header = h
-}
-
 func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {
 	return pcs.FallbackAddr
-}
-func (pcs *ProxyCommonStruct) setFallback(a netLayer.Addr) {
-	pcs.FallbackAddr = &a
 }
 
 func (pcs *ProxyCommonStruct) MiddleName() string {
@@ -211,9 +210,6 @@ func (pcs *ProxyCommonStruct) GetSockopt() *netLayer.Sockopt {
 	return pcs.Sockopt
 }
 
-func (pcs *ProxyCommonStruct) setTag(tag string) {
-	pcs.Tag = tag
-}
 func (pcs *ProxyCommonStruct) setNetwork(network string) {
 	if network == "" {
 		pcs.network = "tcp"
@@ -222,14 +218,6 @@ func (pcs *ProxyCommonStruct) setNetwork(network string) {
 		pcs.network = network
 
 	}
-}
-
-func (pcs *ProxyCommonStruct) setCantRoute(cr bool) {
-	pcs.cantRoute = cr
-}
-
-func (pcs *ProxyCommonStruct) setAdvancedLayer(adv string) {
-	pcs.AdvancedL = adv
 }
 
 func (pcs *ProxyCommonStruct) AdvancedLayer() string {
@@ -246,13 +234,6 @@ func (s *ProxyCommonStruct) Stop() {
 //return false. As a placeholder.
 func (s *ProxyCommonStruct) CanFallback() bool {
 	return false
-}
-
-func (pcs *ProxyCommonStruct) setTLS_Server(s *tlsLayer.Server) {
-	pcs.tls_s = s
-}
-func (s *ProxyCommonStruct) setTLS_Client(c *tlsLayer.Client) {
-	s.tls_c = c
 }
 
 func (s *ProxyCommonStruct) GetTLS_Server() *tlsLayer.Server {
@@ -277,17 +258,29 @@ func (s *ProxyCommonStruct) SetUseTLS() {
 	s.TLS = true
 }
 
-func (s *ProxyCommonStruct) setListenConf(lc *ListenConf) {
-	s.listenConf = lc
-}
-func (s *ProxyCommonStruct) setDialConf(dc *DialConf) {
-	s.dialConf = dc
-}
 func (s *ProxyCommonStruct) GetAdvClient() advLayer.Client {
 	return s.advC
 }
 func (s *ProxyCommonStruct) GetAdvServer() advLayer.Server {
 	return s.advS
+}
+
+//setNetwork, xver, Tag,Sockopt,header,AdvancedL, InitAdvLayer
+func (c *ProxyCommonStruct) ConfigCommon(cc *CommonConf) {
+
+	c.setNetwork(cc.Network)
+	c.xver = cc.Xver
+	c.Tag = cc.Tag
+	c.Sockopt = cc.Sockopt
+
+	if cc.HttpHeader != nil {
+		cc.HttpHeader.AssignDefaultValue()
+		c.header = (cc.HttpHeader)
+	}
+
+	c.AdvancedL = cc.AdvancedLayer
+
+	c.InitAdvLayer()
 }
 
 func (s *ProxyCommonStruct) InitAdvLayer() {
@@ -329,6 +322,7 @@ func (s *ProxyCommonStruct) InitAdvLayer() {
 			IsEarly: dc.IsEarly,
 			Addr:    ad,
 			Headers: Headers,
+			Xver:    dc.Xver,
 			TlsConf: &tls.Config{
 				InsecureSkipVerify: dc.Insecure,
 				NextProtos:         dc.Alpn,
@@ -379,6 +373,7 @@ func (s *ProxyCommonStruct) InitAdvLayer() {
 			Path:    lc.Path,
 			Host:    lc.Host,
 			IsEarly: lc.IsEarly,
+			Xver:    lc.Xver,
 			Addr:    ad,
 			Headers: Headers,
 			TlsConf: &tls.Config{

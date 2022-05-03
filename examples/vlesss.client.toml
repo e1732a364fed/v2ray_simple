@@ -93,4 +93,4 @@ protocol = "direct" # direct 是不需要特地写出的, 程序会自动创建�
 [[route]]
 country = ["CN"]
 domain = ["geosite:cn"]
-dialTag = "direct"
+dialTag = "mydirect"

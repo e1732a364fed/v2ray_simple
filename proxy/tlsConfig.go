@@ -42,7 +42,7 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 		return nil
 	}
 
-	clic.setTLS_Client(tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList))
+	clic.tls_c = tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList)
 	return nil
 }
 
@@ -58,7 +58,7 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 
 	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, alpnList)
 	if err == nil {
-		serc.setTLS_Server(tlsserver)
+		serc.tls_s = tlsserver
 	} else {
 		return err
 	}
@@ -72,11 +72,16 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
 		insecure = true
 	}
+	cc := com.getCommon()
 
 	if isclient {
 		utlsStr := u.Query().Get("utls")
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
-		com.getCommon().setTLS_Client(tlsLayer.NewClient(u.Host, insecure, useUtls, nil))
+
+		if cc != nil {
+			cc.tls_c = tlsLayer.NewClient(u.Host, insecure, useUtls, nil)
+
+		}
 
 	} else {
 		certFile := u.Query().Get("cert")
@@ -87,7 +92,9 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommo
 
 		tlsserver, err := tlsLayer.NewServer(sni, certFile, keyFile, insecure, nil)
 		if err == nil {
-			com.getCommon().setTLS_Server(tlsserver)
+			if cc != nil {
+				cc.tls_s = tlsserver
+			}
 		} else {
 			return err
 		}

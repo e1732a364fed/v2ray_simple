@@ -10,13 +10,6 @@ import (
 	"github.com/xtaci/smux"
 )
 
-//配置文件格式
-const (
-	SimpleMode = iota
-	StandardMode
-	V2rayCompatibleMode
-)
-
 //规定，如果 proxy的server的handshake如果返回的是具有内层mux的连接，该连接要实现 MuxMarker 接口.
 type MuxMarker interface {
 	io.ReadWriteCloser
