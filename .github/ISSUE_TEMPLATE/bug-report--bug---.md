@@ -2,7 +2,7 @@
 name: Bug report 【Bug汇报】
 about: Bug report 【Bug汇报】
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
