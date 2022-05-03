@@ -1,4 +1,6 @@
-//Package advLayer contains subpackages for Advanced Layer in VSI model.
+/*Package advLayer contains subpackages for Advanced Layer in VSI model.
+
+ */
 package advLayer
 
 import (

@@ -123,6 +123,11 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 		c.handshakeRequest.Header = defaultClientHeader
 	}
 
+	if conf.Headers != nil && conf.Headers.Response != nil && len(conf.Headers.Response.Headers) > 0 {
+		c.responseHeader = conf.Headers.Response.Headers
+
+	}
+
 	return c, nil
 }
 

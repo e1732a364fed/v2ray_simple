@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"sync"
@@ -107,7 +106,6 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 				if s.Headers != nil && s.Headers.Request != nil && len(s.Headers.Request.Headers) > 0 {
 					for k, vs := range s.Headers.Request.Headers {
-						log.Println("checking", k)
 						this := rq.Header.Get(k)
 
 						matched := false
@@ -191,6 +189,15 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 			headerMap := rw.Header()
 			headerMap.Add("Content-Type", grpcContentType) //necessary
+
+			if s.Headers != nil && s.Headers.Response != nil && len(s.Headers.Response.Headers) > 0 {
+				extra := httpLayer.TrimHeaders(s.Headers.Response.Headers)
+				for k, vs := range extra {
+					if len(vs) > 0 {
+						headerMap.Add(k, vs[0])
+					}
+				}
+			}
 			rw.WriteHeader(http.StatusOK)
 
 			sc := newServerConn(rw, rq)

@@ -13,12 +13,50 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+//return a clone of m with headers trimmed to one value
+func TrimHeaders(m map[string][]string) (result map[string][]string) {
+
+	result = maps.Clone(m)
+
+	for k, v := range result {
+		result[k] = []string{v[rand.Intn(len(v))]}
+	}
+	return
+}
+
+//all values in template is given by real
+func AllHeadersIn(template map[string][]string, realh http.Header) (ok bool, firstNotMatchKey string) {
+	for k, vs := range template {
+		containThis := false
+
+		thisReal := realh.Get(k)
+		if thisReal == "" {
+			firstNotMatchKey = k
+			return
+		}
+
+		for _, v := range vs {
+			if thisReal == v {
+				containThis = true
+				break
+			}
+		}
+
+		if !containThis {
+			firstNotMatchKey = k
+			return
+		}
+	}
+	ok = true
+	return
+}
+
 /*
 观察v2ray的实现，在没有header时，还会添加一个 Date ，这个v2ray的文档里没提
 
 v2ray文档: https://www.v2fly.org/config/transport/tcp.html#noneheaderobject
 
-相关 v2ray代码: transport/internet/headers/http/http.go
+相关 v2ray代码: https://github.com/v2fly/v2ray-core/tree/master/transport/internet/headers/http/http.go
 */
 
 type RequestHeader struct {
@@ -215,13 +253,9 @@ func (p *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
 		return err
 	}
 
-	nh := maps.Clone(p.Request.Headers)
+	nh := TrimHeaders(p.Request.Headers)
+
 	r.Header = nh
-
-	for k, v := range nh {
-		nh[k] = []string{v[rand.Intn(len(v))]}
-
-	}
 
 	hlist := nh["Host"]
 	r.Host = hlist[rand.Intn(len(hlist))]

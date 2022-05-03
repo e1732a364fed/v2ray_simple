@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -53,7 +54,11 @@ func (g *ClientConn) handshake() {
 		return
 	}
 
-	if !g.shouldClose.Load() {
+	notOK := false
+
+	if g.shouldClose.Load() {
+		notOK = true
+	} else {
 		//log.Println("response headers", response.Header)
 
 		if ct := response.Header.Get("Content-Type"); ct != "application/grpc" {
@@ -61,19 +66,28 @@ func (g *ClientConn) handshake() {
 				ce.Write(zap.String("type", ct))
 			}
 
-			g.client.cachedTransport = nil
+			notOK = true
+		} else if g.client != nil && len(g.client.responseHeader) > 0 {
+			if ok, firstNotMatchKey := httpLayer.AllHeadersIn(g.client.responseHeader, response.Header); !ok {
 
-			response.Body.Close()
-			return
+				if ce := utils.CanLogWarn("GRPC Client configured custom header, but the server response doesn't have all of them"); ce != nil {
+					ce.Write(zap.String("firstNotMatchKey", firstNotMatchKey))
+				}
+
+				notOK = true
+			}
 		}
 
-		g.response = response
-		g.br = bufio.NewReader(response.Body)
-	} else {
+	}
+
+	if notOK {
 
 		g.client.cachedTransport = nil
 
 		response.Body.Close()
+	} else {
+		g.response = response
+		g.br = bufio.NewReader(response.Body)
 	}
 }
 
@@ -127,6 +141,8 @@ type Client struct {
 	curBaseConn net.Conn //一般为 tlsConn
 
 	handshakeRequest http.Request
+
+	responseHeader map[string][]string
 
 	cachedTransport *http2.Transport //一个 transport 对应 一个提供的 dial好的 tls 连接，正好作为CommonConn。
 
