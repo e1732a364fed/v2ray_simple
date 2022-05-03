@@ -1,10 +1,10 @@
-FROM golang:bullseye AS build
-COPY . .
-WORKDIR v2ray_simple
+FROM golang:alpine AS build
+RUN apk add --no-cache git
+WORKDIR /go/src
 RUN git clone https://github.com/e1732a364fed/v2ray_simple.git
-RUN cd v2ray_simple/cmd/verysimple
+WORKDIR /go/src/v2ray_simple/cmd/verysimple
 RUN go build
-FROM debian:bullseye
-COPY --from=build /go/v2ray_simple/cmd/verysimple/verysimple /bin/verysimple
+FROM alpine
+COPY --from=build /go/src/v2ray_simple/cmd/verysimple/verysimple /bin/verysimple
 WORKDIR /data
 ENTRYPOINT ["/bin/verysimple"]
