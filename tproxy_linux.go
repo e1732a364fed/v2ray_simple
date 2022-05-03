@@ -39,7 +39,7 @@ func ListenTproxy(addr string, defaultOutClientForThis proxy.Client, routePolicy
 
 //非阻塞
 func startLoopTCP(ad netLayer.Addr, defaultOutClientForThis proxy.Client, env *proxy.RoutingEnv) (net.Listener, error) {
-	return netLayer.ListenAndAccept("tcp", ad.String(), &netLayer.Sockopt{TProxy: true}, func(conn net.Conn) {
+	return netLayer.ListenAndAccept("tcp", ad.String(), &netLayer.Sockopt{TProxy: true}, 0, func(conn net.Conn) {
 		tcpconn := conn.(*net.TCPConn)
 		targetAddr := tproxy.HandshakeTCP(tcpconn)
 
