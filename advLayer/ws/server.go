@@ -21,21 +21,55 @@ const MaxEarlyDataLen_Base64 = 2732
 
 type Server struct {
 	Creator
-	//upgrader     *ws.Upgrader
-	UseEarlyData bool
-	Thepath      string
+	UseEarlyData   bool
+	Thepath        string
+	RequestHeaders map[string][]string
 
-	headers *httpLayer.HeaderPreset
+	requestHeaderCheckCount     int
+	noNeedToCheckRequestHeaders bool
+	responseHeader              ws.HandshakeHeader
 }
 
 // 这里默认: 传入的path必须 以 "/" 为前缀. 本函数 不对此进行任何检查.
 func NewServer(path string, headers *httpLayer.HeaderPreset, UseEarlyData bool) *Server {
 
+	noNeedToCheckRequestHeaders := headers == nil || headers.Request == nil || len(headers.Request.Headers) == 0
+
+	var requestHeaderCheckCount int
+
+	var requestHeaders map[string][]string
+
+	if !noNeedToCheckRequestHeaders {
+
+		requestHeaders = headers.Request.Headers
+
+		requestHeaderCheckCount = len(requestHeaders)
+
+		//gobwas包首先过滤这些Header, 然后才是自定义的header，所以我们首先查看用户是否配置了这些header，
+		// 如果有配置，则无视此header的配置。
+		for k := range requestHeaders {
+			switch k {
+			case "Host", "Connection", "Upgrade", "Sec-WebSocket-Version", "Sec-WebSocket-Key", "Sec-WebSocket-Protocol", "Sec-WebSocket-Accept", "Sec-WebSocket-Extensions":
+				requestHeaderCheckCount -= 1
+				delete(requestHeaders, k)
+			}
+		}
+
+	}
+
+	var responseHeader ws.HandshakeHeader
+
+	if headers != nil && headers.Response != nil && len(headers.Response.Headers) > 0 {
+		responseHeader = ws.HandshakeHeaderHTTP(headers.Response.Headers)
+	}
+
 	return &Server{
-		//upgrader: upgrader,
-		Thepath:      path,
-		headers:      headers,
-		UseEarlyData: UseEarlyData,
+		RequestHeaders:              requestHeaders,
+		responseHeader:              responseHeader,
+		noNeedToCheckRequestHeaders: noNeedToCheckRequestHeaders,
+		requestHeaderCheckCount:     requestHeaderCheckCount,
+		Thepath:                     path,
+		UseEarlyData:                UseEarlyData,
 	}
 }
 
@@ -85,27 +119,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	theWrongPath := ""
 	var thePotentialEarlyData []byte
 
-	var requestHeaderNotGivenCount int
-
-	noNeedToCheckRequestHeaders := s.headers == nil || s.headers.Request == nil || len(s.headers.Request.Headers) == 0
-
-	if !noNeedToCheckRequestHeaders {
-		requestHeaderNotGivenCount = len(s.headers.Request.Headers)
-
-		for k := range s.headers.Request.Headers {
-			switch k {
-			case "Host", "Connection", "Upgrade", "Sec-WebSocket-Version", "Sec-WebSocket-Key", "Sec-WebSocket-Protocol", "Sec-WebSocket-Accept", "Sec-WebSocket-Extensions":
-				requestHeaderNotGivenCount -= 1
-			}
-		}
-
-	}
-
-	var responseHeader ws.HandshakeHeader
-
-	if s.headers != nil && s.headers.Response != nil && len(s.headers.Response.Headers) > 0 {
-		responseHeader = ws.HandshakeHeaderHTTP(s.headers.Response.Headers)
-	}
+	requestHeaderNotGivenCount := s.requestHeaderCheckCount
 
 	var theUpgrader *ws.Upgrader = &ws.Upgrader{
 
@@ -141,10 +155,10 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 			return nil
 		},
 		OnHeader: func(key, value []byte) error {
-			if noNeedToCheckRequestHeaders {
+			if s.noNeedToCheckRequestHeaders {
 				return nil
 			}
-			vs := s.headers.Request.Headers[string(key)]
+			vs := s.RequestHeaders[string(key)]
 			if len(vs) > 0 {
 				for _, v := range vs {
 					if v == (string(value)) {
@@ -156,7 +170,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 
 			return nil
 		},
-		Header: responseHeader,
+		Header: s.responseHeader,
 		OnBeforeUpgrade: func() (header ws.HandshakeHeader, err error) {
 			if requestHeaderNotGivenCount > 0 {
 				if ce := utils.CanLogWarn("ws headers not match"); ce != nil {
@@ -164,7 +178,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 				}
 				return nil, ws.RejectConnectionError(ws.RejectionStatus(http.StatusBadRequest))
 			}
-			return responseHeader, nil
+			return s.responseHeader, nil
 		},
 	}
 
