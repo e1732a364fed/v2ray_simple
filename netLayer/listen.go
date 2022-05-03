@@ -9,10 +9,20 @@ import (
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"github.com/pires/go-proxyproto"
 	"go.uber.org/zap"
 )
 
 func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
+	if xver > 0 {
+
+		if ce := utils.CanLogDebug("Listening PROXY protocol"); ce != nil {
+			ce.Write(zap.Int("prefered xver", xver))
+		}
+
+		listener = &proxyproto.Listener{Listener: listener, Policy: proxyProtocolListenPolicyFunc}
+	}
+
 	for {
 		newc, err := listener.Accept()
 		if err != nil {
