@@ -15,11 +15,11 @@ path = "verysimple_serviceName"
 
 [listen.header.request]
 
-headers.Mycustom1 = ["verysimple"]
+headers.Mycustom1 = ["verysimple_is_so_good"]
 
 [listen.header.response]
 
-headers.mycustom2 = ["verysimple_is_so_good"]
+headers.mycustom2 = ["i_agree"]
 
 [[dial]]
 protocol = "direct"

@@ -21,13 +21,15 @@ path = "verysimple_serviceName"
 # 而是我们硬生生 额外加了一个 http头。也就是说，非 grpcSimple 的情况下, 你加一个header, 情况是,
 #  外层有一层http，有我们的header，然后内层 是http2，然后还有grpc自己的header。
 
+# xray/v2ray 都是没法自定义 grpc的header的，而我们的grpcSimple非常好，可以加header，就和 websocket一样。
+
 # 我们额外加header, 实际就类似设一个复杂的 serverName(别忘了在我们这里serverName直接填到path 里), 都是用于验证的
 
 [dial.header.request]
 
 
-headers.Mycustom1 = ["verysimple"]
+headers.Mycustom1 = ["verysimple_is_so_good"]
 
 [dial.header.response]
 
-headers.mycustom2 = ["verysimple_is_so_good"]
+headers.mycustom2 = ["i_agree"]

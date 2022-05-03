@@ -28,7 +28,7 @@ path = ["/very","/simple"]  # 每次请求随机选择一个值。
 # 如果使用 ws, 则 listen的 Connection头 不用给出，因为必须是Upgrade; 你给出也是可以的，但是会被无视。
 
 # 如果你给出的Header的首字母小写的，则首字母自动被转换成大写.
-headers.mycustom1 = ["verysimple"]
+headers.mycustom1 = ["verysimple_is_so_good"]
 
 
 headers.Host = ["www.baidu.com","www.bing.com"]
@@ -44,7 +44,7 @@ headers.Pragma = ["no-cache"]
 # 如果使用 ws, 则 listen.header.response 的 Connection头必须指明为 Upgrade
 headers.Connection = [  "Upgrade"   ]
 
-headers.mycustom2 = ["verysimple_is_so_good"]
+headers.mycustom2 = ["i_agree"]
 
 [[dial]]
 protocol = "direct"

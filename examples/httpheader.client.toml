@@ -26,7 +26,7 @@ path = ["/very","/simple"]  # 每次请求随机选择一个值。如果你用ws
 
 headers.Connection = [  "Upgrade"   ]
 
-headers.mycustom1 = ["verysimple"]
+headers.mycustom1 = ["verysimple_is_so_good"]
 
 
 headers.Host = ["www.baidu.com","www.bing.com"]
@@ -40,4 +40,4 @@ headers.Pragma = ["no-cache"]
 [dial.header.response]
 # 如果使用 ws, 则 Connection头不用给出，因为必须是Upgrade; 你给出也是可以的，但是会被无视。
 #headers.Connection = [  "Upgrade"   ]
-headers.mycustom2 = ["verysimple_is_so_good"]
+headers.mycustom2 = ["i_agree"]

@@ -105,29 +105,16 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 				//try check customized header
 
 				if s.Headers != nil && s.Headers.Request != nil && len(s.Headers.Request.Headers) > 0 {
-					for k, vs := range s.Headers.Request.Headers {
-						this := rq.Header.Get(k)
 
-						matched := false
+					if ok, fnmk := httpLayer.AllHeadersIn(s.Headers.Request.Headers, rq.Header); !ok {
 
-						if this != "" {
-							for _, v := range vs {
-								if v == this {
-									matched = true
-									break
-								}
-							}
+						if ce := utils.CanLogWarn("GRPC Server has custom header configured, but the client request have notMatched Header(s)"); ce != nil {
+							ce.Write(zap.String("firstNotMatchKey", fnmk))
 						}
 
-						if !matched {
-							if ce := utils.CanLogWarn("GRPC Server has custom header configured, but the client request doesn't have this"); ce != nil {
-								ce.Write(zap.String("supposed header", k), zap.Any("supposed value list", vs), zap.String("got value", this))
-							}
-
-							shouldFallback = true
-						}
-
+						shouldFallback = true
 					}
+
 				}
 			}
 
