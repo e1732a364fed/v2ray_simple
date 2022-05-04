@@ -286,26 +286,9 @@ func configCommonByURL(ser ProxyCommon, u *url.URL) {
 		ser.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们 默认 配置里肯定给了port
 
 	}
-	/*
-		q := u.Query()
-		wsStr := q.Get("ws")
-		if wsStr != "" && wsStr != "0" && wsStr != "false" {
-			ser.getCommon().setAdvancedLayer("ws")
-		}
-		grpcStr := q.Get("grpc")
-		if grpcStr != "" && grpcStr != "0" && grpcStr != "false" {
-			pathStr := q.Get("path")
-			if pathStr != "" && pathStr != "0" && pathStr != "false" {
-
-				ser.getCommon().setAdvancedLayer("grpc")
-				ser.getCommon().setPath(pathStr)
-			}
-
-		}
-	*/
 }
 
-//SetAddrStr,call  configCommon
+//SetAddrStr,  ConfigCommon
 func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 	if cli.Name() != DirectName {
 		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
@@ -323,7 +306,7 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 	return nil
 }
 
-//SetAddrStr, setCantRoute,setFallback, call configCommon
+//SetAddrStr, setCantRoute,setFallback, ConfigCommon
 func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
 	serc := ser.getCommon()

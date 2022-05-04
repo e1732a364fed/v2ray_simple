@@ -549,7 +549,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 					//因为一个客户端可能向我们服务器发起多个h2子连接，共用同一个wlc,我们如果能
 					// 共用 这种情况的transport，就可以节约到达实际服务器的tcp链接数量，而且
-					// 无缝粘贴了两个h2连接
+					// 无缝粘贴了两个h2连接.
+					// 因为 PROXYprotocol 头部对于每个wlc都是不同的, 所以才用到多个transport和map这种办法。
 
 					if transport == nil {
 						transport = &http2.Transport{

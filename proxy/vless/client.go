@@ -25,7 +25,7 @@ func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
 func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 	uuidStr := dc.Uuid
-	id, err := proxy.NewV2rayUser(uuidStr)
+	id, err := utils.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 func NewClientByURL(url *url.URL) (proxy.Client, error) {
 	uuidStr := url.User.Username()
-	id, err := proxy.NewV2rayUser(uuidStr)
+	id, err := utils.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ type Client struct {
 
 	version int
 
-	user proxy.V2rayUser
+	user utils.V2rayUser
 
 	udp_multi bool
 	use_mux   bool
@@ -118,7 +118,7 @@ func (c *Client) Name() string {
 	// 直接 + 比 fmt.Sprintf 快不少.
 }
 func (c *Client) Version() int { return c.version }
-func (c *Client) GetUser() proxy.User {
+func (c *Client) GetUser() utils.User {
 	return c.user
 }
 

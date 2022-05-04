@@ -132,7 +132,7 @@ advLayer文件夹 代表第七层, proxy文件夹代表第8层或第10层, 同�
 
 总之 verysimple 的思路就是，要不就完全扁平化，要不就完全分层。
 
-本作认为，所有的代理是都可以有tls层，http层和ws/grpc层的，所以就统一嵌入所有的代理协议的配置当中,直接扁平化了.
+本作认为，所有的代理是都可以有tls层、http层和ws/grpc这种advLayer 的，所以就统一嵌入所有的代理协议的配置当中,直接扁平化了.
 
 Contents of proxy package - proxy包内容
 

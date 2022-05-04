@@ -1,6 +1,3 @@
-/*
-Package tlsLayer provides facilities for tls, including sniffing.
-*/
 package tlsLayer
 
 import (

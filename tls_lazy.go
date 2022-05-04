@@ -317,7 +317,7 @@ func tryTlsLazyRawCopy(useSecureMethod bool, proxy_client proxy.UserClient, prox
 			if tlsLayer.PDD {
 				log.Printf("成功SpliceRead R方向\n")
 				num, e1 := rawWRC.ReadFrom(wlccc_raw)
-				log.Printf("SpliceRead R方向 传完，%s , 长度: %d\n", e1, num)
+				log.Printf("SpliceRead R方向 传完，%v , 长度: %d\n", e1, num)
 			} else {
 				rawWRC.ReadFrom(wlccc_raw)
 			}

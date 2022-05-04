@@ -24,7 +24,7 @@ type ServerCreator struct{}
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
-	id, err := proxy.NewV2rayUser(uuidStr)
+	id, err := utils.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 func NewServer(url *url.URL) (proxy.Server, error) {
 
 	uuidStr := url.User.Username()
-	id, err := proxy.NewV2rayUser(uuidStr)
+	id, err := utils.NewV2rayUser(uuidStr)
 	if err != nil {
 		return nil, err
 	}
@@ -70,18 +70,18 @@ func (*Server) HasInnerMux() (int, string) {
 func (*Server) CanFallback() bool {
 	return true
 }
-func (s *Server) addV2User(u *proxy.V2rayUser) {
+func (s *Server) addV2User(u *utils.V2rayUser) {
 	s.userHashes[*u] = true
 }
 
-func (s *Server) AddV2User(u *proxy.V2rayUser) {
+func (s *Server) AddV2User(u *utils.V2rayUser) {
 
 	s.mux4Hashes.Lock()
 	s.userHashes[*u] = true
 	s.mux4Hashes.Unlock()
 }
 
-func (s *Server) DelV2User(u *proxy.V2rayUser) {
+func (s *Server) DelV2User(u *utils.V2rayUser) {
 
 	s.mux4Hashes.RLock()
 
@@ -97,13 +97,13 @@ func (s *Server) DelV2User(u *proxy.V2rayUser) {
 
 }
 
-func (s *Server) GetUserByBytes(bs []byte) proxy.User {
+func (s *Server) GetUserByBytes(bs []byte) utils.User {
 	if len(bs) < 16 {
 		return nil
 	}
 	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&bs[0]))
 	if s.userHashes[thisUUIDBytes] {
-		return proxy.V2rayUser(thisUUIDBytes)
+		return utils.V2rayUser(thisUUIDBytes)
 	}
 	return nil
 }
@@ -122,7 +122,7 @@ func (s *Server) UserBytesLen() int {
 	return 16
 }
 
-func (s *Server) GetUserByStr(str string) proxy.User {
+func (s *Server) GetUserByStr(str string) utils.User {
 	u, e := utils.StrToUUID(str)
 	if e != nil {
 		return nil

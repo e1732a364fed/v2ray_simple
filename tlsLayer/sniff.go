@@ -85,10 +85,6 @@ func NewSniffConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure b
 }
 
 //是 proxy.UserContainer 的子集
-type UserHaser interface {
-	HasUserByBytes(bs []byte) bool
-	UserBytesLen() int
-}
 
 type ComSniff struct {
 	IsTls            bool
@@ -96,7 +92,7 @@ type ComSniff struct {
 
 	SpecialCommandBytes []byte //目前规定，使用uuid作为special command
 
-	UH UserHaser //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
+	UH utils.UserHaser //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
 
 	SniffedHostName string
 

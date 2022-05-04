@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 	"github.com/xtaci/smux"
 )
 
@@ -50,6 +51,11 @@ type Client interface {
 	CloseInnerMuxSession()
 }
 
+type UserClient interface {
+	Client
+	GetUser() utils.User
+}
+
 // Server is used for listening clients.
 // Because Server is "target agnostic"，Handshake should return the target addr that the Client requested.
 //
@@ -63,6 +69,11 @@ type Server interface {
 
 	//get/listen a useable inner mux
 	GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session
+}
+
+type UserServer interface {
+	Server
+	utils.UserContainer
 }
 
 // FullName can fully represent the VSI model for a proxy.

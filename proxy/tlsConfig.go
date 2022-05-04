@@ -11,21 +11,34 @@ import (
 func updateAlpnListByAdvLayer(com ProxyCommon, alpnList []string) (result []string) {
 	result = alpnList
 
+	common := com.getCommon()
+	if common == nil {
+		return
+	}
+
 	if adv := com.AdvancedLayer(); adv != "" {
-		if creator := advLayer.ProtocolsMap[adv]; creator != nil {
-			if alpn, must := creator.GetDefaultAlpn(); must {
-				has_alpn := false
+		var creator advLayer.Creator
 
-				for _, a := range alpnList {
-					if a == alpn {
-						has_alpn = true
-						break
-					}
-				}
+		if c := common.advC; c != nil {
+			creator = c
+		} else if s := common.advS; s != nil {
+			creator = s
+		} else {
+			return
+		}
 
-				if !has_alpn {
-					result = append([]string{alpn}, alpnList...)
+		if alpn, must := creator.GetDefaultAlpn(); must {
+			has_alpn := false
+
+			for _, a := range alpnList {
+				if a == alpn {
+					has_alpn = true
+					break
 				}
+			}
+
+			if !has_alpn {
+				result = append([]string{alpn}, alpnList...)
 			}
 		}
 	}

@@ -1,9 +1,7 @@
-package proxy
+package utils
 
 import (
 	"io"
-
-	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 //User是一个唯一身份标识。
@@ -13,29 +11,22 @@ type User interface {
 	GetIdentityBytes() []byte
 }
 
-type UserClient interface {
-	Client
-	GetUser() User
+type UserHaser interface {
+	HasUserByBytes(bs []byte) bool
+	UserBytesLen() int
 }
 
 type UserContainer interface {
+	UserHaser
+
 	GetUserByStr(idStr string) User
 	GetUserByBytes(bs []byte) User
-
-	//tlsLayer.UserHaser
-	HasUserByBytes(bs []byte) bool
-	UserBytesLen() int
 }
 
 // 可以控制 User 登入和登出 的接口
 type UserBus interface {
 	AddUser(User) error
 	DelUser(User)
-}
-
-type UserServer interface {
-	Server
-	UserContainer
 }
 
 type UserConn interface {
@@ -48,7 +39,7 @@ type UserConn interface {
 type V2rayUser [16]byte
 
 func (u V2rayUser) GetIdentityStr() string {
-	return utils.UUIDToStr(u)
+	return UUIDToStr(u)
 }
 
 func (u V2rayUser) GetIdentityBytes() []byte {
@@ -56,7 +47,7 @@ func (u V2rayUser) GetIdentityBytes() []byte {
 }
 
 func NewV2rayUser(s string) (V2rayUser, error) {
-	uuid, err := utils.StrToUUID(s)
+	uuid, err := StrToUUID(s)
 	if err != nil {
 		return V2rayUser{}, err
 	}

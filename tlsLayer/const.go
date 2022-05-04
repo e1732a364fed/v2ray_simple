@@ -1,3 +1,6 @@
+/*
+Package tlsLayer provides facilities for tls, including sniffing.
+*/
 package tlsLayer
 
 var etStrMap map[int]string
