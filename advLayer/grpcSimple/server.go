@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/http2"
 )
 
+//implements advLayer.MuxServer
 type Server struct {
 	Creator
 

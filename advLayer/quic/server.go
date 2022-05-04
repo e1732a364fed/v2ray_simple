@@ -157,6 +157,7 @@ func dealNewConn(conn quic.Connection, theChan chan net.Conn) {
 	}
 }
 
+//implements advLayer.SuperMuxServer
 type Server struct {
 	Creator
 

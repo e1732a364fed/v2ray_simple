@@ -17,7 +17,7 @@ import (
 	"github.com/gobwas/ws/wsutil"
 )
 
-//implements advLayer.Client
+//implements advLayer.SingleClient
 type Client struct {
 	Creator
 	requestURL   *url.URL //因为调用gobwas/ws.Dialer.Upgrade 时要传入url，所以我们直接提供包装好的即可

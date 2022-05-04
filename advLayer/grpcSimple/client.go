@@ -133,6 +133,7 @@ func (g *ClientConn) Close() error {
 	return g.writer.Close()
 }
 
+//implements advLayer.MuxClient
 type Client struct {
 	Creator
 

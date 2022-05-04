@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-// 我们通过特殊方式将 grpc的私有函数映射出来, 这样方便我们使用.
+// 我们通过特殊方式将 grpc的私有函数映射出来, 方便使用.
 //go:linkname handle_grpcRawConn google.golang.org/grpc.(*Server).handleRawConn
 func handle_grpcRawConn(c *grpc.Server, lisAddr string, rawConn net.Conn)
 
@@ -30,7 +30,8 @@ func NewServer(serviceName string) *Server {
 	return s
 }
 
-//Server实现 grpc生成的 StreamServer 接口，用于不断处理一个客户端传来的新需求
+//Server实现 grpc生成的 StreamServer 接口，用于不断处理一个客户端传来的新需求.
+// implements advLayer.MuxServer
 type Server struct {
 	Creator
 
@@ -55,9 +56,9 @@ func (s *Server) Stop() {
 //  StartHandle方法 被用于 手动给 grpc提供新连接.
 // 在本作中  我们不使用 grpc的listen的方法。这样更加灵活.
 //非阻塞. 不支持回落（若想要回落功能，请看grpcSimple）。
-func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
+func (s *Server) StartHandle(conn net.Conn, newConnChan chan net.Conn, _ chan httpLayer.FallbackMeta) {
 
-	s.newConnChan = theChan
+	s.newConnChan = newConnChan
 
 	//非阻塞，因为 grpc.(*Server).handleRawConn 是非阻塞的，里面用了新的goroutine
 	handle_grpcRawConn(s.gs, "", conn)
