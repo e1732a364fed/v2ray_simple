@@ -1,10 +1,11 @@
 package httpLayer
 
-// GetRequestMethod_and_PATH_from_Bytes 从一个字节串中试图获取 http请求的 path,和 method.
-// failreason>0 表示获取失败. 不会返回小于0的值
-// 同时可以用这个方法判断明文 是不是 http1.1, http1.0, http0.9的 http请求
-// 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数
-// 此方法亦可以用于 判断一个http请求头部是否合法
+// 从数据中试图获取 http请求的 path,和 method.
+// failreason>0 表示获取失败. 不会返回小于0的值。
+// 同时可以用这个方法判断明文 是不是 http1.1, http1.0, http0.9的 http请求。
+// 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数。
+//
+// 此方法亦可用于 判断一个http请求头部是否合法。
 func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, method string, path string, failreason int) {
 
 	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18

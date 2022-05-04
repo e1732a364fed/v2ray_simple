@@ -39,8 +39,10 @@ type MsgConn interface {
 	Fullcone() bool                      //若Fullcone, 则在转发因另一端关闭而结束后, RelayUDP函数不会Close它.
 }
 
-//在转发udp时, 有可能有多种情况
 /*
+udp是无连接的，所以需要考虑超时问题。
+在转发udp时, 有可能有多种情况：
+
 	1. dokodemo 监听udp 定向 导向到 direct 的远程udp实际地址
 		此时因为是定向的, 所以肯定不是fullcone
 
@@ -60,15 +62,13 @@ type MsgConn interface {
 
 		trojan 也是用一个信道来接收udp的所有请求的, 所以trojan的连接也不能关.
 
-		所以依然需要在服务端 的 direct上面 加Read 时限
+		所以依然需要在服务端 的 direct上面 加Read 时限,否则 rc.ReadFrom() 会卡住而不返回.
 
-		否则 rc.ReadFrom() 会卡住而不返回.
-
-		因为direct 使用 UDPMsgConnWrapper，而我们已经在 UDPMsgConnWrapper里加了这个逻辑, 所以可以放心了.
+		direct 使用的 UDPMsgConn 会自动设置超时，所以可以放心。
 
 	4. fullcone, 此时不能对整个监听端口进行close，会影响其它外部链接发来的连接。
 
-	5. vless v1 的 crumfurs 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
+	5. vless v1 这种单路client的udp转发方式, 此时需要判断lc.ReadMsgFrom得到的 raddr是否是已知地址,
 		如果是未知的, 则不会再使用原来的rc，而是要拨号新通道
 
 		也就是说，lc是有且仅有一个的, 因为是socks5 / dokodemo都是采用的单信道的方式,
@@ -83,9 +83,9 @@ type MsgConn interface {
 
 	所以 转发循环 的退出 一般是在 fullcone 的 lc 从 symmetric 的 rc 读取时超时 时 产生的。
 
-	而分离信道法中，因为每一个rc都是独立的连接, 所以就算是fullcone, 也可以设置 rc读取超时
+	而分离信道法中，因为每一个rc都是独立的连接, 所以就算是fullcone, 似乎也可以设置 rc读取超时
 
-	也就是说, vless v1 的 client 在分离信道时, 可以设置读超时; 但是, 目前的实现中,虽然是分离信道, 但还有可能读到 umfurs信息, 所以还是不应设置超时.
+	但是, vless v1虽然是分离信道, 但还有可能读到 umfurs信息, 所以还是不应设置超时.
 */
 
 // 阻塞. 返回从 rc 下载的总字节数. 拷贝完成后自动关闭双端连接.

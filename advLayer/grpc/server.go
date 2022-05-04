@@ -54,7 +54,7 @@ func (s *Server) Stop() {
 
 //  StartHandle方法 被用于 手动给 grpc提供新连接.
 // 在本作中  我们不使用 grpc的listen的方法。这样更加灵活.
-//非阻塞. 暂不支持回落。
+//非阻塞. 不支持回落（若想要回落功能，请看grpcSimple）。
 func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
 
 	s.newConnChan = theChan
@@ -66,8 +66,8 @@ func (s *Server) StartHandle(conn net.Conn, theChan chan net.Conn, fallbackConnC
 // 该 Tun方法会被 grpc包调用, stream_TunServer就是获取到的新连接;
 // 实际上就是在 handle_grpcRawConn 后, 每一条客户端发来的子连接 都会调用一次 s.Tun .
 //
-// 我们把该 stream_TunServer 包装成 net.Conn 并传入 NewConnChan
-// 该方法是自动调用的, 我们不用管.
+// 我们把该 stream_TunServer 包装成 net.Conn 并传入 NewConnChan。
+// 该方法是自动被grpc包调用的, 不用我们主动调用.
 func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 	//一般的grpc的自定义方法中,自动返回一种数据即可
 	// 但是我们这里接到的是新连接, 所以这个方法就类似Accept一样;
@@ -81,6 +81,7 @@ func (s *Server) Tun(stream_TunServer Stream_TunServer) error {
 
 	// 这里需要一个 <-tunCtx.Done() 进行阻塞；只有当 子连接被Close的时候, Done 才能通过, 才意味着本次子连接结束.
 
+	//帮助理解：
 	//正常的grpc的业务逻辑是，客户端传一大段数据上来，然后我们服务端同步传回一大段数据, 然后达到某个时间点后 / 交换信息完成后, 就 马上关闭 此次 rpc 过程调用。
 	// 但是我们现在是作为代理用途， 所以到底发什么数据，和发送的时机都是在其它位置确定的,
 	//  所以我们只能 发送一个 新连接信号，然后等待外界Close子连接.

@@ -1,3 +1,6 @@
+// Modified from: https://github.com/Dreamacro/clash/blob/master/transport/gun/gun.go
+// License: MIT
+
 package grpcSimple
 
 import (
@@ -10,9 +13,6 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
-
-// Modified from: https://github.com/Dreamacro/clash/blob/master/transport/gun/gun.go
-// License: MIT
 
 func commonWrite(b []byte) *bytes.Buffer {
 	protobufHeader := [binary.MaxVarintLen64 + 1]byte{0x0A}

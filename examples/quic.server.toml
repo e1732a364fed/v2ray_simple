@@ -34,6 +34,9 @@ advancedLayer = "quic"
 #
 #extra = { maxStreamsInOneConn = 6 }  
 
+#另外一个注意点就是，本示例 提供了 多行 extra的示例，而实际上你只能给出一行，不允许 给出好几行 key一样的，这是toml的规则。
+# 你要是 想应用多个 extra配置，那你就 把 多个 合并成一个 进行 书写
+
 [[dial]]
 protocol = "direct"
 

@@ -69,21 +69,6 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 			}
 
 			//log.Println("request headers", rq.Header)
-			/*
-				we will try to fallback to h2c.
-
-				about h2c
-
-				https://pkg.go.dev/golang.org/x/net/http2/h2c#example-NewHandler
-				https://github.com/thrawn01/h2c-golang-example
-
-				test h2c:
-
-				curl -k -v --http2-prior-knowledge https://localhost:4434/sfd
-
-				curl -k -v --http2-prior-knowledge -X POST -F 'asdf=1234'  https://localhost:4434/sfd
-
-			*/
 
 			shouldFallback := false
 
@@ -211,6 +196,10 @@ func newServerConn(rw http.ResponseWriter, rq *http.Request) (sc *ServerConn) {
 	ta, e := net.ResolveTCPAddr("tcp", rq.RemoteAddr)
 	if e == nil {
 		sc.ra = ta
+	} else {
+		if ce := utils.CanLogErr("grpcSimple parse addr failed, which is weird"); ce != nil {
+			ce.Write(zap.String("raddr", rq.RemoteAddr), zap.Error(e))
+		}
 	}
 
 	sc.timeouter = timeouter{
@@ -252,9 +241,11 @@ func (g *ServerConn) Write(b []byte) (n int, err error) {
 	if g.closed {
 		return 0, net.ErrClosed
 	} else {
+
 		buf := commonWrite(b)
 
-		if g.closed {
+		if g.closed { //较为谨慎，也许commonWrite 刚调用完, 就 g.closed 了
+			utils.PutBuf(buf)
 			return 0, net.ErrClosed
 		}
 		_, err = g.Writer.Write(buf.Bytes())

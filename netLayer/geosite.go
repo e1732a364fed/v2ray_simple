@@ -20,18 +20,19 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-// geosite是v2fly社区维护的，非常有用！本作以及任何其它项目都没必要另起炉灶，
-// 直接使用v2fly所提供的资料即可。
-//
-//  然而需要注意的是，geosite是一个中国人维护的项目
-// 所有网站的资料都围绕着中国人的需求产生，比如 geolocation-cn 文件，没有同类的 geolocation-us 文件.
-//
-// geosite数据格式可参考
-// https://github.com/v2fly/v2ray-core/blob/master/app/router/routercommon/common.proto
-//
-// or xray的 app/router/config.proto
-// 然而我们不引用任何v2ray和xray的代码, 也不使用protobuf
 /*
+geosite是v2fly社区维护的，非常有用！本作以及任何其它项目都没必要另起炉灶，
+直接使用v2fly所提供的资料即可。
+
+然而需要注意的是，geosite是一个中国人维护的项目
+所有网站的资料都围绕着中国人的需求产生，比如 geolocation-cn 文件，没有同类的 geolocation-us 文件.
+
+geosite数据格式可参考
+https://github.com/v2fly/v2ray-core/blob/master/app/router/routercommon/common.proto
+
+or xray的 app/router/config.proto
+然而我们不引用任何v2ray和xray的代码, 也不使用protobuf
+
 我们只能自行读取该项目原始文件，然后生成自己的数据结构
 
 文件格式 项目已经解释的很好了，不过使用的英文
@@ -237,18 +238,17 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 		return
 	}
 
-	type struct1 struct {
+	var tmpVar = struct {
 		Tag string `json:"tag_name"`
-	}
-	var s = struct1{}
-	json.Unmarshal(body, &s)
-	if s.Tag == "" {
+	}{}
+	json.Unmarshal(body, &tmpVar)
+	if tmpVar.Tag == "" {
 		return
 	}
 
 	const downloadStr = "https://github.com/v2fly/domain-list-community/archive/refs/tags/%s.tar.gz"
 
-	resp, err = thehttpClient.Get(fmt.Sprintf(downloadStr, s.Tag))
+	resp, err = thehttpClient.Get(fmt.Sprintf(downloadStr, tmpVar.Tag))
 	if err != nil {
 		fmt.Println("http get failed 2", err)
 		return

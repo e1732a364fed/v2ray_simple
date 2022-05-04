@@ -66,7 +66,7 @@ type FallbackConf struct {
 	//可选
 	FromTag string `toml:"from" json:"from"` //which inServer triggered this fallback
 
-	Xver int `toml:"xver" json:"xver"` //if fallback, whether to use PROXY protocol, and which version
+	Xver int `toml:"xver" json:"xver"` //use PROXY protocol or not, and which version
 
 	//必填
 	Dest any `toml:"dest" json:"dest"` //see netLayer.NewAddrFromAny for details about "any" addr

@@ -30,7 +30,7 @@ func (ne NumErr) Error() string {
 	return ne.Prefix + strconv.Itoa(ne.N)
 }
 
-//a err with buffer, nothing special
+//an err with a buffer, nothing special
 type ErrBuffer struct {
 	Err error
 	Buf *bytes.Buffer

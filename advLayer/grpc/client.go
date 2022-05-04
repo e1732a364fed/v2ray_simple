@@ -21,17 +21,6 @@ var (
 
 type ClientConn *grpc.ClientConn
 
-/*
-建立新客户端连接的调用过程：
-
-先用 GetEstablishedConnFor 看看有没有已存在的 clientConn
-
-没有 已存在的 时，自己先拨号tcp，然后拨号tls，然后把tls连接 传递给 ClientHandshake, 生成一个 clientConn
-
-然后把获取到的 clientConn传递给 DialNewSubConn, 获取可用的一条 grpc 连接
-
-*/
-
 //获取与 某grpc服务器的 已存在的grpc连接
 func GetEstablishedConnFor(addr *netLayer.Addr) ClientConn {
 	clientconnMutex.RLock()
@@ -50,7 +39,7 @@ func GetEstablishedConnFor(addr *netLayer.Addr) ClientConn {
 	return nil
 }
 
-// ClientHandshake 在客户端被调用, 将一个普通连接升级为 grpc连接
+// ClientHandshake 在客户端被调用, 将一个普通连接升级为 grpc连接。
 //该 underlay一般为 tls连接。 addr为实际的远程地址，我们不从 underlay里获取addr,避免转换.
 func ClientHandshake(underlay net.Conn, addr *netLayer.Addr) (ClientConn, error) {
 
@@ -135,7 +124,7 @@ type streamClient_withName interface {
 	tunMulti_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunMultiClient, error)
 }
 
-//比照 protoc生成的 stream_grpc.pb.go 中的 Tun方法
+//比照 protoc生成的 stream_grpc.pb.go 中的 Tun方法。
 // 我们加一个 tun_withName 方法, 可以自定义服务名称, 该方法让 streamClient实现 streamClient_withName 接口
 func (c *streamClient) tun_withName(ctx context.Context, name string, opts ...grpc.CallOption) (Stream_TunClient, error) {
 	//这里ctx不能为nil，否则会报错

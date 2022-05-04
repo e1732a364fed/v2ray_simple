@@ -51,14 +51,6 @@ func AllHeadersIn(template map[string][]string, realh http.Header) (ok bool, fir
 	return
 }
 
-/*
-观察v2ray的实现，在没有header时，还会添加一个 Date ，这个v2ray的文档里没提
-
-v2ray文档: https://www.v2fly.org/config/transport/tcp.html#noneheaderobject
-
-相关 v2ray代码: https://github.com/v2fly/v2ray-core/tree/master/transport/internet/headers/http/http.go
-*/
-
 type RequestHeader struct {
 	Version string              `toml:"version"` //默认值为 "1.1"
 	Method  string              `toml:"method"`  //默认值为 "GET"。

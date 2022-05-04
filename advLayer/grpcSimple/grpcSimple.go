@@ -16,6 +16,22 @@ grpc虽然是定义 serviceName的，但是实际上和其他http请求一样，
 
 path就是  /serviceName/Tun
 
+Fallback
+
+grpcSimple can fallback to h2c.
+
+about h2c
+
+https://pkg.go.dev/golang.org/x/net/http2/h2c#example-NewHandler
+https://github.com/thrawn01/h2c-golang-example
+
+test h2c:
+
+	curl -k -v --http2-prior-knowledge https://localhost:4434/sfd
+
+	curl -k -v --http2-prior-knowledge -X POST -F 'asdf=1234'  https://localhost:4434/sfd
+
+
 Off Topic
 
 我们可以通过本包的代码看到，grpc实际上是 基于包的，而不是基于流的，与ws类似。
@@ -103,8 +119,6 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 			Scheme: "https",
 			Host:   c.Host,
 			Path:   c.path,
-			// for unescape path
-			//Opaque: fmt.Sprintf("//%s/%s/Tun", c.Host, c.ServiceName),
 		},
 		Proto:      "HTTP/2",
 		ProtoMajor: 2,

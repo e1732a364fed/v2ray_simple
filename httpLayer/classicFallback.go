@@ -26,7 +26,6 @@ func NewClassicFallback() *ClassicFallback {
 	cf.Map[""] = make(map[FallbackConditionSet]*FallbackResult)
 
 	return cf
-	// make(map[FallbackConditionSet]*FallbackResult)
 }
 
 func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {

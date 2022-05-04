@@ -35,12 +35,12 @@ func init() {
 
 const (
 	//100mbps
-	Default_hysteriaMaxByteCount = 1024 * 1024 / 8 * 100
+	Default_hysteriaMaxByteCount           = 1024 * 1024 / 8 * 100
+	Default_Server_maxStreamCountInOneConn = 4 //一个 Connection 中 stream越多, 性能越低, 因此我们这里限制为4
 
-	common_maxidletimeout          = time.Second * 45
-	common_HandshakeIdleTimeout    = time.Second * 8
-	common_ConnectionIDLength      = 12
-	server_maxStreamCountInOneConn = 4 //一个 Connection 中 stream越多, 性能越低, 因此我们这里限制为4
+	common_maxidletimeout       = time.Second * 45
+	common_HandshakeIdleTimeout = time.Second * 8
+	common_ConnectionIDLength   = 12
 )
 
 var (
@@ -51,7 +51,7 @@ var (
 		ConnectionIDLength:    common_ConnectionIDLength,
 		HandshakeIdleTimeout:  common_HandshakeIdleTimeout,
 		MaxIdleTimeout:        common_maxidletimeout,
-		MaxIncomingStreams:    server_maxStreamCountInOneConn,
+		MaxIncomingStreams:    Default_Server_maxStreamCountInOneConn,
 		MaxIncomingUniStreams: -1,
 		KeepAlive:             true,
 	}

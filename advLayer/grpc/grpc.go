@@ -1,5 +1,7 @@
 /*Package grpc implements methods for grpc tunnel.
 
+ProtoBuf
+
 从stream.proto 生成 stream.pb.go 和 stream_grpc.pb.go:
 
 	protoc --go_out=. --go_opt=paths=source_relative \
@@ -7,6 +9,8 @@
 		stream.proto
 
 stream.pb.go 可以无视, 是数据编码; 主要观察 stream_grpc.pb.go .
+
+Naming of gun
 
 这里参考v2ray/xray, 它们的 Tun的意思应该是 network tunnel, 没啥的.
 GunService 看不懂, 可能是 "gprc tunnel"的简写吧。但是就算简写也要是 gTun。毕竟gun谐音不好。
@@ -21,6 +25,18 @@ https://github.com/v2fly/v2ray-core/pull/757
 直接把 GunService名称改成了 “Stream”，不影响的。反正我们自定义内部真实名称.
 
 实测 是不影响的， 一样兼容xray/v2ray的 grpc, 因为 我们自定义实际的 ServiceDesc.
+
+Client Methods
+
+建立新客户端连接的调用过程：
+
+先用 GetEstablishedConnFor 看看有没有已存在的 clientConn
+
+没有 已存在的 时，自己先拨号tcp，然后拨号tls，然后把tls连接 传递给 ClientHandshake, 生成一个 clientConn
+
+然后把获取到的 clientConn传递给 DialNewSubConn, 获取可用的一条 grpc 连接
+
+
 */
 package grpc
 

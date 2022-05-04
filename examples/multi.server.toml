@@ -51,8 +51,9 @@ alpn = ["http/1.1"] # 可选，按 alpn 匹配此 回落
 
 
 
-# 比如此fallback就是所有 listen 共用的一个 fallback
+# 比如下面这个 fallback 就是所有 listen 共用的一个 fallback
 [[fallback]]
 path = "/ohmygod_i_love_verysimple" 
 dest = 8080
 alpn = ["http/1.1"]
+#xver = 1 
