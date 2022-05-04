@@ -36,7 +36,7 @@ ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimpl
 
 dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn/PROXY protocol v1/v2), 
 
-tcp/udp/unix domain socket, uTls, lazy, http伪装头, cli(交互模式)/apiServer
+tcp/udp/unix domain socket, uTls, lazy, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -190,6 +190,8 @@ verysimple -c server.toml
 8. 下载geosite原文件
 9. 打印当前版本所支持的所有协议
 10. 查询当前状态
+11. 为tproxy设置iptables(12345端口)
+12. 为tproxy移除iptables
 
 
 交互生成配置后还可以输出到文件、加载到当前运行环境、生成分享链接。

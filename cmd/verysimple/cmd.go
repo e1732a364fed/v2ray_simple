@@ -32,7 +32,7 @@ func init() {
 	flag.BoolVar(&nodownload, "nd", false, "don't automatically download any extra data files")
 	flag.BoolVar(&cmdPrintVer, "v", false, "print the version string then exit")
 
-	//commands.go 中定义的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
+	//本文件 中定义的 CliCmd都是直接返回运行结果的、无需进一步交互的命令
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"生成一个随机的uuid供你参考", func() {
@@ -149,9 +149,16 @@ func printAllState(w io.Writer) {
 
 	}
 
+	if len(tproxyList) > 0 {
+		for i, tc := range tproxyList {
+			fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
+		}
+	}
+
 	for i, c := range allClients {
 		fmt.Fprintln(w, "outClient", i, proxy.GetFullName(c), c.AddrStr())
 	}
+
 }
 
 //试图从自己已经配置好的节点去下载geosite源码文件

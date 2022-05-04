@@ -27,8 +27,8 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 		newc, err := listener.Accept()
 		if err != nil {
 			errStr := err.Error()
-			if strings.Contains(errStr, "closed") {
-				if ce := utils.CanLogDebug("local connection closed"); ce != nil {
+			if strings.Contains(errStr, "close") {
+				if ce := utils.CanLogDebug("listener got closed"); ce != nil {
 					ce.Write(zap.Error(err))
 
 				}

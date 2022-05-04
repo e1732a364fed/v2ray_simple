@@ -93,6 +93,12 @@ Persistent iptables
 
 	systemctl enable tproxyrule
 
+OffTopic
+
+透明代理与Redir的参考博客：
+
+http://ivo-wang.github.io/2018/02/24/ss-redir/
+
 */
 package tproxy
 
@@ -103,7 +109,7 @@ import (
 )
 
 //一个tproxy状态机 具有 监听端口、tcplistener、udpConn 这三个要素。
-// 目前仅用于关闭。
+// 用于关闭 以及 储存所监听的 端口。
 type Machine struct {
 	netLayer.Addr
 	net.Listener //tcpListener

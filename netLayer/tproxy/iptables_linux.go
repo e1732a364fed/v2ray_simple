@@ -99,13 +99,15 @@ func SetIPTablesByDefault() error {
 	return SetIPTablesByPort(12345)
 }
 
+//port 12345
+func CleanupIPTablesByDefault() {
+	execCmdList(fmt.Sprintf(iptableRMCmdList, 12345, 12345))
+}
+
+//clear iptables set by the last SetIPTablesByPort call
 func CleanupIPTables() {
 	if lastPortSet != 0 {
 		execCmdList(fmt.Sprintf(iptableRMCmdList, lastPortSet, lastPortSet))
 		lastPortSet = 0
 	}
-}
-
-func CleanupIPTablesByDefault() {
-	execCmdList(fmt.Sprintf(iptableRMCmdList, 12345, 12345))
 }

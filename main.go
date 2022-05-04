@@ -46,15 +46,15 @@ var (
 
 //用于回落到h2c
 var (
-	h2c_transport = &http2.Transport{
+	fallback_h2c_transport = &http2.Transport{
 		DialTLS: func(n, a string, cfg *tls.Config) (net.Conn, error) {
 			return net.Dial(n, a)
 		},
 		AllowHTTP: true,
 	}
 
-	h2c_PROXYprotocolAddrMap       = make(map[string]*http2.Transport)
-	h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
+	fb_h2c_PROXYprotocolAddrMap       = make(map[string]*http2.Transport)
+	fb_h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
 )
 
 // ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
@@ -525,21 +525,31 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
-				targetAddrStr := targetAddr.String()
-				urlStr := "https://" + targetAddrStr + iics.theRequestPath
+
+				urlStr := "https://" + targetAddr.String() + iics.theRequestPath
 				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
 				var transport *http2.Transport
 
 				if fbResult == 0 {
-					transport = h2c_transport
+					transport = fallback_h2c_transport
 
 				} else if fbResult > 0 {
+					var wlcRaddrStr string
 
-					h2c_PROXYprotocolAddrMap_mutex.RLock()
-					transport = h2c_PROXYprotocolAddrMap[targetAddrStr]
-					h2c_PROXYprotocolAddrMap_mutex.RUnlock()
+					if wlcraddr := wlc.RemoteAddr(); wlcraddr != nil {
+						wlcRaddrStr = wlcraddr.String()
+
+					}
+
+					fb_h2c_PROXYprotocolAddrMap_mutex.RLock()
+					transport = fb_h2c_PROXYprotocolAddrMap[wlcRaddrStr]
+					fb_h2c_PROXYprotocolAddrMap_mutex.RUnlock()
+
+					//因为一个客户端可能向我们服务器发起多个h2子连接，共用同一个wlc,我们如果能
+					// 共用 这种情况的transport，就可以节约到达实际服务器的tcp链接数量，而且
+					// 无缝粘贴了两个h2连接
 
 					if transport == nil {
 						transport = &http2.Transport{
@@ -551,15 +561,18 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 							AllowHTTP: true,
 						}
 
-						h2c_PROXYprotocolAddrMap_mutex.Lock()
-						h2c_PROXYprotocolAddrMap[targetAddrStr] = transport
-						h2c_PROXYprotocolAddrMap_mutex.Unlock()
+						if wlcRaddrStr != "" {
+							fb_h2c_PROXYprotocolAddrMap_mutex.Lock()
+							fb_h2c_PROXYprotocolAddrMap[wlcRaddrStr] = transport
+							fb_h2c_PROXYprotocolAddrMap_mutex.Unlock()
+
+						}
 
 					}
 
 				}
 
-				rsp, err := transport.RoundTrip(iics.fallbackH2Request)
+				rsp, err := transport.RoundTrip(rq)
 				defer wlc.Close()
 
 				if err != nil {

@@ -89,7 +89,9 @@ func cleanup() {
 	}
 
 	for _, tm := range tproxyList {
-		tm.Stop()
+		if tm != nil {
+			tm.Stop()
+		}
 	}
 }
 
@@ -106,14 +108,14 @@ func mainFunc() (result int) {
 
 				stackStr := string(stack)
 
-				log.Println(stackStr)
+				log.Println(stackStr) //因为 zap 使用json存储值，所以stack这种多行字符串里的换行符和tab 都被转译了，导致可读性比较差，所以还是要 log单独打印出来，可增强命令行的可读性
 
 				ce.Write(
 					zap.Any("err:", r),
 					zap.String("stacktrace", stackStr),
 				)
 			} else {
-				log.Fatalln("panic captured!", r, "\n", string(debug.Stack()))
+				log.Println("panic captured!", r, "\n", string(debug.Stack()))
 			}
 
 			result = -3
@@ -132,10 +134,15 @@ func mainFunc() (result int) {
 	}
 
 	if startPProf {
-		f, _ := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
-		defer f.Close()
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
+		f, err := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
+
+		if err == nil {
+			defer f.Close()
+			err = pprof.StartCPUProfile(f)
+			if err == nil {
+				defer pprof.StopCPUProfile()
+			}
+		}
 
 	}
 	if startMProf {
@@ -196,7 +203,16 @@ func mainFunc() (result int) {
 	}
 
 	if loadConfigErr != nil && !isFlexible() {
-		log.Printf("no config exist, and no api server or interactive cli enabled, exiting...")
+
+		const exitStr = "no config exist, and no api server or interactive cli enabled, exiting..."
+
+		if ce := utils.CanLogErr(exitStr); ce != nil {
+			ce.Write()
+		} else {
+			log.Printf(exitStr)
+
+		}
+
 		return -1
 	}
 
@@ -289,9 +305,6 @@ func mainFunc() (result int) {
 			}
 
 			allServers = append(allServers, thisServer)
-			//if tag := thisServer.GetTag(); tag != "" {
-			//	vs.ServersTagMap[tag] = thisServer
-			//}
 		}
 
 	}
@@ -389,7 +402,7 @@ func mainFunc() (result int) {
 
 				}
 
-				//如果在非linux系统 上，仅设置了tproxy，则会遇到下面情况
+				//如果在非linux系统 上，inServer 仅设置了tproxy，则会遇到下面情况
 				if len(tproxyList) == 0 {
 					if !(defaultInServer != nil || len(allServers) > 0) {
 						configFileQualifiedToRun = false
