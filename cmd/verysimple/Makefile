@@ -108,13 +108,7 @@ define DEPENDABLE_VAR
 
 .PHONY: phony
 $1: phony
-	@if [[ ! -f $1 ]]; then \
-		/bin/echo -n $($1) > $1 ; \
-	else\
-		if [[ `cat $1 2>&1` != '$($1)' ]]; then \
-			/bin/echo -n $($1) > $1 ; \
-		fi\
-	fi
+	@ [[ `cat $1 2>&1` == '$($1)' ]] || /bin/echo -n $($1) > $1
 endef
 
 else
