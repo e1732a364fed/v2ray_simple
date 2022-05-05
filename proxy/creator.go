@@ -64,7 +64,7 @@ func RegisterServer(name string, c ServerCreator) {
 	serverCreatorMap[name] = c
 }
 
-func newclient(creator ClientCreator, dc *DialConf) (Client, error) {
+func newclient(creator ClientCreator, dc *DialConf, knownTls bool) (Client, error) {
 	c, e := creator.NewClient(dc)
 	if e != nil {
 		return nil, e
@@ -73,7 +73,7 @@ func newclient(creator ClientCreator, dc *DialConf) (Client, error) {
 	if e != nil {
 		return nil, e
 	}
-	if dc.TLS {
+	if dc.TLS || knownTls {
 		c.GetBase().TLS = true
 		e = prepareTLS_forClient(c, dc)
 	}
@@ -86,23 +86,12 @@ func NewClient(dc *DialConf) (Client, error) {
 	creator, ok := clientCreatorMap[protocol]
 	if ok {
 
-		return newclient(creator, dc)
+		return newclient(creator, dc, false)
 	} else {
 		realScheme := strings.TrimSuffix(protocol, "s")
 		creator, ok = clientCreatorMap[realScheme]
 		if ok {
-			c, err := creator.NewClient(dc)
-			if err != nil {
-				return c, err
-			}
-			err = configCommonForClient(c, dc)
-			if err != nil {
-				return nil, err
-			}
-			c.GetBase().TLS = true
-			err = prepareTLS_forClient(c, dc)
-			return c, err
-
+			return newclient(creator, dc, true)
 		}
 	}
 	return nil, utils.ErrInErr{ErrDesc: "unknown client protocol ", Data: protocol}
