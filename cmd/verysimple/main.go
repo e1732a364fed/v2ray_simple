@@ -110,12 +110,13 @@ func mainFunc() (result int) {
 
 				stackStr := string(stack)
 
-				log.Println(stackStr) //因为 zap 使用json存储值，所以stack这种多行字符串里的换行符和tab 都被转译了，导致可读性比较差，所以还是要 log单独打印出来，可增强命令行的可读性
-
 				ce.Write(
 					zap.Any("err:", r),
 					zap.String("stacktrace", stackStr),
 				)
+
+				log.Println(stackStr) //因为 zap 使用json存储值，所以stack这种多行字符串里的换行符和tab 都被转译了，导致可读性比较差，所以还是要 log单独打印出来，可增强命令行的可读性
+
 			} else {
 				log.Println("panic captured!", r, "\n", string(debug.Stack()))
 			}

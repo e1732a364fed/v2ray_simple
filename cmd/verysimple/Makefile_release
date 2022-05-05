@@ -1,6 +1,8 @@
 # 本文件仅限在linux上运行
 # 我们在github action里用到了本文件，用于 自动编译发布包。
 
+# 我们这里规定，使用该 Makefile_release 进行make时，必须要明确指明 BUILD_VERSION。因为是发布包嘛。
+
 #BUILD_VERSION   := vx.x.x-beta.x 这个将在github action里自动通过tag配置, 参见 .github/workflows/build_release.yml
 
 prefix :=verysimple
