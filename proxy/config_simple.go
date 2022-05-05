@@ -14,11 +14,11 @@ import (
 
 //极简配置模式；只支持json
 type SimpleConf struct {
-	Server_ThatListenPort_Url string                    `json:"listen"`
-	Client_ThatDialRemote_Url string                    `json:"dial"`
-	Route                     []*netLayer.RuleConf      `json:"route"`
-	Fallbacks                 []*httpLayer.FallbackConf `json:"fallbacks"`
-	MyCountryISO_3166         string                    `json:"mycountry"`
+	ListenUrl         string                    `json:"listen"`
+	DialUrl           string                    `json:"dial"`
+	Route             []*netLayer.RuleConf      `json:"route"`
+	Fallbacks         []*httpLayer.FallbackConf `json:"fallbacks"`
+	MyCountryISO_3166 string                    `json:"mycountry"`
 }
 
 func LoadSimpleConfigFile(fileNamePath string) (config SimpleConf, hasError bool, E utils.ErrInErr) {
@@ -62,41 +62,42 @@ func loadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *h
 	simpleConf, hasE, err = LoadSimpleConfigFile(fpath)
 	if hasE {
 
-		log.Printf("can not load simple config file: %s\n", err)
+		log.Printf("can not load simple config file: %s\n", err.Error())
 		return
 	}
 	if simpleConf.Fallbacks != nil {
 		mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
 	}
 
-	if simpleConf.Client_ThatDialRemote_Url == "" {
-		simpleConf.Client_ThatDialRemote_Url = "direct://"
+	if simpleConf.DialUrl == "" {
+		simpleConf.DialUrl = DirectURL
 	}
 	return
 }
 
 func loadSimpleConf_byUrl(listenURL, dialURL string) (simpleConf SimpleConf, err error) {
 
+	if dialURL == "" {
+		dialURL = DirectURL
+	}
+
 	_, err = url.Parse(listenURL)
 	if err != nil {
-		log.Printf("listenURL given but invalid %s %s\n", listenURL, err)
+		log.Printf("listenURL given but invalid %s %s\n", listenURL, err.Error())
 		return
 	}
 
 	simpleConf = SimpleConf{
-		Server_ThatListenPort_Url: listenURL,
+		ListenUrl: listenURL,
 	}
 
-	if dialURL != "" {
-
-		_, err = url.Parse(dialURL)
-		if err != nil {
-			log.Printf("dialURL given but invalid %s %s\n", dialURL, err)
-			return
-		}
-
-		simpleConf.Client_ThatDialRemote_Url = dialURL
+	_, err = url.Parse(dialURL)
+	if err != nil {
+		log.Printf("dialURL given but invalid %s %s\n", dialURL, err.Error())
+		return
 	}
+
+	simpleConf.DialUrl = dialURL
 
 	return
 }

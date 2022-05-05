@@ -95,7 +95,7 @@ func GetFullName(pc BaseInterface) string {
 func GetVSI_url(pc BaseInterface) string {
 	n := pc.Name()
 	if n == DirectName {
-		return DirectName + "://"
+		return DirectURL
 	}
 	sb := getFullNameBuilder(pc, n)
 	sb.WriteString("://")

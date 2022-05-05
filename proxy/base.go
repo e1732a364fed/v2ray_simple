@@ -37,7 +37,7 @@ type BaseInterface interface {
 
 	/////////////////// 传输层 ///////////////////
 
-	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc.
+	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc. 这里叫做Network而不是transport, 是遵循 golang 标准包 net包的用法。我们兼容 net的Listen等方法, 可把Network直接作为 net.Listen等方法的 network 参数。
 	GetXver() int
 
 	/////////////////// TLS层 ///////////////////
@@ -78,23 +78,23 @@ type BaseInterface interface {
 // verysimple规定，在加载完配置文件后，listen/dial 所使用的全部层级都是完整确定了的.
 //  因为所有使用的层级都是确定的，就可以进行针对性优化
 type Base struct {
-	listenConf *ListenConf
-	dialConf   *DialConf
+	ListenConf *ListenConf
+	DialConf   *DialConf
 
-	Addr    string
-	TLS     bool
-	Tag     string //可用于路由, 见 netLayer.route.go
-	network string
+	Addr           string
+	TLS            bool
+	Tag            string //可用于路由, 见 netLayer.route.go
+	TransportLayer string
 
 	Sockopt *netLayer.Sockopt
-	xver    int
+	Xver    int
 
-	tls_s *tlsLayer.Server
-	tls_c *tlsLayer.Client
+	Tls_s *tlsLayer.Server
+	Tls_c *tlsLayer.Client
 
 	Header *httpLayer.HeaderPreset
 
-	cantRoute bool //for inServer, 若为true，则 inServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
+	IsCantRoute bool //for inServer, 若为true，则 inServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
 
 	AdvancedL string
 
@@ -112,11 +112,11 @@ func (pcs *Base) GetBase() *Base {
 }
 
 func (pcs *Base) Network() string {
-	return pcs.network
+	return pcs.TransportLayer
 }
 
 func (pcs *Base) GetXver() int {
-	return pcs.xver
+	return pcs.Xver
 }
 
 func (pcs *Base) HasHeader() *httpLayer.HeaderPreset {
@@ -148,7 +148,7 @@ func (pcs *Base) MiddleName() string {
 }
 
 func (pcs *Base) CantRoute() bool {
-	return pcs.cantRoute
+	return pcs.IsCantRoute
 }
 
 func (pcs *Base) InnerMuxEstablished() bool {
@@ -214,10 +214,10 @@ func (pcs *Base) GetSockopt() *netLayer.Sockopt {
 
 func (pcs *Base) setNetwork(network string) {
 	if network == "" {
-		pcs.network = "tcp"
+		pcs.TransportLayer = "tcp"
 
 	} else {
-		pcs.network = network
+		pcs.TransportLayer = network
 
 	}
 }
@@ -239,10 +239,10 @@ func (s *Base) CanFallback() bool {
 }
 
 func (s *Base) GetTLS_Server() *tlsLayer.Server {
-	return s.tls_s
+	return s.Tls_s
 }
 func (s *Base) GetTLS_Client() *tlsLayer.Client {
-	return s.tls_c
+	return s.Tls_c
 }
 
 func (s *Base) AddrStr() string {
@@ -267,7 +267,7 @@ func (s *Base) GetAdvServer() advLayer.Server {
 func (c *Base) ConfigCommon(cc *CommonConf) {
 
 	c.setNetwork(cc.Network)
-	c.xver = cc.Xver
+	c.Xver = cc.Xver
 	c.Tag = cc.Tag
 	c.Sockopt = cc.Sockopt
 
@@ -307,7 +307,7 @@ func (s *Base) InitAdvLayer() {
 		return
 	}
 
-	if dc := s.dialConf; dc != nil {
+	if dc := s.DialConf; dc != nil {
 
 		var Headers *httpLayer.HeaderPreset
 		if creator.CanHandleHeaders() {
@@ -343,7 +343,7 @@ func (s *Base) InitAdvLayer() {
 
 	}
 
-	if lc := s.listenConf; lc != nil {
+	if lc := s.ListenConf; lc != nil {
 
 		var Headers *httpLayer.HeaderPreset
 

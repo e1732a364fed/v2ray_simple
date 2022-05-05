@@ -44,7 +44,7 @@ func runApiServer(adminUUID string) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(apiServerPathPrefix+"/allstate", ser.basicAuth(func(w http.ResponseWriter, r *http.Request) {
-		printAllState(w)
+		printAllState(w, false)
 	}))
 
 	srv := &http.Server{

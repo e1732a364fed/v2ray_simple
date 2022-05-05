@@ -54,7 +54,7 @@ func init() {
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"查询当前状态", func() {
-			printAllState(os.Stdout)
+			printAllState(os.Stdout, false)
 		},
 	})
 
@@ -139,7 +139,7 @@ func tryDownloadMMDB() {
 
 }
 
-func printAllState(w io.Writer) {
+func printAllState(w io.Writer, withoutTProxy bool) {
 	fmt.Fprintln(w, "activeConnectionCount", vs.ActiveConnectionCount)
 	fmt.Fprintln(w, "allDownloadBytesSinceStart", vs.AllDownloadBytesSinceStart)
 	fmt.Fprintln(w, "allUploadBytesSinceStart", vs.AllUploadBytesSinceStart)
@@ -149,7 +149,7 @@ func printAllState(w io.Writer) {
 
 	}
 
-	if len(tproxyList) > 0 {
+	if !withoutTProxy && len(tproxyList) > 0 {
 		for i, tc := range tproxyList {
 			fmt.Fprintln(w, "inServer", i+len(allServers), "tproxy", tc.String())
 		}
@@ -224,7 +224,8 @@ func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
 		}
 		allClients = append(allClients, outClient)
 		if tag := outClient.GetTag(); tag != "" {
-			routingEnv.ClientsTagMap[tag] = outClient
+
+			routingEnv.SetClient(tag, outClient)
 
 		}
 	}

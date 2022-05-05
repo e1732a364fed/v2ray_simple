@@ -48,6 +48,8 @@ var (
 
 const (
 	defaultLogFile = "vs_log"
+	defaultConfFn  = "client.toml"
+	defaultGeoipFn = "GeoLite2-Country.mmdb"
 )
 
 func initRouteEnv() {
@@ -58,7 +60,7 @@ func initRouteEnv() {
 func init() {
 	initRouteEnv()
 
-	flag.StringVar(&configFileName, "c", "client.toml", "config file name")
+	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
 	flag.BoolVar(&startMProf, "mp", false, "memory pprof")
 	//flag.IntVar(&jsonMode, "jm", 0, "json mode, 0:verysimple mode; 1: v2ray mode(not implemented yet)")
@@ -74,7 +76,7 @@ func init() {
 
 	flag.BoolVar(&netLayer.UseReadv, "readv", netLayer.DefaultReadvOption, "toggle the use of 'readv' syscall")
 
-	flag.StringVar(&netLayer.GeoipFileName, "geoip", "GeoLite2-Country.mmdb", "geoip maxmind file name")
+	flag.StringVar(&netLayer.GeoipFileName, "geoip", defaultGeoipFn, "geoip maxmind file name")
 
 }
 
@@ -157,12 +159,18 @@ func mainFunc() (result int) {
 
 	var loadConfigErr error
 
-	if utils.GivenFlags["c"] == nil {
-		//如果-c参数没给出，那么默认的值 很可能没有对应的文件
-		fpath := utils.GetFilePath(configFileName)
-		if !utils.FileExist(fpath) {
-			configFileName = ""
+	//如果-c参数没给出，那么默认的值 很可能没有对应的文件
+	fpath := utils.GetFilePath(configFileName)
+	if !utils.FileExist(fpath) {
+
+		if utils.GivenFlags["c"] == nil {
+			log.Printf("No -c provided and no %q provided", defaultConfFn)
+		} else {
+			log.Printf("No %q provided", configFileName)
 		}
+
+		configFileName = ""
+
 	}
 
 	standardConf, simpleConf, mode, mainFallback, loadConfigErr = proxy.LoadConfig(configFileName, listenURL, dialURL, 0)
@@ -259,7 +267,7 @@ func mainFunc() (result int) {
 	case proxy.SimpleMode:
 		var hase bool
 		var eie utils.ErrInErr
-		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.Server_ThatListenPort_Url)
+		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.ListenUrl)
 		if hase {
 			if ce := utils.CanLogErr("can not create local server"); ce != nil {
 				ce.Write(zap.Error(eie))
@@ -322,7 +330,7 @@ func mainFunc() (result int) {
 	case proxy.SimpleMode:
 		var hase bool
 		var eie utils.ErrInErr
-		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.Client_ThatDialRemote_Url)
+		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.DialUrl)
 		if hase {
 			if ce := utils.CanLogErr("can not create remote client"); ce != nil {
 				ce.Write(zap.Error(eie))

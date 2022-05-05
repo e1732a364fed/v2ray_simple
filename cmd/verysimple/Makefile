@@ -1,50 +1,80 @@
-# 该Makefile 只支持linux中使用. 不过幸亏golang厉害，交叉编译相当简单
+# 该Makefile 可支持多种系统上进行编译，但是如果如果你要打包，给出了 PACK=1，则只能在非windows上用。
 #
-# for building with filename "verysimple" and pack into verysimple_xxx.tgz:
-#	make PACK=1
+# for packing into verysimple_xxx.tgz:
+#	make PACK=1 linux_amd64
 #
-# 简单起见，该makefile只支持64位
+# 简单起见，该makefile只负责编译64位的。
 #
 # for embedding geoip file:
 #	make tags="embed_geoip" macm1
 #
+# also has grpc_full and noquic tags. See godoc for details.
+#
 # 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
 
-# 现在该Makefile文件不用来编译发布包，所以这里版本可以随便自己填了,我们也不用每更新一个官方版本就改动一次文件.
-#  很棒吧.
-# 现在这个Makefile文件是你自己的了，随便改. 
-# 不过 现在 BUILD_VERSION  默认会获取当前git 的 commit id, 你可以自行改成任何值, 比如注释掉第二行, 用第一行
+# 该Makefile文件 不用来编译官方发布包，官方发布包是用 Makefile_release 编译的。
+# 所以这里版本可以随便自己填了 或者自己给出命令行参数来调节. 很棒吧. 
+# 参数控制版本号示例:  运行  make BUILD_VERSION=myversion_1
+
+dependency                  :=*.go ../../*.go ../../**/*.go ../../**/**/*.go
+dependency_with_Makefile    :=Makefile $(dependency)
+
+ifeq ($(OS),Windows_NT) 
+    detected_OS := Windows
+	suffix :=${winsuffix}
+else
+    detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+
+ifeq ($(detected_OS),Darwin)
+	md5cmd :=md5
+else
+	md5cmd :=md5sum
+endif
+
+md5cmdline:=$(md5cmd) $(dependency) | $(md5cmd)
+
+endif
+
+
+# 默认 BUILD_VERSION  会获取当前git 的 commit id, 以及所有go文件的md5结果总和的md5. 如果你不是 git clone的 而是直接下载的源码文件，则 是获取不到commit的,
+# 注意，因为 macos, linux 和 windows 上 所执行的 md5命令的输出略有不同, 所以完全相同的文件在不同系统上实际得到的 总和md5 值是不同的。所以 md5值 要和 build_on 信息 结合 进行判断。
+
 # BUILD_VERSION   :=myversion
-BUILD_VERSION   := $(shell git rev-parse --short HEAD)
+BUILD_VERSION   :=[ build_on:$(detected_OS); commit:$(shell git rev-parse --short HEAD); all_go_files_md5:$(shell $(md5cmdline)); tags:$(tags) ]
 
 prefix          :=verysimple
+winsuffix       :=.exe
 
-linuxAmd        :=_linux_amd64
-linuxArm        :=_linux_arm64
-androidArm64    :=_android_arm64
-macosAmd        :=_macos
-macosArm        :=_macm1
-windows         :=_win10
-
-#这些Fn变量是用于发布包压缩包的名称，不是可执行文件名称，可执行文件统一叫 verysimple
-
-linuxAmdFn:=${prefix}${linuxAmd}
-linuxArmFn:=${prefix}${linuxArm}
-macFn     :=${prefix}${macosAmd}
-macM1Fn   :=${prefix}${macosArm}
-winFn     :=${prefix}${windows}
-androidArm64Fn :=${prefix}${androidArm64}
+defaultOutFn    :=${prefix}${suffix}
 
 
-cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid="  -o
+#这些Fn变量是用于发布包压缩包的名称，不是压缩包内部的可执行文件名称，压缩包内部的可执行文件统一叫 verysimple
+
+linuxAmdFn     :=${prefix}_linux_amd64
+linuxArmFn     :=${prefix}_linux_arm64
+androidArm64Fn :=${prefix}_android_arm64
+macFn          :=${prefix}_macos
+macM1Fn        :=${prefix}_macm1
+winFn          :=${prefix}_win10
+
+
+cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid=" -o
 
 
 ifdef PACK
 define compile
 	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) $(cmd) $(1)
-	mv $(1) verysimple$(4)
-	tar -cJf $(1).tar.xz verysimple$(4) -C ../../ examples/
-	rm verysimple$(4)
+	mv $(1) ${prefix}$(4)
+	tar -cJf $(1).tar.xz ${prefix}$(4) -C ../../ examples/
+	rm ${prefix}$(4)
+endef
+
+else
+
+ifeq ($(detected_OS),Windows)
+
+define compile
+	set CGO_ENABLED=0&& set GOOS=$(2)&& set GOARCH=$(3)&& $(cmd) $(1)$(4)
 endef
 
 else
@@ -52,14 +82,23 @@ else
 define compile
 	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) $(cmd) $(1)$(4)
 endef
+
+endif
+
 endif
 
 
-verysimple_cmd: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
-	@echo "make verysimple cmd"
+${defaultOutFn}: $(dependency_with_Makefile)
+	$(call compile, $(prefix),,,$(suffix))
+
+all: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
+	@echo "compiling for common platforms"
 
 getver:
 	@echo $(BUILD_VERSION)
+
+getmd5:
+	@$(md5cmdline)
 
 #注意调用参数时，逗号前后不能留空格
 
@@ -80,12 +119,12 @@ macm1:
 	$(call compile, $(macM1Fn),darwin,arm64)
 
 win10:
-	$(call compile, $(winFn),windows,amd64,.exe)
+	$(call compile, $(winFn),windows,amd64,$(winsuffix))
 
 
 clean:
-	rm -f verysimple
-	rm -f verysimple.exe
+	rm -f ${prefix}
+	rm -f ${prefix}.exe
 
 	rm -f $(linuxAmdFn)
 	rm -f $(linuxArmFn)

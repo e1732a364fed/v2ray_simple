@@ -25,19 +25,19 @@ func TestClientSimpleConfig(t *testing.T) {
 		t.Log("loadConfigFromStr err", err)
 		t.FailNow()
 	}
-	t.Log(mc.Client_ThatDialRemote_Url)
-	u, e := url.Parse(mc.Client_ThatDialRemote_Url)
+	t.Log(mc.DialUrl)
+	u, e := url.Parse(mc.DialUrl)
 	if e != nil {
 		t.FailNow()
 	}
 	t.Log(u.Fragment)
 
-	u, e = url.Parse(mc.Server_ThatListenPort_Url)
+	u, e = url.Parse(mc.ListenUrl)
 	if e != nil {
 		t.FailNow()
 	}
 	t.Log(u.Fragment)
-	t.Log(mc.Server_ThatListenPort_Url)
+	t.Log(mc.ListenUrl)
 	t.Log(mc.MyCountryISO_3166)
 	if mc.MyCountryISO_3166 != "CN" {
 		t.FailNow()

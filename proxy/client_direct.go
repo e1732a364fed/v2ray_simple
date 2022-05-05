@@ -9,7 +9,10 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-const DirectName = "direct"
+const (
+	DirectName = "direct"
+	DirectURL  = DirectName + "://"
+)
 
 //implements ClientCreator for direct
 type DirectCreator struct{}

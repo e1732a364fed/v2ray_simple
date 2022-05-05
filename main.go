@@ -41,7 +41,9 @@ var (
 )
 
 var (
-	DirectClient, _, _ = proxy.ClientFromURL(proxy.DirectName + "://")
+
+	//一个默认的 非 fullcone 的 direct Client
+	DirectClient, _, _ = proxy.ClientFromURL(proxy.DirectURL)
 )
 
 //用于回落到h2c
@@ -109,7 +111,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 					wrappedConn:   newConn,
 					inServer:      inServer,
 					defaultClient: defaultOutClient,
-					RoutingEnv:    env,
+					routingEnv:    env,
 				}
 
 				go handshakeInserver_and_passToOutClient(iics)
@@ -174,7 +176,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 		baseLocalConn: thisLocalConnectionInstance,
 		inServer:      inServer,
 		defaultClient: defaultClientForThis,
-		RoutingEnv:    env,
+		routingEnv:    env,
 	}
 
 	iics.isTlsLazyServerEnd = Tls_lazy_encrypt && canLazyEncryptServer(inServer)
@@ -616,13 +618,13 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	// 因为在direct时，netLayer.Addr 拨号时，会优先选用ip拨号，而且我们下面的分流阶段 如果使用ip的话，
 	// 可以利用geoip文件,  可以做到国别分流.
 
-	if iics.RoutingEnv != nil && iics.RoutingEnv.DnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
+	if iics.routingEnv != nil && iics.routingEnv.DnsMachine != nil && (targetAddr.Name != "" && len(targetAddr.IP) == 0) && targetAddr.Network != "unix" {
 
 		if ce := utils.CanLogDebug("Dns querying"); ce != nil {
 			ce.Write(zap.String("domain", targetAddr.Name))
 		}
 
-		ip := iics.RoutingEnv.DnsMachine.Query(targetAddr.Name)
+		ip := iics.routingEnv.DnsMachine.Query(targetAddr.Name)
 
 		if ip != nil {
 			targetAddr.IP = ip
@@ -641,7 +643,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	inServer := iics.inServer
 
 	//尝试分流, 获取到真正要发向 的 outClient
-	if iics.RoutingEnv != nil && iics.RoutingEnv.RoutePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
+	if re := iics.routingEnv; re != nil && re.RoutePolicy != nil && !(inServer != nil && inServer.CantRoute()) {
 
 		desc := &netLayer.TargetDescription{
 			Addr: targetAddr,
@@ -654,9 +656,23 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			ce.Write(zap.Any("source", desc))
 		}
 
-		outtag := iics.RoutingEnv.RoutePolicy.GetOutTag(desc)
+		outtag := re.RoutePolicy.GetOutTag(desc)
 
-		if outtag == proxy.DirectName {
+		if len(re.ClientsTagMap) > 0 {
+			if tagC := re.GetClient(outtag); tagC != nil {
+				client = tagC
+				routed = true
+				if ce := utils.CanLogInfo("Route"); ce != nil {
+					ce.Write(
+						zap.String("to outtag", outtag),
+						zap.String("with addr", client.AddrStr()),
+						zap.String("and protocol", proxy.GetFullName(client)),
+						zap.Any("for source", desc),
+					)
+				}
+			}
+		}
+		if !routed && outtag == proxy.DirectName {
 			client = DirectClient
 			iics.routedToDirect = true
 			routed = true
@@ -666,24 +682,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 					zap.String("target", targetAddr.UrlString()),
 				)
 			}
-		} else {
-
-			if len(iics.RoutingEnv.ClientsTagMap) > 0 {
-				if tagC, ok := iics.RoutingEnv.ClientsTagMap[outtag]; ok {
-					client = tagC
-					routed = true
-					if ce := utils.CanLogInfo("Route"); ce != nil {
-						ce.Write(
-							zap.String("to outtag", outtag),
-							zap.String("with addr", client.AddrStr()),
-							zap.String("and protocol", proxy.GetFullName(client)),
-							zap.Any("for source", desc),
-						)
-					}
-				}
-			}
-
 		}
+
 	}
 
 	if !routed {
@@ -785,7 +785,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 	clientEndRemoteClientTlsRawReadRecorder *tlsLayer.Recorder,
 	result int) {
 
-	if client.Name() == "reject" && wlc != nil {
+	if client.Name() == proxy.RejectName && wlc != nil {
 		client.Handshake(wlc, nil, netLayer.Addr{})
 		result = -10
 		return

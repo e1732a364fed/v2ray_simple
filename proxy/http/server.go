@@ -1,4 +1,4 @@
-//Package http implements an http proxy server
+//Package http implements an http proxy server.
 package http
 
 import (

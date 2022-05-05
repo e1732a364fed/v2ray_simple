@@ -43,7 +43,7 @@ type incomingInserverConnState struct {
 
 	routedToDirect bool
 
-	RoutingEnv *proxy.RoutingEnv //used in passToOutClient
+	routingEnv *proxy.RoutingEnv //used in passToOutClient
 }
 
 // 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
@@ -89,9 +89,9 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 	//先检查 mainFallback，如果mainFallback中各项都不满足 or根本没有 mainFallback 再检查 defaultFallback
 
 	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
-	if iics.RoutingEnv != nil {
+	if iics.routingEnv != nil {
 
-		if mf := iics.RoutingEnv.MainFallback; mf != nil {
+		if mf := iics.routingEnv.MainFallback; mf != nil {
 
 			var thisFallbackType byte
 

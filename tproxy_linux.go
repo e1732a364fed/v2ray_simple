@@ -50,7 +50,7 @@ func startLoopTCP(ad netLayer.Addr, defaultOutClientForThis proxy.Client, env *p
 		passToOutClient(incomingInserverConnState{
 			wrappedConn:   tcpconn,
 			defaultClient: defaultOutClientForThis,
-			RoutingEnv:    env,
+			routingEnv:    env,
 		}, false, tcpconn, nil, targetAddr)
 	})
 
@@ -84,7 +84,7 @@ func startLoopUDP(ad netLayer.Addr, defaultOutClientForThis proxy.Client, env *p
 
 			go passToOutClient(incomingInserverConnState{
 				defaultClient: defaultOutClientForThis,
-				RoutingEnv:    env,
+				routingEnv:    env,
 			}, false, nil, msgConn, raddr)
 		}
 

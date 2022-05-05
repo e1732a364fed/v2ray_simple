@@ -1,3 +1,6 @@
+# 本文件仅限在linux上运行
+# 我们在github action里用到了本文件，用于 自动编译发布包。
+
 #BUILD_VERSION   := vx.x.x-beta.x 这个将在github action里自动通过tag配置, 参见 .github/workflows/build_release.yml
 
 prefix :=verysimple
@@ -7,9 +10,9 @@ cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSIO
 
 ifdef PACK
 define compile
-	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) GOARM=$(5) $(cmd) $(1)
-	mv $(1) verysimple$(4)
-	tar -cJf $(1).tar.xz verysimple$(4) -C ../../ examples/
+	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) GOARM=$(5) $(cmd) ${prefix}_$(1)
+	mv ${prefix}_$(1) verysimple$(4)
+	tar -cJf ${prefix}_$(1).tar.xz verysimple$(4) -C ../../ examples/
 	rm verysimple$(4)
 endef
 
@@ -29,43 +32,43 @@ extra: linux_arm32_v7 linux_mips64 linux_mips linux_s390x linux_riscv64 win32
 # 关于arm版本号 https://github.com/goreleaser/goreleaser/issues/36
 
 linux_amd64:
-	$(call compile, ${prefix}_linux_amd64,linux,amd64)
+	$(call compile, linux_amd64,linux,amd64)
 
 linux_arm64:
-	$(call compile, ${prefix}_linux_arm64,linux,arm64)
+	$(call compile, linux_arm64,linux,arm64)
 
 linux_arm32_v7:
-	$(call compile, ${prefix}_linux_arm32_v7a,linux,arm,,7)
+	$(call compile, linux_arm32_v7a,linux,arm,,7)
 
 linux_mips64:
-	$(call compile, ${prefix}_linux_mips64,linux,mips64)
+	$(call compile, linux_mips64,linux,mips64)
 
 linux_mips:
-	$(call compile, ${prefix}_linux_mips,linux,mips)
+	$(call compile, linux_mips,linux,mips)
 
 linux_s390x:
-	$(call compile, ${prefix}_linux_s390x,linux,s390x)
+	$(call compile, linux_s390x,linux,s390x)
 
 linux_riscv64:
-	$(call compile, ${prefix}_linux_riscv64,linux,riscv64)
+	$(call compile, linux_riscv64,linux,riscv64)
 
 android_arm64:
-	$(call compile, ${prefix}_android_arm64,android,arm64)
+	$(call compile, android_arm64,android,arm64)
 
 macos:
-	$(call compile, ${prefix}_macOS_intel,darwin,amd64)
+	$(call compile, macOS_intel,darwin,amd64)
 
 macm1:
-	$(call compile, ${prefix}_macOS_apple,darwin,arm64)
+	$(call compile, macOS_apple,darwin,arm64)
 
 win32:
-	$(call compile, ${prefix}_win32,windows,386,.exe)
+	$(call compile, win32,windows,386,.exe)
 
 win10:
-	$(call compile, ${prefix}_win10,windows,amd64,.exe)
+	$(call compile, win10,windows,amd64,.exe)
 
 win10_arm:
-	$(call compile, ${prefix}_win10_arm64,windows,arm64,.exe)
+	$(call compile, win10_arm64,windows,arm64,.exe)
 
 
 clean:

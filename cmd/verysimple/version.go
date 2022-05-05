@@ -34,6 +34,7 @@ func printVersion_simple() {
 	fmt.Printf("\n")
 }
 
+//printVersion 返回的信息 可以唯一确定一个编译文件的 版本以及 build tags.
 func printVersion() {
 
 	fmt.Printf(delimiter)

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"sync"
 	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
@@ -9,10 +10,32 @@ import (
 
 //used in real relay progress. See source code of v2ray_simple for details.
 type RoutingEnv struct {
-	RoutePolicy   *netLayer.RoutePolicy
-	MainFallback  *httpLayer.ClassicFallback
-	DnsMachine    *netLayer.DNSMachine
-	ClientsTagMap map[string]Client //用于分流到某个tag的Client, 所以需要知道所有的client
+	RoutePolicy  *netLayer.RoutePolicy
+	MainFallback *httpLayer.ClassicFallback
+	DnsMachine   *netLayer.DNSMachine
+
+	ClientsTagMap      map[string]Client //用于分流到某个tag的Client, 所以需要知道所有的client
+	ClientsTagMapMutex sync.RWMutex
+}
+
+func (re *RoutingEnv) GetClient(tag string) (c Client) {
+	re.ClientsTagMapMutex.RLock()
+
+	c = re.ClientsTagMap[tag]
+	re.ClientsTagMapMutex.RUnlock()
+	return
+}
+func (re *RoutingEnv) SetClient(tag string, c Client) {
+	re.ClientsTagMapMutex.Lock()
+
+	re.ClientsTagMap[tag] = c
+	re.ClientsTagMapMutex.Unlock()
+}
+func (re *RoutingEnv) DelClient(tag string) {
+	re.ClientsTagMapMutex.Lock()
+
+	delete(re.ClientsTagMap, tag)
+	re.ClientsTagMapMutex.Unlock()
 }
 
 func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv, Default_uuid string) {

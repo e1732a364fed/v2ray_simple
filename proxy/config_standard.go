@@ -18,6 +18,8 @@ const (
 	SimpleMode = iota
 	StandardMode
 	V2rayCompatibleMode
+
+	ErrStrNoListenUrl = "No listen URL provided"
 )
 
 type AppConf struct {
@@ -96,13 +98,14 @@ func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (standa
 	}
 url:
 	if listenURL != "" {
-		log.Printf("trying -L,-D parameters \n")
+		log.Printf("trying listenURL and dialURL \n")
 
 		confMode = SimpleMode
 		simpleConf, err = loadSimpleConf_byUrl(listenURL, dialURL)
 	} else {
-		log.Printf("no -L listen URL provided \n")
-		err = errors.New("no -L listen URL provided")
+
+		log.Println(ErrStrNoListenUrl)
+		err = errors.New(ErrStrNoListenUrl)
 		confMode = -1
 		return
 	}

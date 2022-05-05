@@ -593,7 +593,7 @@ func interactively_hotRemoveServerOrClient() {
 	fmt.Printf("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
 	fmt.Printf("【当前所有配置】为：\n")
 	fmt.Printf(delimiter)
-	printAllState(os.Stdout)
+	printAllState(os.Stdout, true)
 
 	var items []string
 	if len(allServers) > 0 {
@@ -670,7 +670,8 @@ func interactively_hotRemoveServerOrClient() {
 
 	if will_delete_dial {
 		doomedClient := allClients[will_delete_index]
-		delete(routingEnv.ClientsTagMap, doomedClient.GetTag())
+
+		routingEnv.DelClient(doomedClient.GetTag())
 		doomedClient.Stop()
 		allClients = utils.TrimSlice(allClients, will_delete_index)
 	}
@@ -685,7 +686,7 @@ func interactively_hotRemoveServerOrClient() {
 
 	fmt.Printf("删除成功！当前状态：\n")
 	fmt.Printf(delimiter)
-	printAllState(os.Stdout)
+	printAllState(os.Stdout, true)
 }
 
 //热添加配置文件
@@ -694,7 +695,7 @@ func interactively_hotLoadConfigFile() {
 	fmt.Printf("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
 	fmt.Printf("【当前所有配置】为：\n")
 	fmt.Printf(delimiter)
-	printAllState(os.Stdout)
+	printAllState(os.Stdout, false)
 
 	fmt.Printf("请输入你想添加的文件名称\n")
 
@@ -750,7 +751,7 @@ func interactively_hotLoadConfigFile() {
 
 	fmt.Printf("添加成功！当前状态：\n")
 	fmt.Printf(delimiter)
-	printAllState(os.Stdout)
+	printAllState(os.Stdout, false)
 }
 
 func interactively_adjust_loglevel() {

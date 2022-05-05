@@ -1,2 +1,2 @@
 all:
-	cd cmd/verysimple/ && make verysimple_cmd
+	cd cmd/verysimple/ && make verysimple
