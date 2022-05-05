@@ -63,7 +63,7 @@ macM1Fn        :=${prefix}_macm1
 winFn          :=${prefix}_win10
 
 
-cmd:=go build -tags $(tags)  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid=" -o
+cmd:=go build -tags "$(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid=" -o
 
 
 ifdef PACK
