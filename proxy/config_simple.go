@@ -64,12 +64,15 @@ func loadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *h
 
 		log.Printf("can not load simple config file: %s\n", err.Error())
 		return
+	} else {
+		err = nil
 	}
 	if simpleConf.Fallbacks != nil {
 		mainFallback = httpLayer.NewClassicFallbackFromConfList(simpleConf.Fallbacks)
 	}
 
 	if simpleConf.DialUrl == "" {
+
 		simpleConf.DialUrl = DirectURL
 	}
 	return

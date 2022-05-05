@@ -224,7 +224,7 @@ func mainFunc() (result int) {
 		const exitStr = "no config exist, and no api server or interactive cli enabled, exiting..."
 
 		if ce := utils.CanLogErr(exitStr); ce != nil {
-			ce.Write()
+			ce.Write(zap.Error(loadConfigErr))
 		} else {
 			log.Printf(exitStr)
 
