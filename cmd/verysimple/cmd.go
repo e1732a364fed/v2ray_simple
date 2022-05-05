@@ -213,21 +213,35 @@ protocol = "http"
 	}
 }
 
-func hotLoadDialConfForRuntime(conf []*proxy.DialConf) {
+func hotLoadDialConfForRuntime(Default_uuid string, conf []*proxy.DialConf) {
 	for _, d := range conf {
+
+		if d.Uuid == "" && Default_uuid != "" {
+			d.Uuid = Default_uuid
+		}
+
 		outClient, err := proxy.NewClient(d)
 		if err != nil {
-			log.Println("can not create outClient: ", err)
-			return
+			if ce := utils.CanLogErr("can not create outClient: "); ce != nil {
+				ce.Write(zap.Error(err))
+			}
+			continue
 		}
-		if defaultOutClient == nil {
-			defaultOutClient = outClient
-		}
+
 		allClients = append(allClients, outClient)
 		if tag := outClient.GetTag(); tag != "" {
 
 			routingEnv.SetClient(tag, outClient)
 
+		}
+	}
+
+	if defaultOutClient == nil {
+		if len(allClients) > 0 {
+			defaultOutClient = allClients[0]
+
+		} else {
+			defaultOutClient = vs.DirectClient
 		}
 	}
 

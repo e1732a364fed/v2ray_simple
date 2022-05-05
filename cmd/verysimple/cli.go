@@ -279,11 +279,11 @@ func generateConfigFileInteractively() {
 			switch ihot {
 			case 0:
 
-				hotLoadDialConfForRuntime(confServer.Dial)
+				hotLoadDialConfForRuntime("", confServer.Dial)
 				hotLoadListenConfForRuntime(confServer.Listen)
 
 			case 1:
-				hotLoadDialConfForRuntime(confClient.Dial)
+				hotLoadDialConfForRuntime("", confClient.Dial)
 				hotLoadListenConfForRuntime(confClient.Listen)
 			}
 
@@ -757,7 +757,7 @@ func interactively_hotLoadConfigFile() {
 	switch confMode {
 	case proxy.StandardMode:
 		if len(standardConf.Dial) > 0 {
-			hotLoadDialConfForRuntime(standardConf.Dial)
+			hotLoadDialConfForRuntime("", standardConf.Dial)
 
 		}
 

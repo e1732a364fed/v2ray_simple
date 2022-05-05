@@ -323,31 +323,7 @@ func mainFunc() (result int) {
 			break
 		}
 
-		for _, thisConf := range standardConf.Dial {
-			if thisConf.Uuid == "" && Default_uuid != "" {
-				thisConf.Uuid = Default_uuid
-			}
-
-			thisClient, err := proxy.NewClient(thisConf)
-			if err != nil {
-				if ce := utils.CanLogErr("can not create remote client: "); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-				continue
-			}
-			allClients = append(allClients, thisClient)
-
-			if tag := thisClient.GetTag(); tag != "" {
-				routingEnv.ClientsTagMap[tag] = thisClient
-			}
-		}
-
-		if len(allClients) > 0 {
-			defaultOutClient = allClients[0]
-
-		} else {
-			defaultOutClient = vs.DirectClient
-		}
+		hotLoadDialConfForRuntime(Default_uuid, standardConf.Dial)
 
 	}
 
