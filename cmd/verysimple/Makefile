@@ -114,10 +114,18 @@ $1: phony
 	fi
 endef
 
+else
 
-$(eval $(call DEPENDABLE_VAR,BUILD_VERSION))
+define DEPENDABLE_VAR
+
+.PHONY: phony
+$1: phony
+	echo|set /p="$($1)" > $1
+endef
 
 endif
+
+$(eval $(call DEPENDABLE_VAR,BUILD_VERSION))
 
 all: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
 	@echo "compiling for common platforms"
