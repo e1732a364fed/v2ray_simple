@@ -51,18 +51,6 @@ defaultOutFn    :=${prefix}${defaultSuffix}
 BUILD_VERSION   :=[ build_on: $(detected_OS), commit: $(shell git rev-parse --short HEAD), all_go_files_md5: $(shell $(md5cmdline)), tags:$(tags) ]
 
 
-
-
-#这些Fn变量是用于发布包压缩包的名称，不是压缩包内部的可执行文件名称. 可执行文件统一叫 verysimple
-
-linuxAmdFn     :=${prefix}_linux_amd64
-linuxArmFn     :=${prefix}_linux_arm64
-androidArm64Fn :=${prefix}_android_arm64
-macFn          :=${prefix}_macos
-macM1Fn        :=${prefix}_macm1
-winFn          :=${prefix}_win10
-
-
 cmd:=go build -tags "$(tags)"  -trimpath -ldflags "-X 'main.Version=${BUILD_VERSION}' -s -w -buildid=" -o
 
 
@@ -132,6 +120,17 @@ getver:
 
 getmd5:
 	@$(md5cmdline)
+
+
+#这些Fn变量是 PACK开关未打开 时的 可执行文件 的名称, 不是压缩包内部的可执行文件名称. 压缩包内部的可执行文件 统一叫 verysimple
+
+linuxAmdFn     :=${prefix}_linux_amd64
+linuxArmFn     :=${prefix}_linux_arm64
+androidArm64Fn :=${prefix}_android_arm64
+macFn          :=${prefix}_macos
+macM1Fn        :=${prefix}_macm1
+winFn          :=${prefix}_win10
+
 
 #注意调用参数时，逗号前后不能留空格
 
