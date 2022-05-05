@@ -56,27 +56,29 @@ const (
 )
 
 func init() {
-	etStrMap = make(map[int]string)
-	etStrMap[et_server_name] = etstr_server_name
-	etStrMap[et_max_fragment_length] = etstr_max_fragment_length
-	etStrMap[et_status_request] = etstr_status_request
-	etStrMap[et_supported_groups] = etstr_supported_groups
-	etStrMap[et_signature_algorithms] = etstr_signature_algorithms
-	etStrMap[et_use_srtp] = etstr_use_srtp
-	etStrMap[et_heartbeat] = etstr_heartbeat
-	etStrMap[et_application_layer_protocol_negotiation] = etstr_application_layer_protocol_negotiation
-	etStrMap[et_signed_certificate_timestamp] = etstr_signed_certificate_timestamp
-	etStrMap[et_client_certificate_type] = etstr_client_certificate_type
-	etStrMap[et_server_certificate_type] = etstr_server_certificate_type
-	etStrMap[et_padding] = etstr_padding
-	etStrMap[et_pre_shared_key] = etstr_pre_shared_key
-	etStrMap[et_early_data] = etstr_early_data
-	etStrMap[et_supported_versions] = etstr_supported_versions
-	etStrMap[et_cookie] = etstr_cookie
-	etStrMap[et_psk_key_exchange_modes] = etstr_psk_key_exchange_modes
-	etStrMap[et_certificate_authorities] = etstr_certificate_authorities
-	etStrMap[et_oid_filters] = etstr_oid_filters
-	etStrMap[et_post_handshake_auth] = etstr_post_handshake_auth
-	etStrMap[et_signature_algorithms_cert] = etstr_signature_algorithms_cert
-	etStrMap[et_key_share] = etstr_key_share
+	etStrMap = map[int]string{
+		et_server_name:          etstr_server_name,
+		et_max_fragment_length:  etstr_max_fragment_length,
+		et_status_request:       etstr_status_request,
+		et_supported_groups:     etstr_supported_groups,
+		et_signature_algorithms: etstr_signature_algorithms,
+		et_use_srtp:             etstr_use_srtp,
+		et_heartbeat:            etstr_heartbeat,
+		et_application_layer_protocol_negotiation: etstr_application_layer_protocol_negotiation,
+		et_signed_certificate_timestamp:           etstr_signed_certificate_timestamp,
+		et_client_certificate_type:                etstr_client_certificate_type,
+		et_server_certificate_type:                etstr_server_certificate_type,
+		et_padding:                                etstr_padding,
+		et_pre_shared_key:                         etstr_pre_shared_key,
+		et_early_data:                             etstr_early_data,
+		et_supported_versions:                     etstr_supported_versions,
+		et_cookie:                                 etstr_cookie,
+		et_psk_key_exchange_modes:                 etstr_psk_key_exchange_modes,
+		et_certificate_authorities:                etstr_certificate_authorities,
+		et_oid_filters:                            etstr_oid_filters,
+		et_post_handshake_auth:                    etstr_post_handshake_auth,
+		et_signature_algorithms_cert:              etstr_signature_algorithms_cert,
+		et_key_share:                              etstr_key_share,
+	}
+
 }

@@ -1,4 +1,4 @@
-//Package http implements an http proxy server.
+//Package http implements http proxy for proxy.Server.
 package http
 
 import (
@@ -24,8 +24,6 @@ func init() {
 type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	//只有地址和port需要配置，非常简单, 而且都是在通用部分 ProxyCommonStruct 被配置过了, 不需再记录
-
 	// TODO: Support Basic Auth
 
 	s := &Server{}
@@ -66,7 +64,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	// "CONNECT is intended only for use in requests to a proxy.  " 总之CONNECT命令专门用于代理.
 	// GET如果 path也是带 http:// 头的话，也是可以的，但是这种只适用于http代理，无法用于https。
 
-	_, method, path, failreason := httpLayer.GetRequestMethod_and_PATH_from_Bytes(bs[:n], true)
+	_, method, path, failreason := httpLayer.GetH1RequestMethod_and_PATH_from_Bytes(bs[:n], true)
 	if failreason != 0 {
 		err = utils.ErrInErr{ErrDesc: "get method/path failed", ErrDetail: utils.ErrInvalidData, Data: []any{method, failreason}}
 

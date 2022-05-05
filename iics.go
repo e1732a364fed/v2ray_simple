@@ -100,7 +100,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 			if iics.fallbackFirstBuffer != nil && theRequestPath == "" {
 				var failreason int
 
-				_, _, theRequestPath, failreason = httpLayer.GetRequestMethod_and_PATH_from_Bytes(iics.fallbackFirstBuffer.Bytes(), false)
+				_, _, theRequestPath, failreason = httpLayer.GetH1RequestMethod_and_PATH_from_Bytes(iics.fallbackFirstBuffer.Bytes(), false)
 
 				if failreason != 0 {
 					theRequestPath = ""

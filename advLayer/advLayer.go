@@ -1,6 +1,9 @@
-/*Package advLayer contains subpackages for Advanced Layer in VSI model.
+/*Package advLayer contains definitions and subpackages for Advanced Layer in VSI model.
 
- */
+An advanced layer is based on http layer. It can be websocket, http2, grpc, quic or other customized protocols that based on http and can relay arbitrary length raw []byte data.
+
+If a protocol is not based on http layer, then maybe it should be on Proxy Layer, rather than Advanced Layer.
+*/
 package advLayer
 
 import (

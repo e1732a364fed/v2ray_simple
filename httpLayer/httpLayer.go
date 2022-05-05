@@ -1,5 +1,5 @@
 /*
-Package httpLayer provides methods and definitions for http layer.
+Package httpLayer provides methods for parsing and sending http request and response.
 
 Fallback 由 本包 处理. 因为回落的目标只可能是http服务器.
 
@@ -134,7 +134,7 @@ func (rhr *H1RequestParser) ReadAndParse(r io.Reader) error {
 	buf := bytes.NewBuffer(data)
 	rhr.WholeRequestBuf = buf
 
-	rhr.Version, rhr.Method, rhr.Path, rhr.Failreason = GetRequestMethod_and_PATH_from_Bytes(data, false)
+	rhr.Version, rhr.Method, rhr.Path, rhr.Failreason = GetH1RequestMethod_and_PATH_from_Bytes(data, false)
 	if rhr.Failreason != 0 {
 		return utils.ErrInErr{ErrDesc: "httpLayer ReadAndParse failed", ErrDetail: ErrNotHTTP_Request, Data: rhr.Failreason}
 	}

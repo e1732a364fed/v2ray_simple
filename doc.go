@@ -1,11 +1,11 @@
 /*
-Package v2ray_simple provides a way to set up a proxy.
+Package v2ray_simple provides a simple way to set up a proxy.
 
 Structure 本项目结构
 
 utils -> netLayer-> tlsLayer -> httpLayer -> advLayer -> proxy -> v2ray_simple -> cmd/verysimple
 
-根项目 v2ray_simple 仅研究实际转发过程.
+根项目 v2ray_simple 仅研究实际转发过程. 关于 代理的详细定义 请参考 proxy 子包的文档。
 
 Chain
 
@@ -15,6 +15,8 @@ handshakeInserver_and_passToOutClient -> { handshakeInserver , passToOutClient -
 netLayer.Relay / netLayer.RelayUDP 」 ] }
 
 用 netLayer操纵路由，用tlsLayer嗅探tls，用httpLayer操纵回落，可选经过http头、高级层、innerMux, 都搞好后，进行 proxy 握手，然后就开始转发
+
+因为tproxy不满足 proxy.Client 接口，所以我们 还单独提供一个 ListenTproxy 函数。
 
 Tags
 

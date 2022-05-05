@@ -1,4 +1,4 @@
-# 该Makefile 可支持多种系统上进行编译，但是如果如果你要打包，给出了 PACK=1，则只能在非windows上用。
+# 该Makefile 可支持多种系统上进行编译，但是如果你要打包，给出了 PACK=1，则只能在非windows上用。
 #
 # for packing into verysimple_xxx.tgz:
 #	make PACK=1 linux_amd64
@@ -9,6 +9,8 @@
 #	make tags="embed_geoip" macm1
 #
 # also has grpc_full and noquic tags. See godoc for details.
+#
+# 编译后，还会生成一个 "tags" 和 "BUILD_VERSION" 文件，记录此次编译所使用的 tag 和生成的版本号
 #
 # 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
 
@@ -40,7 +42,7 @@ endif
 # 注意，因为 macos, linux 和 windows 上 所执行的 md5命令的输出略有不同, 所以完全相同的文件在不同系统上实际得到的 总和md5 值是不同的。所以 md5值 要和 build_on 信息 结合 进行判断。
 
 # BUILD_VERSION   :=myversion
-BUILD_VERSION   :=[ build_on:$(detected_OS); commit:$(shell git rev-parse --short HEAD); all_go_files_md5:$(shell $(md5cmdline)); tags:$(tags) ]
+BUILD_VERSION   :=[ build_on: $(detected_OS), commit: $(shell git rev-parse --short HEAD), all_go_files_md5: $(shell $(md5cmdline)), tags:$(tags) ]
 
 prefix          :=verysimple
 winsuffix       :=.exe
@@ -48,7 +50,7 @@ winsuffix       :=.exe
 defaultOutFn    :=${prefix}${suffix}
 
 
-#这些Fn变量是用于发布包压缩包的名称，不是压缩包内部的可执行文件名称，压缩包内部的可执行文件统一叫 verysimple
+#这些Fn变量是用于发布包压缩包的名称，不是压缩包内部的可执行文件名称. 可执行文件统一叫 verysimple
 
 linuxAmdFn     :=${prefix}_linux_amd64
 linuxArmFn     :=${prefix}_linux_arm64
@@ -87,9 +89,35 @@ endif
 
 endif
 
-
-${defaultOutFn}: $(dependency_with_Makefile)
+${defaultOutFn}: BUILD_VERSION $(dependency_with_Makefile) 
 	$(call compile, $(prefix),,,$(suffix))
+
+
+ifneq ($(detected_OS),Windows)
+
+# https://stackoverflow.com/questions/26145267/how-do-i-force-a-target-to-be-rebuilt-if-a-variable-is-set
+
+# Notes:
+#1. echo for macos is not working when using -n;
+#2. phony is necessary
+
+define DEPENDABLE_VAR
+
+.PHONY: phony
+$1: phony
+	@if [[ ! -f $1 ]]; then \
+		/bin/echo -n $($1) > $1 ; \
+	else\
+		if [[ `cat $1 2>&1` != '$($1)' ]]; then \
+			/bin/echo -n $($1) > $1 ; \
+		fi\
+	fi
+endef
+
+
+$(eval $(call DEPENDABLE_VAR,BUILD_VERSION))
+
+endif
 
 all: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
 	@echo "compiling for common platforms"
@@ -114,7 +142,7 @@ android_arm64:
 macos:
 	$(call compile, $(macFn),darwin,amd64)
 
-#提供macos 的apple silicon版本.
+#macos apple silicon
 macm1:
 	$(call compile, $(macM1Fn),darwin,arm64)
 

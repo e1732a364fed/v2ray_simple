@@ -1,4 +1,5 @@
-//Package simplesocks implements SimpleSocks protocol.
+//Package simplesocks implements SimpleSocks protocol for proxy.Server and proxy.Client.
+//
 // See https://p4gefau1t.github.io/trojan-go/developer/simplesocks/
 package simplesocks
 

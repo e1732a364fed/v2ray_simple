@@ -6,7 +6,7 @@ package httpLayer
 // 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数。
 //
 // 此方法亦可用于 判断一个http请求头部是否合法。
-func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, method string, path string, failreason int) {
+func GetH1RequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, method string, path string, failreason int) {
 
 	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18
 		failreason = 1
@@ -14,8 +14,8 @@ func GetRequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, met
 	}
 
 	if bs[4] == '*' {
-		failreason = 2
-		return //not h2c
+		failreason = 2 //this method doesn't support h2c
+		return
 
 	}
 	//http 方法有：GET, POST, HEAD, PUT, DELETE, OPTIONS, CONNECT, PRI

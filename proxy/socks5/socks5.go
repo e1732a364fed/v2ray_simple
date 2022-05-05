@@ -1,22 +1,27 @@
-// Package socks5 provies socks5 proxy support for proxy.Client and proxy.Server.
-//
-// Reference
-//
-//English: https://www.ietf.org/rfc/rfc1928.txt
-//
-//中文： https://aber.sh/articles/Socks5/
-//
-// 参考 https://studygolang.com/articles/31404
-//
-// Off Topic
-//
-//总体而言，vless/vmess/trojan协议借鉴了socks5，有不少类似的地方。
-//所以制作代理, 有必要学习socks5标准
+/*Package socks5 provies socks5 proxy for proxy.Client and proxy.Server.
+
+Reference
+
+English: https://www.ietf.org/rfc/rfc1928.txt
+
+中文： https://aber.sh/articles/Socks5/
+
+参考 https://studygolang.com/articles/31404
+
+Off Topic
+
+总体而言，vless/vmess/trojan协议借鉴了socks5，有不少类似的地方。
+所以制作代理, 有必要学习socks5标准。
+
+为了安全, 我们不建议socks5作为 proxy.Client, 因为socks5的server如果放在公网的话，socks5的client发起的请求会被审查者探测到。
+
+所以这里的 Client 没有被注册到proxy。
+*/
 package socks5
 
 const Name = "socks5"
 
-// Version is socks5 version number.
+//socks5 version number.
 const Version5 = 0x05
 
 // SOCKS auth type

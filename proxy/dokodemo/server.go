@@ -2,7 +2,7 @@
 
 Server that wants to relay data to a dokodemo target address.
 
-dokodemo 是 dokodemo-door 协议的实现。目前不含透明代理功能。
+dokodemo 是 v2ray的 dokodemo-door 协议的实现。不含透明代理功能。
 
 严格来说 dokodemo-door 并不是一个 "协议", 而是一个预先指定目标的转发方式。
 

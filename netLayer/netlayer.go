@@ -1,7 +1,7 @@
 /*
 Package netLayer contains definitions in network layer AND transport layer.
 
-本包有 geoip, geosite, route, udp, readv, splice, relay, dns, listen/dial/sockopt 等相关功能。
+本包有 geoip, geosite, route, udp, readv, splice, relay, dns, listen/dial/sockopt, proxy protocol 等相关功能。
 
 以后如果要添加 kcp 或 raw socket 等底层协议时，也要在此包 或子包里实现.
 

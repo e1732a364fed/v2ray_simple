@@ -9,8 +9,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//为了安全, 我们不建议socks5作为 proxy.Client; 所以这里没有注册到proxy。
-// 不过为了测试 udp associate 需要我们需要模拟一下socks5请求
 type Client struct {
 	proxy.Base
 }

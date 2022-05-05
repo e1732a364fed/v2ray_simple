@@ -1,4 +1,4 @@
-//package trojan implements proxy.Client and proxy.Server with trojan protocol.
+//package trojan implements trojan protocol for proxy.Client and proxy.Server.
 //
 //See https://trojan-gfw.github.io/trojan/protocol .
 package trojan
@@ -18,11 +18,12 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
+const Name = "trojan"
+
 const (
 	ATypIP4    = 0x1
 	ATypDomain = 0x3
 	ATypIP6    = 0x4
-	Name       = "trojan"
 )
 const (
 	CmdConnect      = 0x01
