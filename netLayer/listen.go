@@ -92,6 +92,8 @@ func ListenAndAccept(network, addr string, sockopt *Sockopt, xver int, acceptFun
 
 		go loopAccept(tcplistener, xver, acceptFunc)
 
+		listener = tcplistener
+
 	case "udp", "udp4", "udp6":
 
 		//udp 的透明代理等设置sockopt的情况并不使用本函数监听, 而是使用 ListenUDP_withOpt.
