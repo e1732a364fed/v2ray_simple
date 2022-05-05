@@ -266,26 +266,9 @@ func mainFunc() (result int) {
 	//load inServers and RoutingEnv
 	switch mode {
 	case proxy.SimpleMode:
-		var hase bool
-		var eie utils.ErrInErr
-		defaultInServer, hase, eie = proxy.ServerFromURL(simpleConf.ListenUrl)
-		if hase {
-			if ce := utils.CanLogErr("can not create local server"); ce != nil {
-				ce.Write(zap.Error(eie))
-			}
-			return -1
-		}
-
-		if !defaultInServer.CantRoute() && simpleConf.Route != nil {
-
-			netLayer.LoadMaxmindGeoipFile("")
-
-			//极简模式只支持通过 mycountry进行 geoip分流 这一种情况
-			routingEnv.RoutePolicy = netLayer.NewRoutePolicy()
-			if simpleConf.MyCountryISO_3166 != "" {
-				routingEnv.RoutePolicy.AddRouteSet(netLayer.NewRouteSetForMyCountry(simpleConf.MyCountryISO_3166))
-
-			}
+		result, defaultInServer = loadSimpleServer()
+		if result < 0 {
+			return result
 		}
 	case proxy.StandardMode:
 
@@ -329,14 +312,9 @@ func mainFunc() (result int) {
 	// load outClients
 	switch mode {
 	case proxy.SimpleMode:
-		var hase bool
-		var eie utils.ErrInErr
-		defaultOutClient, hase, eie = proxy.ClientFromURL(simpleConf.DialUrl)
-		if hase {
-			if ce := utils.CanLogErr("can not create remote client"); ce != nil {
-				ce.Write(zap.Error(eie))
-			}
-			return -1
+		result, defaultOutClient = loadSimpleClient()
+		if result < 0 {
+			return result
 		}
 	case proxy.StandardMode:
 

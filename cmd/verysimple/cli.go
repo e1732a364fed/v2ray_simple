@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/asaskevich/govalidator"
+	vs "github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy/trojan"
@@ -602,6 +603,10 @@ func interactively_hotRemoveServerOrClient() {
 	if len(allClients) > 0 {
 		items = append(items, "dial")
 	}
+	if len(items) == 0 {
+		fmt.Printf("没listen也没dial! 一个都没有，没法删!\n")
+		return
+	}
 
 	Select := promptui.Select{
 		Label: "请选择你想删除的是dial还是listen",
@@ -622,9 +627,18 @@ func interactively_hotRemoveServerOrClient() {
 	fmt.Printf("你选择了 %s\n", result)
 	switch i {
 	case 0:
-		will_delete_listen = true
+		if len(allServers) > 0 {
+			will_delete_listen = true
+
+		} else if len(allClients) > 0 {
+			will_delete_dial = true
+		}
+
 	case 1:
-		will_delete_dial = true
+		if len(allServers) > 0 {
+			will_delete_dial = true
+
+		}
 	}
 
 	var theInt int64
@@ -722,7 +736,8 @@ func interactively_hotLoadConfigFile() {
 
 	fmt.Printf("你输入了 %s\n", fpath)
 
-	standardConf, err = proxy.LoadTomlConfFile(fpath)
+	var confMode int
+	standardConf, simpleConf, confMode, _, err = proxy.LoadConfig(fpath, "", "", 0)
 	if err != nil {
 
 		log.Printf("can not load standard config file: %s\n", err)
@@ -739,13 +754,32 @@ func interactively_hotLoadConfigFile() {
 
 	//也就是说，理论上要写一个比较好的前端，才能妥善解决 复杂条目的热增删问题。
 
-	if len(standardConf.Dial) > 0 {
-		hotLoadDialConfForRuntime(standardConf.Dial)
+	switch confMode {
+	case proxy.StandardMode:
+		if len(standardConf.Dial) > 0 {
+			hotLoadDialConfForRuntime(standardConf.Dial)
 
-	}
+		}
 
-	if len(standardConf.Listen) > 0 {
-		hotLoadListenConfForRuntime(standardConf.Listen)
+		if len(standardConf.Listen) > 0 {
+			hotLoadListenConfForRuntime(standardConf.Listen)
+
+		}
+	case proxy.SimpleMode:
+		r, ser := loadSimpleServer()
+		if r < 0 {
+			return
+		}
+
+		r, cli := loadSimpleClient()
+		if r < 0 {
+			return
+		}
+
+		lis := vs.ListenSer(ser, cli, &routingEnv)
+		if lis != nil {
+			listenerArray = append(listenerArray, lis)
+		}
 
 	}
 
