@@ -256,7 +256,7 @@ func hotLoadListenConfForRuntime(conf []*proxy.ListenConf) {
 		}
 		lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
 		if lis != nil {
-			listenerArray = append(listenerArray, lis)
+			listenCloserArray = append(listenCloserArray, lis)
 			allServers = append(allServers, inServer)
 
 		}

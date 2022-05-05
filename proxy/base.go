@@ -226,10 +226,14 @@ func (pcs *Base) AdvancedLayer() string {
 	return pcs.AdvancedL
 }
 
-//try close inner mux
+//try close inner mux and AdvS
 func (s *Base) Stop() {
 	if s.Innermux != nil {
 		s.Innermux.Close()
+	}
+
+	if s.AdvS != nil {
+		s.AdvS.Stop()
 	}
 }
 

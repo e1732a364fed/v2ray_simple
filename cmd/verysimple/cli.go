@@ -690,11 +690,11 @@ func interactively_hotRemoveServerOrClient() {
 		allClients = utils.TrimSlice(allClients, will_delete_index)
 	}
 	if will_delete_listen {
-		listenerArray[will_delete_index].Close()
+		listenCloserArray[will_delete_index].Close()
 		allServers[will_delete_index].Stop()
 
 		allServers = utils.TrimSlice(allServers, will_delete_index)
-		listenerArray = utils.TrimSlice(listenerArray, will_delete_index)
+		listenCloserArray = utils.TrimSlice(listenCloserArray, will_delete_index)
 
 	}
 
@@ -778,7 +778,7 @@ func interactively_hotLoadConfigFile() {
 
 		lis := vs.ListenSer(ser, cli, &routingEnv)
 		if lis != nil {
-			listenerArray = append(listenerArray, lis)
+			listenCloserArray = append(listenCloserArray, lis)
 		}
 
 	}

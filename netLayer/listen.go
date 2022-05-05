@@ -17,7 +17,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 	if xver > 0 {
 
 		if ce := utils.CanLogDebug("Listening PROXY protocol"); ce != nil {
-			ce.Write(zap.Int("prefered xver", xver))
+			ce.Write(zap.Int("prefered version", xver))
 		}
 
 		listener = &proxyproto.Listener{Listener: listener, Policy: proxyProtocolListenPolicyFunc}
@@ -28,7 +28,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 		if err != nil {
 			errStr := err.Error()
 			if strings.Contains(errStr, "close") {
-				if ce := utils.CanLogDebug("listener got closed"); ce != nil {
+				if ce := utils.CanLogDebug("netLayer.loopAccept, listener got closed"); ce != nil {
 					ce.Write(zap.Error(err))
 
 				}
@@ -38,7 +38,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 				ce.Write(zap.Error(err))
 			}
 			if strings.Contains(errStr, "too many") {
-				if ce := utils.CanLogWarn("To many incoming conn! Will Sleep."); ce != nil {
+				if ce := utils.CanLogWarn("Too many incoming conns! Will Sleep."); ce != nil {
 					ce.Write(zap.String("err", errStr))
 
 				}
@@ -55,6 +55,9 @@ func loopAcceptUDP(uc net.UDPConn, acceptFunc func([]byte, *net.UDPAddr)) {
 		p := utils.GetPacket()
 		n, addr, err := uc.ReadFromUDP(p)
 		if err != nil {
+			if ce := utils.CanLogWarn("loopAcceptUDP failed to accept"); ce != nil {
+				ce.Write(zap.Error(err))
+			}
 			break
 		}
 		go acceptFunc(p[:n], addr)

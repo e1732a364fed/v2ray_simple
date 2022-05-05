@@ -39,7 +39,7 @@ var (
 
 	tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
 
-	listenerArray []io.Closer //储存除tproxy之外 所有运行的 inServer 的 Listener
+	listenCloserArray []io.Closer //储存除tproxy之外 所有运行的 inServer 的 Listener 的 Closer
 
 	defaultOutClient proxy.Client
 
@@ -81,10 +81,15 @@ func init() {
 }
 
 func cleanup() {
-	//在程序ctrl+C关闭时, 会主动Close所有的监听端口. 主要是被报告windows有时退出程序之后, 端口还是处于占用状态.
-	// 用下面代码以试图解决端口占用问题.
+	//我们 在程序关闭时, 主动Close所有的监听端口
 
-	for _, listener := range listenerArray {
+	for _, ser := range allServers {
+		if ser != nil {
+			ser.Stop()
+		}
+	}
+
+	for _, listener := range listenCloserArray {
 		if listener != nil {
 			listener.Close()
 		}
@@ -335,14 +340,14 @@ func mainFunc() (result int) {
 		if mode == proxy.SimpleMode {
 			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
 			if lis != nil {
-				listenerArray = append(listenerArray, lis)
+				listenCloserArray = append(listenCloserArray, lis)
 			}
 		} else {
 			for _, inServer := range allServers {
 				lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
 
 				if lis != nil {
-					listenerArray = append(listenerArray, lis)
+					listenCloserArray = append(listenCloserArray, lis)
 				}
 			}
 
