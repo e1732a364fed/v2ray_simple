@@ -20,6 +20,9 @@ advancedLayer = "quic"
 #early = true # 开启 quic 0-rtt功能。注意, 两端都要开启，且 v2ray/xray没有这个功能.
 
 # hy_manual的意思是手动挡, 注意, 你要想提高下载速度，需要手动调节服务端的挡;
+# 你也可以给 手动挡设置一个初始值，这样可以省着每次运行都要先调; 范围是 0.2～1.5，值越小则 速度可能越快, 也不建议太小,自己试, 实际倍率是 1.5/rate, 这里设为 0.5 就是 3倍率.
+
+#extra = { congestion_control = "hy", mbps = 100, hy_manual = true , hy_manual_initial_rate = 0.5} 
 #extra = { congestion_control = "hy", mbps = 100, hy_manual = true } 
 #extra = { congestion_control = "hy", mbps = 3000 } 
 

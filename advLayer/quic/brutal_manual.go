@@ -66,18 +66,33 @@ func (b *BrutalSender_M) SetMaxDatagramSize(size congestion.ByteCount) {
 	b.pacer.SetMaxDatagramSize(size)
 }
 
+func rateOk(r float64) int {
+	if r < 0.2 {
+		return -1
+	}
+	if r > 1.5 {
+		return 1
+	}
+	return 0
+}
+
 //原来最小值是0.75, 最大值是1，越小的话发包越疯狂.
 // 我们改成最小值0.2, 最快可以 7.5倍发包
 // 最大值改成 1.5， 这样最慢可以1倍速正常发包
 func (b *BrutalSender_M) getAckRate() float64 {
 
-	if TheCustomRate < 0.2 {
+	r := rateOk(TheCustomRate)
+	switch r {
+	case 0:
+		return TheCustomRate
+	case -1:
 		return 0.2
-	}
-	if TheCustomRate > 1.5 {
+	case 1:
 		return 1.5
+	default:
+		panic("rateOk returned value not 0,-1,1")
 	}
-	return TheCustomRate
+
 }
 
 func (b *BrutalSender_M) InSlowStart() bool {

@@ -225,11 +225,34 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 							log.Println("Using Hysteria Manual Control Mode")
 						}
 
-					}
-				}
-			}
-		}
-	}
+						if thing := extra["hy_manual_initial_rate"]; thing != nil {
+							if initRate, ok := thing.(float64); ok {
+
+								if rateOk(initRate) == 0 {
+									TheCustomRate = initRate
+									if ce := utils.CanLogInfo("Hysteria Manual Control Initial Rate"); ce != nil {
+										ce.Write(zap.Float64("rate", initRate))
+									} else {
+										log.Println("Hysteria Manual Control Initial Rate", initRate)
+									}
+
+								} else {
+									if ce := utils.CanLogErr("hy_manual_initial_rate not within threshold"); ce != nil {
+										ce.Write(zap.Float64("wrongValue", initRate))
+									} else {
+										log.Println("hy_manual_initial_rate not within threshold", initRate)
+									}
+
+								}
+
+							}
+						}
+
+					} // ismanual
+				} // ismanual, ok
+			} // hy_manual
+		} // use hysteria
+	} //congestion control
 
 	return
 }
