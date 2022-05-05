@@ -18,12 +18,16 @@
 # 所以这里版本可以随便自己填了 或者自己给出命令行参数来调节. 很棒吧. 
 # 参数控制版本号示例:  运行  make BUILD_VERSION=myversion_1
 
+prefix          :=verysimple
+winsuffix       :=.exe
+
+
 dependency                  :=*.go ../../*.go ../../**/*.go ../../**/**/*.go
 dependency_with_Makefile    :=Makefile $(dependency)
 
 ifeq ($(OS),Windows_NT) 
-    detected_OS := Windows
-	suffix :=${winsuffix}
+    detected_OS   :=Windows
+	defaultSuffix :=${winsuffix}
 else
     detected_OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
 
@@ -37,6 +41,8 @@ md5cmdline:=$(md5cmd) $(dependency) | $(md5cmd)
 
 endif
 
+defaultOutFn    :=${prefix}${defaultSuffix}
+
 
 # 默认 BUILD_VERSION  会获取当前git 的 commit id, 以及所有go文件的md5结果总和的md5. 如果你不是 git clone的 而是直接下载的源码文件，则 是获取不到commit的,
 # 注意，因为 macos, linux 和 windows 上 所执行的 md5命令的输出略有不同, 所以完全相同的文件在不同系统上实际得到的 总和md5 值是不同的。所以 md5值 要和 build_on 信息 结合 进行判断。
@@ -44,10 +50,7 @@ endif
 # BUILD_VERSION   :=myversion
 BUILD_VERSION   :=[ build_on: $(detected_OS), commit: $(shell git rev-parse --short HEAD), all_go_files_md5: $(shell $(md5cmdline)), tags:$(tags) ]
 
-prefix          :=verysimple
-winsuffix       :=.exe
 
-defaultOutFn    :=${prefix}${suffix}
 
 
 #这些Fn变量是用于发布包压缩包的名称，不是压缩包内部的可执行文件名称. 可执行文件统一叫 verysimple
@@ -90,7 +93,7 @@ endif
 endif
 
 ${defaultOutFn}: BUILD_VERSION $(dependency_with_Makefile) 
-	$(call compile, $(prefix),,,$(suffix))
+	$(call compile, $(prefix),,,$(defaultSuffix))
 
 
 ifneq ($(detected_OS),Windows)
