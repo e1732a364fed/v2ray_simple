@@ -120,7 +120,7 @@ define DEPENDABLE_VAR
 
 .PHONY: phony
 $1: phony
-	findstr "$($1)" $1 >nul 2>&1 || echo|set /p dummyName= "$($1)" > $1
+	@findstr "$($1)" $1 >nul 2>&1 || echo|set /p dummyName= "$($1)" > $1
 endef
 
 endif
