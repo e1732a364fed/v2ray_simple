@@ -39,7 +39,7 @@ func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 
 //implements proxy.Server
 type Server struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 }
 
 func (*Server) CanFallback() bool {

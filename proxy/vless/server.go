@@ -59,7 +59,7 @@ func NewServer(url *url.URL) (proxy.Server, error) {
 //Server 同时支持vless v0 和 v1
 //实现 proxy.UserServer 以及 tlsLayer.UserHaser
 type Server struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 	userHashes map[[16]byte]bool
 	mux4Hashes sync.RWMutex
 }

@@ -57,13 +57,16 @@ var (
 	fb_h2c_PROXYprotocolAddrMap_mutex sync.RWMutex
 )
 
-// ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
-// 监听 inServer, 然后试图转发到一个 proxy.Client。如果env没给出，则会转发到 defaultOutClient。
-// 若 env 不为 nil, 则会 进行分流或回落。具有env的情况下，可能会转发到 非 defaultOutClient 的其他 proxy.Client.
-//
-// Use cases: refer to tcp_test.go, udp_test.go or cmd/verysimple.
-//
-// non-blocking. closer used to stop listening. It means listening failed if closer == nil,
+/*ListenSer 函数 是本包 最重要的函数。可以 直接使用 本函数 来手动开启新的 自定义的 转发流程。
+监听 inServer, 然后试图转发到一个 proxy.Client。如果env没给出，则会转发到 defaultOutClient。
+若 env 不为 nil, 则会 进行分流或回落。具有env的情况下，可能会转发到 非 defaultOutClient 的其他 proxy.Client.
+
+inServer and defaultOutClient must not be nil.
+
+Use cases: refer to tcp_test.go, udp_test.go or cmd/verysimple.
+
+non-blocking. closer used to stop listening. It means listening failed if closer == nil,
+*/
 func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.RoutingEnv) (closer io.Closer) {
 
 	var handleHere bool
@@ -141,7 +144,9 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 
 			ce.Write(
 				zap.String("protocol", proxy.GetFullName(inServer)),
-				zap.String("addr", inServer.AddrStr()),
+				zap.String("listen_addr", inServer.AddrStr()),
+				zap.String("defaultClient", proxy.GetFullName(defaultOutClient)),
+				zap.String("dial_addr", defaultOutClient.AddrStr()),
 			)
 		}
 

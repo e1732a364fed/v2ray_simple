@@ -104,7 +104,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 //implements proxy.Server
 type Server struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 
 	targetAddr netLayer.Addr
 }

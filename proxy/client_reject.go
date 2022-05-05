@@ -45,7 +45,7 @@ func (RejectCreator) NewClient(dc *DialConf) (Client, error) {
 //正常的 blackhole，并不会立即关闭连接，而是悄无声息地 读 数据，并舍弃。
 //而 v2ray的 blackhole是 选择性返回 403错误 后立即关闭连接. 完全是 Reject的特性。
 type RejectClient struct {
-	ProxyCommonStruct
+	Base
 
 	theType string
 }

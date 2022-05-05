@@ -64,25 +64,29 @@ func RegisterServer(name string, c ServerCreator) {
 	serverCreatorMap[name] = c
 }
 
+func newclient(creator ClientCreator, dc *DialConf) (Client, error) {
+	c, e := creator.NewClient(dc)
+	if e != nil {
+		return nil, e
+	}
+	e = configCommonForClient(c, dc)
+	if e != nil {
+		return nil, e
+	}
+	if dc.TLS {
+		c.GetBase().TLS = true
+		e = prepareTLS_forClient(c, dc)
+	}
+	return c, e
+
+}
+
 func NewClient(dc *DialConf) (Client, error) {
 	protocol := dc.Protocol
 	creator, ok := clientCreatorMap[protocol]
 	if ok {
-		c, e := creator.NewClient(dc)
-		if e != nil {
-			return nil, e
-		}
-		e = configCommonForClient(c, dc)
-		if e != nil {
-			return nil, e
-		}
-		if dc.TLS {
-			c.SetUseTLS()
-			e = prepareTLS_forClient(c, dc)
-			return c, e
-		}
 
-		return c, nil
+		return newclient(creator, dc)
 	} else {
 		realScheme := strings.TrimSuffix(protocol, "s")
 		creator, ok = clientCreatorMap[realScheme]
@@ -95,7 +99,7 @@ func NewClient(dc *DialConf) (Client, error) {
 			if err != nil {
 				return nil, err
 			}
-			c.SetUseTLS()
+			c.GetBase().TLS = true
 			err = prepareTLS_forClient(c, dc)
 			return c, err
 
@@ -136,7 +140,7 @@ func ClientFromURL(s string) (Client, bool, utils.ErrInErr) {
 			}
 			configCommonByURL(c, u)
 
-			c.SetUseTLS()
+			c.GetBase().TLS = true
 			prepareTLS_forProxyCommon_withURL(u, true, c)
 
 			return c, false, utils.ErrInErr{}
@@ -162,7 +166,7 @@ func NewServer(lc *ListenConf) (Server, error) {
 		}
 
 		if lc.TLS {
-			ser.SetUseTLS()
+			ser.GetBase().TLS = true
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
 				return nil, utils.ErrInErr{ErrDesc: "prepareTLS failed", ErrDetail: err}
@@ -185,7 +189,7 @@ func NewServer(lc *ListenConf) (Server, error) {
 				return nil, err
 			}
 
-			ser.SetUseTLS()
+			ser.GetBase().TLS = true
 			err = prepareTLS_forServer(ser, lc)
 			if err != nil {
 				return nil, utils.ErrInErr{ErrDesc: "prepareTLS failed", ErrDetail: err}
@@ -236,7 +240,7 @@ func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 			}
 			configCommonURLQueryForServer(server, u)
 
-			server.SetUseTLS()
+			server.GetBase().TLS = true
 			prepareTLS_forProxyCommon_withURL(u, false, server)
 			return server, false, utils.ErrInErr{}
 
@@ -247,7 +251,7 @@ func ServerFromURL(s string) (Server, bool, utils.ErrInErr) {
 }
 
 //setTag, setCantRoute, call configCommonByURL
-func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
+func configCommonURLQueryForServer(ser BaseInterface, u *url.URL) {
 	nr := false
 	q := u.Query()
 	if q.Get("noroute") != "" {
@@ -255,7 +259,7 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 	}
 	configCommonByURL(ser, u)
 
-	serc := ser.getCommon()
+	serc := ser.GetBase()
 	if serc == nil {
 		return
 	}
@@ -281,20 +285,25 @@ func configCommonURLQueryForServer(ser ProxyCommon, u *url.URL) {
 }
 
 //SetAddrStr
-func configCommonByURL(ser ProxyCommon, u *url.URL) {
+func configCommonByURL(ser BaseInterface, u *url.URL) {
 	if u.Scheme != DirectName {
 		ser.SetAddrStr(u.Host) //若不给出port，那就只有host名，这样不好，我们 默认 配置里肯定给了port
 
 	}
+	serc := ser.GetBase()
+	if serc == nil {
+		return
+	}
+	serc.setNetwork(u.Query().Get("network"))
 }
 
 //SetAddrStr,  ConfigCommon
-func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
+func configCommonForClient(cli BaseInterface, dc *DialConf) error {
 	if cli.Name() != DirectName {
 		cli.SetAddrStr(dc.GetAddrStrForListenOrDial())
 	}
 
-	clic := cli.getCommon()
+	clic := cli.GetBase()
 	if clic == nil {
 		return nil
 	}
@@ -307,9 +316,9 @@ func configCommonForClient(cli ProxyCommon, dc *DialConf) error {
 }
 
 //SetAddrStr, setCantRoute,setFallback, ConfigCommon
-func configCommonForServer(ser ProxyCommon, lc *ListenConf) error {
+func configCommonForServer(ser BaseInterface, lc *ListenConf) error {
 	ser.SetAddrStr(lc.GetAddrStrForListenOrDial())
-	serc := ser.getCommon()
+	serc := ser.GetBase()
 	if serc == nil {
 		return nil
 	}

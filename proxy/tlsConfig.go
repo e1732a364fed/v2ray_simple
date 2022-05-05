@@ -8,10 +8,10 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 )
 
-func updateAlpnListByAdvLayer(com ProxyCommon, alpnList []string) (result []string) {
+func updateAlpnListByAdvLayer(com BaseInterface, alpnList []string) (result []string) {
 	result = alpnList
 
-	common := com.getCommon()
+	common := com.GetBase()
 	if common == nil {
 		return
 	}
@@ -19,9 +19,9 @@ func updateAlpnListByAdvLayer(com ProxyCommon, alpnList []string) (result []stri
 	if adv := com.AdvancedLayer(); adv != "" {
 		var creator advLayer.Creator
 
-		if c := common.advC; c != nil {
+		if c := common.AdvC; c != nil {
 			creator = c
-		} else if s := common.advS; s != nil {
+		} else if s := common.AdvS; s != nil {
 			creator = s
 		} else {
 			return
@@ -47,10 +47,10 @@ func updateAlpnListByAdvLayer(com ProxyCommon, alpnList []string) (result []stri
 }
 
 //use dc.Host, dc.Insecure, dc.Utls, dc.Alpn.
-func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
+func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 	alpnList := updateAlpnListByAdvLayer(com, dc.Alpn)
 
-	clic := com.getCommon()
+	clic := com.GetBase()
 	if clic == nil {
 		return nil
 	}
@@ -60,9 +60,9 @@ func prepareTLS_forClient(com ProxyCommon, dc *DialConf) error {
 }
 
 //use lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, lc.Alpn.
-func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
+func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
-	serc := com.getCommon()
+	serc := com.GetBase()
 	if serc == nil {
 		return nil
 	}
@@ -79,13 +79,13 @@ func prepareTLS_forServer(com ProxyCommon, lc *ListenConf) error {
 }
 
 //给 ProxyCommon 的tls做一些配置上的准备，从url读取配置
-func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com ProxyCommon) error {
+func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com BaseInterface) error {
 	insecureStr := u.Query().Get("insecure")
 	insecure := false
 	if insecureStr != "" && insecureStr != "false" && insecureStr != "0" {
 		insecure = true
 	}
-	cc := com.getCommon()
+	cc := com.GetBase()
 
 	if isclient {
 		utlsStr := u.Query().Get("utls")

@@ -25,7 +25,7 @@ func init() {
 
 // TODO: Support Auth
 type Server struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 	//user string
 	//password string
 }

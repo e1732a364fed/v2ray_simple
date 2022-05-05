@@ -77,33 +77,35 @@ func LoadConfig(configFileName, listenURL, dialURL string, jsonMode int) (standa
 			standardConf, err = LoadTomlConfFile(fpath)
 			if err != nil {
 
-				log.Printf("can not load standard config file: %s\n", err)
-				confMode = -1
-				return
+				log.Printf("can not load standard config file: %v, \n", err)
+				goto url
+
 			}
 
 			confMode = StandardMode
 
-			return
 		} else {
 
 			confMode = SimpleMode
 			simpleConf, mainFallback, err = loadSimpleConf_byFile(fpath)
+
 		}
 
-	} else {
+		return
 
-		if listenURL != "" {
-			log.Printf("No Such Config File:%s,will try using -L,-D parameter \n", configFileName)
-
-			confMode = SimpleMode
-			simpleConf, err = loadSimpleConf_byUrl(listenURL, dialURL)
-		} else {
-			log.Printf("no -L listen URL provided \n")
-			err = errors.New("no -L listen URL provided")
-			confMode = -1
-			return
-		}
 	}
+url:
+	if listenURL != "" {
+		log.Printf("trying -L,-D parameters \n")
+
+		confMode = SimpleMode
+		simpleConf, err = loadSimpleConf_byUrl(listenURL, dialURL)
+	} else {
+		log.Printf("no -L listen URL provided \n")
+		err = errors.New("no -L listen URL provided")
+		confMode = -1
+		return
+	}
+
 	return
 }

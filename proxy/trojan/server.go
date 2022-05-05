@@ -43,7 +43,7 @@ func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 
 //implements proxy.Server
 type Server struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 
 	userHashes map[string]bool
 

@@ -98,7 +98,7 @@ func NewClientByURL(url *url.URL) (proxy.Client, error) {
 
 //实现 proxy.UserClient
 type Client struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 
 	version int
 

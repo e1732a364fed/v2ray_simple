@@ -157,6 +157,14 @@ func mainFunc() (result int) {
 
 	var loadConfigErr error
 
+	if utils.GivenFlags["c"] == nil {
+		//如果-c参数没给出，那么默认的值 很可能没有对应的文件
+		fpath := utils.GetFilePath(configFileName)
+		if !utils.FileExist(fpath) {
+			configFileName = ""
+		}
+	}
+
 	standardConf, simpleConf, mode, mainFallback, loadConfigErr = proxy.LoadConfig(configFileName, listenURL, dialURL, 0)
 
 	if loadConfigErr == nil {

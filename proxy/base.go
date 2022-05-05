@@ -14,32 +14,34 @@ import (
 	"go.uber.org/zap"
 )
 
-// Provide supports for all VSI model layers except proxy layer for a proxy.
-type ProxyCommon interface {
+//BaseInterface provides supports for all VSI model layers except proxy layer.
+type BaseInterface interface {
 	Name() string       //代理协议名称, 如vless
 	MiddleName() string //不包含传输层 和 代理层的 其它VSI层 所使用的协议，前后被加了加号，如 +tls+ws+
 
 	Stop()
 
-	getCommon() *ProxyCommonStruct
+	GetBase() *Base
+	GetTag() string
 
-	/////////////////// 网络层/传输层 ///////////////////
-
-	GetSockopt() *netLayer.Sockopt
-	GetXver() int
+	/////////////////// 网络层 ///////////////////
 
 	// 地址,若tcp/udp的话则为 ip:port/host:port的形式, 若是 unix domain socket 则是文件路径 ，
 	// 在 inServer就是监听地址，在 outClient就是拨号地址
 	AddrStr() string
 	SetAddrStr(string)
-	Network() string
+
+	GetSockopt() *netLayer.Sockopt
 
 	CantRoute() bool //for inServer
-	GetTag() string
+
+	/////////////////// 传输层 ///////////////////
+
+	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc.
+	GetXver() int
 
 	/////////////////// TLS层 ///////////////////
 
-	SetUseTLS()
 	IsUseTLS() bool
 
 	GetTLS_Server() *tlsLayer.Server
@@ -70,12 +72,12 @@ type ProxyCommon interface {
 	HasInnerMux() (int, string)
 }
 
-// ProxyCommonStruct 实现 ProxyCommon中除了Name 之外的其他方法.
+// Base 实现 BaseInterface 中除了Name 之外的其他方法.
 // 规定，所有的proxy都要内嵌本struct. 我们用这种方式实现 "继承".
 // 这是verysimple的架构所要求的。
-// verysimple规定，在加载完配置文件后，一个listen和一个dial所使用的全部层级都是确定了的.
+// verysimple规定，在加载完配置文件后，listen/dial 所使用的全部层级都是完整确定了的.
 //  因为所有使用的层级都是确定的，就可以进行针对性优化
-type ProxyCommonStruct struct {
+type Base struct {
 	listenConf *ListenConf
 	dialConf   *DialConf
 
@@ -90,49 +92,49 @@ type ProxyCommonStruct struct {
 	tls_s *tlsLayer.Server
 	tls_c *tlsLayer.Client
 
-	header *httpLayer.HeaderPreset
+	Header *httpLayer.HeaderPreset
 
 	cantRoute bool //for inServer, 若为true，则 inServer 读得的数据 不会经过分流，一定会通过用户指定的remoteclient发出
 
 	AdvancedL string
 
-	advC advLayer.Client
-	advS advLayer.Server
+	AdvC advLayer.Client
+	AdvS advLayer.Server
 
 	FallbackAddr *netLayer.Addr
 
-	innermux *smux.Session //用于存储 client的已拨号的mux连接
+	Innermux *smux.Session //用于存储 client的已拨号的mux连接
 
 }
 
-func (pcs *ProxyCommonStruct) getCommon() *ProxyCommonStruct {
+func (pcs *Base) GetBase() *Base {
 	return pcs
 }
 
-func (pcs *ProxyCommonStruct) Network() string {
+func (pcs *Base) Network() string {
 	return pcs.network
 }
 
-func (pcs *ProxyCommonStruct) GetXver() int {
+func (pcs *Base) GetXver() int {
 	return pcs.xver
 }
 
-func (pcs *ProxyCommonStruct) HasHeader() *httpLayer.HeaderPreset {
-	return pcs.header
+func (pcs *Base) HasHeader() *httpLayer.HeaderPreset {
+	return pcs.Header
 }
 
-func (pcs *ProxyCommonStruct) GetFallback() *netLayer.Addr {
+func (pcs *Base) GetFallback() *netLayer.Addr {
 	return pcs.FallbackAddr
 }
 
-func (pcs *ProxyCommonStruct) MiddleName() string {
+func (pcs *Base) MiddleName() string {
 	var sb strings.Builder
 	sb.WriteString("")
 
 	if pcs.TLS {
 		sb.WriteString("+tls")
 	}
-	if pcs.header != nil {
+	if pcs.Header != nil {
 		if pcs.AdvancedL != "ws" {
 			sb.WriteString("+http")
 		}
@@ -145,20 +147,20 @@ func (pcs *ProxyCommonStruct) MiddleName() string {
 	return sb.String()
 }
 
-func (pcs *ProxyCommonStruct) CantRoute() bool {
+func (pcs *Base) CantRoute() bool {
 	return pcs.cantRoute
 }
 
-func (pcs *ProxyCommonStruct) InnerMuxEstablished() bool {
-	return pcs.innermux != nil && !pcs.innermux.IsClosed()
+func (pcs *Base) InnerMuxEstablished() bool {
+	return pcs.Innermux != nil && !pcs.Innermux.IsClosed()
 }
 
 //placeholder
-func (pcs *ProxyCommonStruct) HasInnerMux() (int, string) {
+func (pcs *Base) HasInnerMux() (int, string) {
 	return 0, ""
 }
 
-func (*ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
+func (*Base) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
 	smuxConfig := smux.DefaultConfig()
 	smuxSession, err := smux.Server(wlc, smuxConfig)
 	if err != nil {
@@ -172,16 +174,16 @@ func (*ProxyCommonStruct) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux
 	return smuxSession
 }
 
-func (pcs *ProxyCommonStruct) CloseInnerMuxSession() {
-	if pcs.innermux != nil && !pcs.innermux.IsClosed() {
-		pcs.innermux.Close()
-		pcs.innermux = nil
+func (pcs *Base) CloseInnerMuxSession() {
+	if pcs.Innermux != nil && !pcs.Innermux.IsClosed() {
+		pcs.Innermux.Close()
+		pcs.Innermux = nil
 	}
 }
 
-func (pcs *ProxyCommonStruct) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
-	if pcs.innermux != nil && !pcs.innermux.IsClosed() {
-		return pcs.innermux
+func (pcs *Base) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
+	if pcs.Innermux != nil && !pcs.Innermux.IsClosed() {
+		return pcs.Innermux
 	} else {
 		smuxConfig := smux.DefaultConfig()
 		smuxSession, err := smux.Client(wrc, smuxConfig)
@@ -193,24 +195,24 @@ func (pcs *ProxyCommonStruct) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *
 			}
 			return nil
 		}
-		pcs.innermux = smuxSession
+		pcs.Innermux = smuxSession
 		return smuxSession
 	}
 }
 
 //return false. As a placeholder.
-func (pcs *ProxyCommonStruct) IsUDP_MultiChannel() bool {
+func (pcs *Base) IsUDP_MultiChannel() bool {
 	return false
 }
 
-func (pcs *ProxyCommonStruct) GetTag() string {
+func (pcs *Base) GetTag() string {
 	return pcs.Tag
 }
-func (pcs *ProxyCommonStruct) GetSockopt() *netLayer.Sockopt {
+func (pcs *Base) GetSockopt() *netLayer.Sockopt {
 	return pcs.Sockopt
 }
 
-func (pcs *ProxyCommonStruct) setNetwork(network string) {
+func (pcs *Base) setNetwork(network string) {
 	if network == "" {
 		pcs.network = "tcp"
 
@@ -220,53 +222,49 @@ func (pcs *ProxyCommonStruct) setNetwork(network string) {
 	}
 }
 
-func (pcs *ProxyCommonStruct) AdvancedLayer() string {
+func (pcs *Base) AdvancedLayer() string {
 	return pcs.AdvancedL
 }
 
 //try close inner mux
-func (s *ProxyCommonStruct) Stop() {
-	if s.innermux != nil {
-		s.innermux.Close()
+func (s *Base) Stop() {
+	if s.Innermux != nil {
+		s.Innermux.Close()
 	}
 }
 
 //return false. As a placeholder.
-func (s *ProxyCommonStruct) CanFallback() bool {
+func (s *Base) CanFallback() bool {
 	return false
 }
 
-func (s *ProxyCommonStruct) GetTLS_Server() *tlsLayer.Server {
+func (s *Base) GetTLS_Server() *tlsLayer.Server {
 	return s.tls_s
 }
-func (s *ProxyCommonStruct) GetTLS_Client() *tlsLayer.Client {
+func (s *Base) GetTLS_Client() *tlsLayer.Client {
 	return s.tls_c
 }
 
-func (s *ProxyCommonStruct) AddrStr() string {
+func (s *Base) AddrStr() string {
 	return s.Addr
 }
-func (s *ProxyCommonStruct) SetAddrStr(a string) {
+func (s *Base) SetAddrStr(a string) {
 	s.Addr = a
 }
 
-func (s *ProxyCommonStruct) IsUseTLS() bool {
+func (s *Base) IsUseTLS() bool {
 	return s.TLS
 }
 
-func (s *ProxyCommonStruct) SetUseTLS() {
-	s.TLS = true
+func (s *Base) GetAdvClient() advLayer.Client {
+	return s.AdvC
 }
-
-func (s *ProxyCommonStruct) GetAdvClient() advLayer.Client {
-	return s.advC
-}
-func (s *ProxyCommonStruct) GetAdvServer() advLayer.Server {
-	return s.advS
+func (s *Base) GetAdvServer() advLayer.Server {
+	return s.AdvS
 }
 
 //setNetwork, xver, Tag,Sockopt,header,AdvancedL, InitAdvLayer
-func (c *ProxyCommonStruct) ConfigCommon(cc *CommonConf) {
+func (c *Base) ConfigCommon(cc *CommonConf) {
 
 	c.setNetwork(cc.Network)
 	c.xver = cc.Xver
@@ -275,7 +273,7 @@ func (c *ProxyCommonStruct) ConfigCommon(cc *CommonConf) {
 
 	if cc.HttpHeader != nil {
 		cc.HttpHeader.AssignDefaultValue()
-		c.header = (cc.HttpHeader)
+		c.Header = (cc.HttpHeader)
 	}
 
 	c.AdvancedL = cc.AdvancedLayer
@@ -283,7 +281,7 @@ func (c *ProxyCommonStruct) ConfigCommon(cc *CommonConf) {
 	c.InitAdvLayer()
 }
 
-func (s *ProxyCommonStruct) InitAdvLayer() {
+func (s *Base) InitAdvLayer() {
 	switch s.AdvancedL {
 	case "":
 		return
@@ -341,7 +339,7 @@ func (s *ProxyCommonStruct) InitAdvLayer() {
 
 			return
 		}
-		s.advC = advClient
+		s.AdvC = advClient
 
 	}
 
@@ -396,6 +394,6 @@ func (s *ProxyCommonStruct) InitAdvLayer() {
 			return
 		}
 
-		s.advS = advSer
+		s.AdvS = advSer
 	}
 }

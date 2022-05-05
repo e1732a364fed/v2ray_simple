@@ -30,7 +30,7 @@ func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 
 //implements proxy.Server
 type Server struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 }
 
 func (*Server) Name() string {

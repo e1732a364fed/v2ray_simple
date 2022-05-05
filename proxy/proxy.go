@@ -35,14 +35,15 @@ const FirstPayloadTimeout = time.Millisecond * 100
 // A Client has all the data of all layers in its VSI model.
 // Once a Client is fully defined, the flow of the data is fully defined.
 type Client interface {
-	ProxyCommon
+	BaseInterface
 
 	//Perform handshake when request is TCP。firstPayload 用于如 vless/trojan 这种 没有握手包的协议，可为空。
 	Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
-	//Establish a channel and through this channel constantly request data for each UDP addr. target can be nil theoretically.
+	//Establish a channel and constantly request data for each UDP addr through this channel. target can be empty theoretically, depending on the implementation.
 	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
 
+	//If udp is send through multiple connection or not
 	IsUDP_MultiChannel() bool
 
 	//get/listen a useable inner mux
@@ -62,7 +63,7 @@ type UserClient interface {
 // A Server has all the data of all layers in its VSI model.
 // Once a Server is fully defined, the flow of the data is fully defined.
 type Server interface {
-	ProxyCommon
+	BaseInterface
 
 	//ReadWriteCloser is for TCP request, net.PacketConn is for UDP request
 	Handshake(underlay net.Conn) (net.Conn, netLayer.MsgConn, netLayer.Addr, error)
@@ -80,9 +81,9 @@ type UserServer interface {
 // We think tcp/udp/kcp/raw_socket is FirstName，protocol of the proxy is LastName, and the rest is  MiddleName。
 //
 // An Example of a full name:  tcp+tls+ws+vless.
-// 总之，类似【域名】的规则，只不过分隔符从 点号 变成了加号。
-func GetFullName(pc ProxyCommon) string {
-	if n := pc.Name(); n == "direct" {
+// 总之，类似【域名】的规则，只不过分隔符从 点号 变成了加号, 且层级关系是从左到右。
+func GetFullName(pc BaseInterface) string {
+	if n := pc.Name(); n == DirectName {
 		return n
 	} else {
 
@@ -90,7 +91,20 @@ func GetFullName(pc ProxyCommon) string {
 	}
 }
 
-func getFullNameBuilder(pc ProxyCommon, n string) *strings.Builder {
+// return GetFullName(pc) + "://" + pc.AddrStr()
+func GetVSI_url(pc BaseInterface) string {
+	n := pc.Name()
+	if n == DirectName {
+		return DirectName + "://"
+	}
+	sb := getFullNameBuilder(pc, n)
+	sb.WriteString("://")
+	sb.WriteString(pc.AddrStr())
+
+	return sb.String()
+}
+
+func getFullNameBuilder(pc BaseInterface, n string) *strings.Builder {
 
 	var sb strings.Builder
 	sb.WriteString(pc.Network())
@@ -105,17 +119,4 @@ func getFullNameBuilder(pc ProxyCommon, n string) *strings.Builder {
 
 	return &sb
 
-}
-
-// return GetFullName(pc) + "://" + pc.AddrStr()
-func GetVSI_url(pc ProxyCommon) string {
-	n := pc.Name()
-	if n == "direct" {
-		return "direct://"
-	}
-	sb := getFullNameBuilder(pc, n)
-	sb.WriteString("://")
-	sb.WriteString(pc.AddrStr())
-
-	return sb.String()
 }

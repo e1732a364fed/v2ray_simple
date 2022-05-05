@@ -42,7 +42,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 }
 
 type Client struct {
-	proxy.ProxyCommonStruct
+	proxy.Base
 	password_hexStringBytes []byte
 	use_mux                 bool
 }
