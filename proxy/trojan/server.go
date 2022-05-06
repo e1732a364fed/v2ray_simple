@@ -58,6 +58,10 @@ func (*Server) HasInnerMux() (int, string) {
 	return 1, "simplesocks"
 }
 
+func (*Server) CanFallback() bool {
+	return true
+}
+
 //若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {

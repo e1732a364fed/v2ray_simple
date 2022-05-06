@@ -12,10 +12,6 @@ Off Topic
 
 总体而言，vless/vmess/trojan协议借鉴了socks5，有不少类似的地方。
 所以制作代理, 有必要学习socks5标准。
-
-为了安全, 我们不建议socks5作为 proxy.Client, 因为socks5的server如果放在公网的话，socks5的client发起的请求会被审查者探测到。
-
-所以这里的 Client 没有被注册到proxy。
 */
 package socks5
 

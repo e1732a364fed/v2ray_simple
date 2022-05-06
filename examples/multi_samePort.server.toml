@@ -1,0 +1,53 @@
+# 本文件先监听 vlesss，然后 各种回落
+
+[app]
+default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+
+
+[[listen]]
+tag = "vlesstls"
+protocol = "vlesss"
+ip = "0.0.0.0"
+host = "your-domain-name.com"
+port = 8443
+
+[[listen]]
+tag = "vlessgrpc"
+protocol = "vless"
+network = "unix"            # 监听unix domain socket 必须要 给出 network 为 unix
+host = "/dev/shm/grpc.sock" # 你必须要保证 /dev/shm路径存在，且你具有写权限，才行。
+advancedLayer = "grpc"
+path = "very"
+
+[[listen]]
+tag = "vlessws"
+protocol = "vless"
+network = "unix"
+host = "/dev/shm/ws.sock"   # 别忘了加双引号
+advancedLayer = "ws"
+path = "/simple"
+
+[[fallback]]
+
+from = "vlesstls"
+alpn = ["http/1.1"]
+dest = "/dev/shm/ws.sock"
+
+[[fallback]]
+
+from = "vlesstls"
+alpn = ["h2"]
+dest = "/dev/shm/grpc.sock"
+
+[[fallback]]
+
+from = "vlessgrpc"
+dest = "/dev/shm/h2c.sock"
+
+[[fallback]]
+
+from = "vlessws"
+dest = "/dev/shm/h1.sock"
+
+[[fallback]]
+dest = 80

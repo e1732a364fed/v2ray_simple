@@ -43,7 +43,7 @@ func (ef ErrBuffer) Unwarp() error {
 
 func (ef ErrBuffer) Error() string {
 
-	return ef.Err.Error()
+	return ef.Err.Error() + ", with Buffer."
 }
 
 // ErrInErr 很适合一个err包含另一个err，并且提供附带数据的情况.

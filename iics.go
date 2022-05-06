@@ -116,8 +116,6 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 			}
 
 			if inServerTlsConn := iics.inServerTlsConn; inServerTlsConn != nil {
-				//默认似乎默认tls不会给出alpn和sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
-				// 而alpn则也是正常的, 不设置肯定就是空值
 				alpn := inServerTlsConn.GetAlpn()
 
 				if alpn != "" {
@@ -125,6 +123,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 					thisFallbackType |= httpLayer.Fallback_alpn
 
 				}
+				//默认似乎默认tls不会给出sni项？获得的是空值,也许是因为我用了自签名+insecure,所以导致server并不会设置连接好后所协商的ServerName
 
 				sni := inServerTlsConn.GetSni()
 				if sni != "" {
@@ -145,6 +144,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 					if fbResult != nil {
 						ce.Write(
 							zap.String("matched", fbResult.Addr.String()),
+							zap.Any("params", fallback_params),
 						)
 					} else {
 						ce.Write(
