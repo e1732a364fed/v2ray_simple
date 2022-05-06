@@ -38,7 +38,7 @@ func (re *RoutingEnv) DelClient(tag string) {
 	re.ClientsTagMapMutex.Unlock()
 }
 
-func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv, Default_uuid string) {
+func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv) {
 
 	routingEnv.ClientsTagMap = make(map[string]Client)
 
@@ -53,8 +53,6 @@ func LoadEnvFromStandardConf(standardConf *StandardConf) (routingEnv RoutingEnv,
 	var hasAppLevelMyCountry bool
 
 	if appConf := standardConf.App; appConf != nil {
-
-		Default_uuid = appConf.DefaultUUID
 
 		hasAppLevelMyCountry = appConf.MyCountryISO_3166 != ""
 

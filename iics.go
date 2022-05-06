@@ -56,7 +56,10 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 	}
 
 	if !iics.inServer.CanFallback() {
-		iics.wrappedConn.Close()
+		if iics.wrappedConn != nil {
+			iics.wrappedConn.Close()
+
+		}
 		return false
 	}
 
@@ -66,7 +69,9 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 		fe, ok := err.(*utils.ErrBuffer)
 		if !ok {
 			// 能fallback 但是返回的 err却不是fallback err，证明遇到了更大问题，可能是底层read问题，所以也不用继续fallback了
-			iics.wrappedConn.Close()
+			if iics.wrappedConn != nil {
+				iics.wrappedConn.Close()
+			}
 			return false
 		}
 

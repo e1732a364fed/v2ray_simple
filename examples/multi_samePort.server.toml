@@ -13,13 +13,18 @@ port = 8443
 cert = "cert.pem"
 key = "cert.key"
 
-[[listen]]
-tag = "vlessgrpc"
-protocol = "vless"
-network = "unix"            # 监听unix domain socket 必须要 给出 network 为 unix
-host = "/dev/shm/grpc.sock" # 你必须要保证 /dev/shm路径存在，且你具有写权限，才行。
-advancedLayer = "grpc"
-path = "very"
+[[fallback]]
+
+from = "vlesstls"
+alpn = ["http/1.1"]
+dest = "@vlessws"   # dest 也可以写成 这种形式, 直接匹配tag, 可防止笔误。
+
+[[fallback]]
+
+from = "vlesstls"
+alpn = ["h2"]
+dest = "@vlessgrpc"
+
 
 [[listen]]
 tag = "vlessws"
@@ -31,25 +36,24 @@ path = "/simple"
 
 [[fallback]]
 
-from = "vlesstls"
-alpn = ["http/1.1"]
-dest = "/dev/shm/ws.sock"
+from = "vlessws"
+dest = "/dev/shm/h1.sock"    # 回落到 nginx的 h1 服务，你要配置nginx监听这个文件
 
-[[fallback]]
 
-from = "vlesstls"
-alpn = ["h2"]
-dest = "/dev/shm/grpc.sock"
+[[listen]]
+tag = "vlessgrpc"
+protocol = "vless"
+network = "unix"            # 监听unix domain socket 必须要 给出 network 为 unix
+host = "/dev/shm/grpc.sock" # 你必须要保证 /dev/shm路径存在，且你具有写权限，才行。
+advancedLayer = "grpc"
+path = "very"
+
 
 [[fallback]]
 
 from = "vlessgrpc"
 dest = "/dev/shm/h2c.sock"  # 回落到 nginx的 h2c 服务，你要配置nginx监听这个文件
 
-[[fallback]]
-
-from = "vlessws"
-dest = "/dev/shm/h1.sock"    # 回落到 nginx的 h1 服务，你要配置nginx监听这个文件
 
 [[fallback]]
 dest = 80
