@@ -10,7 +10,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//非阻塞。监听透明代理, 返回一个 值 用于 关闭.
+//非阻塞。监听透明代理
 func ListenTproxy(addr string, defaultOutClientForThis proxy.Client, routePolicy *netLayer.RoutePolicy) (tm *tproxy.Machine) {
 	utils.Info("Start running Tproxy")
 

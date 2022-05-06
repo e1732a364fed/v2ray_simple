@@ -40,7 +40,7 @@ func init() {
 				case 2:
 					fmt.Printf("当前rate %f\n", quic.TheCustomRate)
 				case 3:
-					fmt.Printf("rate越小越加速, rate越大越减速. 最小0.2最大1.5。实际速度倍率为 1.5/rate \n")
+					fmt.Printf("rate越小越加速, rate越大越减速. rate最小0.2最大1.5。实际速度倍率为 1.5/rate \n")
 				}
 			}
 		},

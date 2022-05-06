@@ -1,4 +1,4 @@
-package v2ray_simple
+package v2ray_simple_test
 
 import (
 	"crypto/tls"
@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -115,8 +116,8 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	ListenSer(clientEndInServer, clientEndOutClient, nil)
-	ListenSer(serverEndInServer, serverEndOutClient, nil)
+	v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
+	v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
 
 	proxyurl := "http://127.0.0.1:" + clientListenPort
 

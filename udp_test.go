@@ -1,10 +1,11 @@
-package v2ray_simple
+package v2ray_simple_test
 
 import (
 	"fmt"
 	"net"
 	"testing"
 
+	"github.com/e1732a364fed/v2ray_simple"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/proxy/socks5"
@@ -190,10 +191,10 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	ListenSer(clientEndInServer, clientEndOutClient, nil)
-	ListenSer(clientEndInServer2, clientEndOutClient, nil)
-	ListenSer(clientEndInServer3, clientEndOutClient, nil)
-	ListenSer(serverEndInServer, serverEndOutClient, nil)
+	v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
+	v2ray_simple.ListenSer(clientEndInServer2, clientEndOutClient, nil)
+	v2ray_simple.ListenSer(clientEndInServer3, clientEndOutClient, nil)
+	v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)
