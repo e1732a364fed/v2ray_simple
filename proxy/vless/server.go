@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/url"
 	"sync"
-	"time"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -135,11 +134,11 @@ func (s *Server) Name() string { return Name }
 // 返回的bytes.Buffer 是用于 回落使用的，内含了整个读取的数据;不回落时不要使用该Buffer
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 
-	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
+	if err := proxy.SetHandshakeTimeout(underlay); err != nil {
 		returnErr = err
 		return
 	}
-	defer underlay.SetReadDeadline(time.Time{})
+	defer netLayer.PersistConn(underlay)
 
 	//这里我们本 不用再创建一个buffer来缓存数据，因为tls包本身就是有缓存的，所以一点一点读就行，tcp本身系统也是有缓存的
 	// 因此v1.0.3以及更老版本都是直接一段一段read的。

@@ -22,7 +22,7 @@ var (
 func init() {
 	flag.BoolVar(&enableApiServer, "ea", false, "enable api server")
 	flag.StringVar(&apiServerPathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
-	flag.StringVar(&apiServerAdminPass, "sap", "", "api Server admin password, it won't be used if it's empty")
+	flag.StringVar(&apiServerAdminPass, "sap", "", "api Server admin password, but won't be used if it's empty")
 
 }
 

@@ -139,3 +139,7 @@ type EasyNetAddresser struct {
 
 func (iw *EasyNetAddresser) LocalAddr() net.Addr  { return iw.LA }
 func (iw *EasyNetAddresser) RemoteAddr() net.Addr { return iw.RA }
+
+func PersistConn(c net.Conn) {
+	c.SetDeadline(time.Time{})
+}

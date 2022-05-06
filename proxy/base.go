@@ -226,7 +226,7 @@ func (b *Base) AdvancedLayer() string {
 	return b.AdvancedL
 }
 
-//try close inner mux and AdvS
+//try close inner mux and stop AdvS
 func (b *Base) Stop() {
 	if b.Innermux != nil {
 		b.Innermux.Close()
@@ -267,7 +267,7 @@ func (b *Base) GetAdvServer() advLayer.Server {
 	return b.AdvS
 }
 
-//setNetwork, xver, Tag,Sockopt,header,AdvancedL, InitAdvLayer
+//setNetwork, Xver, Tag,Sockopt,Header,AdvancedL, InitAdvLayer
 func (b *Base) ConfigCommon(cc *CommonConf) {
 
 	b.setNetwork(cc.Network)

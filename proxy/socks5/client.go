@@ -51,10 +51,13 @@ func (*Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer
 		return
 	}
 
+	proxy.SetHandshakeTimeout(underlay)
+
 	n, err := underlay.Read(ba[:])
 	if err != nil {
 		return
 	}
+	netLayer.PersistConn(underlay)
 
 	if n != 2 || ba[0] != Version5 || ba[1] != 0 {
 		return nil, utils.NumErr{Prefix: "socks5 client handshake,protocol err", N: 1}
@@ -71,16 +74,27 @@ func (*Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer
 	buf.WriteByte(byte(target.Port >> 8))
 	buf.WriteByte(byte(target.Port << 8 >> 8))
 
-	n, err = underlay.Read(ba[:])
+	_, err = underlay.Write(buf.Bytes())
+	utils.PutBuf(buf)
 	if err != nil {
 		return
 	}
+
+	proxy.SetHandshakeTimeout(underlay)
+	n, err = underlay.Read(ba[:])
+
+	if err != nil {
+		return
+	}
+	netLayer.PersistConn(underlay)
+
 	if n < 10 || ba[0] != 5 || ba[1] != 0 || ba[2] != 0 {
 		return nil, utils.NumErr{Prefix: "socks5 client handshake failed when reading response", N: 2}
 
 	}
 	if len(firstPayload) > 0 {
 		underlay.Write(firstPayload)
+
 	}
 
 	return underlay, nil

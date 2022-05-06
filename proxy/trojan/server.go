@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -64,11 +63,11 @@ func (*Server) CanFallback() bool {
 
 //若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
-	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
+	if err := proxy.SetHandshakeTimeout(underlay); err != nil {
 		returnErr = err
 		return
 	}
-	defer underlay.SetReadDeadline(time.Time{})
+	defer netLayer.PersistConn(underlay)
 
 	readbs := utils.GetBytes(utils.MTU)
 

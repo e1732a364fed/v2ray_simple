@@ -1,0 +1,34 @@
+# 测试socks 的 dial; 
+
+# 另外你可以看到，listen、dial和 route的顺序是可以打乱的，
+#  这样 自己可以方便地  把相关联 的配置 放在一起。
+
+[[listen]]
+tag = "my_socks5_1"
+protocol = "socks5"
+host = "127.0.0.1" 
+port = 10800       
+
+[[dial]]
+protocol = "socks5"  
+tag = "dial1"
+host = "127.0.0.1"  
+port = 10801         
+
+[[route]]
+inTag = ["my_socks5_1"]
+dialTag = "dial1"
+
+[[listen]]
+tag = "my_socks5_2"   
+protocol = "socks5" 
+host = "127.0.0.1"
+port = 10801
+
+[[dial]]
+tag = "direct"
+protocol = "direct"
+
+[[route]]
+inTag = ["my_socks5_2"]
+dialTag = "direct"
