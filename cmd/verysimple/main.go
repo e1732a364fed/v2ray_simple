@@ -106,7 +106,7 @@ func main() {
 func mainFunc() (result int) {
 	defer func() {
 		if r := recover(); r != nil {
-			if ce := utils.CanLogFatal("Captured panic!"); ce != nil {
+			if ce := utils.CanLogErr("Captured panic!"); ce != nil {
 
 				stack := debug.Stack()
 
@@ -322,7 +322,13 @@ func mainFunc() (result int) {
 	case proxy.StandardMode:
 
 		if len(standardConf.Dial) < 1 {
-			utils.Warn("no dial in config settings")
+			utils.Warn("no dial in config settings, will add 'direct'")
+
+			allClients = append(allClients, vs.DirectClient)
+			defaultOutClient = vs.DirectClient
+
+			routingEnv.SetClient("direct", vs.DirectClient)
+
 			break
 		}
 

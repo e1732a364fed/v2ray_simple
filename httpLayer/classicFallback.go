@@ -79,7 +79,8 @@ func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditi
 
 	realMap := cfb.Map[forServerTag]
 	if realMap == nil {
-		cfb.Map[forServerTag] = make(map[FallbackConditionSet]*FallbackResult)
+		realMap = make(map[FallbackConditionSet]*FallbackResult)
+		cfb.Map[forServerTag] = realMap
 	}
 
 	realMap[condition] = &FallbackResult{Addr: addr, Xver: xver}

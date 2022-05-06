@@ -36,9 +36,10 @@ key = "cert.key"
 advancedLayer = "grpc"
 path = "ohmygod_verysimple_is_very_simple"
 
+#最简单情况下，服务端 不需要给出任何dial，不给出的话实际上程序就会自动加一个 direct。
 
-[[dial]]
-protocol = "direct"
+#[[dial]]
+#protocol = "direct"
 
 
 [[fallback]]

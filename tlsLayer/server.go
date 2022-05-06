@@ -2,10 +2,12 @@ package tlsLayer
 
 import (
 	"crypto/tls"
+	"log"
 	"net"
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
+	"golang.org/x/exp/slices"
 )
 
 type Server struct {
@@ -20,6 +22,22 @@ func NewServer(host, certFile, keyFile string, isInsecure bool, alpnList []strin
 	if err != nil {
 		return nil, err
 	}
+
+	//发现服务端必须给出 http/1.1 等，否则不会协商出这个alpn，而我们为了回落，是需要协商出所有可能需要等 alpn的。
+
+	if alpnList == nil {
+		alpnList = []string{"http/1.1", "h2"}
+	} else {
+
+		if !slices.Contains(alpnList, "http/1.1") {
+			alpnList = append(alpnList, "http/1.1")
+		}
+		if !slices.Contains(alpnList, "h2") {
+			alpnList = append(alpnList, "h2")
+		}
+	}
+
+	log.Println("NewServer", alpnList)
 
 	s := &Server{
 		tlsConfig: &tls.Config{
