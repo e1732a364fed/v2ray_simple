@@ -26,19 +26,23 @@ func init() {
 
 }
 
-//非阻塞
+//非阻塞,如果运行成功则 apiServerRunning 会被设为 true
 func tryRunApiServer() {
+
+	var thepass string
 
 	if standardConf.App != nil {
 		if ap := standardConf.App.AdminPass; ap != "" {
-			apiServerRunning = true
-
-			go runApiServer(ap)
+			thepass = ap
 		}
 	} else if apiServerAdminPass != "" {
+		thepass = apiServerAdminPass
+	}
+
+	if thepass != "" {
 		apiServerRunning = true
 
-		go runApiServer(apiServerAdminPass)
+		go runApiServer(thepass)
 	}
 }
 

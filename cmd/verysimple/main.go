@@ -50,15 +50,12 @@ const (
 	defaultLogFile = "vs_log"
 	defaultConfFn  = "client.toml"
 	defaultGeoipFn = "GeoLite2-Country.mmdb"
+
+	willExitStr = "Neither valid proxy settings available, nor cli or apiServer running. Exit now."
 )
 
-func initRouteEnv() {
-	routingEnv.ClientsTagMap = make(map[string]proxy.Client)
-
-}
-
 func init() {
-	initRouteEnv()
+	routingEnv.ClientsTagMap = make(map[string]proxy.Client)
 
 	flag.StringVar(&configFileName, "c", defaultConfFn, "config file name")
 	flag.BoolVar(&startPProf, "pp", false, "pprof")
@@ -80,8 +77,8 @@ func init() {
 
 }
 
+//我们 在程序关闭时, 主动Close, Stop
 func cleanup() {
-	//我们 在程序关闭时, 主动Close所有的监听端口
 
 	for _, ser := range allServers {
 		if ser != nil {
@@ -142,14 +139,20 @@ func mainFunc() (result int) {
 	}
 
 	if startPProf {
-		f, err := os.OpenFile("cpu.pprof", os.O_CREATE|os.O_RDWR, 0644)
+		const pprofFN = "cpu.pprof"
+		f, err := os.OpenFile(pprofFN, os.O_CREATE|os.O_RDWR, 0644)
 
 		if err == nil {
 			defer f.Close()
 			err = pprof.StartCPUProfile(f)
 			if err == nil {
 				defer pprof.StopCPUProfile()
+			} else {
+				log.Println("pprof.StartCPUProfile failed", err)
+
 			}
+		} else {
+			log.Println(pprofFN, "can't be created,", err)
 		}
 
 	}
@@ -165,7 +168,6 @@ func mainFunc() (result int) {
 
 	var loadConfigErr error
 
-	//如果-c参数没给出，那么默认的值 很可能没有对应的文件
 	fpath := utils.GetFilePath(configFileName)
 	if !utils.FileExist(fpath) {
 
@@ -226,12 +228,10 @@ func mainFunc() (result int) {
 
 	if loadConfigErr != nil && !isFlexible() {
 
-		const exitStr = "no config exist, and no api server or interactive cli enabled, exiting..."
-
-		if ce := utils.CanLogErr(exitStr); ce != nil {
+		if ce := utils.CanLogErr(willExitStr); ce != nil {
 			ce.Write(zap.Error(loadConfigErr))
 		} else {
-			log.Printf(exitStr)
+			log.Printf(willExitStr)
 
 		}
 
@@ -278,8 +278,6 @@ func mainFunc() (result int) {
 	case proxy.StandardMode:
 
 		routingEnv, Default_uuid = proxy.LoadEnvFromStandardConf(&standardConf)
-
-		initRouteEnv()
 
 		//虽然标准模式支持多个Server，目前先只考虑一个
 		//多个Server存在的话，则必须要用 tag指定路由; 然后，我们需在预先阶段就判断好tag指定的路由
@@ -378,7 +376,6 @@ func mainFunc() (result int) {
 
 	}
 
-	const willExitStr = "No valid proxy settings available, nor cli or apiServer running, exit now."
 	//没可用的listen/dial，而且还无法动态更改配置
 	if noFuture() {
 		utils.Error(willExitStr)

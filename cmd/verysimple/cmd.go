@@ -43,7 +43,7 @@ func init() {
 
 	cliCmdList = append(cliCmdList, CliCmd{
 		"下载geosite原文件", func() {
-			tryDownloadGeositeSourceFromConfiguredProxy()
+			tryDownloadGeositeSource()
 		},
 	})
 
@@ -104,31 +104,31 @@ func tryDownloadMMDB() {
 
 	const mmdbDownloadLink = "https://cdn.jsdelivr.net/gh/Loyalsoldier/geoip@release/Country.mmdb"
 
-	fmt.Printf("No GeoLite2-Country.mmdb found,start downloading from%s\n", mmdbDownloadLink)
+	fmt.Printf("No %s found,start downloading from %s\n", netLayer.GeoipFileName, mmdbDownloadLink)
 
 	resp, err := http.Get(mmdbDownloadLink)
 
 	if err != nil {
-		fmt.Printf("Download mmdb failed%s\n", err)
+		fmt.Printf("Download mmdb failed %s\n", err.Error())
 		return
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("Download mmdb got bad status: %s\n", resp.Status)
+		return
+	}
+
 	out, err := os.Create(netLayer.GeoipFileName)
 	if err != nil {
-		fmt.Printf("Download mmdb but Can't CreateFile,%s\n", err)
+		fmt.Printf("Can Download mmdb but Can't Create File,%s \n", err.Error())
 		return
 	}
 	defer out.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Download mmdb bad status:%s\n", resp.Status)
-		return
-	}
-
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
-		fmt.Printf("Write downloaded mmdb to file err:%s\n", err)
+		fmt.Printf("Write downloaded mmdb to file failed: %s\n", err.Error())
 		return
 	}
 	fmt.Printf("Download mmdb success!\n")
@@ -157,9 +157,9 @@ func printAllState(w io.Writer, withoutTProxy bool) {
 
 }
 
-//试图从自己已经配置好的节点去下载geosite源码文件
+//试图从自己已经配置好的节点去下载geosite源码文件, 如果没有节点则直连下载。
 // 我们只需要一个dial配置即可. listen我们不使用配置文件的配置，而是自行监听一个随机端口用于http代理
-func tryDownloadGeositeSourceFromConfiguredProxy() {
+func tryDownloadGeositeSource() {
 
 	var outClient proxy.Client
 
@@ -266,7 +266,7 @@ func loadSimpleServer() (result int, server proxy.Server) {
 	server, hase, eie = proxy.ServerFromURL(simpleConf.ListenUrl)
 	if hase {
 		if ce := utils.CanLogErr("can not create local server"); ce != nil {
-			ce.Write(zap.Error(eie))
+			ce.Write(zap.String("error", eie.Error()))
 		}
 		result = -1
 		return
@@ -294,7 +294,7 @@ func loadSimpleClient() (result int, client proxy.Client) {
 	client, hase, eie = proxy.ClientFromURL(simpleConf.DialUrl)
 	if hase {
 		if ce := utils.CanLogErr("can not create remote client"); ce != nil {
-			ce.Write(zap.Error(eie))
+			ce.Write(zap.String("error", eie.Error()))
 		}
 		result = -1
 		return
