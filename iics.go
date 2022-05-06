@@ -145,15 +145,11 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 					fbResult = mf.GetFallback("", thisFallbackType, fallback_params...)
 				}
 
-				if ce := utils.CanLogDebug("Fallback check"); ce != nil {
+				if ce := utils.CanLogDebug("Fallback to"); ce != nil {
 					if fbResult != nil {
 						ce.Write(
-							zap.String("matched", fbResult.Addr.String()),
+							zap.String("addr", fbResult.Addr.String()),
 							zap.Any("params", fallback_params),
-						)
-					} else {
-						ce.Write(
-							zap.String("no match", ""),
 						)
 					}
 				}
@@ -172,6 +168,11 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 
 	if defaultFallbackAddr := iics.inServer.GetFallback(); defaultFallbackAddr != nil {
 
+		if ce := utils.CanLogDebug("Fallback to default setting"); ce != nil {
+			ce.Write(
+				zap.String("addr", defaultFallbackAddr.String()),
+			)
+		}
 		targetAddr = *defaultFallbackAddr
 		result = 0
 

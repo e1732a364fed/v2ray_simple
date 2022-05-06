@@ -15,13 +15,13 @@ key = "cert.key"
 
 [[fallback]]
 
-from = "vlesstls"
+from = ["vlesstls"]
 alpn = ["http/1.1"]
 dest = "@vlessws"   # dest 也可以写成 这种形式, 直接匹配tag, 可防止笔误。
 
 [[fallback]]
 
-from = "vlesstls"
+from = ["vlesstls"]
 alpn = ["h2"]
 dest = "@vlessgrpc"
 
@@ -36,7 +36,7 @@ path = "/simple"
 
 [[fallback]]
 
-from = "vlessws"
+from = ["vlessws"]
 dest = "/dev/shm/h1.sock"    # 回落到 nginx的 h1 服务，你要配置nginx监听这个文件
 
 
@@ -51,7 +51,7 @@ path = "very"
 
 [[fallback]]
 
-from = "vlessgrpc"
+from = ["vlessgrpc"]
 dest = "/dev/shm/h2c.sock"  # 回落到 nginx的 h2c 服务，你要配置nginx监听这个文件
 
 

@@ -66,24 +66,27 @@ func NewClassicFallbackFromConfList(fcl []*FallbackConf) *ClassicFallback {
 	return cfb
 }
 
-func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, forServerTag string, addr netLayer.Addr, xver int) {
+func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditionSet, forServerTags []string, addr netLayer.Addr, xver int) {
 
 	ftype := condition.GetType()
 
-	if ftype == FallBack_default && forServerTag == "" {
+	if ftype == FallBack_default && len(forServerTags) == 0 {
 		cfb.Default = &FallbackResult{Addr: addr, Xver: xver}
 		return
 	}
 
 	cfb.supportedTypeMask |= ftype
 
-	realMap := cfb.Map[forServerTag]
-	if realMap == nil {
-		realMap = make(map[FallbackConditionSet]*FallbackResult)
-		cfb.Map[forServerTag] = realMap
-	}
+	for _, forServerTag := range forServerTags {
 
-	realMap[condition] = &FallbackResult{Addr: addr, Xver: xver}
+		realMap := cfb.Map[forServerTag]
+		if realMap == nil {
+			realMap = make(map[FallbackConditionSet]*FallbackResult)
+			cfb.Map[forServerTag] = realMap
+		}
+
+		realMap[condition] = &FallbackResult{Addr: addr, Xver: xver}
+	}
 
 }
 

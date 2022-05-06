@@ -64,7 +64,7 @@ func (FallbackResult) SupportType() byte {
 
 type FallbackConf struct {
 	//可选
-	FromTag string `toml:"from" json:"from"` //which inServer triggered this fallback
+	FromTag []string `toml:"from" json:"from"` //which inServer triggered this fallback
 
 	Xver int `toml:"xver" json:"xver"` //use PROXY protocol or not, and which version
 

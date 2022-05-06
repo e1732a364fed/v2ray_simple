@@ -39,7 +39,7 @@ var (
 
 	tproxyList []*tproxy.Machine //储存所有 tproxy的监听.(一般就一个, 但不排除极特殊情况)
 
-	listenCloserArray []io.Closer //储存除tproxy之外 所有运行的 inServer 的 Listener 的 Closer
+	listenCloserList []io.Closer //储存除tproxy之外 所有运行的 inServer 的 Listener 的 Closer
 
 	defaultOutClient proxy.Client
 
@@ -86,7 +86,7 @@ func cleanup() {
 		}
 	}
 
-	for _, listener := range listenCloserArray {
+	for _, listener := range listenCloserList {
 		if listener != nil {
 			listener.Close()
 		}
@@ -364,14 +364,14 @@ func mainFunc() (result int) {
 		if mode == proxy.SimpleMode {
 			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
 			if lis != nil {
-				listenCloserArray = append(listenCloserArray, lis)
+				listenCloserList = append(listenCloserList, lis)
 			}
 		} else {
 			for _, inServer := range allServers {
 				lis := vs.ListenSer(inServer, defaultOutClient, &routingEnv)
 
 				if lis != nil {
-					listenCloserArray = append(listenCloserArray, lis)
+					listenCloserList = append(listenCloserList, lis)
 				}
 			}
 
@@ -440,7 +440,7 @@ func mainFunc() (result int) {
 }
 
 func hasProxyRunning() bool {
-	return len(listenCloserArray) > 0 || len(tproxyList) > 0
+	return len(listenCloserList) > 0 || len(tproxyList) > 0
 }
 
 //是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改

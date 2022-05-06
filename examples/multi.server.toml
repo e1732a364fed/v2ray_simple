@@ -43,7 +43,7 @@ path = "ohmygod_verysimple_is_very_simple"
 
 
 [[fallback]]
-from = "my_ws1" # 可选， 标明该fallback用于 哪个tag的 listen。 如果未给出，则所有listen都会用到该fallback。
+from = ["my_ws1"] # 可选， 标明该fallback用于 哪个tag的 listen。 如果未给出，则所有listen都会用到该fallback。
 
 dest = 6060     # 必填，回落到本机端口 6060
 
