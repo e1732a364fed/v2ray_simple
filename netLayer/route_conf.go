@@ -13,9 +13,9 @@ import (
 )
 
 type RuleConf struct {
-	DialTag any `toml:"dialTag"`
+	DialTag any `toml:"toTag"`
 
-	InTags []string `toml:"inTag"`
+	InTags []string `toml:"fromTag"`
 
 	Countries []string `toml:"country"` // 如果类似 !CN, 则意味着专门匹配不为CN 的国家（目前还未实现）
 	IPs       []string `toml:"ip"`

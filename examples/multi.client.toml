@@ -100,17 +100,17 @@ protocol = "reject"		# 和 v2ray的 blackhole 等价.
 
 # 下面这个route中，我们只给了tag, 没给其它限定条件，这个是无效的，永远匹配不到。
 #[[route]]
-#dialTag = "my_vless1"
+#toTag = "my_vless1"
 
 
-# 关于 [[route]] 的 dialTag:
+# 关于 [[route]] 的 toTag:
 # direct并不需要 在dial中实际给出。 "proxy" 代表首个dial, 也不需要实际赋值该tag
 
 
 [[route]]
 
 
-dialTag = "my_ws1"
+toTag = "my_ws1"
 country = ["US"]    
 
 # 上面这个规则的 意思就是所有向US国家的ip请求的数据 全都 通过 my_ws1 这个dial 拨号, 如果你写direct自然就直接直连
@@ -118,22 +118,22 @@ country = ["US"]
 
 # 比如下面这个就是 将CN国家的ip 导向自己的grpc节点
 #[[route]]
-#dialTag = "my_grpc"
+#toTag = "my_grpc"
 #country = ["CN"]    
 
 
 # 比如下面这个就是 将CN国家的ip进行直连
 #[[route]]
-#dialTag = "direct"
+#toTag = "direct"
 #country = ["CN"]    
 
 # 本示例为了测试节点可用性, 默认将直连的路由注释掉了, 如果你在CN国家并想直连CN的ip, 请取消注释上面三行. 并移除其它路由CN的route项
 
 
-# 下面这种 dialTag 传入列表的用法 非常简洁, 可以达到负载均衡的效果,
+# 下面这种 toTag 传入列表的用法 非常简洁, 可以达到负载均衡的效果,
 # 每次路由US国家的流量都会随机从列表中选一项
 #[[route]]
-#dialTag = ["my_vps1","myvps2"]
+#toTag = ["my_vps1","myvps2"]
 #country = ["US"]
 
 
@@ -157,11 +157,11 @@ country = ["US"]
 
 # 比如这个就是 将CN国家的域名 导向自己的grpc节点
 [[route]]
-dialTag = "my_grpc"
+toTag = "my_grpc"
 domain = ["geosite:cn"]
 
 # 其它匹配:
 # network = ["tcp","udp"]	# 匹配 实际客户数据的 传输层协议
-# inTag = ["tag1","tag2"]	# 匹配 来自哪一个 listen 的 tag
+# fromTag = ["tag1","tag2"]	# 匹配 来自哪一个 listen 的 tag
 # country = ["CN"]			# 匹配 geoip 以及 cn 顶级域名.
 

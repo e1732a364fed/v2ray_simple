@@ -16,5 +16,5 @@ protocol = "direct"
 # fullcone = true   # 默认的fullcone是关闭状态, 可以取消注释以打开
 
 [[route]]
-inTag = ["my_vlesss1"]
-dialTag = "mydirect"
+fromTag = ["my_vlesss1"]
+toTag = "mydirect"
