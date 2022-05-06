@@ -34,43 +34,43 @@ extra: linux_arm32_v7 linux_mips64 linux_mips linux_s390x linux_riscv64 win32
 # 关于arm版本号 https://github.com/goreleaser/goreleaser/issues/36
 
 linux_amd64:
-	$(call compile, linux_amd64,linux,amd64)
+	$(call compile,linux_amd64,linux,amd64)
 
 linux_arm64:
-	$(call compile, linux_arm64,linux,arm64)
+	$(call compile,linux_arm64,linux,arm64)
 
 linux_arm32_v7:
-	$(call compile, linux_arm32_v7a,linux,arm,,7)
+	$(call compile,linux_arm32_v7a,linux,arm,,7)
 
 linux_mips64:
-	$(call compile, linux_mips64,linux,mips64)
+	$(call compile,linux_mips64,linux,mips64)
 
 linux_mips:
-	$(call compile, linux_mips,linux,mips)
+	$(call compile,linux_mips,linux,mips)
 
 linux_s390x:
-	$(call compile, linux_s390x,linux,s390x)
+	$(call compile,linux_s390x,linux,s390x)
 
 linux_riscv64:
-	$(call compile, linux_riscv64,linux,riscv64)
+	$(call compile,linux_riscv64,linux,riscv64)
 
 android_arm64:
-	$(call compile, android_arm64,android,arm64)
+	$(call compile,android_arm64,android,arm64)
 
 macos:
-	$(call compile, macOS_intel,darwin,amd64)
+	$(call compile,macOS_intel,darwin,amd64)
 
 macm1:
-	$(call compile, macOS_apple,darwin,arm64)
+	$(call compile,macOS_apple,darwin,arm64)
 
 win32:
-	$(call compile, win32,windows,386,.exe)
+	$(call compile,win32,windows,386,.exe)
 
 win10:
-	$(call compile, win10,windows,amd64,.exe)
+	$(call compile,win10,windows,amd64,.exe)
 
 win10_arm:
-	$(call compile, win10_arm64,windows,arm64,.exe)
+	$(call compile,win10_arm64,windows,arm64,.exe)
 
 
 clean:
