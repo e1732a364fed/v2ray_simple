@@ -93,23 +93,23 @@ type timeouter struct {
 	closeFunc func()
 }
 
-func (g *timeouter) SetReadDeadline(t time.Time) error  { return g.SetDeadline(t) }
-func (g *timeouter) SetWriteDeadline(t time.Time) error { return g.SetDeadline(t) }
+func (c *timeouter) SetReadDeadline(t time.Time) error  { return c.SetDeadline(t) }
+func (c *timeouter) SetWriteDeadline(t time.Time) error { return c.SetDeadline(t) }
 
-func (g *timeouter) SetDeadline(t time.Time) error {
+func (c *timeouter) SetDeadline(t time.Time) error {
 
 	var d time.Duration
 
-	if g.deadline != nil {
+	if c.deadline != nil {
 
 		if t == (time.Time{}) {
-			g.deadline.Stop()
-			g.deadline = nil
+			c.deadline.Stop()
+			c.deadline = nil
 			return nil
 		}
 
 		d = time.Until(t)
-		g.deadline.Reset(d)
+		c.deadline.Reset(d)
 
 	} else {
 		if t == (time.Time{}) {
@@ -117,7 +117,7 @@ func (g *timeouter) SetDeadline(t time.Time) error {
 		}
 
 		d = time.Until(t)
-		g.deadline = time.AfterFunc(d, g.closeFunc)
+		c.deadline = time.AfterFunc(d, c.closeFunc)
 	}
 
 	return nil

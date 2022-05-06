@@ -17,7 +17,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 	if xver > 0 {
 
 		if ce := utils.CanLogDebug("Listening PROXY protocol"); ce != nil {
-			ce.Write(zap.Int("prefered version", xver))
+			ce.Write(zap.Int("preferred version", xver))
 		}
 
 		listener = &proxyproto.Listener{Listener: listener, Policy: proxyProtocolListenPolicyFunc}

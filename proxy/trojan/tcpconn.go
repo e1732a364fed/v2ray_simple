@@ -22,19 +22,19 @@ type UserTCPConn struct {
 	isServerEnd bool
 }
 
-func (uc *UserTCPConn) Read(p []byte) (int, error) {
-	if uc.remainFirstBufLen > 0 {
-		n, err := uc.optionalReader.Read(p)
+func (c *UserTCPConn) Read(p []byte) (int, error) {
+	if c.remainFirstBufLen > 0 {
+		n, err := c.optionalReader.Read(p)
 		if n > 0 {
-			uc.remainFirstBufLen -= n
+			c.remainFirstBufLen -= n
 		}
 		return n, err
 	} else {
-		return uc.Conn.Read(p)
+		return c.Conn.Read(p)
 	}
 }
-func (uc *UserTCPConn) Write(p []byte) (int, error) {
-	return uc.Conn.Write(p)
+func (c *UserTCPConn) Write(p []byte) (int, error) {
+	return c.Conn.Write(p)
 }
 
 func (c *UserTCPConn) EverPossibleToSplice() bool {

@@ -31,15 +31,15 @@ type UserTCPConn struct {
 	mr utils.MultiReader //用于 Readbuffers
 }
 
-func (uc *UserTCPConn) GetProtocolVersion() int {
-	return uc.version
+func (c *UserTCPConn) GetProtocolVersion() int {
+	return c.version
 }
-func (uc *UserTCPConn) GetIdentityStr() string {
-	if uc.convertedUUIDStr == "" {
-		uc.convertedUUIDStr = utils.UUIDToStr(uc.uuid)
+func (c *UserTCPConn) GetIdentityStr() string {
+	if c.convertedUUIDStr == "" {
+		c.convertedUUIDStr = utils.UUIDToStr(c.uuid)
 	}
 
-	return uc.convertedUUIDStr
+	return c.convertedUUIDStr
 }
 
 //当前连接状态是否可以直接写入底层Conn而不经任何改动/包装
@@ -112,16 +112,16 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
 // 这里规定，如果是UDP，则 每Write一遍，都要Write一个 完整的UDP 数据包
-func (uc *UserTCPConn) Write(p []byte) (int, error) {
+func (c *UserTCPConn) Write(p []byte) (int, error) {
 
-	if uc.version == 0 {
+	if c.version == 0 {
 
 		originalSupposedWrittenLenth := len(p)
 
 		var writeBuf *bytes.Buffer
 
-		if uc.isServerEnd && !uc.isntFirstPacket {
-			uc.isntFirstPacket = true
+		if c.isServerEnd && !c.isntFirstPacket {
+			c.isntFirstPacket = true
 
 			writeBuf = utils.GetBuf()
 
@@ -135,7 +135,7 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 		if writeBuf != nil {
 			writeBuf.Write(p)
 
-			_, err := uc.Conn.Write(writeBuf.Bytes())
+			_, err := c.Conn.Write(writeBuf.Bytes())
 
 			utils.PutBuf(writeBuf)
 
@@ -144,7 +144,7 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 			}
 
 		} else {
-			_, err := uc.Conn.Write(p)
+			_, err := c.Conn.Write(p)
 
 			if err != nil {
 				return 0, err
@@ -153,52 +153,52 @@ func (uc *UserTCPConn) Write(p []byte) (int, error) {
 		return originalSupposedWrittenLenth, nil
 
 	} else {
-		return uc.Conn.Write(p)
+		return c.Conn.Write(p)
 
 	}
 }
 
 //专门适用于 裸奔splice的情况
-func (uc *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
+func (c *UserTCPConn) ReadFrom(r io.Reader) (written int64, err error) {
 
-	return netLayer.TryReadFrom_withSplice(uc, uc.Conn, r, uc.canDirectWrite)
+	return netLayer.TryReadFrom_withSplice(c, c.Conn, r, c.canDirectWrite)
 }
 
 //如果是udp，则是多线程不安全的，如果是tcp，则安不安全看底层的链接。
 // 这里规定，如果是UDP，则 每次 Read 得到的都是一个 完整的UDP 数据包，除非p给的太小……
-func (uc *UserTCPConn) Read(p []byte) (int, error) {
+func (c *UserTCPConn) Read(p []byte) (int, error) {
 
-	if uc.isServerEnd {
-		var from io.Reader = uc.Conn
-		if uc.optionalReader != nil {
-			from = uc.optionalReader
+	if c.isServerEnd {
+		var from io.Reader = c.Conn
+		if c.optionalReader != nil {
+			from = c.optionalReader
 		}
 
-		if uc.remainFirstBufLen > 0 {
+		if c.remainFirstBufLen > 0 {
 
 			n, err := from.Read(p)
 
 			if n > 0 {
-				uc.remainFirstBufLen -= n
-				if uc.remainFirstBufLen <= 0 {
-					uc.optionalReader = nil
+				c.remainFirstBufLen -= n
+				if c.remainFirstBufLen <= 0 {
+					c.optionalReader = nil
 				}
 			}
 			return n, err
 
 		} else {
-			return uc.Conn.Read(p)
+			return c.Conn.Read(p)
 		}
 
-	} else if uc.version == 0 {
+	} else if c.version == 0 {
 
-		if !uc.isntFirstPacket {
+		if !c.isntFirstPacket {
 			//先读取响应头
 
-			uc.isntFirstPacket = true
+			c.isntFirstPacket = true
 
 			bs := utils.GetPacket()
-			n, e := uc.Conn.Read(bs)
+			n, e := c.Conn.Read(bs)
 
 			if e != nil {
 				utils.PutPacket(bs)
@@ -214,12 +214,12 @@ func (uc *UserTCPConn) Read(p []byte) (int, error) {
 			return n, nil
 
 		} else {
-			return uc.Conn.Read(p)
+			return c.Conn.Read(p)
 
 		}
 
 	} else {
-		return uc.Conn.Read(p)
+		return c.Conn.Read(p)
 
 	}
 }

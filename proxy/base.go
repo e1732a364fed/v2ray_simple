@@ -107,56 +107,56 @@ type Base struct {
 
 }
 
-func (pcs *Base) GetBase() *Base {
-	return pcs
+func (b *Base) GetBase() *Base {
+	return b
 }
 
-func (pcs *Base) Network() string {
-	return pcs.TransportLayer
+func (b *Base) Network() string {
+	return b.TransportLayer
 }
 
-func (pcs *Base) GetXver() int {
-	return pcs.Xver
+func (b *Base) GetXver() int {
+	return b.Xver
 }
 
-func (pcs *Base) HasHeader() *httpLayer.HeaderPreset {
-	return pcs.Header
+func (b *Base) HasHeader() *httpLayer.HeaderPreset {
+	return b.Header
 }
 
-func (pcs *Base) GetFallback() *netLayer.Addr {
-	return pcs.FallbackAddr
+func (b *Base) GetFallback() *netLayer.Addr {
+	return b.FallbackAddr
 }
 
-func (pcs *Base) MiddleName() string {
+func (b *Base) MiddleName() string {
 	var sb strings.Builder
 	sb.WriteString("")
 
-	if pcs.TLS {
+	if b.TLS {
 		sb.WriteString("+tls")
 	}
-	if pcs.Header != nil {
-		if pcs.AdvancedL != "ws" {
+	if b.Header != nil {
+		if b.AdvancedL != "ws" {
 			sb.WriteString("+http")
 		}
 	}
-	if pcs.AdvancedL != "" {
+	if b.AdvancedL != "" {
 		sb.WriteString("+")
-		sb.WriteString(pcs.AdvancedL)
+		sb.WriteString(b.AdvancedL)
 	}
 	sb.WriteString("+")
 	return sb.String()
 }
 
-func (pcs *Base) CantRoute() bool {
-	return pcs.IsCantRoute
+func (b *Base) CantRoute() bool {
+	return b.IsCantRoute
 }
 
-func (pcs *Base) InnerMuxEstablished() bool {
-	return pcs.Innermux != nil && !pcs.Innermux.IsClosed()
+func (b *Base) InnerMuxEstablished() bool {
+	return b.Innermux != nil && !b.Innermux.IsClosed()
 }
 
 //placeholder
-func (pcs *Base) HasInnerMux() (int, string) {
+func (b *Base) HasInnerMux() (int, string) {
 	return 0, ""
 }
 
@@ -174,16 +174,16 @@ func (*Base) GetServerInnerMuxSession(wlc io.ReadWriteCloser) *smux.Session {
 	return smuxSession
 }
 
-func (pcs *Base) CloseInnerMuxSession() {
-	if pcs.Innermux != nil && !pcs.Innermux.IsClosed() {
-		pcs.Innermux.Close()
-		pcs.Innermux = nil
+func (b *Base) CloseInnerMuxSession() {
+	if b.Innermux != nil && !b.Innermux.IsClosed() {
+		b.Innermux.Close()
+		b.Innermux = nil
 	}
 }
 
-func (pcs *Base) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
-	if pcs.Innermux != nil && !pcs.Innermux.IsClosed() {
-		return pcs.Innermux
+func (b *Base) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session {
+	if b.Innermux != nil && !b.Innermux.IsClosed() {
+		return b.Innermux
 	} else {
 		smuxConfig := smux.DefaultConfig()
 		smuxSession, err := smux.Client(wrc, smuxConfig)
@@ -195,112 +195,112 @@ func (pcs *Base) GetClientInnerMuxSession(wrc io.ReadWriteCloser) *smux.Session 
 			}
 			return nil
 		}
-		pcs.Innermux = smuxSession
+		b.Innermux = smuxSession
 		return smuxSession
 	}
 }
 
 //return false. As a placeholder.
-func (pcs *Base) IsUDP_MultiChannel() bool {
+func (b *Base) IsUDP_MultiChannel() bool {
 	return false
 }
 
-func (pcs *Base) GetTag() string {
-	return pcs.Tag
+func (b *Base) GetTag() string {
+	return b.Tag
 }
-func (pcs *Base) GetSockopt() *netLayer.Sockopt {
-	return pcs.Sockopt
+func (b *Base) GetSockopt() *netLayer.Sockopt {
+	return b.Sockopt
 }
 
-func (pcs *Base) setNetwork(network string) {
+func (b *Base) setNetwork(network string) {
 	if network == "" {
-		pcs.TransportLayer = "tcp"
+		b.TransportLayer = "tcp"
 
 	} else {
-		pcs.TransportLayer = network
+		b.TransportLayer = network
 
 	}
 }
 
-func (pcs *Base) AdvancedLayer() string {
-	return pcs.AdvancedL
+func (b *Base) AdvancedLayer() string {
+	return b.AdvancedL
 }
 
 //try close inner mux and AdvS
-func (s *Base) Stop() {
-	if s.Innermux != nil {
-		s.Innermux.Close()
+func (b *Base) Stop() {
+	if b.Innermux != nil {
+		b.Innermux.Close()
 	}
 
-	if s.AdvS != nil {
-		s.AdvS.Stop()
+	if b.AdvS != nil {
+		b.AdvS.Stop()
 	}
 }
 
 //return false. As a placeholder.
-func (s *Base) CanFallback() bool {
+func (b *Base) CanFallback() bool {
 	return false
 }
 
-func (s *Base) GetTLS_Server() *tlsLayer.Server {
-	return s.Tls_s
+func (b *Base) GetTLS_Server() *tlsLayer.Server {
+	return b.Tls_s
 }
-func (s *Base) GetTLS_Client() *tlsLayer.Client {
-	return s.Tls_c
-}
-
-func (s *Base) AddrStr() string {
-	return s.Addr
-}
-func (s *Base) SetAddrStr(a string) {
-	s.Addr = a
+func (b *Base) GetTLS_Client() *tlsLayer.Client {
+	return b.Tls_c
 }
 
-func (s *Base) IsUseTLS() bool {
-	return s.TLS
+func (b *Base) AddrStr() string {
+	return b.Addr
+}
+func (b *Base) SetAddrStr(a string) {
+	b.Addr = a
 }
 
-func (s *Base) GetAdvClient() advLayer.Client {
-	return s.AdvC
+func (b *Base) IsUseTLS() bool {
+	return b.TLS
 }
-func (s *Base) GetAdvServer() advLayer.Server {
-	return s.AdvS
+
+func (b *Base) GetAdvClient() advLayer.Client {
+	return b.AdvC
+}
+func (b *Base) GetAdvServer() advLayer.Server {
+	return b.AdvS
 }
 
 //setNetwork, xver, Tag,Sockopt,header,AdvancedL, InitAdvLayer
-func (c *Base) ConfigCommon(cc *CommonConf) {
+func (b *Base) ConfigCommon(cc *CommonConf) {
 
-	c.setNetwork(cc.Network)
-	c.Xver = cc.Xver
-	c.Tag = cc.Tag
-	c.Sockopt = cc.Sockopt
+	b.setNetwork(cc.Network)
+	b.Xver = cc.Xver
+	b.Tag = cc.Tag
+	b.Sockopt = cc.Sockopt
 
 	if cc.HttpHeader != nil {
 		cc.HttpHeader.AssignDefaultValue()
-		c.Header = (cc.HttpHeader)
+		b.Header = (cc.HttpHeader)
 	}
 
-	c.AdvancedL = cc.AdvancedLayer
+	b.AdvancedL = cc.AdvancedLayer
 
-	c.InitAdvLayer()
+	b.InitAdvLayer()
 }
 
-func (s *Base) InitAdvLayer() {
-	switch s.AdvancedL {
+func (b *Base) InitAdvLayer() {
+	switch b.AdvancedL {
 	case "":
 		return
 	case "quic":
-		s.setNetwork("udp")
+		b.setNetwork("udp")
 	}
 
-	creator := advLayer.ProtocolsMap[s.AdvancedL]
+	creator := advLayer.ProtocolsMap[b.AdvancedL]
 	if creator == nil {
-		utils.Error("InitAdvLayer failed, not supported, " + s.AdvancedL)
+		utils.Error("InitAdvLayer failed, not supported, " + b.AdvancedL)
 
 		return
 	}
 
-	ad, err := netLayer.NewAddr(s.Addr)
+	ad, err := netLayer.NewAddr(b.Addr)
 	if err != nil {
 		if ce := utils.CanLogErr("InitAdvLayer addr failed "); ce != nil {
 			ce.Write(
@@ -311,7 +311,7 @@ func (s *Base) InitAdvLayer() {
 		return
 	}
 
-	if dc := s.DialConf; dc != nil {
+	if dc := b.DialConf; dc != nil {
 
 		var Headers *httpLayer.HeaderPreset
 		if creator.CanHandleHeaders() {
@@ -336,18 +336,18 @@ func (s *Base) InitAdvLayer() {
 
 			if ce := utils.CanLogErr("InitAdvLayer client failed "); ce != nil {
 				ce.Write(
-					zap.String("protocol", s.AdvancedL),
+					zap.String("protocol", b.AdvancedL),
 					zap.Error(err),
 				)
 			}
 
 			return
 		}
-		s.AdvC = advClient
+		b.AdvC = advClient
 
 	}
 
-	if lc := s.ListenConf; lc != nil {
+	if lc := b.ListenConf; lc != nil {
 
 		var Headers *httpLayer.HeaderPreset
 
@@ -390,7 +390,7 @@ func (s *Base) InitAdvLayer() {
 
 			if ce := utils.CanLogErr("InitAdvLayer server failed "); ce != nil {
 				ce.Write(
-					zap.String("protocol", s.AdvancedL),
+					zap.String("protocol", b.AdvancedL),
 					zap.Error(err),
 				)
 			}
@@ -398,6 +398,6 @@ func (s *Base) InitAdvLayer() {
 			return
 		}
 
-		s.AdvS = advSer
+		b.AdvS = advSer
 	}
 }

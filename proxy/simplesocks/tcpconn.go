@@ -19,19 +19,19 @@ type TCPConn struct {
 	isServerEnd bool
 }
 
-func (uc *TCPConn) Read(p []byte) (int, error) {
-	if uc.remainFirstBufLen > 0 {
-		n, err := uc.optionalReader.Read(p)
+func (c *TCPConn) Read(p []byte) (int, error) {
+	if c.remainFirstBufLen > 0 {
+		n, err := c.optionalReader.Read(p)
 		if n > 0 {
-			uc.remainFirstBufLen -= n
+			c.remainFirstBufLen -= n
 		}
 		return n, err
 	} else {
-		return uc.Conn.Read(p)
+		return c.Conn.Read(p)
 	}
 }
-func (uc *TCPConn) Write(p []byte) (int, error) {
-	return uc.Conn.Write(p)
+func (c *TCPConn) Write(p []byte) (int, error) {
+	return c.Conn.Write(p)
 }
 
 func (c *TCPConn) EverPossibleToSplice() bool {

@@ -223,37 +223,37 @@ type ServerConn struct {
 	closed    bool
 }
 
-func (g *ServerConn) Close() error {
-	g.closeOnce.Do(func() {
-		g.closed = true
-		close(g.closeChan)
-		if g.Closer != nil {
-			g.Closer.Close()
+func (sc *ServerConn) Close() error {
+	sc.closeOnce.Do(func() {
+		sc.closed = true
+		close(sc.closeChan)
+		if sc.Closer != nil {
+			sc.Closer.Close()
 
 		}
 	})
 	return nil
 }
 
-func (g *ServerConn) Write(b []byte) (n int, err error) {
+func (sc *ServerConn) Write(b []byte) (n int, err error) {
 
 	//the determination of g.closed is necessary, or it might panic when calling Write or Flush
 
-	if g.closed {
+	if sc.closed {
 		return 0, net.ErrClosed
 	} else {
 
 		buf := commonWrite(b)
 
-		if g.closed { //较为谨慎，也许commonWrite 刚调用完, 就 g.closed 了
+		if sc.closed { //较为谨慎，也许commonWrite 刚调用完, 就 g.closed 了
 			utils.PutBuf(buf)
 			return 0, net.ErrClosed
 		}
-		_, err = g.Writer.Write(buf.Bytes())
+		_, err = sc.Writer.Write(buf.Bytes())
 		utils.PutBuf(buf)
 
-		if err == nil && !g.closed {
-			g.Writer.(http.Flusher).Flush() //necessary
+		if err == nil && !sc.closed {
+			sc.Writer.(http.Flusher).Flush() //necessary
 
 		}
 

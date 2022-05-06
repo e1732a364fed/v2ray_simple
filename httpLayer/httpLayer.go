@@ -99,12 +99,12 @@ func (e *RequestErr) Is(err error) bool {
 	return false
 }
 
-func (pe *RequestErr) Error() string {
+func (e *RequestErr) Error() string {
 	var sb strings.Builder
 	sb.WriteString("InvaidRequest ")
-	sb.WriteString(pe.Method)
+	sb.WriteString(e.Method)
 	sb.WriteString(",")
-	sb.WriteString(pe.Path)
+	sb.WriteString(e.Path)
 
 	return sb.String()
 }

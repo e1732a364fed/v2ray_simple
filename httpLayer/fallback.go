@@ -54,8 +54,8 @@ type FallbackResult struct {
 	Xver int
 }
 
-func (ef *FallbackResult) GetFallback(ftype byte, _ ...string) *FallbackResult {
-	return ef
+func (r *FallbackResult) GetFallback(ftype byte, _ ...string) *FallbackResult {
+	return r
 }
 
 func (FallbackResult) SupportType() byte {

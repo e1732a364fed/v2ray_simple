@@ -52,8 +52,8 @@ type RejectClient struct {
 
 func (*RejectClient) Name() string { return RejectName }
 
-func (b *RejectClient) tryResponseAndClose(underlay net.Conn) {
-	switch b.theType {
+func (c *RejectClient) tryResponseAndClose(underlay net.Conn) {
+	switch c.theType {
 	case "http":
 		underlay.Write([]byte(httpLayer.Err403response))
 	}
@@ -62,13 +62,13 @@ func (b *RejectClient) tryResponseAndClose(underlay net.Conn) {
 }
 
 //optionally response a 403 and close the underlay.
-func (b *RejectClient) Handshake(underlay net.Conn, _ []byte, _ netLayer.Addr) (result io.ReadWriteCloser, err error) {
-	b.tryResponseAndClose(underlay)
+func (c *RejectClient) Handshake(underlay net.Conn, _ []byte, _ netLayer.Addr) (result io.ReadWriteCloser, err error) {
+	c.tryResponseAndClose(underlay)
 	return nil, io.EOF
 }
 
 //function the same as Handshake
-func (b *RejectClient) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLayer.MsgConn, error) {
-	b.tryResponseAndClose(underlay)
+func (c *RejectClient) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLayer.MsgConn, error) {
+	c.tryResponseAndClose(underlay)
 	return nil, io.EOF
 }

@@ -136,23 +136,23 @@ winFn          :=${prefix}_win10
 #注意调用参数时，逗号前后不能留空格
 
 linux_amd64:
-	$(call compile, $(linuxAmdFn),linux,amd64)
+	$(call compile,$(linuxAmdFn),linux,amd64)
 
 linux_arm64:
-	$(call compile, $(linuxArmFn),linux,arm64)
+	$(call compile,$(linuxArmFn),linux,arm64)
 
 android_arm64:
-	$(call compile, $(androidArm64Fn),android,arm64)
+	$(call compile,$(androidArm64Fn),android,arm64)
 
 macos:
-	$(call compile, $(macFn),darwin,amd64)
+	$(call compile,$(macFn),darwin,amd64)
 
 #macos apple silicon
 macm1:
-	$(call compile, $(macM1Fn),darwin,arm64)
+	$(call compile,$(macM1Fn),darwin,arm64)
 
 win10:
-	$(call compile, $(winFn),windows,amd64,$(winsuffix))
+	$(call compile,$(winFn),windows,amd64,$(winsuffix))
 
 
 clean:

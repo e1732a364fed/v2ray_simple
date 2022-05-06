@@ -72,49 +72,49 @@ type HeaderPreset struct {
 }
 
 // 将Header改为首字母大写
-func (hh *HeaderPreset) Prepare() {
-	if hh.Request != nil && len(hh.Request.Headers) > 0 {
+func (h *HeaderPreset) Prepare() {
+	if h.Request != nil && len(h.Request.Headers) > 0 {
 
 		var realHeaders http.Header = make(http.Header)
-		for k, vs := range hh.Request.Headers {
+		for k, vs := range h.Request.Headers {
 			for _, v := range vs {
 				realHeaders.Add(k, v)
 
 			}
 		}
 
-		hh.Request.Headers = realHeaders
+		h.Request.Headers = realHeaders
 	}
-	if hh.Response != nil && len(hh.Response.Headers) > 0 {
+	if h.Response != nil && len(h.Response.Headers) > 0 {
 
 		var realHeaders http.Header = make(http.Header)
-		for k, vs := range hh.Response.Headers {
+		for k, vs := range h.Response.Headers {
 			for _, v := range vs {
 				realHeaders.Add(k, v)
 
 			}
 		}
 
-		hh.Response.Headers = realHeaders
+		h.Response.Headers = realHeaders
 	}
 }
 
 //默认值保持与v2ray的配置相同
-func (hh *HeaderPreset) AssignDefaultValue() {
-	if hh.Request == nil {
-		hh.Request = &RequestHeader{}
+func (h *HeaderPreset) AssignDefaultValue() {
+	if h.Request == nil {
+		h.Request = &RequestHeader{}
 	}
-	if hh.Request.Version == "" {
-		hh.Request.Version = "1.1"
+	if h.Request.Version == "" {
+		h.Request.Version = "1.1"
 	}
-	if hh.Request.Method == "" {
-		hh.Request.Method = "GET"
+	if h.Request.Method == "" {
+		h.Request.Method = "GET"
 	}
-	if len(hh.Request.Path) == 0 {
-		hh.Request.Path = []string{"/"}
+	if len(h.Request.Path) == 0 {
+		h.Request.Path = []string{"/"}
 	}
-	if len(hh.Request.Headers) == 0 {
-		hh.Request.Headers = map[string][]string{
+	if len(h.Request.Headers) == 0 {
+		h.Request.Headers = map[string][]string{
 			"Host":            {"www.baidu.com", "www.bing.com"},
 			"User-Agent":      {"Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36", "Mozilla/5.0 (iPhone; CPU iPhone OS 10_0_2 like Mac OS X) AppleWebKit/601.1 (KHTML, like Gecko) CriOS/53.0.2785.109 Mobile/14A456 Safari/601.1.46"},
 			"Accept-Encoding": {"gzip, deflate"},
@@ -124,23 +124,23 @@ func (hh *HeaderPreset) AssignDefaultValue() {
 
 	}
 
-	if hh.Response == nil {
-		hh.Response = &ResponseHeader{}
+	if h.Response == nil {
+		h.Response = &ResponseHeader{}
 	}
 
-	if hh.Response.Version == "" {
-		hh.Response.Version = "1.1"
+	if h.Response.Version == "" {
+		h.Response.Version = "1.1"
 	}
 
-	if hh.Response.StatusCode == "" {
-		hh.Response.StatusCode = "200"
+	if h.Response.StatusCode == "" {
+		h.Response.StatusCode = "200"
 	}
-	if hh.Response.Reason == "" {
-		hh.Response.Reason = "OK"
+	if h.Response.Reason == "" {
+		h.Response.Reason = "OK"
 	}
 
-	if len(hh.Response.Headers) == 0 {
-		hh.Response.Headers = map[string][]string{
+	if len(h.Response.Headers) == 0 {
+		h.Response.Headers = map[string][]string{
 			"Content-Type":      {"application/octet-stream", "video/mpeg"},
 			"Transfer-Encoding": {"chunked"},
 			"Connection":        {"keep-alive"},
@@ -148,7 +148,7 @@ func (hh *HeaderPreset) AssignDefaultValue() {
 		}
 	}
 
-	hh.Prepare()
+	h.Prepare()
 }
 
 func (h *HeaderPreset) ReadRequest(underlay net.Conn) (err error, leftBuf *bytes.Buffer) {
@@ -237,15 +237,15 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (err error, leftBuf *bytes
 	return nil, rp.WholeRequestBuf
 }
 
-func (p *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
+func (h *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
 
 	buf := bytes.NewBuffer(payload)
-	r, err := http.NewRequest(p.Request.Method, p.Request.Path[0], buf)
+	r, err := http.NewRequest(h.Request.Method, h.Request.Path[0], buf)
 	if err != nil {
 		return err
 	}
 
-	nh := TrimHeaders(p.Request.Headers)
+	nh := TrimHeaders(h.Request.Headers)
 
 	r.Header = nh
 
@@ -255,7 +255,7 @@ func (p *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
 	return r.Write(underlay)
 }
 
-func (p *HeaderPreset) ReadResponse(underlay net.Conn) (err error, leftBuf *bytes.Buffer) {
+func (h *HeaderPreset) ReadResponse(underlay net.Conn) (err error, leftBuf *bytes.Buffer) {
 
 	bs := utils.GetPacket()
 	var n int
@@ -281,18 +281,18 @@ func (p *HeaderPreset) ReadResponse(underlay net.Conn) (err error, leftBuf *byte
 	return nil, buf
 }
 
-func (p *HeaderPreset) WriteResponse(underlay net.Conn, payload []byte) error {
+func (h *HeaderPreset) WriteResponse(underlay net.Conn, payload []byte) error {
 	buf := utils.GetBuf()
 
 	buf.WriteString("HTTP/")
-	buf.WriteString(p.Response.Version)
+	buf.WriteString(h.Response.Version)
 	buf.WriteString(" ")
-	buf.WriteString(p.Response.StatusCode)
+	buf.WriteString(h.Response.StatusCode)
 	buf.WriteString(" ")
-	buf.WriteString(p.Response.Reason)
+	buf.WriteString(h.Response.Reason)
 	buf.WriteString(CRLF)
 
-	for key, v := range p.Response.Headers {
+	for key, v := range h.Response.Headers {
 		thisStr := v[rand.Intn(len(v))]
 		buf.WriteString(key)
 		buf.WriteString(":")
@@ -325,51 +325,51 @@ type HeaderConn struct {
 	notFirstWrite bool
 }
 
-func (pc *HeaderConn) Read(p []byte) (n int, err error) {
+func (c *HeaderConn) Read(p []byte) (n int, err error) {
 	var buf *bytes.Buffer
 
-	if pc.IsServerEnd {
-		if pc.optionalReader == nil {
-			err, buf = pc.H.ReadRequest(pc.Conn)
+	if c.IsServerEnd {
+		if c.optionalReader == nil {
+			err, buf = c.H.ReadRequest(c.Conn)
 			if err != nil {
 				err = utils.ErrInErr{ErrDesc: "http HeaderConn Read failed, at serverEnd", ErrDetail: err}
 				return
 			}
 
-			pc.optionalReader = io.MultiReader(buf, pc.Conn)
+			c.optionalReader = io.MultiReader(buf, c.Conn)
 		}
 
 	} else {
-		if pc.optionalReader == nil {
-			err, buf = pc.H.ReadResponse(pc.Conn)
+		if c.optionalReader == nil {
+			err, buf = c.H.ReadResponse(c.Conn)
 			if err != nil {
 				err = utils.ErrInErr{ErrDesc: "http HeaderConn Read failed", ErrDetail: err}
 				return
 			}
 
-			pc.optionalReader = io.MultiReader(buf, pc.Conn)
+			c.optionalReader = io.MultiReader(buf, c.Conn)
 		}
 	}
-	return pc.optionalReader.Read(p)
+	return c.optionalReader.Read(p)
 
 }
 
-func (pc *HeaderConn) Write(p []byte) (n int, err error) {
+func (c *HeaderConn) Write(p []byte) (n int, err error) {
 
-	if pc.IsServerEnd {
-		if pc.notFirstWrite {
-			return pc.Conn.Write(p)
+	if c.IsServerEnd {
+		if c.notFirstWrite {
+			return c.Conn.Write(p)
 		}
-		pc.notFirstWrite = true
-		err = pc.H.WriteResponse(pc.Conn, p)
+		c.notFirstWrite = true
+		err = c.H.WriteResponse(c.Conn, p)
 
 	} else {
 
-		if pc.notFirstWrite {
-			return pc.Conn.Write(p)
+		if c.notFirstWrite {
+			return c.Conn.Write(p)
 		}
-		pc.notFirstWrite = true
-		err = pc.H.WriteRequest(pc.Conn, p)
+		c.notFirstWrite = true
+		err = c.H.WriteRequest(c.Conn, p)
 	}
 
 	if err != nil {
