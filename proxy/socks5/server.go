@@ -32,12 +32,12 @@ type Server struct {
 
 type ServerCreator struct{}
 
-func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(*url.URL) (proxy.Server, error) {
 	s := &Server{}
 	return s, nil
 }
 
-func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(*proxy.ListenConf) (proxy.Server, error) {
 	s := &Server{}
 	return s, nil
 }

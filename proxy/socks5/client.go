@@ -3,11 +3,28 @@ package socks5
 import (
 	"io"
 	"net"
+	"net/url"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
+
+func init() {
+	proxy.RegisterClient(Name, &ClientCreator{})
+}
+
+type ClientCreator struct{}
+
+func (ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
+	s := &Client{}
+	return s, nil
+}
+
+func (ClientCreator) NewClient(*proxy.DialConf) (proxy.Client, error) {
+	s := &Client{}
+	return s, nil
+}
 
 type Client struct {
 	proxy.Base
@@ -17,7 +34,7 @@ func (*Client) Name() string {
 	return Name
 }
 
-func (*Client) Handshake(underlay net.Conn, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
+func (*Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {
 		panic("socks5 client handshake, nil underlay is not allowed")
@@ -61,6 +78,9 @@ func (*Client) Handshake(underlay net.Conn, target netLayer.Addr) (result io.Rea
 	if n < 10 || ba[0] != 5 || ba[1] != 0 || ba[2] != 0 {
 		return nil, utils.NumErr{Prefix: "socks5 client handshake failed when reading response", N: 2}
 
+	}
+	if len(firstPayload) > 0 {
+		underlay.Write(firstPayload)
 	}
 
 	return underlay, nil
