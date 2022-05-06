@@ -170,9 +170,9 @@ func mainFunc() (result int) {
 	if !utils.FileExist(fpath) {
 
 		if utils.GivenFlags["c"] == nil {
-			log.Printf("No -c provided and no %q provided", defaultConfFn)
+			log.Printf("No -c provided and default %q doesn't exist", defaultConfFn)
 		} else {
-			log.Printf("No %q provided", configFileName)
+			log.Printf("-c provided but %q doesn't exist", configFileName)
 		}
 
 		configFileName = ""
@@ -332,10 +332,7 @@ func mainFunc() (result int) {
 
 	}
 
-	configFileQualifiedToRun := false
-
 	if (defaultOutClient != nil) && (defaultInServer != nil || len(allServers) > 0 || len(tproxyConfs) > 0) {
-		configFileQualifiedToRun = true
 
 		if mode == proxy.SimpleMode {
 			lis := vs.ListenSer(defaultInServer, defaultOutClient, &routingEnv)
@@ -352,22 +349,19 @@ func mainFunc() (result int) {
 			}
 
 			if len(tproxyConfs) > 0 {
-				autoIptable := false
+
 				if len(tproxyConfs) == 1 {
 					conf := tproxyConfs[0]
 					if thing := conf.Extra["auto_iptables"]; thing != nil {
 						if auto, ok := thing.(bool); ok && auto {
-							autoIptable = true
+							tproxy.SetIPTablesByPort(conf.Port)
+
+							defer func() {
+								tproxy.CleanupIPTables()
+							}()
 						}
 					}
 
-					if autoIptable {
-						tproxy.SetIPTablesByPort(conf.Port)
-
-						defer func() {
-							tproxy.CleanupIPTables()
-						}()
-					}
 				}
 
 				for _, thisConf := range tproxyConfs {
@@ -378,30 +372,33 @@ func mainFunc() (result int) {
 
 				}
 
-				//如果在非linux系统 上，inServer 仅设置了tproxy，则会遇到下面情况
-				if len(tproxyList) == 0 {
-					if !(defaultInServer != nil || len(allServers) > 0) {
-						configFileQualifiedToRun = false
-					}
-				}
 			}
 
 		}
 
 	}
+
+	const willExitStr = "No valid proxy settings available, nor cli or apiServer running, exit now."
 	//没可用的listen/dial，而且还无法动态更改配置
-	if !configFileQualifiedToRun && !isFlexible() {
-		utils.Error("No valid proxy settings available, nor cli or apiServer feature enabled, exit now.")
+	if noFuture() {
+		utils.Error(willExitStr)
 		return -1
 	}
 
 	if enableApiServer {
-		go checkConfigAndTryRunApiServer()
+		tryRunApiServer()
 
 	}
 
 	if interactive_mode {
 		runCli()
+
+		interactive_mode = false
+	}
+
+	if nothingRunning() {
+		utils.Warn(willExitStr)
+		return
 	}
 
 	{
@@ -414,4 +411,21 @@ func mainFunc() (result int) {
 		cleanup()
 	}
 	return
+}
+
+func hasProxyRunning() bool {
+	return len(listenCloserArray) > 0 || len(tproxyList) > 0
+}
+
+//是否可以在运行时动态修改配置。如果没有开启 apiServer 开关 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
+func isFlexible() bool {
+	return interactive_mode || enableApiServer
+}
+
+func noFuture() bool {
+	return !hasProxyRunning() && !isFlexible()
+}
+
+func nothingRunning() bool {
+	return !hasProxyRunning() && !(interactive_mode || apiServerRunning)
 }

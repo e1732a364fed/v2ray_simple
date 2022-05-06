@@ -1,0 +1,2 @@
+all:
+	cd cmd/verysimple/ && make -f Makefile_release main

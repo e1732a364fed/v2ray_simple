@@ -29,7 +29,7 @@ func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
 
 	companyName := utils.GetRandomWord()
 
-	if ce := utils.CanLogInfo("generating random cert with"); ce != nil {
+	if ce := utils.CanLogInfo("generate random cert with"); ce != nil {
 		ce.Write(zap.String("country", country.Info().Name), zap.String("company", companyName))
 	}
 

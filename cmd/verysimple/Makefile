@@ -14,10 +14,6 @@
 #
 # 目前发布版直接使用go1.18编译，你如果想编译出相同文件，也要使用go1.18才行
 
-# 该Makefile文件 不用来编译官方发布包，官方发布包是用 Makefile_release 编译的。
-# 所以这里版本可以随便自己填了 或者自己给出命令行参数来调节. 很棒吧. 
-# 参数控制版本号示例:  运行  make BUILD_VERSION=myversion_1
-
 prefix          :=verysimple
 winsuffix       :=.exe
 
@@ -42,6 +38,11 @@ md5cmdline:=$(md5cmd) $(dependency) | $(md5cmd)
 endif
 
 defaultOutFn    :=${prefix}${defaultSuffix}
+
+
+# 该Makefile文件 不用来编译官方发布包，官方发布包是用 Makefile_release 编译的。
+# 所以这里版本可以随便自己填了 或者自己给出命令行参数来调节. 很棒吧. 
+# 参数控制版本号示例:  运行  make BUILD_VERSION=myversion_1
 
 
 # 默认 BUILD_VERSION  会获取当前git 的 commit id, 以及所有go文件的md5结果总和的md5. 如果你不是 git clone的 而是直接下载的源码文件，则 是获取不到commit的,
@@ -122,7 +123,7 @@ getmd5:
 	@$(md5cmdline)
 
 
-#这些Fn变量是 PACK开关未打开 时的 可执行文件 的名称, 不是压缩包内部的可执行文件名称. 压缩包内部的可执行文件 统一叫 verysimple
+#这些Fn变量是 PACK开关未打开 时的 可执行文件 的名称 以及 PACK开关打开 时 压缩包的名称, 不是压缩包内部的可执行文件名称. 压缩包内部的可执行文件 统一叫 verysimple
 
 linuxAmdFn     :=${prefix}_linux_amd64
 linuxArmFn     :=${prefix}_linux_arm64

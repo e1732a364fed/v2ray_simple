@@ -21,7 +21,7 @@ endef
 else
 
 define compile
-	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) $(cmd) $(1)$(4)
+	CGO_ENABLED=0 GOOS=$(2) GOARCH=$(3) GOARM=$(5) $(cmd) ${prefix}_$(1)$(4)
 endef
 endif
 

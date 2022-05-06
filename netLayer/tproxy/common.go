@@ -1,5 +1,5 @@
 /*
-Package tproxy implements tproxy.
+Package tproxy listens tproxy and setup corresponding iptables for linux.
 
 透明代理只能用于linux。
 
@@ -34,8 +34,10 @@ https://github.com/FarFetchd/simple_tproxy_example/blob/master/tproxy_captive_po
 
 另外就是，偶然发现，trojan-go也是使用的 上面的示例的代码。
 
-同时，trojan-go还使用了
+同时，trojan-go还使用了.
 https://github.com/cybozu-go/transocks/blob/master/original_dst_linux.go
+
+不过实测我们不需要用这个代码来获取原始地址，因为地址我们直接就从 localAddr就能获取。也许是trojan-go的作者不懂tproxy的原理吧！
 
 Iptables
 

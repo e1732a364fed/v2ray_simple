@@ -9,7 +9,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-var errInvalidWrite = errors.New("vless readfrom, invalid write result")
+var ErrInvalidWrite = errors.New("readfrom, invalid write result")
 
 const SystemCanSplice = runtime.GOARCH != "wasm" && runtime.GOOS != "windows"
 
@@ -19,7 +19,6 @@ type Splicer interface {
 }
 
 //这里认为能 splice 或 sendfile的 都算，具体可参考go标准代码的实现, 总之就是tcp和 unix domain socket 可以.
-// 若不是基本Conn，则会试图转换为Splicer并获取底层Conn
 func CanSpliceDirectly(r any) bool {
 
 	switch r.(type) {
@@ -40,6 +39,7 @@ func CanSpliceEventually(r any) bool {
 }
 
 //从r读取数据，写入 maySpliceConn / classicWriter, 在条件合适时会使用splice进行加速。
+// 若maySpliceConn不是基本Conn，则会试图转换为Splicer并获取底层Conn.
 // 本函数主要应用于裸奔时，一端是socks5/直连,另一端是vless/vless+ws的情况, 因为vless等协议就算裸奔也是要处理一下数据头等情况的, 所以需要进行处理才可裸奔.
 //
 // 注意，splice只有在 maySpliceConn【本身是】/【变成】 basicConn， 且 r 也是 basicConn时，才会发生。
@@ -88,7 +88,7 @@ func TryReadFrom_withSplice(classicWriter io.Writer, maySpliceConn net.Conn, r i
 					if nw < 0 || nr < nw {
 						nw = 0
 						if ew == nil {
-							ew = errInvalidWrite
+							ew = ErrInvalidWrite
 						}
 					}
 					written += int64(nw)
@@ -161,7 +161,7 @@ func ClassicCopy(w io.Writer, r io.Reader) (written int64, err error) {
 			if nw < 0 || nr < nw {
 				nw = 0
 				if ew == nil {
-					ew = errInvalidWrite
+					ew = ErrInvalidWrite
 				}
 			}
 			written += int64(nw)

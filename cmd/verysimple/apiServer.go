@@ -16,22 +16,29 @@ var (
 	enableApiServer     bool
 	apiServerRunning    bool
 	apiServerPathPrefix string
+	apiServerAdminPass  string
 )
 
 func init() {
 	flag.BoolVar(&enableApiServer, "ea", false, "enable api server")
 	flag.StringVar(&apiServerPathPrefix, "spp", "/api", "api Server Path Prefix, must start with '/' ")
+	flag.StringVar(&apiServerAdminPass, "sap", "", "api Server admin password, it won't be used if it's empty")
 
 }
 
-//阻塞
-func checkConfigAndTryRunApiServer() {
-	if standardConf.App == nil {
-		return
-	}
+//非阻塞
+func tryRunApiServer() {
 
-	if ap := standardConf.App.AdminPass; ap != "" {
-		runApiServer(ap)
+	if standardConf.App != nil {
+		if ap := standardConf.App.AdminPass; ap != "" {
+			apiServerRunning = true
+
+			go runApiServer(ap)
+		}
+	} else if apiServerAdminPass != "" {
+		apiServerRunning = true
+
+		go runApiServer(apiServerAdminPass)
 	}
 }
 
@@ -59,7 +66,6 @@ func runApiServer(adminUUID string) {
 		},
 	}
 
-	apiServerRunning = true
 	srv.ListenAndServeTLS("", "")
 	apiServerRunning = false
 }

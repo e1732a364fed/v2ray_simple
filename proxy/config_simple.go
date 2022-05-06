@@ -78,6 +78,7 @@ func loadSimpleConf_byFile(fpath string) (simpleConf SimpleConf, mainFallback *h
 	return
 }
 
+//listenURL 不可为空。dialURL如果为空，会自动被设为 DirectURL
 func loadSimpleConf_byUrl(listenURL, dialURL string) (simpleConf SimpleConf, err error) {
 
 	if dialURL == "" {

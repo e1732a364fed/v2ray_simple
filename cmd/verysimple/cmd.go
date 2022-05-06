@@ -61,11 +61,6 @@ func init() {
 
 }
 
-//是否可以在运行时动态修改配置。如果没有监听 apiServer 也没有 动态修改配置的功能，则当前模式不灵活，无法动态修改
-func isFlexible() bool {
-	return interactive_mode || apiServerRunning
-}
-
 //运行一些 执行后立即退出程序的 命令
 func runExitCommands() (atLeastOneCalled bool) {
 	if cmdPrintVer {
@@ -168,7 +163,7 @@ func tryDownloadGeositeSourceFromConfiguredProxy() {
 
 	var outClient proxy.Client
 
-	if defaultOutClient != nil {
+	if defaultOutClient != nil && defaultOutClient.Name() != proxy.DirectName && defaultOutClient.Name() != proxy.RejectName {
 		outClient = defaultOutClient
 		fmt.Println("trying to download geosite through your proxy dial")
 	} else {
