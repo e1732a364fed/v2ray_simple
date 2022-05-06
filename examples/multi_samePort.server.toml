@@ -10,6 +10,8 @@ protocol = "vlesss"
 ip = "0.0.0.0"
 host = "your-domain-name.com"
 port = 8443
+cert = "cert.pem"
+key = "cert.key"
 
 [[listen]]
 tag = "vlessgrpc"
@@ -42,12 +44,12 @@ dest = "/dev/shm/grpc.sock"
 [[fallback]]
 
 from = "vlessgrpc"
-dest = "/dev/shm/h2c.sock"
+dest = "/dev/shm/h2c.sock"  # 回落到 nginx的 h2c 服务，你要配置nginx监听这个文件
 
 [[fallback]]
 
 from = "vlessws"
-dest = "/dev/shm/h1.sock"
+dest = "/dev/shm/h1.sock"    # 回落到 nginx的 h1 服务，你要配置nginx监听这个文件
 
 [[fallback]]
 dest = 80

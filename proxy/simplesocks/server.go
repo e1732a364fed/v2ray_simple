@@ -36,6 +36,9 @@ type Server struct {
 func (*Server) Name() string {
 	return Name
 }
+func (*Server) CanFallback() bool {
+	return true //simplesocks理论上当然是支持回落的，但是一般它被用于 innerMux的内层协议，所以用做innerMux内层协议时，要注意不要再回落了。
+}
 
 //若握手步骤数据不对, 会返回 ErrDetail 为 utils.ErrInvalidData 的 utils.ErrInErr
 func (s *Server) Handshake(underlay net.Conn) (result net.Conn, msgConn netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {

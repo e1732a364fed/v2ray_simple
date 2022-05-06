@@ -191,10 +191,24 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
-	v2ray_simple.ListenSer(clientEndInServer2, clientEndOutClient, nil)
-	v2ray_simple.ListenSer(clientEndInServer3, clientEndOutClient, nil)
-	v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
+	c1 := v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
+	c2 := v2ray_simple.ListenSer(clientEndInServer2, clientEndOutClient, nil)
+	c3 := v2ray_simple.ListenSer(clientEndInServer3, clientEndOutClient, nil)
+	c4 := v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
+
+	if c1 != nil {
+		defer c1.Close()
+	}
+	if c2 != nil {
+		defer c2.Close()
+	}
+
+	if c3 != nil {
+		defer c3.Close()
+	}
+	if c4 != nil {
+		defer c4.Close()
+	}
 
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn("www.qq.com"), dns.TypeA)

@@ -46,6 +46,7 @@ func testTls(protocol string, t *testing.T) {
 		t.Logf("can not listen on %v: %v", server.AddrStr(), err)
 		t.FailNow()
 	}
+	defer listener.Close()
 	go func() {
 
 		lc, err := listener.Accept()

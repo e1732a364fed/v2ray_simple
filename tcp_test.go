@@ -116,8 +116,14 @@ protocol = "direct"
 		t.FailNow()
 	}
 
-	v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
-	v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
+	c1 := v2ray_simple.ListenSer(clientEndInServer, clientEndOutClient, nil)
+	c2 := v2ray_simple.ListenSer(serverEndInServer, serverEndOutClient, nil)
+	if c1 != nil {
+		defer c1.Close()
+	}
+	if c2 != nil {
+		defer c2.Close()
+	}
 
 	proxyurl := "http://127.0.0.1:" + clientListenPort
 
