@@ -28,7 +28,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"net"
 	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
@@ -37,15 +36,7 @@ import (
 	"net/http/httptest"
 )
 
-var Err404response = `HTTP/1.1 404 Not Found\r\nContent-Type: text/html
-Connection: keep-alive\r\n404 Not Found\r\n`
-
-const Err403response = `HTTP/1.1 403 Forbidden
-Connection: close
-Cache-Control: max-age=3600, public
-Content-Length: 0
-
-`
+const Err403response = "HTTP/1.1 403 Forbidden\r\nConnection: close\r\nCache-Control: max-age=3600, public\r\nContent-Length: 0\r\n\r\n"
 
 const (
 	H11_Str = "http/1.1"
@@ -65,6 +56,8 @@ var (
 	HeaderENDING_bytes = []byte(HeaderENDING)
 
 	ErrNotHTTP_Request = errors.New("not http request")
+
+	Err400response_golang string
 )
 
 func init() {
@@ -77,7 +70,7 @@ func init() {
 	buf := &bytes.Buffer{}
 	w.Result().Write(buf)
 
-	Err404response = buf.String()
+	Err400response_golang = buf.String()
 
 }
 
@@ -140,15 +133,4 @@ func (rhr *H1RequestParser) ReadAndParse(r io.Reader) error {
 		return utils.ErrInErr{ErrDesc: "httpLayer ReadAndParse failed", ErrDetail: ErrNotHTTP_Request, Data: rhr.Failreason}
 	}
 	return nil
-}
-
-// http level fallback metadata
-type FallbackMeta struct {
-	net.Conn
-	H1RequestBuf *bytes.Buffer
-	Path         string
-	Method       string
-	IsH2         bool
-
-	H2Request *http.Request
 }

@@ -27,7 +27,8 @@ type Config struct {
 	ServiceName string
 	Host        string
 
-	FallbackToH1 bool //默认会回落到h2, 如果指定 FallbackToH1， 则会回落到 http/1.1
+	//FallbackToH1 bool //默认会回落到h2, 如果指定 FallbackToH1， 则会回落到 http/1.1
+	// 不过实际上用不到这一项，因为你只要回落到一个同时支持 h1和 h2的服务器不就ok了。
 }
 
 //implements net.Conn

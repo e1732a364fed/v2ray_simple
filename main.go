@@ -603,7 +603,12 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	if wlc == nil && udp_wlc == nil {
 		//无wlc证明 inServer 握手失败，且 没有任何回落可用, 直接退出。
 		utils.Debug("invalid request and no matched fallback, hung up")
+
 		if iics.wrappedConn != nil {
+
+			//应该返回一个http400错误，这样更逼真一些
+			iics.wrappedConn.SetWriteDeadline(time.Now().Add(time.Second))
+			iics.wrappedConn.Write([]byte(httpLayer.GetReal400Response()))
 			iics.wrappedConn.Close()
 
 		}

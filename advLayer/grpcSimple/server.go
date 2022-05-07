@@ -10,6 +10,7 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/proxy"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
@@ -34,7 +35,7 @@ type Server struct {
 
 	closed bool
 
-	underlay net.Conn
+	underlay net.Conn //目前仅用于Close
 }
 
 func (s *Server) GetPath() string {
@@ -58,10 +59,74 @@ func (s *Server) Stop() {
 	})
 }
 
+var (
+	clientPreface = []byte(http2.ClientPreface)
+)
+
 func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fallbackConnChan chan httpLayer.FallbackMeta) {
 	s.underlay = underlay
 	s.fallbackConnChan = fallbackConnChan
 	s.newSubConnChan = newSubConnChan
+
+	//先过滤一下h2c 的 preface. 因为不是h2c的话，依然可以试图回落到 h1.
+
+	//可以参考 golang.org/x/net/http2/server.go 里的 readPreface 方法.
+
+	bs := utils.GetPacket()
+	proxy.SetHandshakeTimeout(underlay)
+
+	var notH2c bool
+	n, err := underlay.Read(bs)
+	if err != nil {
+		if ce := utils.CanLogDebug("grpc try read preface failed"); ce != nil {
+			ce.Write()
+		}
+
+		return
+
+	} else if n < len(clientPreface) || !bytes.Equal(bs[:len(clientPreface)], clientPreface) {
+		notH2c = true
+	}
+
+	netLayer.PersistConn(underlay)
+
+	firstBuf := bytes.NewBuffer(bs[:n])
+
+	if notH2c {
+		if ce := utils.CanLogInfo("grpc got not h2c request"); ce != nil {
+			ce.Write()
+		}
+
+		if fallbackConnChan != nil {
+			_, method, path, _, failreason := httpLayer.ParseH1Request(bs, false)
+			if failreason != 0 {
+
+				fallbackConnChan <- httpLayer.FallbackMeta{
+					Conn:         underlay,
+					H1RequestBuf: firstBuf,
+				}
+			} else {
+				fallbackConnChan <- httpLayer.FallbackMeta{
+					Path:         path,
+					Method:       method,
+					Conn:         underlay,
+					H1RequestBuf: firstBuf,
+				}
+			}
+		} else {
+			//没chan 的话，那么我们返回一个错误信息后关闭连接。
+			underlay.Write([]byte(httpLayer.Err403response))
+			underlay.Close()
+		}
+
+		return
+	}
+
+	underlay = &netLayer.ReadWrapper{
+		Conn:              underlay,
+		OptionalReader:    io.MultiReader(firstBuf, underlay),
+		RemainFirstBufLen: n,
+	}
 
 	go s.Server.ServeConn(underlay, &http2.ServeConnOpts{
 		Handler: http.HandlerFunc(func(rw http.ResponseWriter, rq *http.Request) {
@@ -117,7 +182,7 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 							zap.String("raddr", rq.RemoteAddr))
 					}
 
-					var buf *bytes.Buffer
+					//var buf *bytes.Buffer
 
 					respConn := &netLayer.IOWrapper{
 						Reader:    rq.Body,
@@ -134,18 +199,20 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 
 					//因为h2的特殊性，要建立子连接, 所以要配合调用者 进行特殊处理。
 
-					if s.FallbackToH1 {
-						buf = utils.GetBuf()
-						rq.Write(buf)
+					/*
+						if s.FallbackToH1 {
+							buf = utils.GetBuf()
+							rq.Write(buf)
 
-						respConn.FirstWriteChan = make(chan struct{})
+							respConn.FirstWriteChan = make(chan struct{})
 
-						fm.H1RequestBuf = buf
+							fm.H1RequestBuf = buf
 
-					} else {
-						fm.IsH2 = true
-						fm.H2Request = rq
-					}
+						} else {
+					*/
+					fm.IsH2 = true
+					fm.H2Request = rq
+					//}
 
 					if s.closed {
 						return

@@ -77,15 +77,21 @@ func (cfb *ClassicFallback) InsertFallbackConditionSet(condition FallbackConditi
 
 	cfb.supportedTypeMask |= ftype
 
-	for _, forServerTag := range forServerTags {
-
-		realMap := cfb.Map[forServerTag]
-		if realMap == nil {
-			realMap = make(map[FallbackConditionSet]*FallbackResult)
-			cfb.Map[forServerTag] = realMap
-		}
-
+	if len(forServerTags) == 0 {
+		realMap := cfb.Map[""]
 		realMap[condition] = &FallbackResult{Addr: addr, Xver: xver}
+
+	} else {
+		for _, forServerTag := range forServerTags {
+
+			realMap := cfb.Map[forServerTag]
+			if realMap == nil {
+				realMap = make(map[FallbackConditionSet]*FallbackResult)
+				cfb.Map[forServerTag] = realMap
+			}
+
+			realMap[condition] = &FallbackResult{Addr: addr, Xver: xver}
+		}
 	}
 
 }

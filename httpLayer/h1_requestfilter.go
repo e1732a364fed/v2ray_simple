@@ -4,18 +4,19 @@ import (
 	"bytes"
 )
 
+//也许有 ws 的 earlydata放在 query请求里的情况; 虽然本作不支持这种earlydata, 但是也要认定这是合法的请求。
+const MaxParseUrlLen = 3000
+
 type RawHeader struct {
 	Head  []byte
 	Value []byte
 }
 
-// 从数据中试图获取 http请求的 path,和 method.
-// failreason!=0 表示获取失败.
-// 同时可以用这个方法判断明文 是不是 http1.1, http1.0, http0.9的 http请求。
-// 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数。
+// 从数据中试图获取 http1.1, http1.0或 http0.9 请求的 version, path, method 和 headers.
+// failreason!=0 表示获取失败, 即表示不是合法的h1请求.
 //
-// 此方法亦可用于 判断一个http请求头部是否合法。
-func ParseH1Request(bs []byte, isproxy bool) (version, method string, path string, headers []RawHeader, failreason int) {
+// 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数。
+func ParseH1Request(bs []byte, isproxy bool) (version, method, path string, headers []RawHeader, failreason int) {
 
 	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18
 		failreason = 1
@@ -121,8 +122,8 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method string, path strin
 
 	last := len(bs)
 	if !isproxy { //如果是代理，则我们要判断整个请求，不能漏掉任何部分
-		if last > 64 {
-			last = 64
+		if last > MaxParseUrlLen {
+			last = MaxParseUrlLen
 		}
 	}
 
@@ -143,7 +144,7 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method string, path strin
 			path = string(bs[shouldSlashIndex:i])
 
 			if string(bs[i+1:i+5]) != "HTTP" {
-				failreason = -10
+				failreason = 10
 				return
 			}
 
@@ -176,6 +177,9 @@ func ParseH1Request(bs []byte, isproxy bool) (version, method string, path strin
 				})
 
 			}
+			//http1.1 要有 Host 这个header，参考
+			// https://stackoverflow.com/questions/25047905/http-request-minimum-size-in-bytes/25065089
+			// https://stackoverflow.com/questions/9233316/what-is-the-smallest-possible-http-and-https-data-request
 
 			return
 		}

@@ -30,11 +30,15 @@ https://pkg.go.dev/golang.org/x/net/http2/h2c#example-NewHandler
 
 https://github.com/thrawn01/h2c-golang-example
 
-test h2c:
+test h2c fallback:
 
 	curl -k -v --http2-prior-knowledge https://localhost:4434/sfd
 
 	curl -k -v --http2-prior-knowledge -X POST -F 'asdf=1234'  https://localhost:4434/sfd
+
+test http1.1 fallback:
+
+	curl -v --http1.1 -k https://localhost:4434/sfd
 
 */
 package grpcSimple

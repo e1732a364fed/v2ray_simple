@@ -41,38 +41,9 @@ func Prepare() {
 	machineCanConnectToIpv6 = HasIpv6Interface()
 }
 
-func HasIpv6Interface() bool {
-
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
-			ce.Write(zap.Error(err))
-		} else {
-			log.Println("call net.InterfaceAddrs failed", err)
-
-		}
-
-		return false
-	}
-
-	for _, address := range addrs {
-		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
-			// IsLinkLocalUnicast: something starts with fe80:
-			// According to godoc, If ip is not an IPv4 address, To4 returns nil.
-			// This means it's ipv6
-			if ipnet.IP.To4() == nil {
-
-				if ce := utils.CanLogDebug("Has Ipv6Interface!"); ce != nil {
-					ce.Write()
-				} else {
-					log.Println("Has Ipv6Interface!")
-				}
-
-				return true
-			}
-		}
-	}
-	return false
+//c.SetDeadline(time.Time{})
+func PersistConn(c net.Conn) {
+	c.SetDeadline(time.Time{})
 }
 
 //net.IPConn, net.TCPConn, net.UDPConn, net.UnixConn
@@ -140,6 +111,36 @@ type EasyNetAddresser struct {
 func (iw *EasyNetAddresser) LocalAddr() net.Addr  { return iw.LA }
 func (iw *EasyNetAddresser) RemoteAddr() net.Addr { return iw.RA }
 
-func PersistConn(c net.Conn) {
-	c.SetDeadline(time.Time{})
+func HasIpv6Interface() bool {
+
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		if ce := utils.CanLogErr("call net.InterfaceAddrs failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		} else {
+			log.Println("call net.InterfaceAddrs failed", err)
+
+		}
+
+		return false
+	}
+
+	for _, address := range addrs {
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && !ipnet.IP.IsPrivate() && !ipnet.IP.IsLinkLocalUnicast() {
+			// IsLinkLocalUnicast: something starts with fe80:
+			// According to godoc, If ip is not an IPv4 address, To4 returns nil.
+			// This means it's ipv6
+			if ipnet.IP.To4() == nil {
+
+				if ce := utils.CanLogDebug("Has Ipv6Interface!"); ce != nil {
+					ce.Write()
+				} else {
+					log.Println("Has Ipv6Interface!")
+				}
+
+				return true
+			}
+		}
+	}
+	return false
 }

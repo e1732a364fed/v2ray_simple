@@ -1,7 +1,10 @@
 package httpLayer
 
 import (
+	"bytes"
 	"errors"
+	"net"
+	"net/http"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 )
@@ -33,6 +36,17 @@ const (
 )
 
 var ErrShouldFallback = errors.New("will fallback")
+
+// http level fallback metadata
+type FallbackMeta struct {
+	net.Conn
+	H1RequestBuf *bytes.Buffer
+	Path         string
+	Method       string
+	IsH2         bool
+
+	H2Request *http.Request
+}
 
 func getfallbacktype_byindex(i int) byte {
 	return 1 << (i + 1)
