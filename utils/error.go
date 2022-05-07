@@ -13,6 +13,7 @@ var (
 	ErrNilOrWrongParameter = errors.New("nil or wrong parameter")
 	ErrWrongParameter      = errors.New("wrong parameter")
 	ErrInvalidData         = errors.New("invalid data")
+	ErrInvalidNumber       = errors.New("invalid number")
 
 	ErrShortRead = errors.New("short read")
 	ErrHandled   = errors.New("handled")

@@ -51,7 +51,7 @@ const (
 	defaultConfFn  = "client.toml"
 	defaultGeoipFn = "GeoLite2-Country.mmdb"
 
-	willExitStr = "Neither valid proxy settings available, nor cli or apiServer running. Exit now."
+	willExitStr = "Neither valid proxy settings available, nor cli or apiServer running. Exit now.\n"
 )
 
 func init() {
@@ -231,7 +231,7 @@ func mainFunc() (result int) {
 		if ce := utils.CanLogErr(willExitStr); ce != nil {
 			ce.Write(zap.Error(loadConfigErr))
 		} else {
-			log.Printf(willExitStr)
+			log.Print(willExitStr)
 
 		}
 
@@ -429,7 +429,7 @@ func mainFunc() (result int) {
 
 	{
 		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, os.Interrupt, os.Kill, syscall.SIGTERM)
+		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM) //os.Kill cannot be trapped
 		<-osSignals
 
 		utils.Info("Program got close signal.")

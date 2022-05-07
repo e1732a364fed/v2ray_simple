@@ -13,6 +13,7 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/advLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 const delimiter = "===============================\n"
@@ -30,24 +31,24 @@ func versionStr() string {
 }
 
 func printVersion_simple() {
-	fmt.Printf(versionStr())
-	fmt.Printf("\n")
+	utils.PrintStr(versionStr())
+	utils.PrintStr("\n")
 }
 
 //printVersion 返回的信息 可以唯一确定一个编译文件的 版本以及 build tags.
 func printVersion() {
 
-	fmt.Printf(delimiter)
+	utils.PrintStr(delimiter)
 	printVersion_simple()
-	fmt.Printf(delimiter)
+	utils.PrintStr(delimiter)
 
 	const desc = "A very simple implementation of V2Ray with some innovation"
-	fmt.Printf(desc)
-	fmt.Printf("\n")
+	utils.PrintStr(desc)
+	utils.PrintStr("\n")
 
 	if netLayer.HasEmbedGeoip() {
-		fmt.Printf("Contains embedded Geoip file\n")
+		utils.PrintStr("Contains embedded Geoip file\n")
 	}
-	fmt.Printf(delimiter)
+	utils.PrintStr(delimiter)
 
 }

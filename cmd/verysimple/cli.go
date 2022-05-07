@@ -25,30 +25,30 @@ var cliCmdList = []CliCmd{
 			const certFn = "cert.pem"
 			const keyFn = "cert.key"
 			if utils.FileExist(certFn) {
-				fmt.Printf(certFn)
-				fmt.Printf(" 已存在！\n")
+				utils.PrintStr(certFn)
+				utils.PrintStr(" 已存在！\n")
 				return
 			}
 
 			if utils.FileExist(keyFn) {
-				fmt.Printf(keyFn)
-				fmt.Printf(" 已存在！\n")
+				utils.PrintStr(keyFn)
+				utils.PrintStr(" 已存在！\n")
 				return
 			}
 
 			err := tlsLayer.GenerateRandomCertKeyFiles(certFn, keyFn)
 			if err == nil {
-				fmt.Printf("生成成功！请查看目录中的 ")
-				fmt.Printf(certFn)
-				fmt.Printf(" 和 ")
-				fmt.Printf(keyFn)
-				fmt.Printf("\n")
+				utils.PrintStr("生成成功！请查看目录中的 ")
+				utils.PrintStr(certFn)
+				utils.PrintStr(" 和 ")
+				utils.PrintStr(keyFn)
+				utils.PrintStr("\n")
 
 			} else {
 
-				fmt.Printf("生成失败,")
-				fmt.Printf(err.Error())
-				fmt.Printf("\n")
+				utils.PrintStr("生成失败,")
+				utils.PrintStr(err.Error())
+				utils.PrintStr("\n")
 
 			}
 		},
@@ -96,7 +96,7 @@ func (cc CliCmd) String() string {
 //阻塞，可按ctrl+C退出或回退到上一级
 func runCli() {
 	defer func() {
-		fmt.Printf("Interactive Mode exited. \n")
+		utils.PrintStr("Interactive Mode exited. \n")
 		if ce := utils.CanLogInfo("Interactive Mode exited"); ce != nil {
 			ce.Write()
 		}
@@ -203,13 +203,18 @@ func generateConfigFileInteractively() {
 
 			generateConfStr()
 
-			fmt.Printf("#客户端配置\n")
-			fmt.Printf(clientStr)
-			fmt.Printf("\n")
+			buf := utils.GetBuf()
 
-			fmt.Printf("#服务端配置\n")
-			fmt.Printf(serverStr)
-			fmt.Printf("\n")
+			buf.WriteString("#客户端配置\n")
+			buf.WriteString(clientStr)
+			buf.WriteString("\n")
+
+			buf.WriteString("#服务端配置\n")
+			buf.WriteString(serverStr)
+			buf.WriteString("\n")
+			utils.PrintStr(buf.String())
+
+			utils.PutBuf(buf)
 
 		case 2: //clear
 			confClient = proxy.StandardConf{}
@@ -287,7 +292,7 @@ func generateConfigFileInteractively() {
 				hotLoadListenConfForRuntime(confClient.Listen)
 			}
 
-			fmt.Printf("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
+			utils.PrintStr("加载成功！你可以回退(ctrl+c)到上级来使用 【查询当前状态】来查询新增的配置\n")
 
 		case 1: //interactively generate
 
@@ -321,7 +326,7 @@ func generateConfigFileInteractively() {
 			if i2 < 2 {
 				confClient.Listen = append(confClient.Listen, &proxy.ListenConf{})
 			} else {
-				fmt.Printf("Prompt failed, werid input")
+				utils.PrintStr("Prompt failed, werid input")
 				return
 			}
 
@@ -335,20 +340,20 @@ func generateConfigFileInteractively() {
 			validatePort := func(input string) error {
 				theInt, err = strconv.ParseInt(input, 10, 64)
 				if err != nil {
-					return errors.New("Invalid number")
+					return utils.ErrInvalidNumber
 				}
 				if !canLowPort {
 					if theInt <= 1024 {
-						return errors.New("Invalid number")
+						return utils.ErrInvalidNumber
 					}
 				}
 				if theInt > 65535 {
-					return errors.New("Invalid number")
+					return utils.ErrInvalidNumber
 				}
 				return nil
 			}
 
-			fmt.Printf("请输入你客户端想监听的端口\n")
+			utils.PrintStr("请输入你客户端想监听的端口\n")
 
 			promptPort := promptui.Prompt{
 				Label:    "Port Number",
@@ -387,7 +392,7 @@ func generateConfigFileInteractively() {
 			confClient.Dial = append(confClient.Dial, &proxy.DialConf{})
 			clientDial := confClient.Dial[0]
 
-			fmt.Printf("请输入你服务端想监听的端口\n")
+			utils.PrintStr("请输入你服务端想监听的端口\n")
 			canLowPort = true
 
 			result, err = promptPort.Run()
@@ -451,7 +456,7 @@ func generateConfigFileInteractively() {
 				}
 			}
 
-			fmt.Printf("请输入你服务端的ip\n")
+			utils.PrintStr("请输入你服务端的ip\n")
 
 			promptIP := promptui.Prompt{
 				Label:    "IP",
@@ -468,7 +473,7 @@ func generateConfigFileInteractively() {
 
 			clientDial.IP = result
 
-			fmt.Printf("请输入你服务端的域名\n")
+			utils.PrintStr("请输入你服务端的域名\n")
 
 			promptDomain := promptui.Prompt{
 				Label:    "域名",
@@ -552,10 +557,10 @@ func generateConfigFileInteractively() {
 				serverListen.Insecure = true
 				clientDial.Insecure = true
 
-				fmt.Printf("你选择了默认自签名证书, 这是不安全的, 我们不推荐. 所以自动生成证书这一步需要你一会再到交互模式里选择相应选项进行生成。 \n")
+				utils.PrintStr("你选择了默认自签名证书, 这是不安全的, 我们不推荐. 所以自动生成证书这一步需要你一会再到交互模式里选择相应选项进行生成。 \n")
 
 			} else {
-				fmt.Printf("请输入 cert路径\n")
+				utils.PrintStr("请输入 cert路径\n")
 
 				promptCPath := promptui.Prompt{
 					Label:    "path",
@@ -572,7 +577,7 @@ func generateConfigFileInteractively() {
 
 				serverListen.TLSCert = result
 
-				fmt.Printf("请输入 key 路径\n")
+				utils.PrintStr("请输入 key 路径\n")
 
 				result, err = promptCPath.Run()
 				if err != nil {
@@ -591,9 +596,9 @@ func generateConfigFileInteractively() {
 
 //热删除配置
 func interactively_hotRemoveServerOrClient() {
-	fmt.Printf("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
-	fmt.Printf("【当前所有配置】为：\n")
-	fmt.Printf(delimiter)
+	utils.PrintStr("即将开始热删除配置步骤, 删除正在运行的配置可能有未知风险，谨慎操作\n")
+	utils.PrintStr("【当前所有配置】为：\n")
+	utils.PrintStr(delimiter)
 	printAllState(os.Stdout, true)
 
 	var items []string
@@ -604,7 +609,7 @@ func interactively_hotRemoveServerOrClient() {
 		items = append(items, "dial")
 	}
 	if len(items) == 0 {
-		fmt.Printf("没listen也没dial! 一个都没有，没法删!\n")
+		utils.PrintStr("没listen也没dial! 一个都没有，没法删!\n")
 		return
 	}
 
@@ -648,7 +653,7 @@ func interactively_hotRemoveServerOrClient() {
 		validateFunc := func(input string) error {
 			theInt, err = strconv.ParseInt(input, 10, 64)
 			if err != nil || theInt < 0 {
-				return errors.New("Invalid number")
+				return utils.ErrInvalidNumber
 			}
 
 			if will_delete_dial && int(theInt) >= len(allClients) {
@@ -662,7 +667,7 @@ func interactively_hotRemoveServerOrClient() {
 			return nil
 		}
 
-		fmt.Printf("请输入你想删除的序号\n")
+		utils.PrintStr("请输入你想删除的序号\n")
 
 		promptIdx := promptui.Prompt{
 			Label:    "序号",
@@ -698,20 +703,20 @@ func interactively_hotRemoveServerOrClient() {
 
 	}
 
-	fmt.Printf("删除成功！当前状态：\n")
-	fmt.Printf(delimiter)
+	utils.PrintStr("删除成功！当前状态：\n")
+	utils.PrintStr(delimiter)
 	printAllState(os.Stdout, true)
 }
 
 //热添加配置文件
 func interactively_hotLoadConfigFile() {
-	fmt.Printf("即将开始热添加配置文件\n")
-	fmt.Printf("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
-	fmt.Printf("【当前所有配置】为：\n")
-	fmt.Printf(delimiter)
+	utils.PrintStr("即将开始热添加配置文件\n")
+	utils.PrintStr("【注意】我们交互模式只支持热添加listen和dial, 对于dns/route/fallback的热增删, 请期待api server未来的实现.\n")
+	utils.PrintStr("【当前所有配置】为：\n")
+	utils.PrintStr(delimiter)
 	printAllState(os.Stdout, false)
 
-	fmt.Printf("请输入你想添加的文件名称\n")
+	utils.PrintStr("请输入你想添加的文件名称\n")
 
 	promptFile := promptui.Prompt{
 		Label: "配置文件",
@@ -783,8 +788,8 @@ func interactively_hotLoadConfigFile() {
 
 	}
 
-	fmt.Printf("添加成功！当前状态：\n")
-	fmt.Printf(delimiter)
+	utils.PrintStr("添加成功！当前状态：\n")
+	utils.PrintStr(delimiter)
 	printAllState(os.Stdout, false)
 }
 
@@ -810,9 +815,9 @@ func interactively_adjust_loglevel() {
 		utils.LogLevel = i
 		utils.InitLog("")
 
-		fmt.Printf("调节 日志等级完毕. 现在等级为\n")
-		fmt.Printf(list[i])
-		fmt.Printf("\n")
+		utils.PrintStr("调节 日志等级完毕. 现在等级为\n")
+		utils.PrintStr(list[i])
+		utils.PrintStr("\n")
 
 	}
 }
