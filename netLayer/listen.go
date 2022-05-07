@@ -50,6 +50,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 	}
 }
 
+/*
 func loopAcceptUDP(uc net.UDPConn, acceptFunc func([]byte, *net.UDPAddr)) {
 	for {
 		p := utils.GetPacket()
@@ -63,6 +64,7 @@ func loopAcceptUDP(uc net.UDPConn, acceptFunc func([]byte, *net.UDPAddr)) {
 		go acceptFunc(p[:n], addr)
 	}
 }
+*/
 
 // ListenAndAccept 试图监听 tcp, udp 和 unix domain socket 这三种传输层协议.
 //

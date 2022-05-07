@@ -726,7 +726,7 @@ func interactively_hotLoadConfigFile() {
 				return err
 			}
 			if !utils.FileExist(utils.GetFilePath(s)) {
-				return errors.New("文件不存在")
+				return os.ErrNotExist
 			}
 			return nil
 		},

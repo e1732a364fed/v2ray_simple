@@ -139,7 +139,7 @@ type Client struct {
 
 	Config
 
-	curBaseConn net.Conn //一般为 tlsConn
+	//curBaseConn net.Conn //一般为 tlsConn
 
 	handshakeRequest http.Request
 

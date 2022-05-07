@@ -388,10 +388,10 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 						if cd.DefinitelyNotTLS {
 							return
 						}
-					} else {
-						//可能吗？
+					} //else {
+					//可能吗？
 
-					}
+					//}
 				}
 			}
 		}
@@ -659,9 +659,9 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 	}
 	n, err = dw.Writer.Write(p)
 
-	if PDD {
-		//log.Println("DetectWriter,W, 原本", len(p), "实际写入了", n, dw.Writer)
-	}
+	//if PDD {
+	//log.Println("DetectWriter,W, 原本", len(p), "实际写入了", n, dw.Writer)
+	//}
 
 	return
 }

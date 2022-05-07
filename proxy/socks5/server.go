@@ -124,8 +124,7 @@ func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLaye
 	} else {
 		theName = string(buf[off : off+l-2])
 	}
-	var thePort int
-	thePort = int(buf[off+l-2])<<8 | int(buf[off+l-1])
+	thePort := int(buf[off+l-2])<<8 | int(buf[off+l-1])
 
 	//根据 socks5标准，“使用UDP ASSOCIATE时，客户端的请求包中(DST.ADDR, DST.PORT)不再是目标的地址，而是客户端指定本身用于发送UDP数据包的地址和端口”
 	//然后服务器会传回专门适用于客户端的 一个 服务器的 udp的ip和地址；然后之后客户端再专门 向udp地址发送连接，此tcp连接就已经没用。
@@ -316,8 +315,8 @@ func (u *ServerUDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 	} else {
 		theName = string(bs[off : off+l-2])
 	}
-	var thePort int
-	thePort = int(bs[off+l-2])<<8 | int(bs[off+l-1])
+
+	thePort := int(bs[off+l-2])<<8 | int(bs[off+l-1])
 
 	newStart := off + l
 

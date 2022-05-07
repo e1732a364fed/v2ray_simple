@@ -243,7 +243,11 @@ func (uc *UDPConn) CloseMsgChan() {
 	if uc.isClient {
 		if !uc.clientFirstWriteChanClosed {
 			uc.clientFirstWriteChanClosed = true
-			close(uc.inMsgChan)
+			if !uc.inMsgChanClosed {
+				close(uc.inMsgChan)
+				uc.inMsgChanClosed = true
+
+			}
 		}
 	}
 }

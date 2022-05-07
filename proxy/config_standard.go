@@ -19,7 +19,7 @@ const (
 	StandardMode
 	V2rayCompatibleMode
 
-	ErrStrNoListenUrl = "No listen URL provided"
+	ErrStrNoListenUrl = "no listen URL provided"
 )
 
 type AppConf struct {

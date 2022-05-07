@@ -161,6 +161,9 @@ func NewAddrByHostPort(hostPortStr string) (Addr, error) {
 		host = "127.0.0.1"
 	}
 	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return Addr{}, err
+	}
 
 	a := Addr{Port: port}
 	if ip := net.ParseIP(host); ip != nil {
@@ -193,6 +196,9 @@ func NewAddrByURL(addrStr string) (Addr, error) {
 		host = "127.0.0.1"
 	}
 	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		return Addr{}, err
+	}
 
 	a := Addr{Port: port}
 	if ip := net.ParseIP(host); ip != nil {
@@ -256,20 +262,20 @@ func NewAddrFromAny(thing any) (addr Addr, err error) {
 
 	case uint64:
 
-		if value > 65535 || value < 0 {
+		if value > 65535 {
 			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
 			return
 		}
 		integer = int(value)
 	case uint:
 
-		if value > 65535 || value < 0 {
+		if value > 65535 {
 			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
 			return
 		}
 		integer = int(value)
 	case uint32:
-		if value > 65535 || value < 0 {
+		if value > 65535 {
 			err = utils.ErrInErr{ErrDesc: "port not valid", Data: value}
 			return
 		}

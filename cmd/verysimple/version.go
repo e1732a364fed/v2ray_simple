@@ -27,12 +27,11 @@ func versionStr() string {
 		advList = append(advList, c.PackageID())
 	}
 
-	return fmt.Sprintf("verysimple %s, %s %s %s, with advLayer packages: %v", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH, advList)
+	return fmt.Sprintf("verysimple %s, %s %s %s, with advLayer packages: %v \n", Version, runtime.Version(), runtime.GOOS, runtime.GOARCH, advList)
 }
 
 func printVersion_simple() {
 	utils.PrintStr(versionStr())
-	utils.PrintStr("\n")
 }
 
 //printVersion 返回的信息 可以唯一确定一个编译文件的 版本以及 build tags.
@@ -42,9 +41,8 @@ func printVersion() {
 	printVersion_simple()
 	utils.PrintStr(delimiter)
 
-	const desc = "A very simple implementation of V2Ray with some innovation"
+	const desc = "A very simple implementation of V2Ray with some innovation\n"
 	utils.PrintStr(desc)
-	utils.PrintStr("\n")
 
 	if netLayer.HasEmbedGeoip() {
 		utils.PrintStr("Contains embedded Geoip file\n")

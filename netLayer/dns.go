@@ -37,10 +37,8 @@ func Is_DNSQuery_returnType_ReadFatalErr(err error) bool {
 	}
 
 	if ne, ok := err.(net.Error); ok {
-		if ne.Timeout() {
-			return false
-		}
-		return true
+		return !ne.Timeout()
+
 	}
 
 	return false

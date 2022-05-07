@@ -31,13 +31,13 @@ func NewUDPConn(conn net.Conn, optionalReader io.Reader) (uc *UDPConn) {
 	return
 }
 
-func (u UDPConn) Fullcone() bool {
+func (*UDPConn) Fullcone() bool {
 	return true
 }
-func (u UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
+func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 	return u.Close()
 }
-func (u UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
+func (u *UDPConn) ReadMsgFrom() ([]byte, netLayer.Addr, error) {
 
 	addr, err := GetAddrFrom(u.bufr, false)
 	if err != nil {

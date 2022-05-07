@@ -83,7 +83,7 @@ func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 
 func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (io.ReadWriteCloser, error) {
 	if target.Port <= 0 {
-		return nil, errors.New("Trojan Client Handshake failed, target port invalid")
+		return nil, errors.New("trojan Client Handshake failed, target port invalid")
 
 	}
 	buf := utils.GetBuf()
@@ -122,7 +122,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
 	if target.Port <= 0 {
-		return nil, errors.New("Trojan Client EstablishUDPChannel failed, target port invalid")
+		return nil, errors.New("trojan Client EstablishUDPChannel failed, target port invalid")
 
 	}
 	buf := utils.GetBuf()
