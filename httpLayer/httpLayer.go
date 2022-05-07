@@ -119,6 +119,7 @@ type H1RequestParser struct {
 	Method          string
 	WholeRequestBuf *bytes.Buffer
 	Failreason      int //为0表示没错误
+	Headers         []RawHeader
 }
 
 // 尝试读取数据并解析HTTP请求, 解析道道 数据会存入 RequestParser 结构中.
@@ -134,7 +135,7 @@ func (rhr *H1RequestParser) ReadAndParse(r io.Reader) error {
 	buf := bytes.NewBuffer(data)
 	rhr.WholeRequestBuf = buf
 
-	rhr.Version, rhr.Method, rhr.Path, rhr.Failreason = GetH1RequestMethod_and_PATH_from_Bytes(data, false)
+	rhr.Version, rhr.Method, rhr.Path, rhr.Headers, rhr.Failreason = ParseH1Request(data, false)
 	if rhr.Failreason != 0 {
 		return utils.ErrInErr{ErrDesc: "httpLayer ReadAndParse failed", ErrDetail: ErrNotHTTP_Request, Data: rhr.Failreason}
 	}

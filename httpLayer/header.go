@@ -13,6 +13,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+const (
+	toLower = 'a' - 'A'      // for use with OR.
+	toUpper = ^byte(toLower) // for use with AND.
+)
+
 //return a clone of m with headers trimmed to one value
 func TrimHeaders(m map[string][]string) (result map[string][]string) {
 
@@ -22,6 +27,20 @@ func TrimHeaders(m map[string][]string) (result map[string][]string) {
 		result[k] = []string{v[rand.Intn(len(v))]}
 	}
 	return
+}
+
+// Algorithm below is like standard textproto/CanonicalMIMEHeaderKey, except
+// that it operates with slice of bytes and modifies it inplace without copying. copied from gobwas/ws
+func CanonicalizeHeaderKey(k []byte) {
+	upper := true
+	for i, c := range k {
+		if upper && 'a' <= c && c <= 'z' {
+			k[i] &= toUpper
+		} else if !upper && 'A' <= c && c <= 'Z' {
+			k[i] |= toLower
+		}
+		upper = c == '-'
+	}
 }
 
 //all values in template is given by real
@@ -151,7 +170,7 @@ func (h *HeaderPreset) AssignDefaultValue() {
 	h.Prepare()
 }
 
-func (h *HeaderPreset) ReadRequest(underlay net.Conn) (err error, leftBuf *bytes.Buffer) {
+func (h *HeaderPreset) ReadRequest(underlay net.Conn) (leftBuf *bytes.Buffer, err error) {
 
 	var rp H1RequestParser
 	err = rp.ReadAndParse(underlay)
@@ -190,7 +209,7 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (err error, leftBuf *bytes
 	for _, header := range headerBytesList {
 		//log.Println("ReadRequest read header", string(h))
 		hs := string(header)
-		ss := strings.Split(hs, ":")
+		ss := strings.SplitN(hs, ":", 2)
 		if len(ss) != 2 {
 			err = utils.ErrInvalidData
 			return
@@ -234,7 +253,7 @@ func (h *HeaderPreset) ReadRequest(underlay net.Conn) (err error, leftBuf *bytes
 
 	rp.WholeRequestBuf.Next(4)
 
-	return nil, rp.WholeRequestBuf
+	return rp.WholeRequestBuf, nil
 }
 
 func (h *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
@@ -255,7 +274,7 @@ func (h *HeaderPreset) WriteRequest(underlay net.Conn, payload []byte) error {
 	return r.Write(underlay)
 }
 
-func (h *HeaderPreset) ReadResponse(underlay net.Conn) (err error, leftBuf *bytes.Buffer) {
+func (h *HeaderPreset) ReadResponse(underlay net.Conn) (leftBuf *bytes.Buffer, err error) {
 
 	bs := utils.GetPacket()
 	var n int
@@ -278,7 +297,7 @@ func (h *HeaderPreset) ReadResponse(underlay net.Conn) (err error, leftBuf *byte
 
 	buf := bytes.NewBuffer(bs[indexOfEnding+4 : n])
 
-	return nil, buf
+	return buf, nil
 }
 
 func (h *HeaderPreset) WriteResponse(underlay net.Conn, payload []byte) error {
@@ -330,7 +349,7 @@ func (c *HeaderConn) Read(p []byte) (n int, err error) {
 
 	if c.IsServerEnd {
 		if c.optionalReader == nil {
-			err, buf = c.H.ReadRequest(c.Conn)
+			buf, err = c.H.ReadRequest(c.Conn)
 			if err != nil {
 				err = utils.ErrInErr{ErrDesc: "http HeaderConn Read failed, at serverEnd", ErrDetail: err}
 				return
@@ -341,7 +360,7 @@ func (c *HeaderConn) Read(p []byte) (n int, err error) {
 
 	} else {
 		if c.optionalReader == nil {
-			err, buf = c.H.ReadResponse(c.Conn)
+			buf, err = c.H.ReadResponse(c.Conn)
 			if err != nil {
 				err = utils.ErrInErr{ErrDesc: "http HeaderConn Read failed", ErrDetail: err}
 				return

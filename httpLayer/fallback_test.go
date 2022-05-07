@@ -16,7 +16,8 @@ var testf = httpLayer.FallbackConditionSet{
 
 var testMap = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
 var testMap2 = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
-var testMap3 = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
+
+//var testMap3 = make(map[httpLayer.FallbackConditionSet]*httpLayer.FallbackResult)
 
 const map2Mask = httpLayer.Fallback_sni | httpLayer.Fallback_alpn
 

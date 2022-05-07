@@ -79,7 +79,6 @@ func (fcs *FallbackConditionSet) setSingle(t byte, s string, b byte) {
 	case Fallback_alpn:
 		fcs.AlpnMask = b
 	}
-	return
 }
 
 func (fcs *FallbackConditionSet) setSingleByInt(t int, s string, b byte) {
@@ -93,7 +92,6 @@ func (fcs *FallbackConditionSet) setSingleByInt(t int, s string, b byte) {
 		fcs.Sni = s
 
 	}
-	return
 }
 
 func (fcs *FallbackConditionSet) extractSingle(t byte) (r FallbackConditionSet) {

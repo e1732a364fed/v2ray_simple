@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	mtuPool sync.Pool //专门储存 长度为 MTU 的 []byte
+	mtuPool sync.Pool //专门储存 长度为 MTU 的 *[]byte, 注意这里存储的是指针
 
 	// packetPool 专门储存 长度为 MaxPacketLen 的 []byte
 	//
@@ -34,13 +34,15 @@ func init() {
 
 	mtuPool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, MTU)
+			bs := make([]byte, MTU)
+			return &bs
 		},
 	}
 
 	packetPool = sync.Pool{
 		New: func() interface{} {
-			return make([]byte, MaxPacketLen)
+			bs := make([]byte, MaxPacketLen)
+			return &bs
 		},
 	}
 
@@ -64,7 +66,8 @@ func PutBuf(buf *bytes.Buffer) {
 
 //建议在 Read net.Conn 时, 使用 GetPacket函数 获取到足够大的 []byte（MaxBufLen）
 func GetPacket() []byte {
-	return packetPool.Get().([]byte)
+	bsPtr := packetPool.Get().(*[]byte)
+	return *bsPtr
 }
 
 // 放回用 GetPacket 获取的 []byte
@@ -72,23 +75,27 @@ func PutPacket(bs []byte) {
 	c := cap(bs)
 	if c < MaxPacketLen {
 		if c >= MTU {
-			mtuPool.Put(bs[:MTU])
+			bs = bs[:MTU]
+			mtuPool.Put(&bs)
 		}
 		return
 	}
 
-	packetPool.Put(bs[:MaxPacketLen])
+	bs = bs[:MaxPacketLen]
+	packetPool.Put(&bs)
 }
 
 // 从Pool中获取一个 MTU 长度的 []byte
 func GetMTU() []byte {
-	return mtuPool.Get().([]byte)
+	bs := mtuPool.Get().(*[]byte)
+	return *bs
 }
 
 // 从pool中获取 []byte, 根据给出长度不同，来源于的Pool会不同.
 func GetBytes(size int) []byte {
 	if size <= MTU {
-		bs := mtuPool.Get().([]byte)
+		bsPtr := mtuPool.Get().(*[]byte)
+		bs := *bsPtr
 		return bs[:size]
 	}
 
@@ -103,8 +110,13 @@ func PutBytes(bs []byte) {
 
 		return
 	} else if c < MaxPacketLen {
-		mtuPool.Put(bs[:MTU])
+		if c != MTU {
+			bs = bs[:MTU]
+
+		}
+		mtuPool.Put(&bs)
 	} else {
-		packetPool.Put(bs[:MaxPacketLen])
+		bs = bs[:MaxPacketLen]
+		packetPool.Put(&bs)
 	}
 }

@@ -158,6 +158,7 @@ win10:
 clean:
 	rm -f ${prefix}
 	rm -f ${prefix}.exe
+	rm -f BUILD_VERSION
 
 	rm -f $(linuxAmdFn)
 	rm -f $(linuxArmFn)

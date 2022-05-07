@@ -15,7 +15,6 @@ import (
 // 因此我们包装一下，统一使用Read和Write函数 来读写 二进制数据。因为我们这里是代理，
 type Conn struct {
 	net.Conn
-	first_nextFrameCalled bool
 
 	state ws.State
 	r     *wsutil.Reader

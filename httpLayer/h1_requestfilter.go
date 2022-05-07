@@ -1,12 +1,21 @@
 package httpLayer
 
+import (
+	"bytes"
+)
+
+type RawHeader struct {
+	Head  []byte
+	Value []byte
+}
+
 // 从数据中试图获取 http请求的 path,和 method.
-// failreason>0 表示获取失败. 不会返回小于0的值。
+// failreason!=0 表示获取失败.
 // 同时可以用这个方法判断明文 是不是 http1.1, http1.0, http0.9的 http请求。
 // 如果是http代理的话，判断方式会有变化,所以需要 isproxy 参数。
 //
 // 此方法亦可用于 判断一个http请求头部是否合法。
-func GetH1RequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, method string, path string, failreason int) {
+func ParseH1Request(bs []byte, isproxy bool) (version, method string, path string, headers []RawHeader, failreason int) {
 
 	if len(bs) < 16 { //http0.9 最小长度为16， http1.0及1.1最小长度为18
 		failreason = 1
@@ -131,8 +140,43 @@ func GetH1RequestMethod_and_PATH_from_Bytes(bs []byte, isproxy bool) (version, m
 				return
 			}
 
-			version = string(bs[i+6 : i+9])
 			path = string(bs[shouldSlashIndex:i])
+
+			if string(bs[i+1:i+5]) != "HTTP" {
+				failreason = -10
+				return
+			}
+
+			version = string(bs[i+6 : i+9])
+			if bs[i+9] != '\r' || bs[i+10] != '\n' {
+				failreason = -11
+				return
+			}
+
+			leftBs := bs[i+11:]
+
+			indexOfEnding := bytes.Index(leftBs, HeaderENDING_bytes)
+			if indexOfEnding < 0 {
+				failreason = -12
+				return
+
+			}
+			headerBytes := leftBs[:indexOfEnding]
+			headerBytesList := bytes.Split(headerBytes, []byte(CRLF))
+			for _, header := range headerBytesList {
+
+				ss := bytes.SplitN(header, []byte(":"), 2)
+				if len(ss) != 2 {
+					failreason = -13
+					return
+				}
+				headers = append(headers, RawHeader{
+					Head:  bytes.TrimLeft(ss[0], " "),
+					Value: bytes.TrimLeft(ss[1], " "),
+				})
+
+			}
+
 			return
 		}
 	}

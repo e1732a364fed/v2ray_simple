@@ -105,7 +105,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 			if iics.fallbackFirstBuffer != nil && theRequestPath == "" {
 				var failreason int
 
-				_, _, theRequestPath, failreason = httpLayer.GetH1RequestMethod_and_PATH_from_Bytes(iics.fallbackFirstBuffer.Bytes(), false)
+				_, _, theRequestPath, _, failreason = httpLayer.ParseH1Request(iics.fallbackFirstBuffer.Bytes(), false)
 
 				if failreason != 0 {
 					theRequestPath = ""
@@ -164,7 +164,7 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 
 	}
 
-	//默认回落, 每个listen配置 都可 有一个自己独享的默认回落
+	//默认回落, 每个listen配置 都 有一个自己独享的默认回落配置 (fallback = 80 这种)
 
 	if defaultFallbackAddr := iics.inServer.GetFallback(); defaultFallbackAddr != nil {
 
@@ -176,6 +176,10 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 		targetAddr = *defaultFallbackAddr
 		result = 0
 
+	} else {
+
+		result = -1
 	}
+
 	return
 }

@@ -64,7 +64,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	// "CONNECT is intended only for use in requests to a proxy.  " 总之CONNECT命令专门用于代理.
 	// GET如果 path也是带 http:// 头的话，也是可以的，但是这种只适用于http代理，无法用于https。
 
-	_, method, path, failreason := httpLayer.GetH1RequestMethod_and_PATH_from_Bytes(bs[:n], true)
+	_, method, path, _, failreason := httpLayer.ParseH1Request(bs[:n], true)
 	if failreason != 0 {
 		err = utils.ErrInErr{ErrDesc: "get method/path failed", ErrDetail: utils.ErrInvalidData, Data: []any{method, failreason}}
 
@@ -102,7 +102,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 		}
 		addressStr = hostPortURL.Host
 
-		if strings.Index(hostPortURL.Host, ":") == -1 { //host不带端口， 默认80
+		if !strings.Contains(hostPortURL.Host, ":") { //host不带端口， 默认80
 			addressStr = hostPortURL.Host + ":80"
 		}
 	}

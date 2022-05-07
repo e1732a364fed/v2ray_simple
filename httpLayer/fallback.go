@@ -24,7 +24,7 @@ const (
 
 	all_non_default_fallbacktype_count = iota - 2
 
-	alpn_unspecified = 0
+	//alpn_unspecified = 0
 )
 
 const (

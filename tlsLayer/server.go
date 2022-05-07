@@ -2,7 +2,6 @@ package tlsLayer
 
 import (
 	"crypto/tls"
-	"log"
 	"net"
 	"unsafe"
 
@@ -23,7 +22,7 @@ func NewServer(host, certFile, keyFile string, isInsecure bool, alpnList []strin
 		return nil, err
 	}
 
-	//发现服务端必须给出 http/1.1 等，否则不会协商出这个alpn，而我们为了回落，是需要协商出所有可能需要等 alpn的。
+	//发现服务端必须给出 http/1.1 等，否则不会协商出这个alpn，而我们为了回落，是需要协商出所有可能需要的 alpn的。
 
 	//而且我们如果不提供 h1 和 h2 的alpn的话，很容易被审查者察觉的。
 
@@ -38,8 +37,6 @@ func NewServer(host, certFile, keyFile string, isInsecure bool, alpnList []strin
 			alpnList = append(alpnList, "h2")
 		}
 	}
-
-	log.Println("NewServer", alpnList)
 
 	s := &Server{
 		tlsConfig: &tls.Config{
