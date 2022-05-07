@@ -8,7 +8,6 @@ package advLayer
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 
@@ -24,10 +23,10 @@ var ProtocolsMap = make(map[string]Creator)
 var MaxEarlyDataLen = 2048 //for ws early data
 
 func PrintAllProtocolNames() {
-	fmt.Printf("===============================\nSupported Advanced Layer protocols:\n")
+	utils.PrintStr("===============================\nSupported Advanced Layer protocols:\n")
 	for _, v := range utils.GetMapSortedKeySlice(ProtocolsMap) {
-		fmt.Print(v)
-		fmt.Print("\n")
+		utils.PrintStr(v)
+		utils.PrintStr("\n")
 	}
 }
 

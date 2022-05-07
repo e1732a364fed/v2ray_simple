@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 
@@ -18,19 +17,19 @@ var (
 )
 
 func PrintAllServerNames() {
-	fmt.Printf("===============================\nSupported Proxy Listen protocols:\n")
+	utils.PrintStr("===============================\nSupported Proxy Listen protocols:\n")
 	for _, v := range utils.GetMapSortedKeySlice(serverCreatorMap) {
-		fmt.Print(v)
-		fmt.Print("\n")
+		utils.PrintStr(v)
+		utils.PrintStr("\n")
 	}
 }
 
 func PrintAllClientNames() {
-	fmt.Printf("===============================\nSupported Proxy Dial protocols:\n")
+	utils.PrintStr("===============================\nSupported Proxy Dial protocols:\n")
 
 	for _, v := range utils.GetMapSortedKeySlice(clientCreatorMap) {
-		fmt.Print(v)
-		fmt.Print("\n")
+		utils.PrintStr(v)
+		utils.PrintStr("\n")
 	}
 }
 

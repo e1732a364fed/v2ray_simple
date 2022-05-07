@@ -195,7 +195,7 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 	dir := "geosite/data"
 	dir = utils.GetFilePath(dir)
 	if utils.DirExist(dir) {
-		fmt.Println("geosite/data folder already exists.")
+		utils.PrintStr("geosite/data folder already exists.\n")
 		return
 	}
 
@@ -270,7 +270,7 @@ func DownloadCommunity_DomainListFiles(proxyurl string) {
 		return
 	}
 
-	fmt.Println("download and extract success!")
+	utils.PrintStr("download and extract success!\n")
 
 	err = os.Rename(folderName, "geosite")
 	if err != nil {

@@ -104,7 +104,7 @@ func runCli() {
 
 	/*
 		langList := []string{"简体中文", "English"}
-		fmt.Printf("Welcome to Interactive Mode, please choose a Language \n")
+		utils.PrintStr("Welcome to Interactive Mode, please choose a Language \n")
 		Select := promptui.Select{
 			Label: "Select Language",
 			Items: langList,
@@ -120,7 +120,7 @@ func runCli() {
 		fmt.Printf("You choose %q\n", result)
 
 		if result != langList[0] {
-			fmt.Printf("Sorry, language not supported yet \n")
+			utils.PrintStr("Sorry, language not supported yet \n")
 			return
 		}
 	*/
@@ -243,28 +243,30 @@ func generateConfigFileInteractively() {
 			serverFile.WriteString(serverStr)
 			serverFile.Close()
 
-			fmt.Println("生成成功！请查看文件")
+			utils.PrintStr("生成成功！请查看文件\n")
 		case 4: //share url
 			if len(confClient.Dial) > 0 {
 
-				fmt.Println("生成的分享链接如下：")
+				utils.PrintStr("生成的分享链接如下：\n")
 
 				for _, d := range confClient.Dial {
 					switch d.Protocol {
 					case vless.Name:
-						fmt.Println(vless.GenerateXrayShareURL(d))
+						utils.PrintStr(vless.GenerateXrayShareURL(d))
+						utils.PrintStr("\n")
 
 					case trojan.Name:
-						fmt.Println(trojan.GenerateOfficialDraftShareURL(d))
+						utils.PrintStr(trojan.GenerateOfficialDraftShareURL(d))
+						utils.PrintStr("\n")
 					}
 				}
 
 			} else {
-				fmt.Println("请先进行配置")
+				utils.PrintStr("请先进行配置\n")
 
 			}
 		case 5: //hot load
-			fmt.Println("因为本次同时生成了服务端和客户端配置, 请选择要热加载的是哪一个")
+			utils.PrintStr("因为本次同时生成了服务端和客户端配置, 请选择要热加载的是哪一个\n")
 			selectHot := promptui.Select{
 				Label: "加载客户端配置还是服务端配置？",
 				Items: []string{

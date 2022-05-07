@@ -89,7 +89,7 @@ func generateAndPrintUUID() {
 }
 
 func printSupportedProtocols() {
-	fmt.Printf("Support tcp/udp/tproxy/unix domain socket/tls/uTls by default.\n")
+	utils.PrintStr("Support tcp/udp/tproxy/unix domain socket/tls/uTls by default.\n")
 	proxy.PrintAllServerNames()
 	proxy.PrintAllClientNames()
 	advLayer.PrintAllProtocolNames()
@@ -131,7 +131,7 @@ func tryDownloadMMDB() {
 		fmt.Printf("Write downloaded mmdb to file failed: %s\n", err.Error())
 		return
 	}
-	fmt.Printf("Download mmdb success!\n")
+	utils.PrintStr("Download mmdb success!\n")
 
 }
 
@@ -165,9 +165,9 @@ func tryDownloadGeositeSource() {
 
 	if defaultOutClient != nil && defaultOutClient.Name() != proxy.DirectName && defaultOutClient.Name() != proxy.RejectName {
 		outClient = defaultOutClient
-		fmt.Println("trying to download geosite through your proxy dial")
+		utils.PrintStr("trying to download geosite through your proxy dial\n")
 	} else {
-		fmt.Println("trying to download geosite directly")
+		utils.PrintStr("trying to download geosite directly\n")
 	}
 
 	var proxyurl string
