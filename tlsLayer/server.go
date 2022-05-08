@@ -33,7 +33,7 @@ func NewServer(host string, certConf *CertConf, isInsecure bool, alpnList []stri
 	}
 
 	s := &Server{
-		tlsConfig: GetTlsConfig(isInsecure, alpnList, host, certConf),
+		tlsConfig: GetTlsConfig(isInsecure, true, alpnList, host, certConf),
 	}
 
 	return s, nil

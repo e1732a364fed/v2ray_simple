@@ -37,7 +37,7 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string, cer
 		}
 	} else {
 
-		c.tlsConfig = GetTlsConfig(insecure, alpnList, host, certConf)
+		c.tlsConfig = GetTlsConfig(insecure, false, alpnList, host, certConf)
 
 	}
 

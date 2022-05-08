@@ -285,6 +285,7 @@ func (b *Base) ConfigCommon(cc *CommonConf) {
 	b.InitAdvLayer()
 }
 
+//高级层就像代理层一样重要，可以注册多种包，配置选项也比较多。
 func (b *Base) InitAdvLayer() {
 	switch b.AdvancedL {
 	case "":
@@ -330,7 +331,7 @@ func (b *Base) InitAdvLayer() {
 				}
 			}
 
-			tConf = tlsLayer.GetTlsConfig(dc.Insecure, dc.Alpn, dc.Host, certConf)
+			tConf = tlsLayer.GetTlsConfig(dc.Insecure, false, dc.Alpn, dc.Host, certConf)
 
 		}
 
@@ -380,7 +381,7 @@ func (b *Base) InitAdvLayer() {
 		}
 
 		if creator.IsSuper() {
-			aConf.TlsConf = tlsLayer.GetTlsConfig(lc.Insecure, lc.Alpn, lc.Host, &tlsLayer.CertConf{
+			aConf.TlsConf = tlsLayer.GetTlsConfig(lc.Insecure, true, lc.Alpn, lc.Host, &tlsLayer.CertConf{
 				CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
 			})
 		}

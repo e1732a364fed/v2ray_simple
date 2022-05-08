@@ -161,6 +161,9 @@ func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate
 
 		}
 	} else {
+		if ce := utils.CanLogDebug("GetCertArrayFromFile generating random cert in memory"); ce != nil {
+			ce.Write()
+		}
 		certArray = GenerateRandomTLSCert()
 	}
 

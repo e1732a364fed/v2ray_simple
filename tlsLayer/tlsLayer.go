@@ -12,12 +12,19 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf) *tls.Config {
+func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certConf *CertConf) *tls.Config {
 	var certArray []tls.Certificate
 	var err error
 
-	if certConf != nil {
-		certArray, err = GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
+	if certConf != nil || mustHasCert {
+
+		if certConf != nil {
+			certArray, err = GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
+
+		} else {
+			certArray, err = GetCertArrayFromFile("", "")
+
+		}
 
 		if err != nil {
 
