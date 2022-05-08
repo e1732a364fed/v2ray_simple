@@ -1,4 +1,4 @@
-# 测试socks 的 dial; 
+# 本文件 可 测试socks 的 dial, 以及密码认证 等功能 是否可用
 
 # 另外你可以看到，listen、dial和 route的顺序是可以打乱的，
 #  这样 自己可以方便地  把相关联 的配置 放在一起。
@@ -13,7 +13,9 @@ port = 10800
 protocol = "socks5"  
 tag = "dial1"
 host = "127.0.0.1"  
-port = 10801         
+port = 10801
+
+#uuid = "user:very\npass:simple"
 
 [[route]]
 fromTag = ["my_socks5_1"]
@@ -24,6 +26,8 @@ tag = "my_socks5_2"
 protocol = "socks5" 
 host = "127.0.0.1"
 port = 10801
+
+#uuid = "user:very\npass:simple"
 
 [[dial]]
 tag = "direct"

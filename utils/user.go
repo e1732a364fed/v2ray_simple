@@ -2,6 +2,8 @@ package utils
 
 import (
 	"io"
+	"net/url"
+	"strings"
 )
 
 //User是一个唯一身份标识。
@@ -53,4 +55,51 @@ func NewV2rayUser(s string) (V2rayUser, error) {
 	}
 
 	return uuid, nil
+}
+
+//used in proxy/socks5 and proxy.http
+type EasyUserPassHolder struct {
+	User, Password []byte
+}
+
+//	return len(ph.User) > 0 && len(ph.Password) > 0
+func (ph *EasyUserPassHolder) HasUserPass() bool {
+	return len(ph.User) > 0 && len(ph.Password) > 0
+}
+
+//require "user" and "pass" field
+func (ph *EasyUserPassHolder) InitWithUrl(u *url.URL) {
+	ph.User = []byte(u.Query().Get("user"))
+	ph.User = []byte(u.Query().Get("pass"))
+}
+
+//uuid: "user:xxxx\npass:xxxx"
+func (ph *EasyUserPassHolder) InitWithStr(str string) {
+	strs := strings.SplitN(str, "\n", 2)
+	if len(strs) != 2 {
+
+		return
+
+	}
+
+	var potentialUser, potentialPass string
+
+	ustrs := strings.SplitN(strs[0], ":", 2)
+	if ustrs[0] != "user" {
+
+		return
+	}
+	potentialUser = ustrs[1]
+
+	pstrs := strings.SplitN(strs[1], ":", 2)
+	if pstrs[0] != "pass" {
+
+		return
+	}
+	potentialPass = pstrs[1]
+
+	if potentialUser != "" && potentialPass != "" {
+		ph.User = []byte(potentialUser)
+		ph.Password = []byte(potentialPass)
+	}
 }

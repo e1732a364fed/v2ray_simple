@@ -36,9 +36,11 @@
 
 [[listen]]
 tag = "my_socks5"   # 可选, 但不可与其他tag重复
-protocol = "socks5" # 必填, 也可写为 http或者 socks5http; socks5http 与 clash的 "mixed" 等价, 可同时监听http和 socks5.
+protocol = "socks5" # 必填, 作为本地入口 也可写为 http或者 socks5http; socks5http 与 clash的 "mixed" 等价, 可同时监听http和 socks5.
 host = "127.0.0.1"  # 必填, 可填ip或域名；如果 network是unix的话，要填一个文件名(不需要已存在,可以是完整路径).
 port = 10800        # 必填
+
+uuid = "user:xx\npass:yy"   # 可选. 本行 示范了当 user为 xx 且 密码为 yy 时所需的配置. user的值的结尾的右侧 和 pass 的左侧 中间用 \n 分隔开。
 
 [[dial]]
 tag = "my_vlesss1"  # 同listen对应配置, 可选, 但不可与其他tag重复

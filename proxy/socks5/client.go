@@ -16,25 +16,30 @@ func init() {
 
 type ClientCreator struct{}
 
-func (ClientCreator) NewClientFromURL(*url.URL) (proxy.Client, error) {
-	s := &Client{}
-	return s, nil
+func (ClientCreator) NewClientFromURL(u *url.URL) (proxy.Client, error) {
+	c := &Client{}
+	c.InitWithUrl(u)
+	return c, nil
 }
 
-func (ClientCreator) NewClient(*proxy.DialConf) (proxy.Client, error) {
-	s := &Client{}
-	return s, nil
+func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
+	c := &Client{}
+	if str := dc.Uuid; str != "" {
+		c.InitWithStr(str)
+	}
+	return c, nil
 }
 
 type Client struct {
 	proxy.Base
+	utils.EasyUserPassHolder
 }
 
 func (*Client) Name() string {
 	return Name
 }
 
-func (*Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
+func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (result io.ReadWriteCloser, err error) {
 
 	if underlay == nil {
 		panic("socks5 client handshake, nil underlay is not allowed")
@@ -45,7 +50,17 @@ func (*Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer
 	//握手阶段
 	ba[0] = Version5
 	ba[1] = 1
-	ba[2] = 0
+
+	var adoptedMethod byte
+
+	if len(c.Password) > 0 && len(c.User) > 0 {
+		adoptedMethod = AuthPassword
+	} else {
+		adoptedMethod = AuthNone
+
+	}
+	ba[2] = adoptedMethod
+
 	_, err = underlay.Write(ba[:3])
 	if err != nil {
 		return
@@ -59,8 +74,33 @@ func (*Client) Handshake(underlay net.Conn, firstPayload []byte, target netLayer
 	}
 	netLayer.PersistConn(underlay)
 
-	if n != 2 || ba[0] != Version5 || ba[1] != 0 {
-		return nil, utils.NumErr{Prefix: "socks5 client handshake,protocol err", N: 1}
+	if n != 2 || ba[0] != Version5 || ba[1] != adoptedMethod {
+		return nil, utils.ErrInErr{ErrDesc: "socks5 client handshake,protocol err", Data: ba[1]}
+	}
+	if adoptedMethod == AuthPassword {
+		buf := utils.GetBuf()
+		buf.WriteByte(1)
+		buf.WriteByte(byte(len(c.User)))
+		buf.Write(c.User)
+		buf.WriteByte(byte(len(c.Password)))
+		buf.Write(c.Password)
+
+		_, err = underlay.Write(buf.Bytes())
+		utils.PutBuf(buf)
+		if err != nil {
+			return nil, err
+		}
+		proxy.SetHandshakeTimeout(underlay)
+
+		n, err = underlay.Read(ba[:])
+		if err != nil {
+			return
+		}
+		netLayer.PersistConn(underlay)
+
+		if n != 2 || ba[0] != 1 || ba[1] != 0 {
+			return nil, utils.ErrInErr{ErrDesc: "socks5 client handshake,auth failed", Data: ba[1]}
+		}
 	}
 
 	buf := utils.GetBuf()

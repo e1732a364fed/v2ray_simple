@@ -1,4 +1,22 @@
-//Package http implements http proxy for proxy.Server.
+/*Package http implements http proxy for proxy.Server.
+
+Reference
+
+rfc: https://datatracker.ietf.org/doc/html/rfc7231#section-4.3.6
+
+about basic auth:
+
+https://en.wikipedia.org/wiki/Basic_access_authentication
+
+
+https://datatracker.ietf.org/doc/html/rfc7617
+
+example header:
+
+	Authorization: Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==
+
+
+*/
 package http
 
 import (
@@ -26,27 +44,32 @@ func init() {
 type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	// TODO: Support Basic Auth
 
 	s := &Server{}
+	s.InitWithUrl(u)
 	return s, nil
 }
 
-func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	s := &Server{}
+	if str := lc.Uuid; str != "" {
+		s.InitWithStr(str)
+	}
 	return s, nil
 }
 
 //implements proxy.Server
 type Server struct {
 	proxy.Base
+
+	utils.EasyUserPassHolder
+
 	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。
 
-	MustFallback bool //如果此选项打开, 则无论请求是不是合法的http请求都会保留firstbuf。
 }
 
-func (*Server) CanFallback() bool {
-	return false //true //暂时不考虑回落，下次再说
+func (s *Server) CanFallback() bool {
+	return true
 }
 
 func (*Server) Name() string {
@@ -65,9 +88,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	}
 
 	defer func() {
-		if !s.MustFallback {
-			utils.PutBytes(bs)
-		} else if err != nil {
+		if err != nil {
 			err = utils.ErrBuffer{
 				Buf: bytes.NewBuffer(bs[:n]),
 				Err: err,
@@ -82,12 +103,6 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	_, method, path, _, failreason := httpLayer.ParseH1Request(bs[:n], true)
 	if failreason != 0 {
 		err = utils.ErrInErr{ErrDesc: "get method/path failed", ErrDetail: utils.ErrInvalidData, Data: []any{method, failreason}}
-
-		//一个正常的http代理如果遇到了 格式不符的情况的话是要返回 400 等错误代码的
-		// 但是，也不能说不返回400的就是异常服务器，因为这可能是服务器自己的策略，无视一切错误请求，比如防黑客时就常常会如此.
-		// 所以我们就直接return即可
-		//
-		//不过另外注意，连method都没有，那么就没有回落的可能性
 
 		return
 	}

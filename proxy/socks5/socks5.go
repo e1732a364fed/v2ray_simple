@@ -1,5 +1,7 @@
 /*Package socks5 provies socks5 proxy for proxy.Client and proxy.Server.
 
+Supports USER/PASSWORD authentication.
+
 Reference
 
 English: https://www.ietf.org/rfc/rfc1928.txt
@@ -7,6 +9,10 @@ English: https://www.ietf.org/rfc/rfc1928.txt
 中文： https://aber.sh/articles/Socks5/
 
 参考 https://studygolang.com/articles/31404
+
+USER/PASSWORD authentication rfc:
+
+https://datatracker.ietf.org/doc/html/rfc1929
 
 Off Topic
 
@@ -24,6 +30,8 @@ const Version5 = 0x05
 const (
 	AuthNone     = 0x00
 	AuthPassword = 0x02
+
+	AuthNoACCEPTABLE = 0xff
 )
 
 // SOCKS request commands as defined in RFC 1928 section 4

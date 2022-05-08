@@ -23,29 +23,47 @@ func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
 }
 
-// TODO: Support Auth
 type Server struct {
 	proxy.Base
-	//user string
-	//password string
+	utils.EasyUserPassHolder
 }
 
 type ServerCreator struct{}
 
-func (ServerCreator) NewServerFromURL(*url.URL) (proxy.Server, error) {
+func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 	s := &Server{}
+	s.InitWithUrl(u)
 	return s, nil
 }
 
-func (ServerCreator) NewServer(*proxy.ListenConf) (proxy.Server, error) {
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (rs proxy.Server, err error) {
 	s := &Server{}
-	return s, nil
+	rs = s
+	if str := lc.Uuid; str != "" {
+		s.InitWithStr(str)
+	}
+	return
 }
 
 func (*Server) Name() string { return Name }
 
-// 处理tcp收到的请求. 注意, udp associate后的 udp请求并不通过此函数处理, 而是由 UDPConn 处理
-func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
+func (s *Server) authNone(underlay net.Conn) (returnErr error) {
+	var err error
+	if len(s.Password) == 0 && len(s.User) == 0 {
+		_, err = underlay.Write([]byte{Version5, AuthNone})
+		if err != nil {
+			returnErr = fmt.Errorf("failed to write hello response: %w", err)
+			return
+		}
+	} else {
+		returnErr = errors.New("require Password but got AuthNone")
+	}
+	return
+
+}
+
+// 处理tcp收到的请求. 注意, udp associate后的 udp请求并不 直接 通过此函数处理, 而是由 UDPConn 处理
+func (s *Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLayer.MsgConn, targetAddr netLayer.Addr, returnErr error) {
 	// Set handshake timeout 4 seconds
 	if err := underlay.SetReadDeadline(time.Now().Add(time.Second * 4)); err != nil {
 		returnErr = err
@@ -53,32 +71,134 @@ func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLaye
 	}
 	defer underlay.SetReadDeadline(time.Time{})
 
-	buf := utils.GetMTU()
-	defer utils.PutBytes(buf)
+	bs := utils.GetMTU()
+	defer utils.PutBytes(bs)
 
 	// Read hello message
-	// 一般握手包发来的是 [5 1 0]
-	n, err := underlay.Read(buf)
-	if err != nil || n == 0 {
+	// 一般免密握手包发来的是 [5 1 0]
+	n, err := underlay.Read(bs)
+	if err != nil || n < 3 {
 		returnErr = fmt.Errorf("failed to read hello: %w", err)
 		return
 	}
-	version := buf[0]
+	version := bs[0]
 	if version != Version5 {
 		returnErr = fmt.Errorf("unsupported socks version %v", version)
 		return
 	}
-
-	// Write hello response， [5 0]
-	// TODO: Support Auth
-	_, err = underlay.Write([]byte{Version5, AuthNone})
-	if err != nil {
-		returnErr = fmt.Errorf("failed to write hello response: %w", err)
+	nmethods := int(bs[1])
+	if nmethods == 0 || nmethods > 2 {
+		underlay.Write([]byte{Version5, AuthNoACCEPTABLE})
+		returnErr = fmt.Errorf("nmethods==0||nmethods>2, %d", nmethods)
 		return
+	}
+	authed := false
+
+	var dealtNone, dealtPass bool //所有method只能给出一次，否则就是非法。
+For:
+	for i := 2; i < 2+nmethods; i++ {
+		method := bs[i]
+
+		switch method {
+		//只支持 none和Password两种method，其它method给出的话也不能认为是非法，只不过不加以处理。
+		case AuthNone:
+
+			if dealtNone {
+				break For
+			}
+
+			dealtNone = true
+			returnErr = s.authNone(underlay)
+			if returnErr != nil {
+
+				continue
+			} else {
+				authed = true
+				break For
+			}
+
+		case AuthPassword:
+
+			if dealtPass {
+				break For
+			}
+
+			dealtPass = true
+
+			if len(s.Password) == 0 && len(s.User) == 0 {
+
+				returnErr = errors.New("not require Password but got AuthPassword")
+				continue
+
+			} else {
+				_, err = underlay.Write([]byte{Version5, AuthPassword})
+				if err != nil {
+					returnErr = fmt.Errorf("failed to write hello response: %w", err)
+					continue
+				}
+			}
+
+			var authBs []byte
+
+			if n == 2+nmethods {
+				n, err = underlay.Read(bs)
+				if err != nil {
+					returnErr = fmt.Errorf("read socks5 auth failed: %w", err)
+					continue
+				}
+				authBs = bs[:n]
+
+			} else {
+				authBs = bs[3:n]
+
+			}
+
+			if len(authBs) < 5 || authBs[0] != 1 || authBs[1] == 0 {
+				returnErr = fmt.Errorf("read socks5 auth failed: %w", err)
+				continue
+			}
+
+			ulen := authBs[1]
+			if int(ulen)+2 > n {
+				returnErr = fmt.Errorf("read socks5 auth failed, ulen too long but data too short %d", n)
+				continue
+			}
+			ubytes := authBs[2 : 2+ulen]
+			plen := authBs[2+ulen]
+
+			if int(ulen)+2+int(plen) > n {
+				returnErr = fmt.Errorf("read socks5 auth failed, ulen too long but data too short %d", n)
+				continue
+			}
+
+			pbytes := authBs[2+ulen+1 : 2+ulen+1+plen]
+
+			if bytes.Equal(s.User, ubytes) && bytes.Equal(s.Password, pbytes) {
+				_, err = underlay.Write([]byte{1, 0})
+				if err != nil {
+					returnErr = fmt.Errorf("failed to write auth response: %w", err)
+					return
+				}
+				authed = true
+				returnErr = nil
+				break For
+			} else {
+				_, err = underlay.Write([]byte{1, 1})
+				returnErr = err
+				return
+			}
+		}
+	}
+	if !authed {
+		underlay.Write([]byte{Version5, AuthNoACCEPTABLE})
+		returnErr = fmt.Errorf("socks5 not authed , %w", returnErr)
+		return
+	} else {
+		returnErr = nil
 	}
 
 	// Read command message，
-	n, err = underlay.Read(buf)
+	n, err = underlay.Read(bs)
 	if err != nil || n < 7 { // Shortest length is 7
 		returnErr = fmt.Errorf("read socks5 failed, msgTooShort: %w", err)
 		return
@@ -87,7 +207,7 @@ func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLaye
 	// 一般可以为 5 1 0 3 n，3表示域名，n是域名长度，然后域名很可能是 119 119 119 46 开头，表示 www.
 	//  比如百度就是  [5 1 0 3 13 119 119 119 46 98]
 
-	cmd := buf[1]
+	cmd := bs[1]
 	if cmd == CmdBind {
 		returnErr = fmt.Errorf("unsuppoted command %v", cmd)
 		return
@@ -97,7 +217,7 @@ func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLaye
 	off := 4
 	var theIP net.IP
 
-	switch buf[3] {
+	switch bs[3] {
 	case ATypIP4:
 		l += net.IPv4len
 		theIP = make(net.IP, net.IPv4len)
@@ -105,14 +225,14 @@ func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLaye
 		l += net.IPv6len
 		theIP = make(net.IP, net.IPv6len)
 	case ATypDomain:
-		l += int(buf[4])
+		l += int(bs[4])
 		off = 5
 	default:
-		returnErr = fmt.Errorf("unknown address type %v", buf[3])
+		returnErr = fmt.Errorf("unknown address type %v", bs[3])
 		return
 	}
 
-	if len(buf[off:]) < l {
+	if len(bs[off:]) < l {
 		returnErr = errors.New("short command request")
 		return
 	}
@@ -120,11 +240,11 @@ func (*Server) Handshake(underlay net.Conn) (result net.Conn, udpChannel netLaye
 	var theName string
 
 	if theIP != nil {
-		copy(theIP, buf[off:])
+		copy(theIP, bs[off:])
 	} else {
-		theName = string(buf[off : off+l-2])
+		theName = string(bs[off : off+l-2])
 	}
-	thePort := int(buf[off+l-2])<<8 | int(buf[off+l-1])
+	thePort := int(bs[off+l-2])<<8 | int(bs[off+l-1])
 
 	//根据 socks5标准，“使用UDP ASSOCIATE时，客户端的请求包中(DST.ADDR, DST.PORT)不再是目标的地址，而是客户端指定本身用于发送UDP数据包的地址和端口”
 	//然后服务器会传回专门适用于客户端的 一个 服务器的 udp的ip和地址；然后之后客户端再专门 向udp地址发送连接，此tcp连接就已经没用。

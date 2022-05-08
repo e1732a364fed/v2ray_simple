@@ -1,6 +1,12 @@
 /*Package socks5http provides listening both socks5 and http at one port.
 
 This package imports proxy/socks5 and proxy/http package.
+
+为了避免混淆，本包不支持密码验证。你要是有这么高的密码要求 那你不妨用单独的协议，而不要用混合版。
+
+实际上本包就是先经过http，然后如果不是http代理请求，就会回落到socks5.
+
+所以你可以通过 设计回落的方式来达到 有密码 的 混合端口 的需求。
 */
 package socks5http
 
@@ -37,8 +43,7 @@ func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 func newServer() *Server {
 	return &Server{
 		hs: http.Server{
-			MustFallback: true,
-			OnlyConnect:  true,
+			OnlyConnect: true,
 		},
 	}
 }
