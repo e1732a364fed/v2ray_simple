@@ -24,6 +24,7 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 	}
 
 	for {
+		var tooManyRetryCount time.Duration = 1
 		newc, err := listener.Accept()
 		if err != nil {
 			errStr := err.Error()
@@ -39,12 +40,17 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 			}
 			if strings.Contains(errStr, "too many") {
 				if ce := utils.CanLogWarn("Too many incoming conns! Will Sleep."); ce != nil {
-					ce.Write(zap.String("err", errStr))
+					ce.Write(zap.String("err", errStr), zap.Int64("tooManyRetryCount", int64(tooManyRetryCount)))
 
 				}
-				time.Sleep(time.Millisecond * 500)
+				if tooManyRetryCount > 20 {
+					break
+				}
+				time.Sleep(time.Millisecond * 500 * tooManyRetryCount)
+				tooManyRetryCount++
 				continue
 			}
+			//在 Close这个listener后，会遇到 EOF 错误，所以除了too many的特殊情况外，应该 直接退出才对.
 			break
 		}
 		go acceptFunc(newc)
