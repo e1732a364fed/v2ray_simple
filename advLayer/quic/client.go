@@ -32,7 +32,7 @@ type Client struct {
 	connMapMutex sync.RWMutex
 }
 
-func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure bool, args arguments) *Client {
+func NewClient(addr *netLayer.Addr, tConf tls.Config, args arguments) *Client {
 
 	if args.hysteriaMaxByteCount <= 0 {
 		args.hysteriaMaxByteCount = Default_hysteriaMaxByteCount
@@ -40,12 +40,8 @@ func NewClient(addr *netLayer.Addr, alpnList []string, host string, insecure boo
 
 	return &Client{
 		serverAddrStr: addr.String(),
-		tlsConf: tls.Config{
-			InsecureSkipVerify: insecure,
-			ServerName:         host,
-			NextProtos:         alpnList,
-		},
-		arguments: args,
+		tlsConf:       tConf,
+		arguments:     args,
 	}
 }
 

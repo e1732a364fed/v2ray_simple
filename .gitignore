@@ -20,4 +20,9 @@ BUILD_VERSION
 client.crt
 client.csr
 client.key
+fakeclient.crt
+fakeclient.csr
+fakeclient.key
+fakeca.key
+fakeca.crt
 .vscode

@@ -13,6 +13,8 @@ cert = "cert.pem"
 key = "cert.key"
 advancedLayer = "quic"
 
+#ca = "ca.crt"  # 可选，用于客户端证书 的验证
+
 # network = udp # 只要 advancedLayer 设成了quic，network 就会自动被配置为udp，所以不需手动指定udp
 
 #alpn = ["asdfsadf"]    #如果指定alpn，则客户端和服务端都要指定，而且要相同

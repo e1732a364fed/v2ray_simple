@@ -73,7 +73,7 @@ utls = true     #是否使用 utls 来应用 chrome指纹进行伪装
 
 # 如果要使用 websocket/grpc ，则 客户端和服务端 都要配置 advancedLayer 和 path
 
-# 下面cert和key用于 "客户端证书", 小白可以无视，高级玩家可以用, 详见 vlesss.server.toml
+# 下面cert和key用于 "客户端证书", 小白可以无视，高级玩家可以用. 证书的生成命令 详见 README.md
 #cert = "client.crt"
 #key = "client.key" 
 

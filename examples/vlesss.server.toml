@@ -16,18 +16,8 @@ key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不�
 
 #xver = 1   # 可选, 高级用法, 小白不用管. 若为1或者2, 则监听 PROXY protocol, 用于nginx等回落到 verysimple. 实际上目前无论给出的是1还是2, 都会同时监听 v1和v2. 不过这只是目前代码的实现而已, 也许未来会改动, 所以你还是确定选用一个版本.
 
-# ca = "ca.crt" # 用于验证客户端证书
+ ca = "ca.crt" # 可选, 用于验证客户端证书
 
-# 生成ca的命令:
-# openssl ecparam -genkey -name prime256v1 -out ca.key    
-# openssl req -new -x509 -days 365 -sha256 -key ca.key -out ca.crt  #会提示让你输入 CountryName 等信息。
-
-# 用ca生成客户端key和crt
-# openssl ecparam -genkey -name prime256v1 -out client.key
-# openssl req -new -key client.key -out client.csr   #会提示 让你输入 CountryName 等信息。
-# openssl x509 -req -days 365 -sha256  -in client.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt
-
-# 之后 client.key 和 client.crt 就是我们要的 客户端证书。 注意 上面的openssl 生成 crt 的两个命令 要使用 -sha256参数, 因为默认的sha1已经不安全, 在go1.18中被废弃了。
 
 [[dial]]
 protocol = "direct"

@@ -25,6 +25,7 @@ Imperfect Package
 package quic
 
 import (
+	"crypto/tls"
 	"log"
 	"reflect"
 	"time"
@@ -139,7 +140,14 @@ func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
 		useHysteria, hysteria_manual, maxbyteCount, _ = getExtra(conf.Extra)
 	}
 
-	return NewClient(&conf.Addr, alpn, conf.Host, conf.TlsConf.InsecureSkipVerify, arguments{
+	var tConf tls.Config
+	if conf.TlsConf != nil {
+		tConf = *conf.TlsConf
+
+	}
+	tConf.NextProtos = alpn
+
+	return NewClient(&conf.Addr, tConf, arguments{
 		early:                conf.IsEarly,
 		useHysteria:          useHysteria,
 		hysteria_manual:      hysteria_manual,

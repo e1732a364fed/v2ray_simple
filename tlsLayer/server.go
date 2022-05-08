@@ -6,7 +6,6 @@ import (
 	"unsafe"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 )
 
@@ -16,17 +15,6 @@ type Server struct {
 
 //如 certFile, keyFile 有一项没给出，则会自动生成随机证书
 func NewServer(host string, certConf *CertConf, isInsecure bool, alpnList []string) (*Server, error) {
-
-	var certArray []tls.Certificate
-	var err error
-
-	if certConf != nil {
-		certArray, err = GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
-
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	//发现服务端必须给出 http/1.1 等，否则不会协商出这个alpn，而我们为了回落，是需要协商出所有可能需要的 alpn的。
 
@@ -44,29 +32,8 @@ func NewServer(host string, certConf *CertConf, isInsecure bool, alpnList []stri
 		}
 	}
 
-	tConf := &tls.Config{
-		InsecureSkipVerify: isInsecure,
-		ServerName:         host,
-		Certificates:       certArray,
-		NextProtos:         alpnList,
-	}
-
-	if certConf != nil {
-		if certConf.CA != "" {
-			certPool, err := LoadCA(certConf.CA)
-			if err != nil {
-				if ce := utils.CanLogErr("load CA failed"); ce != nil {
-					ce.Write(zap.Error(err))
-				}
-			} else {
-				tConf.ClientCAs = certPool
-				tConf.ClientAuth = tls.RequireAndVerifyClientCert
-			}
-		}
-	}
-
 	s := &Server{
-		tlsConfig: tConf,
+		tlsConfig: GetTlsConfig(isInsecure, alpnList, host, certConf),
 	}
 
 	return s, nil

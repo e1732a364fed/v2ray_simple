@@ -154,6 +154,7 @@ func GetCertArrayFromFile(certFile, keyFile string) (certArray []tls.Certificate
 			}
 
 			certArray = GenerateRandomTLSCert()
+			err = nil
 
 		} else {
 			certArray = []tls.Certificate{cert}

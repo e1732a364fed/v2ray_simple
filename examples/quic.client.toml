@@ -27,6 +27,10 @@ advancedLayer = "quic"
 
 # tls = true
 
+# 客户端证书，小白可无视。
+#cert = "client.crt"
+#key = "client.key" 
+
 # early = true # 0-rtt
 
 # 我们可以选择性使用 “hysteria 阻塞控制” 方法, 但是协议依然为quic协议。具体请参考wiki等github页面上的 本作作者对hysteria的讨论

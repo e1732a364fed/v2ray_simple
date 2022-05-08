@@ -220,6 +220,24 @@ openssl req -new -x509 -days 7305 -key cert.key -out cert.pem
 
 此命令会生成ecc证书，这个证书比rsa证书 速度更快, 有利于网速加速（加速tls握手）。
 
+#### 使用客户端证书的 高玩情况：
+
+小白请无视这一段。
+
+```sh
+# 生成ca的命令:
+openssl ecparam -genkey -name prime256v1 -out ca.key    
+openssl req -new -x509 -days 365 -sha256 -key ca.key -out ca.crt  #会提示让你输入 CountryName 等信息。
+
+# 用ca生成客户端key和crt
+openssl ecparam -genkey -name prime256v1 -out client.key
+openssl req -new -key client.key -out client.csr   #会提示 让你输入 CountryName 等信息。
+openssl x509 -req -days 365 -sha256  -in client.csr -CA ca.crt -CAkey ca.key -set_serial 01 -out client.crt
+```
+
+之后, ca.crt 用于CA (服务端要配置这个), client.key 和 client.crt 用于 客户端证书 （客户端要配置这个）
+
+注意 上面的openssl 生成 crt 的两个命令 要使用 -sha256参数, 因为默认的sha1已经不安全, 在go1.18中被废弃了。
 
 ### 交互模式 生成证书
 
