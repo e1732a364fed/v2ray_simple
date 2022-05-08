@@ -2,6 +2,8 @@
 package http
 
 import (
+	"bytes"
+	"errors"
 	"io"
 	"net"
 	"net/url"
@@ -38,6 +40,9 @@ func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 //implements proxy.Server
 type Server struct {
 	proxy.Base
+	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。
+
+	MustFallback bool //如果此选项打开, 则无论请求是不是合法的http请求都会保留firstbuf。
 }
 
 func (*Server) CanFallback() bool {
@@ -50,7 +55,6 @@ func (*Server) Name() string {
 
 func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgConn, targetAddr netLayer.Addr, err error) {
 	var bs = utils.GetMTU() //一般要获取请求信息，不需要那么长; 就算是http，加了path，也不用太长
-	//因为要储存为 firstdata，所以也无法直接放回
 
 	n := 0
 
@@ -59,6 +63,17 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 		utils.PutBytes(bs)
 		return
 	}
+
+	defer func() {
+		if !s.MustFallback {
+			utils.PutBytes(bs)
+		} else if err != nil {
+			err = utils.ErrBuffer{
+				Buf: bytes.NewBuffer(bs[:n]),
+				Err: err,
+			}
+		}
+	}()
 
 	//rfc: https://datatracker.ietf.org/doc/html/rfc7231#section-4.3.6
 	// "CONNECT is intended only for use in requests to a proxy.  " 总之CONNECT命令专门用于代理.
@@ -74,11 +89,8 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 		//
 		//不过另外注意，连method都没有，那么就没有回落的可能性
 
-		utils.PutBytes(bs)
 		return
 	}
-
-	//log.Println("GetRequestMethod_and_PATH_from_Bytes", method, URL, "data:", string(b[:n]))
 
 	var isCONNECT bool
 
@@ -92,12 +104,15 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 		addressStr = path //实测都会自带:443, 也就不需要我们额外判断了
 
 	} else {
+		if s.OnlyConnect {
+			err = errors.New("non-connect method not supported")
+			return
+		}
 
 		hostPortURL, err2 := url.Parse(path)
 		if err2 != nil {
 			err = err2
 
-			utils.PutBytes(bs)
 			return
 		}
 		addressStr = hostPortURL.Host
@@ -110,7 +125,6 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	targetAddr, err = netLayer.NewAddr(addressStr)
 	if err != nil {
 
-		utils.PutBytes(bs)
 		return
 	}
 	//如果使用CONNECT方式进行代理，需先向客户端表示连接建立完毕
