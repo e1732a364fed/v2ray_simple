@@ -43,8 +43,9 @@ func loopAccept(listener net.Listener, xver int, acceptFunc func(net.Conn)) {
 
 				}
 				time.Sleep(time.Millisecond * 500)
+				continue
 			}
-			continue
+			break
 		}
 		go acceptFunc(newc)
 	}

@@ -14,13 +14,14 @@ func TestGeosite(t *testing.T) {
 
 	//inclusionCount := 0
 	var typeCount map[string]int = make(map[string]int)
-	for n, list := range GeositeListMap {
+	//for n, list := range GeositeListMap {
+	for _, list := range GeositeListMap {
 		//if len(list.Inclusion) > 0 {
 		//t.Log("==========================", list.Inclusion)
 		//	inclusionCount++
 		//}
 		for _, d := range list.Domains {
-			t.Log(n, d.Type, d.Value, d.Attrs)
+			//t.Log(n, d.Type, d.Value, d.Attrs)
 			typeCount[d.Type] = typeCount[d.Type] + 1
 		}
 	}
