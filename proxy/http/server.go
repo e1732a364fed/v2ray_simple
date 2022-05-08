@@ -21,6 +21,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"io"
 	"net"
@@ -35,7 +36,12 @@ import (
 
 const Name = "http"
 
-var connectReturnBytes = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
+var (
+	connectReturnBytes    = []byte("HTTP/1.1 200 Connection established\r\n\r\n")
+	basicAuthValue_prefix = []byte("Basic ")
+
+	proxyAuth_headerBytes = []byte("Proxy-Authorization")
+)
 
 func init() {
 	proxy.RegisterServer(Name, &ServerCreator{})
@@ -100,11 +106,42 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 	// "CONNECT is intended only for use in requests to a proxy.  " 总之CONNECT命令专门用于代理.
 	// GET如果 path也是带 http:// 头的话，也是可以的，但是这种只适用于http代理，无法用于https。
 
-	_, method, path, _, failreason := httpLayer.ParseH1Request(bs[:n], true)
+	_, method, path, headers, failreason := httpLayer.ParseH1Request(bs[:n], true)
 	if failreason != 0 {
 		err = utils.ErrInErr{ErrDesc: "get method/path failed", ErrDetail: utils.ErrInvalidData, Data: []any{method, failreason}}
 
 		return
+	}
+
+	if s.HasUserPass() {
+		var ok bool
+		for _, h := range headers {
+
+			if bytes.Equal(h.Head, proxyAuth_headerBytes) {
+				if !bytes.HasPrefix(h.Value, basicAuthValue_prefix) {
+					break
+				}
+				bs := utils.GetMTU()
+				n, err = base64.StdEncoding.Decode(bs, h.Value[len(basicAuthValue_prefix):])
+				if err != nil {
+					break
+				}
+				colonIndex := bytes.IndexByte(bs[:n], ':')
+				if colonIndex < 0 {
+					break
+				}
+
+				if bytes.Equal(bs[:colonIndex], s.User) && bytes.Equal(bs[colonIndex+1:n], s.Password) {
+					ok = true
+				}
+
+				break
+			}
+		}
+		if !ok {
+			err = errors.New("http auth not pass")
+			return
+		}
 	}
 
 	var isCONNECT bool
