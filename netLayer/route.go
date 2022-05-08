@@ -59,12 +59,12 @@ type RouteSet struct {
 	NetRanger cidranger.Ranger    //一个范围
 	IPs       map[netip.Addr]bool //一个确定值
 
-	//Match 匹配任意字符串
-	//Domains匹配子域名，当此域名是目标域名或其子域名时，该规则生效
+	//Domains匹配子域名，当此域名是目标域名或其子域名时，该规则生效.
 	//Full只匹配完整域名
 	Domains, Full, InTags, Countries map[string]bool // Countries 使用 ISO 3166 字符串 作为key
 
-	//Regex是正则匹配域名
+	//Regex是正则匹配域名.
+	//Match 匹配任意字符串
 	Regex           []*regexp.Regexp
 	Match, Geosites []string
 
@@ -139,25 +139,29 @@ func (sg *RouteSet) IsTCPAllowed() bool {
 	return sg.IsTransportProtocolAllowed(TCP)
 }
 
+func (sg *RouteSet) IsNoLimitForNetworkLayer() bool {
+	if (sg.NetRanger == nil || sg.NetRanger.Len() == 0) && len(sg.IPs) == 0 && len(sg.Match) == 0 && len(sg.Domains) == 0 && len(sg.Full) == 0 && len(sg.Countries) == 0 && len(sg.Geosites) == 0 {
+		//如果仅限制了一个传输层协议，且本集合里没有任何其它内容，那就直接通过
+		return true
+	}
+	return false
+}
+
 func (sg *RouteSet) IsAddrIn(a Addr) bool {
-	//我们先过滤传输层，再过滤网络层
+	//我们先过滤传输层，再过滤网络层, 因为传输层过滤非常简单。
 
 	if !sg.IsAddrNetworkAllowed(a) {
 		return false
-
-	} else if sg.NetRanger == nil && sg.IPs == nil && sg.Domains == nil && sg.Countries == nil {
-		//如果仅限制了一个传输层协议，且本集合里没有任何其它内容，那就直接通过
-		return true
 	}
 
 	//开始网络层判断
 	if len(a.IP) > 0 {
-		if sg.NetRanger != nil {
+		if sg.NetRanger != nil && sg.NetRanger.Len() > 0 {
 			if has, _ := sg.NetRanger.Contains(a.IP); has {
 				return true
 			}
 		}
-		if sg.Countries != nil {
+		if len(sg.Countries) > 0 {
 
 			if isoStr := GetIP_ISO(a.IP); isoStr != "" {
 				if _, found := sg.Countries[isoStr]; found {
@@ -166,7 +170,7 @@ func (sg *RouteSet) IsAddrIn(a Addr) bool {
 			}
 
 		}
-		if sg.IPs != nil {
+		if len(sg.IPs) > 0 {
 			if _, found := sg.IPs[a.GetNetIPAddr()]; found {
 				return true
 			}
@@ -183,7 +187,9 @@ func (sg *RouteSet) IsAddrIn(a Addr) bool {
 
 		if len(sg.Domains) > 0 {
 
-			return HasFullOrSubDomain(a.Name, MapDomainHaser(sg.Domains))
+			if HasFullOrSubDomain(a.Name, MapDomainHaser(sg.Domains)) {
+				return true
+			}
 
 		}
 
