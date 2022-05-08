@@ -20,7 +20,7 @@ type Client struct {
 	alpnList   []string
 }
 
-func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Client {
+func NewClient(host string, insecure bool, use_uTls bool, alpnList []string, certConf *CertConf) *Client {
 
 	c := &Client{
 		use_uTls: use_uTls,
@@ -29,21 +29,56 @@ func NewClient(host string, insecure bool, use_uTls bool, alpnList []string) *Cl
 	c.alpnList = alpnList
 
 	if use_uTls {
-		c.uTlsConfig = utls.Config{
+		tConf := utls.Config{
 			InsecureSkipVerify: insecure,
 			ServerName:         host,
 			NextProtos:         alpnList,
 		}
 
+		if certConf != nil {
+			certArray, err := GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
+
+			if err != nil {
+				if ce := utils.CanLogErr("load client cert file failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+			} else {
+				var array []utls.Certificate
+
+				for _, c := range certArray {
+
+					array = append(array, *(*utls.Certificate)(unsafe.Pointer(&c)))
+				}
+
+				tConf.Certificates = array
+			}
+
+		}
+
+		c.uTlsConfig = tConf
+
 		if ce := utils.CanLogInfo("using utls and Chrome fingerprint for"); ce != nil {
 			ce.Write(zap.String("host", host))
 		}
 	} else {
-		c.tlsConfig = &tls.Config{
+		tConf := &tls.Config{
 			InsecureSkipVerify: insecure,
 			ServerName:         host,
 			NextProtos:         alpnList,
 		}
+		if certConf != nil {
+			certArray, err := GetCertArrayFromFile(certConf.CertFile, certConf.KeyFile)
+
+			if err != nil {
+				if ce := utils.CanLogErr("load client cert file failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+			} else {
+				tConf.Certificates = certArray
+
+			}
+		}
+		c.tlsConfig = tConf
 
 	}
 

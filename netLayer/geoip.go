@@ -39,9 +39,9 @@ func LoadMaxmindGeoipFile(fn string) {
 	if fn == "" { //因为 GeoipFileName 是公有变量，所以可能会被设成""
 		return
 	}
-	bs, e := os.ReadFile(fn)
+	bs, e := os.ReadFile(utils.GetFilePath(fn))
 	if e != nil {
-		log.Println("LoadMaxmindGeoipFile err", e)
+		log.Printf("LoadMaxmindGeoipFile err, %s\n", e.Error())
 		return
 	}
 	loadMaxmindGeoipBytes(bs)

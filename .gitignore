@@ -14,4 +14,10 @@ geosite
 vs_log*
 cert.pem
 cert.key
+ca.key
+ca.crt
 BUILD_VERSION
+client.crt
+client.csr
+client.key
+.vscode

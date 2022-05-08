@@ -46,6 +46,16 @@ func ParseFlags() {
 	GivenFlags = GetGivenFlags()
 }
 
+//return kv pairs for GivenFlags
+func GivenFlagKVs() (r map[string]string) {
+	r = map[string]string{}
+
+	for k, f := range GivenFlags {
+		r[k] = f.Value.String()
+	}
+	return
+}
+
 //移除 = "" 和 = false 的项
 func GetPurgedTomlStr(v any) (string, error) {
 	buf := GetBuf()

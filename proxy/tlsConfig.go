@@ -55,7 +55,15 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 		return nil
 	}
 
-	clic.Tls_c = tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList)
+	var certConf *tlsLayer.CertConf
+	if dc.TLSCert != "" && dc.TLSKey != "" {
+		certConf = &tlsLayer.CertConf{
+			CertFile: dc.TLSCert,
+			KeyFile:  dc.TLSKey,
+		}
+	}
+
+	clic.Tls_c = tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList, certConf)
 	return nil
 }
 
@@ -69,7 +77,10 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	alpnList := updateAlpnListByAdvLayer(com, lc.Alpn)
 
-	tlsserver, err := tlsLayer.NewServer(lc.Host, lc.TLSCert, lc.TLSKey, lc.Insecure, alpnList)
+	tlsserver, err := tlsLayer.NewServer(lc.Host, &tlsLayer.CertConf{
+		CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
+	}, lc.Insecure, alpnList)
+
 	if err == nil {
 		serc.Tls_s = tlsserver
 	} else {
@@ -93,7 +104,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com BaseInterf
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
 
 		if cc != nil {
-			cc.Tls_c = tlsLayer.NewClient(u.Host, insecure, useUtls, nil)
+			cc.Tls_c = tlsLayer.NewClient(u.Host, insecure, useUtls, nil, nil)
 
 		}
 
@@ -104,7 +115,9 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com BaseInterf
 		hostAndPort := u.Host
 		sni, _, _ := net.SplitHostPort(hostAndPort)
 
-		tlsserver, err := tlsLayer.NewServer(sni, certFile, keyFile, insecure, nil)
+		tlsserver, err := tlsLayer.NewServer(sni, &tlsLayer.CertConf{
+			CertFile: certFile, KeyFile: keyFile,
+		}, insecure, nil)
 		if err == nil {
 			if cc != nil {
 				cc.Tls_s = tlsserver

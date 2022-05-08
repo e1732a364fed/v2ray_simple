@@ -225,6 +225,9 @@ func mainFunc() (result int) {
 			ce.Write(zap.String("dir", wdir))
 		}
 	}
+	if ce := utils.CanLogDebug("All Given Flags"); ce != nil {
+		ce.Write(zap.Any("flags", utils.GivenFlagKVs()))
+	}
 
 	if loadConfigErr != nil && !isFlexible() {
 

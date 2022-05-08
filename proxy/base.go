@@ -318,20 +318,42 @@ func (b *Base) InitAdvLayer() {
 			Headers = dc.HttpHeader
 		}
 
-		advClient, err := creator.NewClientFromConf(&advLayer.Conf{
+		var tConf *tls.Config
+		if creator.IsSuper() {
+
+			tConf = &tls.Config{
+				InsecureSkipVerify: dc.Insecure,
+				NextProtos:         dc.Alpn,
+				ServerName:         dc.Host,
+			}
+
+			if dc.TLSCert != "" && dc.TLSKey != "" {
+				certArray, err := tlsLayer.GetCertArrayFromFile(dc.TLSCert, dc.TLSKey)
+
+				if err != nil {
+					if ce := utils.CanLogErr("load client cert file failed"); ce != nil {
+						ce.Write(zap.Error(err))
+					}
+				} else {
+					tConf.Certificates = certArray
+
+				}
+			}
+
+		}
+
+		aConf := &advLayer.Conf{
 			Path:    dc.Path,
 			Host:    dc.Host,
 			IsEarly: dc.IsEarly,
 			Addr:    ad,
 			Headers: Headers,
 			Xver:    dc.Xver,
-			TlsConf: &tls.Config{
-				InsecureSkipVerify: dc.Insecure,
-				NextProtos:         dc.Alpn,
-				ServerName:         dc.Host,
-			},
-			Extra: dc.Extra,
-		})
+			TlsConf: tConf,
+			Extra:   dc.Extra,
+		}
+
+		advClient, err := creator.NewClientFromConf(aConf)
 		if err != nil {
 
 			if ce := utils.CanLogErr("InitAdvLayer client failed "); ce != nil {
@@ -357,18 +379,38 @@ func (b *Base) InitAdvLayer() {
 
 		var certArray []tls.Certificate
 
-		if lc.TLSCert != "" && lc.TLSKey != "" {
-			certArray, err = tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
+		if creator.IsSuper() {
+			if lc.TLSCert != "" && lc.TLSKey != "" {
+				certArray, err = tlsLayer.GetCertArrayFromFile(lc.TLSCert, lc.TLSKey)
 
-			if err != nil {
+				if err != nil {
 
-				if ce := utils.CanLogErr("can't create tls cert"); ce != nil {
-					ce.Write(zap.String("cert", lc.TLSCert), zap.String("key", lc.TLSKey), zap.Error(err))
+					if ce := utils.CanLogErr("can't create tls cert"); ce != nil {
+						ce.Write(zap.String("cert", lc.TLSCert), zap.String("key", lc.TLSKey), zap.Error(err))
+					}
+
+					return
 				}
 
-				return
 			}
+		}
+		tConf := &tls.Config{
+			InsecureSkipVerify: lc.Insecure,
+			NextProtos:         lc.Alpn,
+			ServerName:         lc.Host,
+			Certificates:       certArray,
+		}
 
+		if lc.CA != "" {
+			certPool, err := tlsLayer.LoadCA(lc.CA)
+			if err != nil {
+				if ce := utils.CanLogErr("load CA failed"); ce != nil {
+					ce.Write(zap.Error(err))
+				}
+			} else {
+				tConf.ClientCAs = certPool
+				tConf.ClientAuth = tls.RequireAndVerifyClientCert
+			}
 		}
 
 		advSer, err := creator.NewServerFromConf(&advLayer.Conf{
@@ -378,13 +420,8 @@ func (b *Base) InitAdvLayer() {
 			Xver:    lc.Xver,
 			Addr:    ad,
 			Headers: Headers,
-			TlsConf: &tls.Config{
-				InsecureSkipVerify: lc.Insecure,
-				NextProtos:         lc.Alpn,
-				ServerName:         lc.Host,
-				Certificates:       certArray,
-			},
-			Extra: lc.Extra,
+			TlsConf: tConf,
+			Extra:   lc.Extra,
 		})
 		if err != nil {
 

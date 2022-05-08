@@ -1,6 +1,8 @@
 package tlsLayer
 
 import (
+	"errors"
+	"io/ioutil"
 	mathrand "math/rand"
 
 	"crypto/ecdsa"
@@ -18,6 +20,29 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
+
+var ErrCAFileWrong = errors.New("ca file is somehow wrong")
+
+type CertConf struct {
+	CA                string
+	CertFile, KeyFile string
+}
+
+func LoadCA(caFile string) (cp *x509.CertPool, err error) {
+	if caFile == "" {
+		err = utils.ErrNilParameter
+		return
+	}
+	cp = x509.NewCertPool()
+	data, err := ioutil.ReadFile(caFile)
+	if err != nil {
+		return nil, err
+	}
+	if !cp.AppendCertsFromPEM(data) {
+		return nil, ErrCAFileWrong
+	}
+	return
+}
 
 //使用 ecc p256 方式生成证书
 func GenerateRandomeCert_Key() (certPEM []byte, keyPEM []byte) {
