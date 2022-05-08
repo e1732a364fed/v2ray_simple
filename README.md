@@ -30,11 +30,11 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-socks5(包括 udp associate)/http/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
+socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
 
-dns(udp/tls)/route(geoip/geosite)/fallback(path/sni/alpn/PROXY protocol v1/v2), 
+dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), 
 
 tcp/udp/unix domain socket, tls(包括客户端证书验证), uTls, lazy, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer
 
@@ -473,11 +473,11 @@ https://github.com/e1732a364fed/v2ray_simple/discussions
 
 #### 开发者入门指导
 
-首先学会使用verysimple，熟读本 README.md 和 examples/ 下的配置文件
+首先学会使用verysimple，熟读本 README.md 和 examples/ 下的配置文件.
 
-之后读 version.go 文件里的 注释，对本作结构有一个认识。然后读 proxy/doc.go 理解 VSI模型。
+之后读 doc.go 和 cmd/verysimple/version.go 文件里的 注释，对本作结构有一个认识。然后读 proxy/doc.go 理解 VSI模型。
 
-之后 学习 proxy.ProxyCommon 接口.
+之后 学习 proxy.BaseInterface 接口 和其 实现 proxy.Base. 之后学习 advLayer 里的各个接口。
 
 之后就可以在go doc中选择自己感兴趣的地方阅读了。
 
