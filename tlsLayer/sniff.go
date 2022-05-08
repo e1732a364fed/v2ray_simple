@@ -96,6 +96,9 @@ type ComSniff struct {
 
 	SniffedHostName string
 
+	ShouldSniffAlpn bool
+	SniffedAlpnList []string
+
 	isclient  bool
 	is_secure bool
 
@@ -106,7 +109,7 @@ type ComSniff struct {
 
 	handshakeFailReason int
 
-	cantBeTLS13 bool //clienthello如果没有 supported_versions项，or 该项没有0304，则不可能协商出tls1.3。如果协商出了则是错误的;
+	CantBeTLS13 bool //clienthello如果没有 supported_versions项，or 该项没有0304，则不可能协商出tls1.3。如果协商出了则是错误的;
 
 	peer *ComSniff //握手是需要判断clienthello+serverhello的，而它们一个是读一个是写，所以要能够让它们相互访问到之前判断好的数据
 }
@@ -125,8 +128,12 @@ func (c *ComSniff) GetFailReason() int {
 	return c.handshakeFailReason
 }
 
+func (c *ComSniff) HasHandshakePassed() bool {
+	return c.handShakePass
+}
+
 // 总之，如果读写都用同样的判断代码的话，客户端和服务端应该就能同步进行 相同的TLS判断
-func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
+func (cd *ComSniff) CommonDetect(p []byte, isRead bool, onlyForSni bool) (sni string) {
 
 	/*
 		我们把tls的细节放在这个注释里，便于参考
@@ -366,7 +373,10 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 						return
 					}
 
-					cd.sniff_hello(pAfter, true) //代码很长！
+					cd.sniff_hello(pAfter, true, onlyForSni) //代码很长！
+					if onlyForSni {
+						return
+					}
 					if cd.DefinitelyNotTLS {
 						return
 					}
@@ -384,7 +394,7 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 							return
 						}
 
-						cd.sniff_hello(pAfter, false) //代码很长！
+						cd.sniff_hello(pAfter, false, false) //代码很长！
 						if cd.DefinitelyNotTLS {
 							return
 						}
@@ -500,6 +510,7 @@ func (cd *ComSniff) commonDetect(p []byte, isRead bool) {
 		log.Println(" ======== ", str, n, p[:min])
 	}
 
+	return
 }
 
 func commonFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
@@ -520,7 +531,7 @@ func commonFilterStep(err error, cd *ComSniff, p []byte, isRead bool) {
 	}
 
 	if len(p) > 3 {
-		cd.commonDetect(p, isRead)
+		cd.CommonDetect(p, isRead, false)
 	}
 
 }

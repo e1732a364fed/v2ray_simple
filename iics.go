@@ -37,6 +37,8 @@ type incomingInserverConnState struct {
 
 	fallbackXver int
 
+	firstPayload []byte
+
 	isTlsLazyServerEnd bool
 
 	shouldCloseInSerBaseConnWhenFinish bool

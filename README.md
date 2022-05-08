@@ -307,13 +307,15 @@ v0协议是直接兼容现有v2ray/xray的，比如可以客户端用任何现�
 
 支持grpc，与 xray/v2ray兼容; 还有 grpcSimple，见上文。
 
+真实 nginx响应。
+
 支持 quic以及hysteria 阻控，与xray/v2ray兼容（详情见wiki）,还新开发了“手动挡”模式
 
 api服务器；tproxy 透明代理； http伪装头.
 
 本作也是支持 trojan-go 声称的 “可插拔模块”的，没什么复杂的。而且也可以用build tag 来开启或关闭某项功能。
 
-本作也是支持 clash 的 "use as library" 的，而且非常简单，你看godoc文档就懂了。
+本作也是支持 clash 的 "use as library" 的，而且更加简单，very simple，你看godoc文档就懂了，主项目就一个主要的函数。
 
 总之，可以看到，几乎在每一个技术上 本作都有一定的优化，超越其他内核，非常 Nice。
 

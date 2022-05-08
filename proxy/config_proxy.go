@@ -100,6 +100,8 @@ type ListenConf struct {
 
 	CA string `toml:"ca"` //可选,用于 验证"客户端证书"
 
+	SniffConf *SniffConf `toml:"sniffing"` //用于嗅探出 host 来帮助 分流。
+
 	Fallback any `toml:"fallback"` //可选，默认回落的地址，一般可为 ip:port,数字port or unix socket的文件名
 
 	//noroute 意味着 传入的数据 不会被分流，一定会被转发到默认的 dial
@@ -118,4 +120,8 @@ type DialConf struct {
 	Fullcone bool `toml:"fullcone"` //在direct会用到, fullcone的话因为不能关闭udp连接, 所以可能会导致too many open files. fullcone 的话一般人是用不到的, 所以 有需要的人自行手动打开 即可
 
 	Mux bool `toml:"use_mux"` //是否使用内层mux。在某些支持mux命令的协议中（vless v1/trojan）, 开启此开关会让 dial 使用 内层mux。
+}
+
+type SniffConf struct {
+	Enable bool `toml:"enabled"`
 }

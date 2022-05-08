@@ -614,6 +614,61 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 		return
 	}
 
+	////////////////////////////// 读取 First Payload 阶段 /////////////////////////////////////
+
+	//因为无论是 sniffing，还是后面 proxy的握手，抑或是 ws的 earlydata，都要预先获得用户数据，所以要提前读一下
+
+	// 但是如果启用了lazy的话，它是自己要读取全部内容的，所以还是不能读firstpayload
+
+	if !Tls_lazy_encrypt {
+
+		if iics.fallbackFirstBuffer != nil {
+
+			iics.firstPayload = iics.fallbackFirstBuffer.Bytes()
+			iics.fallbackFirstBuffer = nil
+
+		} else {
+			iics.firstPayload = utils.GetMTU()
+
+			wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
+			n, err := wlc.Read(iics.firstPayload)
+			wlc.SetReadDeadline(time.Time{})
+
+			if err != nil {
+
+				if !errors.Is(err, os.ErrDeadlineExceeded) {
+					if ce := utils.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
+						ce.Write(
+							zap.String("target", targetAddr.String()),
+							zap.Error(err),
+						)
+					}
+
+					wlc.Close()
+					return
+				} else {
+					if ce := utils.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
+						ce.Write(
+							zap.String("target", targetAddr.String()),
+							zap.Error(err),
+						)
+					}
+				}
+
+			}
+
+			iics.firstPayload = iics.firstPayload[:n]
+		}
+
+	}
+	////////////////////////////// Sniff阶段 /////////////////////////////////////
+
+	//tls请求和纯http请求是可以嗅探 host的，嗅探可以帮助我们使用 geosite 精准分流，所以是很有用的
+
+	if len(iics.firstPayload) > 0 && iics.inServer != nil && iics.inServer.Sniffing() {
+
+	}
+
 	//此时 targetAddr已经完全确定
 
 	////////////////////////////// DNS解析阶段 /////////////////////////////////////
@@ -808,7 +863,7 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 			//先过滤掉 innermux 通道已经建立的情况, 此时我们不必再次外部拨号，而是直接进行内层拨号.
 			if client.InnerMuxEstablished() {
-				wrc1, realudp_wrc, result1 := dialInnerProxy(client, wlc, nil, innerProxyName, targetAddr, isudp)
+				wrc1, realudp_wrc, result1 := dialInnerProxy(client, wlc, nil, iics.firstPayload, innerProxyName, targetAddr, isudp)
 
 				if result1 == 0 {
 					if wrc1 != nil {
@@ -1054,38 +1109,11 @@ advLayerHandshakeStep:
 
 			var ed []byte
 
-			if advClient.IsEarly() && wlc != nil {
+			if !hasInnerMux && advClient.IsEarly() && wlc != nil {
 				//若配置了 MaxEarlyDataLen，则我们先读一段;
-				edBuf := utils.GetPacket()
-				edBuf = edBuf[:advLayer.MaxEarlyDataLen]
-
-				wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
-				n, e := wlc.Read(edBuf)
-				wlc.SetReadDeadline(time.Time{})
-
-				if e != nil {
-					if ce := utils.CanLogErr("failed to read Single AdvLayer early data"); ce != nil {
-						ce.Write(
-							zap.String("advLayer", adv),
-							zap.Error(e),
-						)
-					}
-					result = -1
-					return
-				}
-				if n > 0 {
-					//firstPayloadAlreadyDealt = true
-					ed = edBuf[:n]
-
-				}
-
-				if ce := utils.CanLogDebug("will send early data"); ce != nil {
-					ce.Write(
-						zap.String("advLayer", adv),
-						zap.Int("len", n),
-					)
-				}
-
+				ed = iics.firstPayload
+				iics.fallbackFirstBuffer = nil
+				iics.firstPayload = nil //防止vless 再写一遍firstpayload.
 			}
 
 			// 我们verysimple的架构是 ws握手之后，再进行vless握手
@@ -1118,62 +1146,22 @@ advLayerHandshakeStep:
 
 	if !isudp || hasInnerMux {
 		//udp但是有innermux时 依然用handshake, 而不是 EstablishUDPChannel
-		var firstPayload []byte
-
-		//读取firstPayload
+		var ed []byte
 		if !hasInnerMux {
-			//如果有内层mux，要在dialInnerProxy函数里再读, 而不是在这里读
+			//如果有内层mux，则 firstPayload 要在 dialInnerProxy 里 写入, 而不是在proxy层写入, 因为中间还有一个 innerMux层。
+			ed = iics.firstPayload
+			iics.firstPayload = nil
 
-			if iics.fallbackFirstBuffer != nil {
-
-				firstPayload = iics.fallbackFirstBuffer.Bytes()
-
-			} else {
-				firstPayload = utils.GetMTU()
-
-				wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
-				n, err := wlc.Read(firstPayload)
-				wlc.SetReadDeadline(time.Time{})
-
-				if err != nil {
-
-					if !errors.Is(err, os.ErrDeadlineExceeded) {
-						if ce := utils.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
-							ce.Write(
-								zap.String("target", targetAddr.String()),
-								zap.Error(err),
-							)
-						}
-
-						clientConn.Close()
-						wlc.Close()
-						result = -1
-						return
-					} else {
-						if ce := utils.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
-							ce.Write(
-								zap.String("target", targetAddr.String()),
-								zap.Error(err),
-							)
-						}
-					}
-
+			if len(ed) > 0 {
+				if ce := utils.CanLogDebug("handshake client with first payload"); ce != nil {
+					ce.Write(
+						zap.Int("len", len(ed)),
+					)
 				}
-
-				firstPayload = firstPayload[:n]
-			}
-
-		}
-
-		if len(firstPayload) > 0 {
-			if ce := utils.CanLogDebug("handshake client with first payload"); ce != nil {
-				ce.Write(
-					zap.Int("len", len(firstPayload)),
-				)
 			}
 		}
 
-		wrc, err = client.Handshake(clientConn, firstPayload, targetAddr)
+		wrc, err = client.Handshake(clientConn, ed, targetAddr)
 		if err != nil {
 			if ce := utils.CanLogErr("Handshake client failed"); ce != nil {
 				ce.Write(
@@ -1204,14 +1192,14 @@ advLayerHandshakeStep:
 	if hasInnerMux {
 		//我们目前的实现中，mux统一使用smux v1, 即 smux.DefaultConfig返回的值。这可以兼容trojan的实现。
 
-		wrc, udp_wrc, result = dialInnerProxy(client, wlc, wrc, innerProxyName, targetAddr, isudp)
+		wrc, udp_wrc, result = dialInnerProxy(client, wlc, wrc, iics.firstPayload, innerProxyName, targetAddr, isudp)
 	}
 
 	return
 } //dialClient
 
 //在 dialClient 中调用。 如果调用不成功，则result < 0. 若成功, 则 result == 0.
-func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
+func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, firstPayload []byte, innerProxyName string, targetAddr netLayer.Addr, isudp bool) (realwrc io.ReadWriteCloser, realudp_wrc netLayer.MsgConn, result int) {
 
 	smuxSession := client.GetClientInnerMuxSession(wrc)
 	if smuxSession == nil {
@@ -1256,44 +1244,7 @@ func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, i
 		}
 	} else {
 
-		firstPayload := utils.GetMTU()
-
-		wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
-		n, err := wlc.Read(firstPayload)
-
-		if err != nil {
-			if ce := utils.CanLogErr("Read innermux first payload failed"); ce != nil {
-				ce.Write(
-					zap.String("target", targetAddr.String()),
-					zap.Error(err),
-				)
-			}
-
-			if !errors.Is(err, os.ErrDeadlineExceeded) {
-				if ce := utils.CanLogErr("Read innermux first payload failed not because of timeout, will hung up"); ce != nil {
-					ce.Write(
-						zap.String("target", targetAddr.String()),
-						zap.Error(err),
-					)
-				}
-
-				stream.Close()
-				wlc.Close()
-				result = -1
-				return
-			}
-
-		} else {
-			if ce := utils.CanLogDebug("innerMux got first payload"); ce != nil {
-				ce.Write(
-					zap.String("target", targetAddr.String()),
-					zap.Int("payloadLen", n),
-				)
-			}
-		}
-		wlc.SetReadDeadline(time.Time{})
-
-		realwrc, err = muxClient.Handshake(stream, firstPayload[:n], targetAddr)
+		realwrc, err = muxClient.Handshake(stream, firstPayload, targetAddr)
 		if err != nil {
 			if ce := utils.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
 				ce.Write(zap.Error(err))

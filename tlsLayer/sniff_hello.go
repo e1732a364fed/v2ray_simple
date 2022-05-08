@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+//parse rand, session id, cipher_suites, compression_methods, return bytes after compression_methods.
 func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 	pAfterRand := pAfter[32:]
 	sessionL := pAfterRand[0]
@@ -59,7 +60,7 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 			log.Println("R No extension, Definitely tls1.2", len(pAfterLegacy_compression_methods))
 		}
 		cd.handShakePass = true
-		cd.cantBeTLS13 = true
+		cd.CantBeTLS13 = true
 		return nil
 	}
 
@@ -79,7 +80,7 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 //可参考 https://halfrost.com/https_tls1-3_handshake/
 // 具体见最上面的注释，以及rfc
 //解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
-func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
+func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bool) {
 
 	pAfterLegacy_compression_methods := cd.sniff_commonHelloPre(pAfter)
 
@@ -149,7 +150,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 			(65535)
 		} ExtensionType;
 
-		似乎应该是不直接给出整个Extensions的数量的，而是按顺序读取;
+		没有地方 给出整个Extensions的数量，只能按顺序读取;
 
 		而如果是 0-rtt的情况的话， pre_shared_key 必须是最后一个extension。
 
@@ -172,9 +173,9 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 
 	lenE := len(extensionsBs)
 
-	if PDD {
-		log.Println("extensionsBs", extensionsBs)
-	}
+	//if PDD {
+	//	log.Println("extensionsBs", extensionsBs)
+	//}
 
 	cursor := 0
 	//虽然我们知道 extensionsBs的总长度 extensionsLen，但是
@@ -182,14 +183,9 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 	for cursor < lenE {
 		//前两字节是 ExtensionType
 		et := uint16(extensionsBs[cursor])<<8 + uint16(extensionsBs[cursor+1])
-		//if et > 51 {
+
 		//就算extension是未在rfc定义的，也不能就证明是无效的tls，因为整个extension组合是在iana定义的，
-		// 而且确实客户是可以自定义extension，来达到自己想要实现的夏欧工
-		//
-		//cd.DefinitelyNotTLS = true
-		//cd.handshakeFailReason = 13
-		//return
-		//}
+		// 而且确实 客户可以自定义 extension，来达到自己想要实现的效果
 
 		cursor += 2
 
@@ -201,11 +197,342 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 			log.Println("Got Extension:", et, "'", etStrMap[int(et)], "'", "len", thiseLen)
 		}
 
-		//我们首先按照 rfc8446 的文档顺序来进行过滤
+		//我们首先按照 rfc8446 的文档顺序来进行过滤, 但是首先把 0-21的提到前面来
 
 		switch et {
 		default:
 			cursor += int(thiseLen)
+
+		/////////////////////////////////////////////////////////
+		/*
+			下列结构，分属各个其他rfc
+			server_name(0),                              RFC 6066
+			max_fragment_length(1),                      RFC 6066
+			status_request(5),                           RFC 6066
+			use_srtp(14),                                RFC 5764
+			heartbeat(15),                               RFC 6520
+			application_layer_protocol_negotiation(16),  RFC 7301
+			signed_certificate_timestamp(18),            RFC 6962
+			client_certificate_type(19),                 RFC 7250
+			server_certificate_type(20),                 RFC 7250
+			padding(21),                                 RFC 7685
+
+		*/
+		case 0: //server_name, 一般而言，extension是按顺序的，所以大部分情况最前面是这一项
+			//https://datatracker.ietf.org/doc/html/rfc6066#section-3
+			/*
+				struct {
+					NameType name_type;
+					select (name_type) {
+						case host_name: HostName;
+					} name;
+				} ServerName;
+				enum {
+					host_name(0), (255)
+				} NameType;
+
+				opaque HostName<1..2^16-1>;
+
+				struct {
+					ServerName server_name_list<1..2^16-1>
+				} ServerNameList;
+
+				一个列表，前面两字节长度， 然后有n个域名提供; 一般用户只会带1个servername。
+			*/
+			ServerNameListLen := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
+			cursor += 2
+			if len(extensionsBs[cursor:]) < ServerNameListLen {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 21
+				return
+
+			}
+
+			edge := cursor + ServerNameListLen
+			sn_count := 0
+
+			for cursor < edge {
+				sn_count++
+
+				if extensionsBs[cursor] != 0 {
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 22
+					return
+				}
+				cursor++
+				l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
+				cursor += 2
+				if len(extensionsBs[cursor:]) < l {
+					//log.Println("len(extensionsBs[cursor:]) < l", len(extensionsBs[cursor:]), l)
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 22
+					return
+				}
+
+				cd.SniffedHostName = string(extensionsBs[cursor : cursor+l])
+				if onlyForSni {
+					return
+				}
+				cursor += l
+
+				if PDD {
+					log.Println("cd.SniffedHostName", sn_count, cd.SniffedHostName)
+				}
+
+			}
+
+		case 1: //max_fragment_length
+			//https://datatracker.ietf.org/doc/html/rfc6066#section-4
+			//
+			//enum{
+			//	2^9(1), 2^10(2), 2^11(3), 2^12(4), (255)
+			//	} MaxFragmentLength; 即1字节
+
+			b := uint64(extensionsBs[cursor])
+			switch b {
+			case 2 << 9:
+				fallthrough
+			case 2 << 10:
+				fallthrough
+			case 2 << 11:
+				fallthrough
+			case 2 << 12:
+
+			default:
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 23
+				return
+
+			}
+			cursor++
+
+		case 5: // status_request
+			/*
+				struct {
+					CertificateStatusType status_type;
+					select (status_type) {
+						case ocsp: OCSPStatusRequest;
+					} request;
+				} CertificateStatusRequest;
+
+				enum { ocsp(1), (255) } CertificateStatusType;
+
+				struct {
+					ResponderID responder_id_list<0..2^16-1>;
+					Extensions  request_extensions;
+				} OCSPStatusRequest;
+
+				opaque ResponderID<1..2^16-1>;
+				opaque Extensions<0..2^16-1>;
+
+				第一字节必须是1，然后是两字节长度，一段数据，然后又是两字节长度，一段数据
+			*/
+			if extensionsBs[cursor] != 1 {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 24
+				return
+
+			}
+			cursor++
+			for i := 0; i < 2; i++ {
+				l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
+				cursor += 2
+				if len(extensionsBs[cursor:]) < l {
+					cd.DefinitelyNotTLS = true
+					cd.handshakeFailReason = 25
+					return
+
+				}
+				cursor += l
+			}
+		case 14: //use_srtp
+			/*
+				https://datatracker.ietf.org/doc/html/rfc5764#section-4.1.1
+
+				" The client MUST fill the extension_data field of the "use_srtp"
+					extension with an UseSRTPData value"
+
+				uint8 SRTPProtectionProfile[2];
+
+				struct {
+					SRTPProtectionProfiles SRTPProtectionProfiles;
+					opaque srtp_mki<0..255>;
+				} UseSRTPData;
+
+				SRTPProtectionProfile SRTPProtectionProfiles<2..2^16-1>;
+
+				前两字节长度，一段数据，1字节长度，一段数据
+
+			*/
+			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
+			cursor += 2
+			if len(extensionsBs[cursor:]) < l {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 26
+				return
+
+			}
+			cursor += l
+			l = int(extensionsBs[cursor])
+			if len(extensionsBs[cursor:]) < l {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 27
+				return
+			}
+			cursor += l
+
+		case 15: // heartbeat
+			/*
+				https://datatracker.ietf.org/doc/html/rfc6520#section-2
+
+				 enum {
+					peer_allowed_to_send(1),
+					peer_not_allowed_to_send(2),
+					(255)
+				} HeartbeatMode;
+
+				struct {
+					HeartbeatMode mode;
+				} HeartbeatExtension;
+
+				就一个字节，不是1就是2...
+			*/
+			b := extensionsBs[cursor]
+			if b > 2 || b == 0 {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 28
+				return
+			}
+			cursor++
+
+		case 16: //application_layer_protocol_negotiation
+			//https://datatracker.ietf.org/doc/html/rfc7301#section-3.1
+			/*
+				 The "extension_data" field of the
+				("application_layer_protocol_negotiation(16)") extension SHALL
+				contain a "ProtocolNameList" value.
+
+				opaque ProtocolName<1..2^8-1>;
+
+				struct {
+					ProtocolName protocol_name_list<2..2^16-1>
+				} ProtocolNameList;
+
+
+
+			*/
+
+			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
+			cursor += 2
+			if len(extensionsBs[cursor:]) < l {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 29
+				return
+
+			}
+
+			if cd.ShouldSniffAlpn {
+
+				rightEdge := cursor + l
+				leftEdge := cursor
+				for leftEdge < rightEdge {
+					thisLen := extensionsBs[leftEdge]
+					leftEdge++
+					cd.SniffedAlpnList = append(cd.SniffedAlpnList, string(extensionsBs[leftEdge:leftEdge+int(thisLen)]))
+					leftEdge += int(thisLen)
+				}
+
+			}
+			cursor += l
+		case 18: //signed_certificate_timestamp
+			//https://datatracker.ietf.org/doc/html/rfc6962#section-3.3.1
+			//empty "extension_data".
+		case 19: //client_certificate_type
+			fallthrough
+		case 20: //server_certificate_type
+			//https://datatracker.ietf.org/doc/html/rfc7250#section-3
+			/*
+				struct {
+					select(ClientOrServerExtension) {
+						case client:
+							CertificateType client_certificate_types<1..2^8-1>;
+						case server:
+							CertificateType client_certificate_type;
+					}
+				} ClientCertTypeExtension;
+
+				ServerCertTypeExtension 完全类似
+
+
+				CertificateType 可以见
+
+				//https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+				中 TLS Certificate Types 部分，总之是个1字节的数据，0-3这4个值有确切的定义
+
+				总之，可以看文档里面的握手过程，客户端和服务端都可以同时携带
+				client_certificate_type 和 server_sertificate_type
+
+				因为不仅客户端可以验证服务端，服务端也可以验证客户端，所以都是可能需要提供证书的
+
+				然后客户端传的是一个范围，而服务端传的是一个确切值
+			*/
+
+			l := int(extensionsBs[cursor])
+			if len(extensionsBs[cursor:]) < l {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 30
+				return
+			}
+			cursor += l
+
+		case 21: //padding, 即 0x15
+			//https://datatracker.ietf.org/doc/html/rfc7685#section-3
+			/*
+				"This memo describes a TLS extension that can be used to pad a
+				ClientHello to a desired size in order to avoid implementation bugs
+				caused by certain ClientHello sizes."
+
+				The "extension_data" for the extension consists of an arbitrary
+				number of zero bytes.  For example, the smallest "padding" extension
+				is four bytes long and is encoded as 0x00 0x15 0x00 0x00.  A ten-byte
+				extension would include six bytes of "extension_data" and would be
+				encoded as:
+
+				00 15 00 06 00 00 00 00 00 00
+				|---| |---| |---------------|
+					|     |           |
+					|     |           \- extension_data: 6 zero bytes
+					|     |
+					|     \------------- 16-bit, extension_data length
+					|
+					\------------------- extension_type for padding extension
+
+				The client MUST fill the padding extension completely with zero
+				bytes, although the padding extension_data field may be empty.
+
+				The server MUST NOT echo the extension.
+
+				就是说，前两字节如果都是0，那就是 00，15，00，00，这四字节本身就占位了，算一种padding
+
+				然后其他情况的话，前两字节是长度n, 后面有 n 长度的 "0"; 总padding长度就是n+4
+
+				不过我们不管总padding长度，那么实际上和其他tls 数据包的长度定义是完全类似的。
+
+			*/
+
+			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
+			cursor += 2
+			if len(extensionsBs[cursor:]) < l {
+				cd.DefinitelyNotTLS = true
+				cd.handshakeFailReason = 31
+				return
+
+			}
+			cursor += l
+
+		/////////////////////////////////////////////////////////
+
+		//////////////// rfc 8446 中 的内容（即 tls1.3定义 或者修订的内容）
 
 		case 43: //supported_versions
 			/*
@@ -264,7 +591,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 				}
 
 				if !hasTls13 {
-					cd.cantBeTLS13 = true
+					cd.CantBeTLS13 = true
 				}
 				//就算 申请的包含tls13，服务端也不一定支持，所以必须检验ServerHello才能确认服务端是否支持1.3
 				//我们的目的就是看看到底客户端申请过tls1.3没有，现在目的达到了，可以return了
@@ -281,7 +608,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 				thisv := uint16(extensionsBs[cursor])<<8 + uint16(extensionsBs[cursor+1])
 				if thisv == tls.VersionTLS13 {
 
-					if cd.peer.cantBeTLS13 {
+					if cd.peer.CantBeTLS13 {
 						cd.DefinitelyNotTLS = true
 						cd.handshakeFailReason = 15
 						return
@@ -307,8 +634,8 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 					//如果之前客户端申请的是纯tls1.2的话，服务端也是有可能带supported_versions的，毕竟
 					// rfc 没规定extension必须是客户端懂的. 只不过这样的服务端有点傻罢了...
 
-					cd.cantBeTLS13 = true
-					cd.peer.cantBeTLS13 = true
+					cd.CantBeTLS13 = true
+					cd.peer.CantBeTLS13 = true
 					cd.handShakePass = true
 					return
 
@@ -474,317 +801,6 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool) {
 			} else {
 				cursor += 2
 			}
-
-			/////////////////////////////////////////////////////////
-			/*
-					还剩如下结构，分属各个其他rfc!
-				o	server_name(0),                              RFC 6066
-				o	max_fragment_length(1),                      RFC 6066
-				o	status_request(5),                           RFC 6066
-				o	use_srtp(14),                                RFC 5764
-				o	heartbeat(15),                               RFC 6520
-				o	application_layer_protocol_negotiation(16),  RFC 7301
-				o	signed_certificate_timestamp(18),            RFC 6962
-				o	client_certificate_type(19),                 RFC 7250
-				o	server_certificate_type(20),                 RFC 7250
-					padding(21),                                 RFC 7685
-
-			*/
-		case 0: //server_name, 一般而言，extension是按顺序的，所以大部分情况最前面是这一项
-			//https://datatracker.ietf.org/doc/html/rfc6066#section-3
-			/*
-				struct {
-					NameType name_type;
-					select (name_type) {
-						case host_name: HostName;
-					} name;
-				} ServerName;
-				enum {
-					host_name(0), (255)
-				} NameType;
-
-				opaque HostName<1..2^16-1>;
-
-				struct {
-					ServerName server_name_list<1..2^16-1>
-				} ServerNameList;
-
-				一个列表，前面两字节长度， 然后有n个域名提供; 一般用户只会带1个servername。
-			*/
-			ServerNameListLen := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-			cursor += 2
-			if len(extensionsBs[cursor:]) < ServerNameListLen {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 21
-				return
-
-			}
-
-			edge := cursor + ServerNameListLen
-			sn_count := 0
-
-			for cursor < edge {
-				sn_count++
-
-				if extensionsBs[cursor] != 0 {
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 22
-					return
-				}
-				cursor++
-				l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-				cursor += 2
-				if len(extensionsBs[cursor:]) < l {
-					//log.Println("len(extensionsBs[cursor:]) < l", len(extensionsBs[cursor:]), l)
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 22
-					return
-				}
-
-				cd.SniffedHostName = string(extensionsBs[cursor : cursor+l])
-				cursor += l
-
-				if PDD {
-					log.Println("cd.SniffedHostName", sn_count, cd.SniffedHostName)
-				}
-
-			}
-
-		case 1: //max_fragment_length
-			//https://datatracker.ietf.org/doc/html/rfc6066#section-4
-			//
-			//enum{
-			//	2^9(1), 2^10(2), 2^11(3), 2^12(4), (255)
-			//	} MaxFragmentLength; 即1字节
-
-			b := uint64(extensionsBs[cursor])
-			switch b {
-			case 2 << 9:
-				fallthrough
-			case 2 << 10:
-				fallthrough
-			case 2 << 11:
-				fallthrough
-			case 2 << 12:
-
-			default:
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 23
-				return
-
-			}
-			cursor++
-
-		case 5: // status_request
-			/*
-				struct {
-					CertificateStatusType status_type;
-					select (status_type) {
-						case ocsp: OCSPStatusRequest;
-					} request;
-				} CertificateStatusRequest;
-
-				enum { ocsp(1), (255) } CertificateStatusType;
-
-				struct {
-					ResponderID responder_id_list<0..2^16-1>;
-					Extensions  request_extensions;
-				} OCSPStatusRequest;
-
-				opaque ResponderID<1..2^16-1>;
-				opaque Extensions<0..2^16-1>;
-
-				第一字节必须是1，然后是两字节长度，一段数据，然后又是两字节长度，一段数据
-			*/
-			if extensionsBs[cursor] != 1 {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 24
-				return
-
-			}
-			cursor++
-			for i := 0; i < 2; i++ {
-				l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-				cursor += 2
-				if len(extensionsBs[cursor:]) < l {
-					cd.DefinitelyNotTLS = true
-					cd.handshakeFailReason = 25
-					return
-
-				}
-				cursor += l
-			}
-		case 14: //use_srtp
-			/*
-				https://datatracker.ietf.org/doc/html/rfc5764#section-4.1.1
-
-				" The client MUST fill the extension_data field of the "use_srtp"
-					extension with an UseSRTPData value"
-
-				uint8 SRTPProtectionProfile[2];
-
-				struct {
-					SRTPProtectionProfiles SRTPProtectionProfiles;
-					opaque srtp_mki<0..255>;
-				} UseSRTPData;
-
-				SRTPProtectionProfile SRTPProtectionProfiles<2..2^16-1>;
-
-				前两字节长度，一段数据，1字节长度，一段数据
-
-			*/
-			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-			cursor += 2
-			if len(extensionsBs[cursor:]) < l {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 26
-				return
-
-			}
-			cursor += l
-			l = int(extensionsBs[cursor])
-			if len(extensionsBs[cursor:]) < l {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 27
-				return
-			}
-			cursor += l
-
-		case 15: // heartbeat
-			/*
-				https://datatracker.ietf.org/doc/html/rfc6520#section-2
-
-				 enum {
-					peer_allowed_to_send(1),
-					peer_not_allowed_to_send(2),
-					(255)
-				} HeartbeatMode;
-
-				struct {
-					HeartbeatMode mode;
-				} HeartbeatExtension;
-
-				就一个字节，不是1就是2...
-			*/
-			b := extensionsBs[cursor]
-			if b > 2 || b == 0 {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 28
-				return
-			}
-			cursor++
-
-		case 16: //application_layer_protocol_negotiation
-			//https://datatracker.ietf.org/doc/html/rfc7301#section-3.1
-			/*
-				 The "extension_data" field of the
-				("application_layer_protocol_negotiation(16)") extension SHALL
-				contain a "ProtocolNameList" value.
-
-				opaque ProtocolName<1..2^8-1>;
-
-				struct {
-					ProtocolName protocol_name_list<2..2^16-1>
-				} ProtocolNameList;
-
-
-
-			*/
-
-			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-			cursor += 2
-			if len(extensionsBs[cursor:]) < l {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 29
-				return
-
-			}
-			cursor += l
-		case 18: //signed_certificate_timestamp
-			//https://datatracker.ietf.org/doc/html/rfc6962#section-3.3.1
-			//empty "extension_data".
-		case 19: //client_certificate_type
-			fallthrough
-		case 20: //server_certificate_type
-			//https://datatracker.ietf.org/doc/html/rfc7250#section-3
-			/*
-				struct {
-					select(ClientOrServerExtension) {
-						case client:
-							CertificateType client_certificate_types<1..2^8-1>;
-						case server:
-							CertificateType client_certificate_type;
-					}
-				} ClientCertTypeExtension;
-
-				ServerCertTypeExtension 完全类似
-
-
-				CertificateType 可以见
-
-				//https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
-				中 TLS Certificate Types 部分，总之是个1字节的数据，0-3这4个值有确切的定义
-
-				总之，可以看文档里面的握手过程，客户端和服务端都可以同时携带
-				client_certificate_type 和 server_sertificate_type
-
-				因为不仅客户端可以验证服务端，服务端也可以验证客户端，所以都是可能需要提供证书的
-
-				然后客户端传的是一个范围，而服务端传的是一个确切值
-			*/
-
-			l := int(extensionsBs[cursor])
-			if len(extensionsBs[cursor:]) < l {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 30
-				return
-			}
-			cursor += l
-
-		case 21: //padding, 即 0x15
-			//https://datatracker.ietf.org/doc/html/rfc7685#section-3
-			/*
-				"This memo describes a TLS extension that can be used to pad a
-				ClientHello to a desired size in order to avoid implementation bugs
-				caused by certain ClientHello sizes."
-
-				The "extension_data" for the extension consists of an arbitrary
-				number of zero bytes.  For example, the smallest "padding" extension
-				is four bytes long and is encoded as 0x00 0x15 0x00 0x00.  A ten-byte
-				extension would include six bytes of "extension_data" and would be
-				encoded as:
-
-				00 15 00 06 00 00 00 00 00 00
-				|---| |---| |---------------|
-					|     |           |
-					|     |           \- extension_data: 6 zero bytes
-					|     |
-					|     \------------- 16-bit, extension_data length
-					|
-					\------------------- extension_type for padding extension
-
-				The client MUST fill the padding extension completely with zero
-				bytes, although the padding extension_data field may be empty.
-
-				The server MUST NOT echo the extension.
-
-				就是说，前两字节如果都是0，那就是 00，15，00，00，这四字节本身就占位了，算一种padding
-
-				然后其他情况的话，前两字节是长度n, 后面有 n 长度的 "0"; 总padding长度就是n+4
-
-				不过我们不管总padding长度，那么实际上和其他tls 数据包的长度定义是完全类似的。
-
-			*/
-
-			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-			cursor += 2
-			if len(extensionsBs[cursor:]) < l {
-				cd.DefinitelyNotTLS = true
-				cd.handshakeFailReason = 31
-				return
-
-			}
-			cursor += l
 
 		} //switch
 

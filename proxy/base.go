@@ -40,6 +40,8 @@ type BaseInterface interface {
 	Network() string //传输层协议,如 tcp, udp, unix, kcp, etc. 这里叫做Network而不是transport, 是遵循 golang 标准包 net包的用法。我们兼容 net的Listen等方法, 可把Network直接作为 net.Listen等方法的 network 参数。
 	GetXver() int
 
+	Sniffing() bool //for inServer, 是否开启嗅探功能
+
 	/////////////////// TLS层 ///////////////////
 
 	IsUseTLS() bool
@@ -149,6 +151,16 @@ func (b *Base) MiddleName() string {
 
 func (b *Base) CantRoute() bool {
 	return b.IsCantRoute
+}
+
+func (b *Base) Sniffing() bool {
+	if b.ListenConf == nil {
+		return false
+	}
+	if b.ListenConf.SniffConf == nil {
+		return false
+	}
+	return b.ListenConf.SniffConf.Enable
 }
 
 func (b *Base) InnerMuxEstablished() bool {
