@@ -250,13 +250,11 @@ func mainFunc() (result int) {
 		ce.Write(
 			zap.String("Log Level", utils.LogLevelStr(utils.LogLevel)),
 			zap.Bool("UseReadv", netLayer.UseReadv),
-			zap.Bool("tls_lazy_encrypt", vs.Tls_lazy_encrypt),
 		)
 
 	} else {
 
 		fmt.Printf("UseReadv:%t\n", netLayer.UseReadv)
-		fmt.Printf("tls_lazy_encrypt:%t\n", vs.Tls_lazy_encrypt)
 
 	}
 

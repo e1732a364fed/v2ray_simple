@@ -17,15 +17,13 @@ import (
 )
 
 var (
-	Tls_lazy_encrypt bool
-	Tls_lazy_secure  bool
+	Tls_lazy_secure bool
 )
 
 const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 
 func init() {
 
-	flag.BoolVar(&Tls_lazy_encrypt, "lazy", false, "tls lazy encrypt (splice)")
 	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
 
 }
@@ -52,7 +50,7 @@ func CanNetwork_tlsLazy(n string) bool {
 // useSecureMethod仅用于 tls_lazy_secure
 func tryTlsLazyRawCopy(identity uint32, useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 	if ce := utils.CanLogDebug("trying tls lazy copy"); ce != nil {
-		ce.Write()
+		ce.Write(zap.Uint32("id", identity))
 	}
 	if wlc != nil {
 		defer wlc.Close()
@@ -95,7 +93,7 @@ func tryTlsLazyRawCopy(identity uint32, useSecureMethod bool, proxy_client proxy
 
 			wrcVless := wrc.(*vless.UserTCPConn)
 			tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
-			rawWRC = tlsConn.GetRaw(Tls_lazy_encrypt)
+			rawWRC = tlsConn.GetRaw(true)
 
 		} else {
 			rawWRC = wrc.(*net.TCPConn) //因为是direct
@@ -107,7 +105,7 @@ func tryTlsLazyRawCopy(identity uint32, useSecureMethod bool, proxy_client proxy
 
 			}
 
-			if Tls_lazy_encrypt {
+			if true {
 				theRecorder.StopRecord()
 				theRecorder.ReleaseBuffers()
 			}
@@ -160,7 +158,7 @@ func tryTlsLazyRawCopy(identity uint32, useSecureMethod bool, proxy_client proxy
 				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake outClient tls"); ce != nil {
-						ce.Write(zap.Error(err))
+						ce.Write(zap.Uint32("id", identity), zap.Error(err))
 
 					}
 					return
@@ -169,7 +167,7 @@ func tryTlsLazyRawCopy(identity uint32, useSecureMethod bool, proxy_client proxy
 				wrc, err = proxy_client.Handshake(tlsConn, p[:n], targetAddr)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake"); ce != nil {
-						ce.Write(zap.String("target", targetAddr.String()), zap.Error(err))
+						ce.Write(zap.Uint32("id", identity), zap.String("target", targetAddr.String()), zap.Error(err))
 					}
 					return
 				}

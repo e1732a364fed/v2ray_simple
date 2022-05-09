@@ -34,7 +34,7 @@ socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5h
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
 
-dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), 
+dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
 tcp/udp/unix domain socket, tls(包括客户端证书验证), uTls, lazy, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer
 

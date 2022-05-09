@@ -18,6 +18,8 @@ key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不�
 
 # ca = "ca.crt" # 可选, 用于验证客户端证书
 
+#lazy = true
+
 
 [[dial]]
 protocol = "direct"

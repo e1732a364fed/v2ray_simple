@@ -178,7 +178,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 	}
 	iics.genID()
 
-	iics.isTlsLazyServerEnd = Tls_lazy_encrypt && CanLazyEncrypt(inServer)
+	iics.isTlsLazyServerEnd = inServer.IsLazyTls() && CanLazyEncrypt(inServer)
 
 	wrappedConn := thisLocalConnectionInstance
 
@@ -672,11 +672,12 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	if len(iics.firstPayload) > 0 && iics.inServer != nil && iics.inServer.Sniffing() {
 		tlsSniff = new(tlsLayer.ComSniff)
 
-		if Tls_lazy_encrypt && !iics.isTlsLazyServerEnd {
+		//if Tls_lazy_encrypt && !iics.isTlsLazyServerEnd {
+		if iics.defaultClient.IsLazyTls() && !iics.isTlsLazyServerEnd {
 			tlsSniff.Isclient = true
 		}
 
-		tlsSniff.CommonDetect(iics.firstPayload, true, !Tls_lazy_encrypt)
+		tlsSniff.CommonDetect(iics.firstPayload, true, !(iics.isTlsLazyServerEnd || iics.defaultClient.IsLazyTls()))
 
 		if sni := tlsSniff.SniffedServerName; sni != "" {
 			if ce := iics.CanLogDebug("Sniffed Sni"); ce != nil {
@@ -788,7 +789,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			iics.inServerTlsRawReadRecorder.StopRecord()
 		}
 	} else {
-		isTlsLazy_clientEnd = Tls_lazy_encrypt && CanLazyEncrypt(client) //比如dial是 tls+vless 这种
+		isTlsLazy_clientEnd = client.IsLazyTls() && CanLazyEncrypt(client) //比如dial是 tls+vless 这种
 
 	}
 
@@ -1305,7 +1306,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 
 	if !targetAddr.IsUDP() {
 
-		if Tls_lazy_encrypt && !iics.routedToDirect {
+		if !iics.routedToDirect {
 
 			// 我们加了回落之后，就无法确定 “未使用tls的outClient 一定是在服务端” 了
 			if isTlsLazy_clientEnd {

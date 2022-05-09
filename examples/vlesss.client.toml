@@ -40,7 +40,9 @@ protocol = "socks5" # 必填, 作为本地入口 也可写为 http或者 socks5h
 host = "127.0.0.1"  # 必填, 可填ip或域名；如果 network是unix的话，要填一个文件名(不需要已存在,可以是完整路径).
 port = 10800        # 必填
 
-#uuid = "user:xx\npass:yy"   # 可选. 本行 示范了当 user为 xx 且 密码为 yy 时所需的配置. user的值的结尾的右侧 和 pass 的左侧 中间用 \n 分隔开。
+#uuid = "user:xx\npass:yy"   # 可选. 本行 示范了 protocol为 socks5 或者 http时, 当 user为 xx 且 密码为 yy 时所需的配置. 
+
+# user的值的结尾的右侧 和 pass 的左侧 中间用 \n 分隔开。 你也可以使用toml的 多行字符串的语法。但是本示例为了清晰起见，还是明确把linefeed写出来了。 这个顺序不能改, 必须user在前 pass在后, 且都不能为空
 
 sniffing.enabled = true #可选，是否嗅探出 tls中的sni，可以帮助 geosite 分流. 该项只能在listen填写，而且一般都是在客户端填写，服务端不用管。因为一般只有客户端需要分流。
 
@@ -68,6 +70,9 @@ host = "127.0.0.1"     # 同listen对应配置, 可填ip或域名；如果 netwo
 
 # 除了在 protocol 字段使用 s尾缀 之外，还可以明示使用tls. 
 # 这两种方法不可重复使用.我们首选前者, 更简约, 当然如果你使用时，需要频繁开关tls，那么可以单独列出来 便于配置
+
+#lazy = true    #可选, 表示开启lazy功能; 只有vless支持, 且客户端和服务端的 vless都要开lazy, 
+# 而且 写明lazy的 [[dial]] 要放在所有 dial 中最前面的位置。
 
 
 port = 4433     # 必填
