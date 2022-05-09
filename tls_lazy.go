@@ -32,9 +32,9 @@ func init() {
 
 //有TLS, network为tcp或者unix, 无AdvLayer.
 //grpc 这种多路复用的链接是绝对无法开启 lazy的, ws 理论上也只有服务端发向客户端的链接 内嵌tls时可以lazy，但暂不考虑
-func CanLazyEncrypt(outClient proxy.BaseInterface) bool {
+func CanLazyEncrypt(x proxy.BaseInterface) bool {
 
-	return outClient.IsUseTLS() && CanNetwork_tlsLazy(outClient.Network()) && outClient.AdvancedLayer() == ""
+	return x.IsUseTLS() && CanNetwork_tlsLazy(x.Network()) && x.AdvancedLayer() == ""
 }
 
 func CanNetwork_tlsLazy(n string) bool {

@@ -788,7 +788,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			iics.inServerTlsRawReadRecorder.StopRecord()
 		}
 	} else {
-		isTlsLazy_clientEnd = Tls_lazy_encrypt && CanLazyEncrypt(client)
+		isTlsLazy_clientEnd = Tls_lazy_encrypt && CanLazyEncrypt(client) //比如dial是 tls+vless 这种
 
 	}
 
