@@ -58,23 +58,23 @@ func NewV2rayUser(s string) (V2rayUser, error) {
 }
 
 //used in proxy/socks5 and proxy.http
-type EasyUserPassHolder struct {
+type SingleUserPassHolder struct {
 	User, Password []byte
 }
 
 //	return len(ph.User) > 0 && len(ph.Password) > 0
-func (ph *EasyUserPassHolder) HasUserPass() bool {
+func (ph *SingleUserPassHolder) HasUserPass() bool {
 	return len(ph.User) > 0 && len(ph.Password) > 0
 }
 
 //require "user" and "pass" field
-func (ph *EasyUserPassHolder) InitWithUrl(u *url.URL) {
+func (ph *SingleUserPassHolder) InitWithUrl(u *url.URL) {
 	ph.User = []byte(u.Query().Get("user"))
 	ph.User = []byte(u.Query().Get("pass"))
 }
 
 //uuid: "user:xxxx\npass:xxxx"
-func (ph *EasyUserPassHolder) InitWithStr(str string) {
+func (ph *SingleUserPassHolder) InitWithStr(str string) {
 	strs := strings.SplitN(str, "\n", 2)
 	if len(strs) != 2 {
 

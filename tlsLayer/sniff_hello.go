@@ -59,7 +59,7 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 		if PDD {
 			log.Println("R No extension, Definitely tls1.2", len(pAfterLegacy_compression_methods))
 		}
-		cd.handShakePass = true
+		cd.helloPacketPass = true
 		cd.CantBeTLS13 = true
 		return nil
 	}
@@ -81,10 +81,9 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 // 具体见最上面的注释，以及rfc
 //解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
 func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bool) {
-
 	pAfterLegacy_compression_methods := cd.sniff_commonHelloPre(pAfter)
 
-	if cd.handShakePass || cd.DefinitelyNotTLS {
+	if cd.helloPacketPass || cd.DefinitelyNotTLS {
 		return
 	}
 
@@ -197,7 +196,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 			log.Println("Got Extension:", et, "'", etStrMap[int(et)], "'", "len", thiseLen)
 		}
 
-		//我们首先按照 rfc8446 的文档顺序来进行过滤, 但是首先把 0-21的提到前面来
+		//我们按照 rfc8446 的文档顺序来进行过滤, 但是首先把 0-21的提到前面来, 因为它们更加常见，尤其是 sni和 alpn
 
 		switch et {
 		default:
@@ -269,14 +268,14 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 					return
 				}
 
-				cd.SniffedHostName = string(extensionsBs[cursor : cursor+l])
+				cd.SniffedServerName = string(extensionsBs[cursor : cursor+l])
 				if onlyForSni {
 					return
 				}
 				cursor += l
 
 				if PDD {
-					log.Println("cd.SniffedHostName", sn_count, cd.SniffedHostName)
+					log.Println("cd.SniffedHostName", sn_count, cd.SniffedServerName)
 				}
 
 			}
@@ -512,23 +511,21 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 
 				The server MUST NOT echo the extension.
 
-				就是说，前两字节如果都是0，那就是 00，15，00，00，这四字节本身就占位了，算一种padding
+				就是说，前两字节(即00,15后面的两字节)如果都是0，那就是 00，15，00，00，这四字节本身就占位了，算一种padding
 
-				然后其他情况的话，前两字节是长度n, 后面有 n 长度的 "0"; 总padding长度就是n+4
+				然后其他情况的话，前两字节(即00,15后面的两字节) 表示的是 长度n, 后面有 n 长度的 "0"; 总padding长度就是n+4
 
 				不过我们不管总padding长度，那么实际上和其他tls 数据包的长度定义是完全类似的。
 
 			*/
 
-			l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
-			cursor += 2
-			if len(extensionsBs[cursor:]) < l {
+			if len(extensionsBs[cursor:]) < int(thiseLen) {
 				cd.DefinitelyNotTLS = true
 				cd.handshakeFailReason = 31
 				return
 
 			}
-			cursor += l
+			cursor += int(thiseLen)
 
 		/////////////////////////////////////////////////////////
 
@@ -623,7 +620,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 					}
 
 					//不管别的了，直接认为握手生效。不然判断太麻烦了
-					cd.handShakePass = true
+					cd.helloPacketPass = true
 					cd.handshakeVer = tls.VersionTLS13
 					return
 				} else {
@@ -636,7 +633,7 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 
 					cd.CantBeTLS13 = true
 					cd.peer.CantBeTLS13 = true
-					cd.handShakePass = true
+					cd.helloPacketPass = true
 					return
 
 				}

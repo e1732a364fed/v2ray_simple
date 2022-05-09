@@ -125,6 +125,7 @@ func InitLog(firstMsg string) {
 	}
 }
 
+// assume ZapLogger is not nil.
 func CanLogLevel(l int, msg string) *zapcore.CheckedEntry {
 	return ZapLogger.Check(zapcore.Level(l-1), msg)
 

@@ -45,6 +45,7 @@ type BaseInterface interface {
 	/////////////////// TLS层 ///////////////////
 
 	IsUseTLS() bool
+	IsLazyTls() bool
 
 	GetTLS_Server() *tlsLayer.Server
 	GetTLS_Client() *tlsLayer.Client
@@ -154,6 +155,7 @@ func (b *Base) CantRoute() bool {
 }
 
 func (b *Base) Sniffing() bool {
+
 	if b.ListenConf == nil {
 		return false
 	}
@@ -270,6 +272,17 @@ func (b *Base) SetAddrStr(a string) {
 
 func (b *Base) IsUseTLS() bool {
 	return b.TLS
+}
+
+func (b *Base) IsLazyTls() bool {
+	if b.DialConf != nil {
+		return b.DialConf.Lazy
+	}
+
+	if b.ListenConf != nil {
+		return b.ListenConf.Lazy
+	}
+	return false
 }
 
 func (b *Base) GetAdvClient() advLayer.Client {

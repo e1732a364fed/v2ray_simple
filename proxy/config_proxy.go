@@ -37,6 +37,8 @@ type CommonConf struct {
 	TLSCert string `toml:"cert"` //可选
 	TLSKey  string `toml:"key"`  //可选
 
+	Lazy bool `toml:"lazy"` //可选, 是否开启 tls_lazy_encrypt 功能
+
 	/////////////////// http层 ///////////////////
 
 	HttpHeader *httpLayer.HeaderPreset `toml:"header"` //http伪装头; 可选

@@ -32,7 +32,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 type Client struct {
 	proxy.Base
-	utils.EasyUserPassHolder
+	utils.SingleUserPassHolder
 }
 
 func (*Client) Name() string {

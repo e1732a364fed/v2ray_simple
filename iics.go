@@ -2,8 +2,10 @@ package v2ray_simple
 
 import (
 	"bytes"
+	"math/rand"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
@@ -11,10 +13,42 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
+
+var iicsZapWriterPool = sync.Pool{
+	New: func() interface{} {
+		return &iicsZapWriter{
+			assignedFields: make([]zapcore.Field, 1, 4),
+		}
+	},
+}
+
+//专用于 iics的结构
+type iicsZapWriter struct {
+	ce             *zapcore.CheckedEntry
+	assignedFields []zapcore.Field //始终保持 有且只有 一项
+	id             uint32
+}
+
+//只能调用Write一次，调用之后，zw 便不再可用。
+func (zw *iicsZapWriter) Write(fields ...zapcore.Field) {
+	if len(fields) > 0 {
+		realFields := append(zw.assignedFields, fields...)
+
+		zw.ce.Write(realFields...)
+
+	} else {
+		zw.ce.Write(zw.assignedFields...)
+
+	}
+
+	iicsZapWriterPool.Put(zw)
+}
 
 //一个贯穿转发流程的关键结构,简称iics
 type incomingInserverConnState struct {
+	id uint32 //6位数字(十进制), 用于标识每一个连接.
 
 	// 在多路复用的情况下, 可能产生多个 IncomingInserverConnState，
 	// 共用一个 baseLocalConn, 但是 wrappedConn 各不相同。
@@ -39,13 +73,19 @@ type incomingInserverConnState struct {
 
 	firstPayload []byte
 
-	isTlsLazyServerEnd bool
+	isTlsLazyServerEnd bool //比如 listen 是 tls + vless 这种情况
 
 	shouldCloseInSerBaseConnWhenFinish bool
 
 	routedToDirect bool
 
 	routingEnv *proxy.RoutingEnv //used in passToOutClient
+}
+
+func (iics *incomingInserverConnState) genID() {
+	const low = 100000
+	const hi = 999999
+	iics.id = uint32(low + rand.Intn(hi-low))
 }
 
 // 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
@@ -92,7 +132,9 @@ func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
 
 //查看当前配置 是否支持fallback, 并获得回落地址。
 // 被 passToOutClient 调用. 若 无fallback则 result < 0, 否则返回所使用的 PROXY protocol 版本, 0 表示 回落但是不用 PROXY protocol.
-func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, result int) {
+//
+// 本方法不会修改 iics的任何内容.
+func (iics *incomingInserverConnState) checkfallback() (targetAddr netLayer.Addr, result int) {
 	//先检查 mainFallback，如果mainFallback中各项都不满足 or根本没有 mainFallback 再检查 defaultFallback
 
 	//一般情况下 iics.RoutingEnv 都会给出，但是 如果是 热加载、tproxy、go test、单独自定义 调用 ListenSer 不给出env 等情况的话， iics.RoutingEnv 都是空值
@@ -184,4 +226,35 @@ func checkfallback(iics incomingInserverConnState) (targetAddr netLayer.Addr, re
 	}
 
 	return
+}
+
+func (iics *incomingInserverConnState) CanLogInfo(msg string) *iicsZapWriter {
+	return iics.CanLogLevel(utils.Log_info, msg)
+}
+
+func (iics *incomingInserverConnState) CanLogErr(msg string) *iicsZapWriter {
+	return iics.CanLogLevel(utils.Log_error, msg)
+}
+
+func (iics *incomingInserverConnState) CanLogDebug(msg string) *iicsZapWriter {
+	return iics.CanLogLevel(utils.Log_debug, msg)
+}
+
+func (iics *incomingInserverConnState) CanLogWarn(msg string) *iicsZapWriter {
+	return iics.CanLogLevel(utils.Log_warning, msg)
+}
+func (iics *incomingInserverConnState) CanLogLevel(level int, msg string) *iicsZapWriter {
+	if ce := utils.CanLogLevel(level, msg); ce != nil {
+		zw := iicsZapWriterPool.Get().(*iicsZapWriter)
+		zw.ce = ce
+
+		if zw.id != iics.id {
+			zw.assignedFields[0] = zap.Uint32("id", iics.id)
+			zw.id = iics.id
+		}
+
+		return zw
+	} else {
+		return nil
+	}
 }

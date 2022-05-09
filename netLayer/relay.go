@@ -13,7 +13,9 @@ import (
 
 // TryCopy 尝试 循环 从 readConn 读取数据并写入 writeConn, 直到错误发生。
 //会接连尝试 splice、循环readv 以及 原始Copy方法。如果 UseReadv 的值为false，则不会使用readv。
-func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) {
+//
+// identity只用于debug 日志输出.
+func TryCopy(writeConn io.Writer, readConn io.Reader, identity uint32) (allnum int64, err error) {
 	var multiWriter utils.MultiWriter
 
 	var rawReadConn syscall.RawConn
@@ -25,6 +27,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 
 	if ce := utils.CanLogDebug("TryCopy"); ce != nil {
 		ce.Write(
+			zap.Uint32("id", identity),
 			zap.String("from", reflect.TypeOf(readConn).String()),
 			zap.String("->", reflect.TypeOf(writeConn).String()),
 		)
@@ -47,7 +50,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 
 			if rCanSplice && wCanSplice {
 				if ce := utils.CanLogDebug("copying with splice"); ce != nil {
-					ce.Write()
+					ce.Write(zap.Uint32("id", identity))
 				}
 
 				goto copy
@@ -76,10 +79,11 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 
 	if ce := utils.CanLogDebug("copying with readv"); ce != nil {
 		if readv_withMultiReader {
-			ce.Write(zap.String("with", "MultiReader"))
+			ce.Write(zap.Uint32("id", identity),
+				zap.String("with", "MultiReader"))
 
 		} else {
-			ce.Write()
+			ce.Write(zap.Uint32("id", identity))
 
 		}
 	}
@@ -155,7 +159,7 @@ func TryCopy(writeConn io.Writer, readConn io.Reader) (allnum int64, err error) 
 	}
 classic:
 	if ce := utils.CanLogDebug("copying with classic method"); ce != nil {
-		ce.Write()
+		ce.Write(zap.Uint32("id", identity))
 	}
 copy:
 
@@ -229,16 +233,17 @@ classic:
 //
 //拷贝完成后会主动关闭双方连接.
 // 返回从 rc读取到的总字节长度（即下载流量）. 如果 downloadByteCount, uploadByteCount 给出,
-// 则会 分别原子更新 上传和下载的总字节数
-func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, uploadByteCount *uint64) int64 {
+// 则会 分别原子更新 上传和下载的总字节数. identity 用于输出日志。
+func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, identity uint32, downloadByteCount, uploadByteCount *uint64) int64 {
 
 	if utils.LogLevel == utils.Log_debug {
 
 		rtaddrStr := realTargetAddr.String()
 		go func() {
-			n, e := TryCopy(rc, lc)
+			n, e := TryCopy(rc, lc, identity)
 
-			utils.CanLogDebug("Relay End").Write(zap.String("direction", "L->R"),
+			utils.CanLogDebug("Relay End").Write(zap.Uint32("id", identity),
+				zap.String("direction", "L->R"),
 				zap.String("target", rtaddrStr),
 				zap.Int64("bytes", n),
 				zap.Error(e),
@@ -253,9 +258,10 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, u
 
 		}()
 
-		n, e := TryCopy(lc, rc)
+		n, e := TryCopy(lc, rc, identity)
 
-		utils.CanLogDebug("Relay End").Write(zap.String("direction", "R->L"),
+		utils.CanLogDebug("Relay End").Write(zap.Uint32("id", identity),
+			zap.String("direction", "R->L"),
 			zap.String("target", rtaddrStr),
 			zap.Int64("bytes", n),
 			zap.Error(e),
@@ -270,7 +276,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, u
 		return n
 	} else {
 		go func() {
-			n, _ := TryCopy(rc, lc)
+			n, _ := TryCopy(rc, lc, identity)
 
 			lc.Close()
 			rc.Close()
@@ -281,7 +287,7 @@ func Relay(realTargetAddr *Addr, rc, lc io.ReadWriteCloser, downloadByteCount, u
 
 		}()
 
-		n, _ := TryCopy(lc, rc)
+		n, _ := TryCopy(lc, rc, identity)
 
 		lc.Close()
 		rc.Close()
