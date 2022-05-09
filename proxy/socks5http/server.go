@@ -43,7 +43,7 @@ func (ServerCreator) NewServer(dc *proxy.ListenConf) (proxy.Server, error) {
 func newServer() *Server {
 	return &Server{
 		hs: http.Server{
-			OnlyConnect: true,
+			//OnlyConnect: true,	//之前本以为connect就可以搞定一切，后来实测发现 wget 确实在 非https时 会用 纯http请求的方式 请求代理。
 		},
 	}
 }
