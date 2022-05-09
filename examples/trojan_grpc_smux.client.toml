@@ -16,4 +16,4 @@ path = "ohmygod_verysimple_is_very_simple"
 use_mux = true
 
 # 只是一种奇葩组合而已，为了证明 确实可以 trojan + grpc +smux +simplesocks
-# quic也是可以的.
+# quic也是可以的. 过于奇葩，对应的服务端配置就不给出了。

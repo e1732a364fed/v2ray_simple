@@ -35,7 +35,9 @@ All in all gobwas/ws is the best package. We use gobwas/ws.
 */
 package ws
 
-import "github.com/e1732a364fed/v2ray_simple/advLayer"
+import (
+	"github.com/e1732a364fed/v2ray_simple/advLayer"
+)
 
 func init() {
 	advLayer.ProtocolsMap["ws"] = Creator{}
@@ -44,7 +46,11 @@ func init() {
 type Creator struct{}
 
 func (Creator) NewClientFromConf(conf *advLayer.Conf) (advLayer.Client, error) {
-	return NewClient(conf.Host, conf.Path, conf.Headers, conf.IsEarly)
+	hn := conf.Host
+	if conf.Addr.Network == "unix" {
+		hn = ""
+	}
+	return NewClient(hn, conf.Path, conf.Headers, conf.IsEarly)
 }
 
 func (Creator) NewServerFromConf(conf *advLayer.Conf) (advLayer.Server, error) {

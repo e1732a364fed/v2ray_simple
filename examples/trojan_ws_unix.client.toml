@@ -1,0 +1,18 @@
+[[listen]]
+protocol = "socks5"
+host = "127.0.0.1"
+port = 10800
+
+
+[[dial]]
+protocol = "trojans"
+uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+host = "/dev/shm/ws.sock" 
+network = "unix"    # 别忘了标network 为 unix (unix domain socket 的 golang的简称)
+insecure = true
+utls = true
+
+advancedLayer = "ws"
+path = "/ohmygod_verysimple_is_very_simple"
+early = true   # websocket early data 功能 （即0-rtt）
+#use_mux = true  # 只需要客户端指明 use_mux 即可开启mux, 服务端自动适配.

@@ -339,6 +339,7 @@ func (b *Base) InitAdvLayer() {
 
 		return
 	}
+	ad.Network = b.Network()
 
 	if dc := b.DialConf; dc != nil {
 
