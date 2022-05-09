@@ -6,6 +6,8 @@ import (
 )
 
 const (
+
+	//符合 nginx返回的时间格式，且符合 golang对时间格式字符串的 "123456"的约定 的字符串。
 	nginx_timeFormatStr = "02 Jan 2006 15:04:05 MST"
 
 	// real nginx response, echo xx | nc 127.0.0.1 80 > response
@@ -20,7 +22,7 @@ const (
 	}
 
 	*/
-	Err403response_nginx = `HTTP/1.1 403 Forbidden\r\nServer: nginx/1.14.2\r\nDate: Sat, 07 May 2022 07:03:47 GMT\r\nContent-Type: text/html\r\nContent-Length: 169\r\nConnection: keep-alive\r\n\r\n<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body bgcolor="white">\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx/1.14.2</center>\r\n</body>\r\n</html>\r\n`
+	Err403response_nginx = `HTTP/1.1 403 Forbidden\r\nServer: nginx/1.14.2\r\nDate: Sat, 02 Jan 2006 15:04:05 MST\r\nContent-Type: text/html\r\nContent-Length: 169\r\nConnection: keep-alive\r\n\r\n<html>\r\n<head><title>403 Forbidden</title></head>\r\n<body bgcolor="white">\r\n<center><h1>403 Forbidden</h1></center>\r\n<hr><center>nginx/1.14.2</center>\r\n</body>\r\n</html>\r\n`
 
 	//备注，vim中， "\r" 显示为 ^M, 输入它是用 ctrl + V + M
 )

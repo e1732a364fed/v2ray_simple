@@ -17,14 +17,14 @@ import (
 )
 
 var (
-	Tls_lazy_secure bool
+	tls_lazy_secure bool
 )
 
 const tlslazy_willuseSystemCall = runtime.GOOS == "linux" || runtime.GOOS == "darwin"
 
 func init() {
 
-	flag.BoolVar(&Tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end.")
+	flag.BoolVar(&tls_lazy_secure, "ls", false, "tls lazy secure, use special techs to ensure the tls lazy encrypt data can't be detected. Only valid at client end. (under developping.)")
 
 }
 
@@ -43,13 +43,13 @@ func CanNetwork_tlsLazy(n string) bool {
 	return false
 }
 
-// tryTlsLazyRawCopy 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发.
+// tryTlsLazyRawRelay 尝试能否直接对拷，对拷 直接使用 原始 TCPConn，也就是裸奔转发.
 //  如果在linux上，则和 xtls的splice 含义相同. 在其他系统时，与xtls-direct含义相同。
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice / 退化为普通拷贝.
 //
 // useSecureMethod仅用于 tls_lazy_secure
-func tryTlsLazyRawCopy(identity uint32, useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
-	if ce := utils.CanLogDebug("trying tls lazy copy"); ce != nil {
+func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+	if ce := utils.CanLogDebug("Try tls lazy"); ce != nil {
 		ce.Write(zap.Uint32("id", identity))
 	}
 	if wlc != nil {

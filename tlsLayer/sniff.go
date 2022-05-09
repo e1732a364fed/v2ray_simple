@@ -100,7 +100,7 @@ type ComSniff struct {
 	ShouldSniffAlpn bool
 	SniffedAlpnList []string
 
-	Isclient  bool
+	Isclient  bool //是否是tls拨号端
 	Is_secure bool
 
 	packetCount int

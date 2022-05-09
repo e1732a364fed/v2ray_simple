@@ -71,7 +71,7 @@ host = "127.0.0.1"     # 同listen对应配置, 可填ip或域名；如果 netwo
 # 除了在 protocol 字段使用 s尾缀 之外，还可以明示使用tls. 
 # 这两种方法不可重复使用.我们首选前者, 更简约, 当然如果你使用时，需要频繁开关tls，那么可以单独列出来 便于配置
 
-#lazy = true    #可选, 表示开启lazy功能; 只有vless支持, 且客户端和服务端的 vless都要开lazy, 
+#lazy = true    #可选, 表示开启 tls lazy encrypt 功能; 只有vless支持, 且客户端和服务端的 vless都要开lazy, 
 # 而且 写明lazy的 [[dial]] 要放在所有 dial 中最前面的位置。
 
 

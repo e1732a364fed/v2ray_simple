@@ -136,6 +136,9 @@ func (b *Base) MiddleName() string {
 
 	if b.TLS {
 		sb.WriteString("+tls")
+		if b.IsLazyTls() {
+			sb.WriteString("+lazy")
+		}
 	}
 	if b.Header != nil {
 		if b.AdvancedL != "ws" {

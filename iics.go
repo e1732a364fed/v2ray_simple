@@ -60,12 +60,12 @@ type incomingInserverConnState struct {
 	defaultClient proxy.Client
 
 	cachedRemoteAddr string
-	theRequestPath   string
 
 	inServerTlsConn            *tlsLayer.Conn
 	inServerTlsRawReadRecorder *tlsLayer.Recorder
 
 	isFallbackH2        bool
+	fallbackRequestPath string
 	fallbackH2Request   *http.Request
 	fallbackFirstBuffer *bytes.Buffer
 
@@ -84,7 +84,7 @@ type incomingInserverConnState struct {
 
 func (iics *incomingInserverConnState) genID() {
 	const low = 100000
-	const hi = 999999
+	const hi = low*10 - 1
 	iics.id = uint32(low + rand.Intn(hi-low))
 }
 
@@ -144,7 +144,7 @@ func (iics *incomingInserverConnState) checkfallback() (targetAddr netLayer.Addr
 
 			var thisFallbackType byte
 
-			theRequestPath := iics.theRequestPath
+			theRequestPath := iics.fallbackRequestPath
 
 			if iics.fallbackFirstBuffer != nil && theRequestPath == "" {
 				var failreason int

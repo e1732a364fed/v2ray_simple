@@ -288,7 +288,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 					newiics := iics
 
-					newiics.theRequestPath = fallbackMeta.Path
+					newiics.fallbackRequestPath = fallbackMeta.Path
 					newiics.fallbackFirstBuffer = fallbackMeta.H1RequestBuf
 					newiics.wrappedConn = fallbackMeta.Conn
 					newiics.isFallbackH2 = fallbackMeta.IsH2
@@ -325,7 +325,7 @@ func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy
 
 				meta := wsConn.(httpLayer.FallbackMeta)
 
-				iics.theRequestPath = meta.Path
+				iics.fallbackRequestPath = meta.Path
 				iics.fallbackFirstBuffer = meta.H1RequestBuf
 				iics.wrappedConn = meta.Conn
 
@@ -534,7 +534,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 				rq := iics.fallbackH2Request
 				rq.Host = targetAddr.Name
 
-				urlStr := "https://" + targetAddr.String() + iics.theRequestPath
+				urlStr := "https://" + targetAddr.String() + iics.fallbackRequestPath
 				url, _ := url.Parse(urlStr)
 				rq.URL = url
 
@@ -672,8 +672,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 	if len(iics.firstPayload) > 0 && iics.inServer != nil && iics.inServer.Sniffing() {
 		tlsSniff = new(tlsLayer.ComSniff)
 
-		//if Tls_lazy_encrypt && !iics.isTlsLazyServerEnd {
-		if iics.defaultClient.IsLazyTls() && !iics.isTlsLazyServerEnd {
+		if !iics.isTlsLazyServerEnd {
 			tlsSniff.Isclient = true
 		}
 
@@ -784,7 +783,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 		//udp数据是无法splice的，因为不是入口处是真udp就是出口处是真udp; 同样暂不考虑级连情况.
 		if iics.isTlsLazyServerEnd {
 			iics.isTlsLazyServerEnd = false
-			//此时 inServer的tls还被包了一个Recorder，所以我们赶紧关闭记录省着产生额外开销
+			//此时 inServer的tls还被包了一个Recorder，所以我们赶紧关闭记录, 避免产生额外开销
 
 			iics.inServerTlsRawReadRecorder.StopRecord()
 		}
@@ -800,7 +799,7 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	if isTlsLazy_clientEnd || iics.isTlsLazyServerEnd {
 
-		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, Tls_lazy_secure, tlsSniff)
+		wlc = tlsLayer.NewSniffConn(iics.baseLocalConn, wlc, isTlsLazy_clientEnd, tls_lazy_secure, tlsSniff)
 
 	}
 
@@ -1014,14 +1013,14 @@ func dialClient(iics incomingInserverConnState, targetAddr netLayer.Addr,
 
 		if isTlsLazy_clientEnd {
 
-			if Tls_lazy_secure && wlc != nil {
+			if tls_lazy_secure && wlc != nil {
 				// 如果使用secure办法，则我们每次不能先拨号，而是要detect用户的首包后再拨号
 				// 这种情况只需要客户端操作, 此时我们wrc直接传入原始的 刚拨号好的 tcp连接，即 clientConn
 
 				// 而且为了避免黑客攻击或探测，我们要使用uuid作为特殊指令，此时需要 UserServer和 UserClient
 
 				if uc := client.(proxy.UserClient); uc != nil {
-					tryTlsLazyRawCopy(iics.id, true, uc, nil, targetAddr, clientConn, wlc, nil, true, nil)
+					tryTlsLazyRawRelay(iics.id, true, uc, nil, targetAddr, clientConn, wlc, nil, true, nil)
 
 				}
 
@@ -1314,7 +1313,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 				if client.IsUseTLS() {
 					//必须是 UserClient
 					if userClient := client.(proxy.UserClient); userClient != nil {
-						tryTlsLazyRawCopy(iics.id, false, userClient, nil, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
+						tryTlsLazyRawRelay(iics.id, false, userClient, nil, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, true, clientEndRemoteClientTlsRawReadRecorder)
 						return
 					}
 				}
@@ -1325,7 +1324,7 @@ func dialClient_andRelay(iics incomingInserverConnState, targetAddr netLayer.Add
 				// 否则将无法开启splice功能。这是为了防止0-rtt 探测;
 
 				if userServer, ok := iics.inServer.(proxy.UserServer); ok {
-					tryTlsLazyRawCopy(iics.id, false, nil, userServer, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
+					tryTlsLazyRawRelay(iics.id, false, nil, userServer, netLayer.Addr{}, wrc, wlc, iics.baseLocalConn, false, iics.inServerTlsRawReadRecorder)
 					return
 				}
 

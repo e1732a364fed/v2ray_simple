@@ -36,7 +36,7 @@ ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimpl
 
 dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-tcp/udp/unix domain socket, tls(包括客户端证书验证), uTls, lazy, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer
+tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls, lazy, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer, Docker.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -316,6 +316,8 @@ api服务器；tproxy 透明代理； http伪装头.
 本作也是支持 trojan-go 声称的 “可插拔模块”的，没什么复杂的。而且也可以用build tag 来开启或关闭某项功能。
 
 本作也是支持 clash 的 "use as library" 的，而且更加简单，very simple，你看godoc文档就懂了，主项目就一个主要的函数。
+
+支持 Docker 容器, 见 #56，以及 cmd/verysimple/Dockerfile,  相关问题请找 该PR作者。
 
 总之，可以看到，几乎在每一个技术上 本作都有一定的优化，超越其他内核，非常 Nice。
 
