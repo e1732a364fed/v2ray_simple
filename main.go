@@ -172,14 +172,13 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 func handleNewIncomeConnection(inServer proxy.Server, defaultClientForThis proxy.Client, thisLocalConnectionInstance net.Conn, env *proxy.RoutingEnv) {
 
 	iics := incomingInserverConnState{
-		baseLocalConn: thisLocalConnectionInstance,
-		inServer:      inServer,
-		defaultClient: defaultClientForThis,
-		routingEnv:    env,
+		baseLocalConn:      thisLocalConnectionInstance,
+		inServer:           inServer,
+		defaultClient:      defaultClientForThis,
+		routingEnv:         env,
+		isTlsLazyServerEnd: inServer.IsLazyTls() && CanLazyEncrypt(inServer),
 	}
 	iics.genID()
-
-	iics.isTlsLazyServerEnd = inServer.IsLazyTls() && CanLazyEncrypt(inServer)
 
 	wrappedConn := thisLocalConnectionInstance
 

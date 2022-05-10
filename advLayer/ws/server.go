@@ -3,6 +3,7 @@ package ws
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -99,17 +100,15 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 	var rp httpLayer.H1RequestParser
 	re := rp.ReadAndParse(underlay)
 	if re != nil {
-		if re == httpLayer.ErrNotHTTP_Request {
-			if ce := utils.CanLogErr("WS check ErrNotHTTP_Request"); ce != nil {
-				ce.Write()
-			}
+		if errors.Is(re, httpLayer.ErrNotHTTP_Request) {
+
+			return nil, utils.ErrInErr{ErrDesc: "WS check parse http failed", ErrDetail: httpLayer.ErrNotHTTP_Request}
 
 		} else {
-			if ce := utils.CanLogErr("WS check handshake read failed"); ce != nil {
-				ce.Write(zap.Error(re))
-			}
+
+			return nil, utils.ErrInErr{ErrDesc: "WS check handshake read failed", ErrDetail: re}
+
 		}
-		return nil, utils.ErrInvalidData
 	}
 
 	optionalFirstBuffer := rp.WholeRequestBuf
@@ -222,9 +221,7 @@ func (s *Server) Handshake(underlay net.Conn) (net.Conn, error) {
 				// 传来的并不是base64数据，可能是其它访问我们网站websocket的情况，但是一般我们path复杂都会过滤掉，所以直接认为这是非法的
 				return "", false
 			}
-			//if len(bs) != 0 && utils.CanLogDebug() {
-			//	log.Println("Got New ws earlydata", len(bs), bs)
-			//}
+
 			thePotentialEarlyData = bs
 			return "", true
 		}

@@ -148,9 +148,7 @@ func (c *Client) getCommonConn(_ net.Conn) (*connState, error) {
 	}
 
 	if err != nil {
-		if ce := utils.CanLogErr("QUIC:  dial failed"); ce != nil {
-			ce.Write(zap.Error(err))
-		}
+
 		return nil, err
 	}
 

@@ -223,7 +223,7 @@ func (c *Client) DialSubConn(underlay any) (net.Conn, error) {
 		},
 	}
 
-	go conn.handshakeOnce.Do(conn.handshake) //necessary
+	go conn.handshakeOnce.Do(conn.handshake) //necessary。 因为 handshake不会立刻退出，所以必须要用 goroutine, 否则会卡住
 
 	return conn, nil
 }

@@ -20,6 +20,17 @@ var (
 	ErrFailed    = errors.New("failed") //最无脑的Err, 在能描述清楚错误时不要使用 ErrFailed
 )
 
+type InvalidDataErr string
+
+//return err == e || err == ErrInvalidData
+func (e InvalidDataErr) Is(err error) bool {
+	return err == e || err == ErrInvalidData
+}
+
+func (e InvalidDataErr) Error() string {
+	return string(e)
+}
+
 //nothing special
 type NumErr struct {
 	N      int

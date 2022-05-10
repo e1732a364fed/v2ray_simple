@@ -26,7 +26,6 @@ package httpLayer
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"strings"
 
@@ -55,7 +54,7 @@ const (
 var (
 	HeaderENDING_bytes = []byte(HeaderENDING)
 
-	ErrNotHTTP_Request = errors.New("not http request")
+	ErrNotHTTP_Request = utils.InvalidDataErr("not http request")
 
 	Err400response_golang string
 )
@@ -116,7 +115,7 @@ type H1RequestParser struct {
 }
 
 // 尝试读取数据并解析HTTP请求, 解析道道 数据会存入 RequestParser 结构中.
-//如果读取错误,会返回该错误; 如果读到的不是HTTP请求，返回 ErrNotHTTP_Request;
+//如果读取错误,会返回该错误; 如果读到的不是HTTP请求，返回 的err 的 errors.Is(err,ErrNotHTTP_Request) == true;
 func (rhr *H1RequestParser) ReadAndParse(r io.Reader) error {
 	bs := utils.GetPacket()
 

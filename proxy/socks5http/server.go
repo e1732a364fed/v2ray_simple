@@ -18,7 +18,6 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/proxy/http"
 	"github.com/e1732a364fed/v2ray_simple/proxy/socks5"
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	"go.uber.org/zap"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -68,9 +67,9 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, msgConn netLaye
 	if be, ok := err.(utils.ErrBuffer); ok {
 		buf := be.Buf
 
-		if ce := utils.CanLogDebug("socks5http: http failed, will try socks5"); ce != nil {
-			ce.Write(zap.Int("buflen", buf.Len()))
-		}
+		//if ce := utils.CanLogDebug("socks5http: http failed, will try socks5"); ce != nil {
+		//	ce.Write(zap.Int("buflen", buf.Len()))
+		//}
 
 		newConn := &netLayer.ReadWrapper{
 			Conn:              underlay,

@@ -191,10 +191,10 @@ func getExtra(extra map[string]any) (useHysteria, hysteria_manual bool,
 
 	if thing := extra["maxStreamsInOneConn"]; thing != nil {
 		if count, ok := thing.(int64); ok && count > 0 {
-			if ce := utils.CanLogInfo("maxStreamsInOneConn"); ce != nil {
-				ce.Write(zap.Int("maxStreamsInOneConn,", int(count)))
+			if ce := utils.CanLogInfo("quic max Streams In One Conn"); ce != nil {
+				ce.Write(zap.Int("count,", int(count)))
 			} else {
-				log.Println("maxStreamsInOneConn,", count)
+				log.Println("quic maxStreamsInOneConn,", count)
 
 			}
 			maxStreamsInOneConn = count
