@@ -16,7 +16,7 @@ key = "cert.key"
 [[fallback]]
 
 from = ["vlesstls"]
-alpn = ["http/1.1"]
+alpn = ["http/1.1"] # 注意, 你的回落的协议要明确指出 alpn, 比如你要回落到vless+ws, 那么你对应的客户端的ws的dial部分 要配置好 这个 http/1.1 作为 alpn, 你不指出那么显然就没alpn, 当然就连不上，这不怨vs。
 dest = "@vlessws"   # dest 也可以写成 这种形式, 直接匹配tag, 可防止笔误。
 
 [[fallback]]

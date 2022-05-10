@@ -9,6 +9,7 @@ require (
 	github.com/gobwas/ws v1.1.0
 	github.com/lucas-clemente/quic-go v0.0.0-00010101000000-000000000000
 	github.com/manifoldco/promptui v0.9.0
+	github.com/marten-seemann/qtls v0.10.0
 	github.com/miekg/dns v1.1.48
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/oschwald/maxminddb-golang v1.9.0
@@ -19,6 +20,7 @@ require (
 	github.com/yl2chen/cidranger v1.0.2
 	go.uber.org/atomic v1.9.0
 	go.uber.org/zap v1.21.0
+	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 	golang.org/x/sys v0.0.0-20220422013727-9388b58f7150
@@ -41,7 +43,6 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
-	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.10 // indirect

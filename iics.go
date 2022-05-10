@@ -32,7 +32,7 @@ type iicsZapWriter struct {
 }
 
 func (zw *iicsZapWriter) setid(id uint32) {
-	zw.assignedFields[0] = zap.Uint32("id", id)
+	zw.assignedFields[0] = zap.Uint32("connid", id)
 	zw.id = id
 }
 
