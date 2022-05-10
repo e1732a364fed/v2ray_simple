@@ -31,6 +31,11 @@ type iicsZapWriter struct {
 	id             uint32
 }
 
+func (zw *iicsZapWriter) setid(id uint32) {
+	zw.assignedFields[0] = zap.Uint32("id", id)
+	zw.id = id
+}
+
 //只能调用Write一次，调用之后，zw 便不再可用。
 func (zw *iicsZapWriter) Write(fields ...zapcore.Field) {
 	if len(fields) > 0 {
@@ -82,6 +87,7 @@ type incomingInserverConnState struct {
 	routingEnv *proxy.RoutingEnv //used in passToOutClient
 }
 
+//每个iics使用之前，必须调用 genID
 func (iics *incomingInserverConnState) genID() {
 	const low = 100000
 	const hi = low*10 - 1
@@ -90,7 +96,7 @@ func (iics *incomingInserverConnState) genID() {
 
 // 在调用 passToOutClient前遇到err时调用, 若找出了buf，设置iics，并返回true
 func (iics *incomingInserverConnState) extractFirstBufFromErr(err error) bool {
-	if ce := utils.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
+	if ce := iics.CanLogWarn("failed in inServer proxy handshake"); ce != nil {
 		ce.Write(
 			zap.String("handler", iics.inServer.AddrStr()),
 			zap.Error(err),
@@ -244,13 +250,15 @@ func (iics *incomingInserverConnState) CanLogWarn(msg string) *iicsZapWriter {
 	return iics.CanLogLevel(utils.Log_warning, msg)
 }
 func (iics *incomingInserverConnState) CanLogLevel(level int, msg string) *iicsZapWriter {
+	if iics.id == 0 {
+		iics.genID()
+	}
 	if ce := utils.CanLogLevel(level, msg); ce != nil {
 		zw := iicsZapWriterPool.Get().(*iicsZapWriter)
 		zw.ce = ce
 
 		if zw.id != iics.id {
-			zw.assignedFields[0] = zap.Uint32("id", iics.id)
-			zw.id = iics.id
+			zw.setid(iics.id)
 		}
 
 		return zw

@@ -16,7 +16,10 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-const delimiter = "===============================\n"
+const (
+	desc      = "A very simple implementation of V2Ray with some innovation\n"
+	delimiter = "===============================\n"
+)
 
 var Version string = "[version_undefined]" //版本号可由 -ldflags "-X 'main.Version=v1.x.x'" 指定, 本项目的Makefile就是用这种方式确定版本号
 
@@ -41,7 +44,6 @@ func printVersion() {
 	printVersion_simple()
 	utils.PrintStr(delimiter)
 
-	const desc = "A very simple implementation of V2Ray with some innovation\n"
 	utils.PrintStr(desc)
 
 	if netLayer.HasEmbedGeoip() {

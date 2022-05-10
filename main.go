@@ -111,6 +111,7 @@ func ListenSer(inServer proxy.Server, defaultOutClient proxy.Client, env *proxy.
 					defaultClient: defaultOutClient,
 					routingEnv:    env,
 				}
+				iics.genID()
 
 				go handshakeInserver_and_passToOutClient(iics)
 			}

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"io"
 	"net/url"
 	"strings"
@@ -18,11 +19,24 @@ type UserHaser interface {
 	UserBytesLen() int
 }
 
+type UserPassMatcher interface {
+	GetUserByPass(user, pass []byte) User
+}
+
+type UserGetter interface {
+	GetUserByStr(idStr string) User
+	GetUserByBytes(bs []byte) User
+}
 type UserContainer interface {
 	UserHaser
 
-	GetUserByStr(idStr string) User
-	GetUserByBytes(bs []byte) User
+	UserGetter
+}
+
+type UserPassContainer interface {
+	UserPassMatcher
+
+	UserGetter
 }
 
 // 可以控制 User 登入和登出 的接口
@@ -35,6 +49,11 @@ type UserConn interface {
 	io.ReadWriter
 	User
 	GetProtocolVersion() int
+}
+
+type UserConf struct {
+	User string `toml:"user"`
+	Pass string `toml:"pass"`
 }
 
 //一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口
@@ -57,24 +76,52 @@ func NewV2rayUser(s string) (V2rayUser, error) {
 	return uuid, nil
 }
 
-//used in proxy/socks5 and proxy.http
-type SingleUserPassHolder struct {
-	User, Password []byte
+//used in proxy/socks5 and proxy.http. implements User, UserPassMatcher, UserPassContainer
+type SingleUserWithPass struct {
+	UserID, Password []byte
+}
+
+func (ph *SingleUserWithPass) GetIdentityStr() string {
+	return string(ph.UserID)
+}
+
+func (ph *SingleUserWithPass) GetIdentityBytes() []byte {
+	return ph.UserID
 }
 
 //	return len(ph.User) > 0 && len(ph.Password) > 0
-func (ph *SingleUserPassHolder) HasUserPass() bool {
-	return len(ph.User) > 0 && len(ph.Password) > 0
+func (ph *SingleUserWithPass) Valid() bool {
+	return len(ph.UserID) > 0 && len(ph.Password) > 0
+}
+
+func (ph *SingleUserWithPass) GetUserByPass(user, pass []byte) User {
+	if bytes.Equal(user, ph.UserID) && bytes.Equal(pass, ph.Password) {
+		return ph
+	}
+	return nil
+}
+
+func (ph *SingleUserWithPass) GetUserByStr(idStr string) User {
+	if idStr == string(ph.UserID) {
+		return ph
+	}
+	return nil
+}
+func (ph *SingleUserWithPass) GetUserByBytes(bs []byte) User {
+	if bytes.Equal(bs, ph.UserID) {
+		return ph
+	}
+	return nil
 }
 
 //require "user" and "pass" field
-func (ph *SingleUserPassHolder) InitWithUrl(u *url.URL) {
-	ph.User = []byte(u.Query().Get("user"))
-	ph.User = []byte(u.Query().Get("pass"))
+func (ph *SingleUserWithPass) InitWithUrl(u *url.URL) {
+	ph.UserID = []byte(u.Query().Get("user"))
+	ph.UserID = []byte(u.Query().Get("pass"))
 }
 
 //uuid: "user:xxxx\npass:xxxx"
-func (ph *SingleUserPassHolder) InitWithStr(str string) {
+func (ph *SingleUserWithPass) InitWithStr(str string) {
 	strs := strings.SplitN(str, "\n", 2)
 	if len(strs) != 2 {
 
@@ -99,7 +146,7 @@ func (ph *SingleUserPassHolder) InitWithStr(str string) {
 	potentialPass = pstrs[1]
 
 	if potentialUser != "" && potentialPass != "" {
-		ph.User = []byte(potentialUser)
+		ph.UserID = []byte(potentialUser)
 		ph.Password = []byte(potentialPass)
 	}
 }

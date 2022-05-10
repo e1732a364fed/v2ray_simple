@@ -11,7 +11,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//实现 net.Conn, io.ReaderFrom, utils.MultiWriter, utils.MultiReader, netLayer.Splicer
+//实现 net.Conn, io.ReaderFrom, utils.UserConn, utils.MultiWriter, utils.MultiReader, netLayer.Splicer
 type UserTCPConn struct {
 	net.Conn
 	optionalReader io.Reader //在服务端 使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
@@ -84,7 +84,7 @@ func (c *UserTCPConn) WriteBuffers(buffers [][]byte) (int64, error) {
 	if c.canDirectWrite() {
 
 		//底层连接可以是 ws/ tls/ 基本连接; tls 我们暂不支持 utils.MultiWriter
-		// 理论上tls是可以支持的，但是要我们魔改tls库
+		// 理论上tls是可以支持的，但是要我们魔改tls库, 所以再说
 
 		//本作的 ws.Conn 实现了 utils.MultiWriter
 

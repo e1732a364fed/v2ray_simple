@@ -32,7 +32,7 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 type Client struct {
 	proxy.Base
-	utils.SingleUserPassHolder
+	utils.SingleUserWithPass
 }
 
 func (*Client) Name() string {
@@ -53,7 +53,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 	var adoptedMethod byte
 
-	if len(c.Password) > 0 && len(c.User) > 0 {
+	if len(c.Password) > 0 && len(c.UserID) > 0 {
 		adoptedMethod = AuthPassword
 	} else {
 		adoptedMethod = AuthNone
@@ -80,8 +80,8 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	if adoptedMethod == AuthPassword {
 		buf := utils.GetBuf()
 		buf.WriteByte(1)
-		buf.WriteByte(byte(len(c.User)))
-		buf.Write(c.User)
+		buf.WriteByte(byte(len(c.UserID)))
+		buf.Write(c.UserID)
 		buf.WriteByte(byte(len(c.Password)))
 		buf.Write(c.Password)
 

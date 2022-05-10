@@ -25,7 +25,7 @@ func init() {
 
 type Server struct {
 	proxy.Base
-	utils.SingleUserPassHolder
+	utils.SingleUserWithPass
 }
 
 type ServerCreator struct{}
@@ -49,7 +49,7 @@ func (*Server) Name() string { return Name }
 
 func (s *Server) authNone(underlay net.Conn) (returnErr error) {
 	var err error
-	if len(s.Password) == 0 && len(s.User) == 0 {
+	if len(s.Password) == 0 && len(s.UserID) == 0 {
 		_, err = underlay.Write([]byte{Version5, AuthNone})
 		if err != nil {
 			returnErr = fmt.Errorf("failed to write hello response: %w", err)
@@ -125,7 +125,7 @@ For:
 
 			dealtPass = true
 
-			if len(s.Password) == 0 && len(s.User) == 0 {
+			if len(s.Password) == 0 && len(s.UserID) == 0 {
 
 				returnErr = errors.New("not require Password but got AuthPassword")
 				continue
@@ -173,7 +173,7 @@ For:
 
 			pbytes := authBs[2+ulen+1 : 2+ulen+1+plen]
 
-			if bytes.Equal(s.User, ubytes) && bytes.Equal(s.Password, pbytes) {
+			if bytes.Equal(s.UserID, ubytes) && bytes.Equal(s.Password, pbytes) {
 				_, err = underlay.Write([]byte{1, 0})
 				if err != nil {
 					returnErr = fmt.Errorf("failed to write auth response: %w", err)

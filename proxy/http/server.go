@@ -68,7 +68,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 type Server struct {
 	proxy.Base
 
-	utils.SingleUserPassHolder
+	utils.SingleUserWithPass
 
 	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。
 
@@ -113,7 +113,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 		return
 	}
 
-	if s.HasUserPass() {
+	if s.Valid() {
 		var ok bool
 		for _, h := range headers {
 
@@ -131,7 +131,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 					break
 				}
 
-				if bytes.Equal(bs[:colonIndex], s.User) && bytes.Equal(bs[colonIndex+1:n], s.Password) {
+				if bytes.Equal(bs[:colonIndex], s.UserID) && bytes.Equal(bs[colonIndex+1:n], s.Password) {
 					ok = true
 				}
 
