@@ -17,8 +17,11 @@ assignees: ''
 
 
 **Envs (please complete the following information):【系统环境】**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
+
+**Config file 【配置文件，客户端服务端配置都提供】**
+
+**Debug Log 【Debug日志】**
 
 **Other 【其他】**
+
+**【注意，配置文件和客户端服务端配置 太长的话，前后加上三个 ```】**
