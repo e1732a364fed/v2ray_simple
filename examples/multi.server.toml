@@ -6,11 +6,14 @@ default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
 tag = "my_vlesss1"
 protocol = "vlesss"
 host = "0.0.0.0"
+version = -1
 port = 4433
 insecure = true
 fallback = ":80"    #默认回落。当[[fallback]]给出的回落都无法匹配后，使用该值进行回落。
 cert = "cert.pem"
 key = "cert.key"
+users = [ {user = "a684455c-b14f-11ea-bf0d-42010aaa0004"} , {user = "a684455c-b14f-11ea-bf0d-42010aaa0005"} ]
+
 
 [[listen]]
 tag = "my_ws1"
@@ -59,8 +62,15 @@ dest = 8080
 alpn = ["http/1.1"]
 #xver = 1 
 
+[[dial]]
+tag = "mydirect"
+protocol = "direct"
 
-#[[route]]
-# toTag = "my_special_tag_for_this_guy"
-# user = ["a684455c-b14f-11ea-bf0d-42010aaa0003"]
+[[dial]]
+tag = "my_special_tag_for_this_guy"
+protocol = "reject"
 
+
+[[route]]
+toTag = "my_special_tag_for_this_guy"
+user = ["a684455c-b14f-11ea-bf0d-42010aaa0004"]

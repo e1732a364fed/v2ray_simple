@@ -146,6 +146,10 @@ func (sg *RouteSet) IsIn(td *TargetDescription) bool {
 		return false
 	}
 
+	if sg.IsNoLimitForNetworkLayer() {
+		return true
+	}
+
 	return sg.IsAddrIn(td.Addr)
 
 }
