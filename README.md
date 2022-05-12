@@ -36,7 +36,7 @@ ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimpl
 
 dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls, lazy, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer, Docker.
+tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,【tls lazy encrypt】, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer, 多用户, Docker.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -45,9 +45,13 @@ tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uT
 
 ## 安装方式：
 
-另外，对觉得本作安装很复杂的人，我再强调一遍，本作对标的是 v2ray和xray等内核，不是对标的“安装脚本”，**本作是个内核**，再说一遍。内核能支持各种交互模式已经很强大了好不好。
+对觉得本作安装很复杂的人，我再强调一遍: 
+
+本作对标的是 v2ray和xray等内核，不是对标的“安装脚本”，**本作是个内核**，再说一遍。内核能支持各种交互模式已经很强大了好不好。
 
 你见哪个内核项目负责人自己上来就提供完整一键脚本的？都是其他人帮着提供的，我这么忙哪有时间研究一键脚本。有需求的你可以写一个然后提PR啊。
+
+本内核完全是我自己写的，完全不同于 xray这种 fork的版本，所以我很忙的。
 
 ### 下载安装
 
