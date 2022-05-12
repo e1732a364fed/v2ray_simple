@@ -6,7 +6,17 @@ import (
 	"strings"
 )
 
-func StrToUUID(s string) (uuid [16]byte, err error) {
+const UUID_BytesLen = 16
+
+func StrToUUID_slice(s string) []byte {
+	bs, err := StrToUUID(s)
+	if err != nil {
+		return nil
+	}
+	return bs[:]
+}
+
+func StrToUUID(s string) (uuid [UUID_BytesLen]byte, err error) {
 	if len(s) != 36 {
 		return uuid, ErrInErr{ErrDesc: "invalid UUID Str", ErrDetail: ErrInvalidData, Data: s}
 	}
@@ -18,7 +28,10 @@ func StrToUUID(s string) (uuid [16]byte, err error) {
 	return
 }
 
-func UUIDToStr(u [16]byte) string {
+func UUIDToStr(u []byte) string {
+	if len(u) != UUID_BytesLen {
+		return ""
+	}
 	buf := make([]byte, 36)
 	hex.Encode(buf[0:8], u[0:4])
 	buf[8] = '-'
@@ -33,17 +46,17 @@ func UUIDToStr(u [16]byte) string {
 }
 
 //生成完全随机的uuid
-func GenerateUUID() (r [16]byte) {
+func GenerateUUID() (r [UUID_BytesLen]byte) {
 	rand.Reader.Read(r[:])
 	return
 }
 func GenerateUUIDStr() string {
-
-	return UUIDToStr(GenerateUUID())
+	bs := GenerateUUID()
+	return UUIDToStr(bs[:])
 }
 
 //生成符合v4标准的uuid
-func GenerateUUID_v4() (r [16]byte) {
+func GenerateUUID_v4() (r [UUID_BytesLen]byte) {
 	rand.Reader.Read(r[:])
 	r[6] = (r[6] & 0x0f) | 0x40 // Version 4
 	r[8] = (r[8] & 0x3f) | 0x80 // Variant is 10，（标准要求 "8", "9", "a", or "b"，我们是第十种）

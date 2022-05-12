@@ -2,12 +2,17 @@
 [[listen]]
 tag = "my_vlesss1"
 protocol = "vlesss"
-uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+#uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # uuid 只能填一个用户, 如果你有多个用户, 可用 users. 
+# uuid 和 users 这两个配置可以共存。
+users = [ {user = "a684455c-b14f-11ea-bf0d-42010aaa0003"} ]
+
 host = "0.0.0.0"
 port = 4433
-version = 0
+#version = 0     # 在服务端，如果version给出，则只 支持 监听特定版本的vless, 若请求版本不符合，将拒绝连接(或者回落).
 insecure = true
-fallback = ":80"    # 默认回落地址.ip必须是本机ip(可以省略ip而只写端口,程序会默认补全127.0.0.1), 或者unix domain socket的文件名/路径, 或者 udp://127.0.0.1:80 这种url格式。 （用udp以试图回落到 nginx的 无tls 的 udp的 http3 服务端口，适用于 quic的情况）
+fallback = ":80"    # 默认回落地址.ip必须是本机ip(可以省略ip而只写端口,程序会默认补全127.0.0.1), 或者unix domain socket的文件名/路径, 或者 udp://127.0.0.1:80 这种url格式。
+
+# （用udp以试图回落到 nginx的 无tls 的 udp的 http3 服务端口，适用于 quic的情况. 只能由其它协议回落到quic, 而不能由 quic 回落到quic, 没办法, 依赖的代码包不够强大.）
 
 cert = "cert.pem"   # 这里既可以默认放在程序本身目录下，也可以指定完整路径
 key = "cert.key"    # 如果 cert和key中 有一项没给出, 或者文件不存在, 就会自动在内存中生成随机证书,

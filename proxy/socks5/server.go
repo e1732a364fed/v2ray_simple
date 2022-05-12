@@ -25,7 +25,7 @@ func init() {
 
 type Server struct {
 	proxy.Base
-	utils.SingleUserWithPass
+	utils.UserPass
 }
 
 type ServerCreator struct{}

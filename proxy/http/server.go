@@ -68,7 +68,7 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 type Server struct {
 	proxy.Base
 
-	utils.SingleUserWithPass
+	utils.UserPass
 
 	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。
 

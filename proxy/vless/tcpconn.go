@@ -36,7 +36,7 @@ func (c *UserTCPConn) GetProtocolVersion() int {
 }
 func (c *UserTCPConn) GetIdentityStr() string {
 	if c.convertedUUIDStr == "" {
-		c.convertedUUIDStr = utils.UUIDToStr(c.uuid)
+		c.convertedUUIDStr = utils.UUIDToStr(c.uuid[:])
 	}
 
 	return c.convertedUUIDStr

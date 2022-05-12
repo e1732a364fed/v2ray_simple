@@ -1,5 +1,5 @@
 {
-  "listen": "vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@0.0.0.0:4433?cert=cert.pem&key=cert.key&version=0&fallback=:80#myvlesss1",
+  "listen": "vlesss://a684455c-b14f-11ea-bf0d-42010aaa0003@0.0.0.0:4433?cert=cert.pem&key=cert.key&v=0&fallback=:80#myvlesss1",
   "fallbacks":[
     {
       "path":"/asf",

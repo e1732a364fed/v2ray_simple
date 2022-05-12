@@ -5,6 +5,7 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/httpLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
+	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
 // CommonConf is the common part of ListenConf and DialConf.
@@ -99,6 +100,8 @@ func (cc *CommonConf) GetAddrStrForListenOrDial() string {
 //  CommonConf.Host , CommonConf.IP, CommonConf.Port is the addr and port for listening
 type ListenConf struct {
 	CommonConf
+
+	Users []utils.UserConf `toml:"users"` //可选, 用于储存多个用户/密码 信息。
 
 	CA string `toml:"ca"` //可选,用于 验证"客户端证书"
 
