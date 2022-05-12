@@ -30,13 +30,15 @@ vs的一些亮点是 全协议readv加速，lazy技术，vless v1，hysteria 阻
 
 支持的功能有:
 
-socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 
+socks5(包括 udp associate 以及用户密码)/http(以及用户密码)/socks5http(与clash的mixed等价)/dokodemo/tproxy(透明代理)/trojan/simplesocks/vless(v0/v1), 多用户,
 
 ws(以及earlydata)/grpc(以及multiMode,uTls，以及 支持回落的 grpcSimple)/quic(以及hy阻控、手动挡 和 0-rtt)/smux, 
 
 dns(udp/tls)/route(geoip/geosite,分流功能完全与v2ray等价)/fallback(path/sni/alpn/PROXY protocol v1/v2), sniffing(tls)
 
-tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,【tls lazy encrypt】, http伪装头,PROXY protocol v1/v2 监听, cli(交互模式)/apiServer, 多用户, Docker.
+tcp/udp(以及fullcone)/unix domain socket, tls(包括客户端证书验证), uTls,【tls lazy encrypt】, http伪装头,PROXY protocol v1/v2 监听,
+
+cli(交互模式)/apiServer, Docker.
 
 
 为了不吓跑小白，本 README 把安装、使用方式 放在了前面，如果你要直接阅读本作的技术介绍部分，点击跳转 -> [创新点](#创新点)
@@ -656,9 +658,14 @@ grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码。（clash的
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
+来自v2ray的代码有：quic的嗅探，geosite文件的解析。
+
+（grpc参考了v2ray但是没直接拷贝，而是自己写的。代码看起来像 主要因为 protobuf和grpc谷歌包的特点，导致只要代码是兼容的，写出来肯定是很相似的）
+
 以上借鉴的代码都是用的MIT协议。
 
 
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/e1732a364fed/v2ray_simple.svg)](https://starchart.cc/e1732a364fed/v2ray_simple)
+

@@ -76,9 +76,9 @@ func (cd *ComSniff) sniff_commonHelloPre(pAfter []byte) []byte {
 
 }
 
-//需要判断到底是 tls 1.3 还是 tls1.2
-//可参考 https://halfrost.com/https_tls1-3_handshake/
-// 具体见最上面的注释，以及rfc
+//需要判断到底是 tls 1.3 还是 tls1.2。
+//可参考 https://halfrost.com/https_tls1-3_handshake/ 。
+// 具体见最上面的注释，以及rfc。
 //解析还可以参考 https://blog.csdn.net/weixin_36139431/article/details/103541874
 func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bool) {
 	pAfterLegacy_compression_methods := cd.sniff_commonHelloPre(pAfter)
@@ -127,8 +127,8 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 			server_name(0),                              RFC 6066
 			max_fragment_length(1),                      RFC 6066
 			status_request(5),                           RFC 6066
-		o	supported_groups(10),                        RFC 8422, 7919
-		o	signature_algorithms(13),                    RFC 8446
+			supported_groups(10),                        RFC 8422, 7919
+			signature_algorithms(13),                    RFC 8446
 			use_srtp(14),                                RFC 5764
 			heartbeat(15),                               RFC 6520
 			application_layer_protocol_negotiation(16),  RFC 7301
@@ -136,16 +136,16 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 			client_certificate_type(19),                 RFC 7250
 			server_certificate_type(20),                 RFC 7250
 			padding(21),                                 RFC 7685
-		o	pre_shared_key(41),                          RFC 8446
-		o	early_data(42),                              RFC 8446
-		o	supported_versions(43),                      RFC 8446
-		o	cookie(44),                                  RFC 8446
-		o	psk_key_exchange_modes(45),                  RFC 8446
-		o	certificate_authorities(47),                 RFC 8446
-		o	oid_filters(48),                             RFC 8446
-		o	post_handshake_auth(49),                     RFC 8446
-		o	signature_algorithms_cert(50),               RFC 8446
-		o	key_share(51),                               RFC 8446
+			pre_shared_key(41),                          RFC 8446
+			early_data(42),                              RFC 8446
+			supported_versions(43),                      RFC 8446
+			cookie(44),                                  RFC 8446
+			psk_key_exchange_modes(45),                  RFC 8446
+			certificate_authorities(47),                 RFC 8446
+			oid_filters(48),                             RFC 8446
+			post_handshake_auth(49),                     RFC 8446
+			signature_algorithms_cert(50),               RFC 8446
+			key_share(51),                               RFC 8446
 			(65535)
 		} ExtensionType;
 
@@ -262,7 +262,6 @@ func (cd *ComSniff) sniff_hello(pAfter []byte, isclienthello bool, onlyForSni bo
 				l := int(extensionsBs[cursor])<<8 + int(extensionsBs[cursor+1])
 				cursor += 2
 				if len(extensionsBs[cursor:]) < l {
-					//log.Println("len(extensionsBs[cursor:]) < l", len(extensionsBs[cursor:]), l)
 					cd.DefinitelyNotTLS = true
 					cd.handshakeFailReason = 22
 					return

@@ -20,7 +20,7 @@ func init() {
 
 type ServerCreator struct{}
 
-//如果 Version==0, 则只支持 v0.
+//如果 lc.Version==0, 则只支持 v0.
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 	onlyV0 := lc.Version == 0
