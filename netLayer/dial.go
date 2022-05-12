@@ -24,7 +24,7 @@ func (a *Addr) Dial() (net.Conn, error) {
 	case "udp", "udp4", "udp6":
 		ua := a.ToUDPAddr()
 
-		if !machineCanConnectToIpv6 && a.IP.To4() == nil {
+		if weKnowThatWeDontHaveIPV6 && a.IP.To4() == nil {
 			return nil, ErrMachineCantConnectToIpv6
 		}
 
@@ -41,7 +41,7 @@ tcp:
 
 	if a.IP != nil {
 		if a.IP.To4() == nil {
-			if !machineCanConnectToIpv6 {
+			if weKnowThatWeDontHaveIPV6 {
 				return nil, ErrMachineCantConnectToIpv6
 			} else {
 

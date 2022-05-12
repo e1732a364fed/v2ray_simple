@@ -241,7 +241,7 @@ func mainFunc() (result int) {
 		return -1
 	}
 
-	netLayer.Prepare()
+	//netLayer.PrepareInterfaces()	//发现有时, ipv6不是程序刚运行时就有的, 所以不应默认 预读网卡。主要是 openwrt等设备 在使用 DHCPv6 获取ipv6 等情况时。
 
 	fmt.Printf("Log Level:%d\n", utils.LogLevel)
 
