@@ -22,6 +22,10 @@ type UserTCPConn struct {
 	isServerEnd bool
 }
 
+func (c *UserTCPConn) GetRawConn() net.Conn {
+	return c.Conn
+}
+
 func (c *UserTCPConn) Read(p []byte) (int, error) {
 	if c.remainFirstBufLen > 0 {
 		n, err := c.optionalReader.Read(p)

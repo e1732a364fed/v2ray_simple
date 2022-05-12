@@ -4,14 +4,12 @@
 package trojan
 
 import (
-	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
-	"fmt"
 	"net"
 	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
@@ -31,40 +29,72 @@ const (
 	CmdMux          = 0x7f //trojan-gfw 那个文档里并没有提及Mux, 这个定义作者似乎没有在任何文档中提及，所以这个是在trojan-go的源代码文件中找到的。
 )
 
+const (
+	passBytesLen = sha256.Size224
+	passStrLen   = passBytesLen * 2
+)
+
 var (
 	crlf = []byte{0x0d, 0x0a}
 )
 
-func SHA224(password string) (r [28]byte) {
+//即trojan 的 任意长度密码 的 定长二进制表示。
+func SHA224(password string) (r [passBytesLen]byte) {
 	hash := sha256.New224()
 	hash.Write([]byte(password))
 	copy(r[:], hash.Sum(nil))
 	return
 }
+func PassStrToBytes(str string) []byte {
+	bs, err := hex.DecodeString(str)
+	if err != nil {
+		return nil
+	}
 
-//trojan 的前56字节 是 sha224的28字节 每字节 转义成 ascii的 表示16进制的 两个字符
+	return bs
+}
+func PassBytesToStr(bs []byte) string {
+	return hex.EncodeToString(bs)
+}
+
+type User string //56字节
+
+func NewUserByPlainTextPassword(plainPass string) User {
+	return User(SHA224_hexStringBytes(plainPass))
+}
+
+func (u User) GetIdentityStr() string {
+	return string(u)
+}
+func (u User) GetIdentityBytes() []byte {
+	return PassStrToBytes(string(u))
+}
+
+func InitUsers(uc []utils.UserConf) (us []utils.User) {
+	us = make([]utils.User, len(uc))
+	for i, theuc := range uc {
+
+		us[i] = NewUserByPlainTextPassword(theuc.User)
+	}
+	return
+}
+
+//trojan协议 的前56字节 是 sha224的28字节 每字节 转义成 base 16, with lower-case letters for a-f 的 两个字符。
+// 实际上trojan协议文档写的不严谨，它只说了用hex，没说用大写还是小写。我看它代码实现用的是小写。
 func SHA224_hexStringBytes(password string) []byte {
 	hash := sha256.New224()
 	hash.Write([]byte(password))
 	bs := hash.Sum(nil)
-	var sb bytes.Buffer
-
-	for _, b := range bs {
-		sb.WriteString(fmt.Sprintf("%02x", b))
-	}
-	return sb.Bytes()
+	r := make([]byte, passStrLen)
+	hex.Encode(r, bs) //hex包Encode 使用小写字符，（但是decode确实同时支持大写和小写的，怪）
+	return r
 }
 
 func SHA224_hexString(password string) string {
 	hash := sha256.New224()
 	hash.Write([]byte(password))
 	bs := hash.Sum(nil)
-	var sb strings.Builder
-
-	for _, b := range bs {
-		sb.WriteString(fmt.Sprintf("%02x", b))
-	}
-	return sb.String()
+	return PassBytesToStr(bs)
 }
 
 //依照trojan协议的格式读取 地址的域名、ip、port信息

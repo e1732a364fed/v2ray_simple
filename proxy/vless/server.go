@@ -38,7 +38,8 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	}
 
 	if len(lc.Users) > 0 {
-		s.LoadUsers(lc.Users)
+		us := utils.InitV2rayUsers(lc.Users)
+		s.LoadUsers(us)
 	}
 	return s, nil
 

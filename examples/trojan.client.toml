@@ -12,6 +12,7 @@ host = "your-domain-name.com"   # trojan-go 的服务端要求指定一个sni �
 port = 4434
 insecure = true
 utls = true
+#lazy = true
 
 # 备注： trojan 也是一样可以应用 ws/grpc/quic 的，具体你只要参考对应示例文件即可，然后把 vlesss 改成 trojans 即可.
 

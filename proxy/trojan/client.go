@@ -61,6 +61,10 @@ func (c *Client) HasInnerMux() (int, string) {
 	}
 }
 
+func (c *Client) GetUser() utils.User {
+	return User(c.password_hexStringBytes)
+}
+
 func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
 	if len(target.IP) > 0 {
 		if ip4 := target.IP.To4(); ip4 == nil {

@@ -80,6 +80,10 @@ func IsStrUDP_network(s string) bool {
 	return false
 }
 
+type ConnWrapper interface {
+	GetRawConn() net.Conn
+}
+
 // part of net.Conn
 type NetAddresser interface {
 	LocalAddr() net.Addr

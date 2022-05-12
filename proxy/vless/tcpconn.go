@@ -11,7 +11,7 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//实现 net.Conn, io.ReaderFrom, utils.UserConn, utils.MultiWriter, utils.MultiReader, netLayer.Splicer
+//实现 net.Conn, io.ReaderFrom, utils.UserConn, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper
 type UserTCPConn struct {
 	net.Conn
 	optionalReader io.Reader //在服务端 使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
@@ -40,6 +40,10 @@ func (c *UserTCPConn) GetIdentityStr() string {
 	}
 
 	return c.convertedUUIDStr
+}
+
+func (c *UserTCPConn) GetRawConn() net.Conn {
+	return c.Conn
 }
 
 //当前连接状态是否可以直接写入底层Conn而不经任何改动/包装

@@ -20,33 +20,43 @@ type ServerCreator struct{}
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 	uuidStr := lc.Uuid
 
-	s := &Server{
-		userHashes: make(map[string]bool),
-	}
+	s := newServer(uuidStr)
 
-	s.userHashes[SHA224_hexString(uuidStr)] = true
+	if len(lc.Users) > 0 {
+		s.LoadUsers(InitUsers(lc.Users))
+	}
 
 	return s, nil
 }
 
 func (ServerCreator) NewServerFromURL(url *url.URL) (proxy.Server, error) {
 	uuidStr := url.User.Username()
-	s := &Server{
-		userHashes: make(map[string]bool),
-	}
-
-	s.userHashes[SHA224_hexString(uuidStr)] = true
+	s := newServer(uuidStr)
 
 	return s, nil
+}
+
+func newServer(plainPassStr string) *Server {
+	s := &Server{
+		MultiUserMap: utils.NewMultiUserMap(),
+	}
+	s.StoreKeyAsStr = true
+	s.Key_BytesToStrFunc = PassBytesToStr
+	s.Key_StrToBytesFunc = PassStrToBytes
+	s.TheUserBytesLen = passBytesLen
+
+	if plainPassStr != "" {
+		s.AddUser(NewUserByPlainTextPassword(plainPassStr))
+	}
+
+	return s
 }
 
 //implements proxy.Server
 type Server struct {
 	proxy.Base
 
-	userHashes map[string]bool
-
-	//mux4Hashes sync.RWMutex
+	*utils.MultiUserMap
 }
 
 func (*Server) Name() string {
@@ -100,16 +110,16 @@ errorPart:
 
 realPart:
 
-	if wholeReadLen < 56+8+1 {
+	if wholeReadLen < passStrLen+8+1 {
 		returnErr = utils.ErrInErr{ErrDesc: "handshake len too short", ErrDetail: utils.ErrInvalidData, Data: wholeReadLen}
 		goto errorPart
 	}
 
 	//可参考 https://github.com/p4gefau1t/trojan-go/blob/master/tunnel/trojan/server.go
 
-	hash := readbuf.Next(56)
+	hash := readbuf.Next(passStrLen)
 	hashStr := string(hash)
-	if !s.userHashes[hashStr] {
+	if len(hash) != passStrLen || !s.HasUserByStr(hashStr) {
 		returnErr = utils.ErrInErr{ErrDesc: "hash not match", ErrDetail: utils.ErrInvalidData, Data: hashStr}
 		goto errorPart
 	}

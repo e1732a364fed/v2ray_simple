@@ -68,6 +68,16 @@ type UserConf struct {
 	Pass string `toml:"pass"`
 }
 
+func InitV2rayUsers(uc []UserConf) (us []User) {
+	us = make([]User, len(uc))
+	for i, theuc := range uc {
+		var vu V2rayUser
+		copy(vu[:], StrToUUID_slice(theuc.User))
+		us[i] = vu
+	}
+	return
+}
+
 //一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口
 type V2rayUser [16]byte
 
@@ -173,24 +183,28 @@ func (ph *UserPass) InitWithStr(str string) {
 //implements UserBus, UserHaser, UserGetter, UserPassMatcher; 只能存储同一类型的User.
 // 通过 bytes存储用户id，而不是 str。
 type MultiUserMap struct {
-	UserPassMap map[string]User
+	UserMap map[string]User
 
 	Mutex sync.RWMutex
 
 	TheUserBytesLen int
 
-	Key_StrToBytesFunc func(string) []byte //如果这一项给出, 则内部会用 identityStr 作为key;否则会用 string(identityBytes)作为key
+	StoreKeyAsStr bool //如果这一项给出, 则内部会用 identityStr 作为key;否则会用 string(identityBytes)作为key
+
+	Key_StrToBytesFunc func(string) []byte
 
 	Key_BytesToStrFunc func([]byte) string //必须与 Key_StrToBytesFunc 同时给出
+
 }
 
 func NewMultiUserMap() *MultiUserMap {
 	mup := &MultiUserMap{}
-	mup.UserPassMap = make(map[string]User)
+	mup.UserMap = make(map[string]User)
 	return mup
 }
 
 func (mu *MultiUserMap) SetUseUUIDStr_asKey() {
+	mu.StoreKeyAsStr = true
 	mu.TheUserBytesLen = UUID_BytesLen
 	mu.Key_BytesToStrFunc = UUIDToStr
 	mu.Key_StrToBytesFunc = StrToUUID_slice
@@ -205,22 +219,22 @@ func (mu *MultiUserMap) AddUser(u User) error {
 }
 
 func (mu *MultiUserMap) addUser(u User) {
-	if mu.Key_StrToBytesFunc != nil {
-		mu.UserPassMap[u.GetIdentityStr()] = u
+	if mu.StoreKeyAsStr {
+		mu.UserMap[u.GetIdentityStr()] = u
 
 	} else {
-		mu.UserPassMap[string(u.GetIdentityBytes())] = u
+		mu.UserMap[string(u.GetIdentityBytes())] = u
 	}
 }
 
 func (mu *MultiUserMap) DelUser(u User) error {
 	mu.Mutex.Lock()
 
-	if mu.Key_StrToBytesFunc != nil {
-		delete(mu.UserPassMap, u.GetIdentityStr())
+	if mu.StoreKeyAsStr {
+		delete(mu.UserMap, u.GetIdentityStr())
 
 	} else {
-		delete(mu.UserPassMap, string(u.GetIdentityBytes()))
+		delete(mu.UserMap, string(u.GetIdentityBytes()))
 
 	}
 
@@ -229,13 +243,26 @@ func (mu *MultiUserMap) DelUser(u User) error {
 	return nil
 }
 
-func (mu *MultiUserMap) LoadUsers(uc []UserConf) {
+func (mu *MultiUserMap) LoadUsers(us []User) {
 	mu.Mutex.Lock()
 	defer mu.Mutex.Unlock()
 
-	for _, us := range uc {
-		u := NewUserPass(us)
+	for _, u := range us {
 		mu.addUser(u)
+	}
+}
+
+func (mu *MultiUserMap) HasUserByStr(str string) bool {
+	mu.Mutex.RLock()
+	defer mu.Mutex.RUnlock()
+
+	if !mu.StoreKeyAsStr && mu.Key_StrToBytesFunc != nil {
+
+		return mu.UserMap[string(mu.Key_StrToBytesFunc(str))] != nil
+
+	} else {
+		return mu.UserMap[str] != nil
+
 	}
 }
 
@@ -243,11 +270,12 @@ func (mu *MultiUserMap) HasUserByBytes(bs []byte) bool {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if mu.Key_BytesToStrFunc != nil {
-		return mu.UserPassMap[mu.Key_BytesToStrFunc(bs)] != nil
+	if mu.StoreKeyAsStr && mu.Key_BytesToStrFunc != nil {
+
+		return mu.UserMap[mu.Key_BytesToStrFunc(bs)] != nil
 
 	} else {
-		return mu.UserPassMap[string(bs)] != nil
+		return mu.UserMap[string(bs)] != nil
 
 	}
 
@@ -262,12 +290,12 @@ func (mu *MultiUserMap) GetUserByStr(str string) User {
 
 	var u User
 
-	if mu.Key_StrToBytesFunc != nil {
+	if !mu.StoreKeyAsStr && mu.Key_StrToBytesFunc != nil {
 
-		u = mu.UserPassMap[string(mu.Key_StrToBytesFunc(str))]
+		u = mu.UserMap[string(mu.Key_StrToBytesFunc(str))]
 
 	} else {
-		u = mu.UserPassMap[str]
+		u = mu.UserMap[str]
 
 	}
 
@@ -279,12 +307,12 @@ func (mu *MultiUserMap) GetUserByBytes(bs []byte) User {
 
 	var u User
 
-	if mu.Key_BytesToStrFunc != nil {
+	if mu.StoreKeyAsStr && mu.Key_BytesToStrFunc != nil {
 
-		u = mu.UserPassMap[mu.Key_BytesToStrFunc(bs)]
+		u = mu.UserMap[mu.Key_BytesToStrFunc(bs)]
 
 	} else {
-		u = mu.UserPassMap[string(bs)]
+		u = mu.UserMap[string(bs)]
 
 	}
 

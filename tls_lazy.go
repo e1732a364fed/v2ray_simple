@@ -10,7 +10,6 @@ import (
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/proxy"
-	"github.com/e1732a364fed/v2ray_simple/proxy/vless"
 	"github.com/e1732a364fed/v2ray_simple/tlsLayer"
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -91,15 +90,15 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 			// 不过实际上客户端 wrc 是 vless的 UserConn， 而UserConn的底层连接才是TLS
 			// 很明显，目前我们只支持vless所以才可这么操作，以后再说。
 
-			wrcVless := wrc.(*vless.UserTCPConn)
-			tlsConn := wrcVless.Conn.(*tlsLayer.Conn)
+			wrcWrapper := wrc.(netLayer.ConnWrapper)
+			tlsConn := wrcWrapper.GetRawConn().(*tlsLayer.Conn)
 			rawWRC = tlsConn.GetRaw(true)
 
 		} else {
 			rawWRC = wrc.(*net.TCPConn) //因为是direct
 		}
 
-		if rawWRC == nil { //一般情况下这段代码是不会被触发的.
+		if rawWRC == nil { //一般情况下这段代码是不会被触发的.(因为如果类型错误，一般上面代码会直接panic，但是不排除符合接口但为nil的情况)
 			if tlsLayer.PDD {
 				log.Printf("splice fail reason 0\n")
 
