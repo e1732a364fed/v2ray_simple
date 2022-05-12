@@ -47,9 +47,9 @@ func CanNetwork_tlsLazy(n string) bool {
 // 我们内部先 使用 DetectConn进行过滤分析，然后再判断进化为splice / 退化为普通拷贝.
 //
 // useSecureMethod仅用于 tls_lazy_secure
-func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
+func tryTlsLazyRawRelay(connid uint32, useSecureMethod bool, proxy_client proxy.UserClient, proxy_server proxy.UserServer, targetAddr netLayer.Addr, wrc, wlc io.ReadWriteCloser, localConn net.Conn, isclient bool, theRecorder *tlsLayer.Recorder) {
 	if ce := utils.CanLogDebug("Try tls lazy"); ce != nil {
-		ce.Write(zap.Uint32("id", identity))
+		ce.Write(zap.Uint32("id", connid))
 	}
 	if wlc != nil {
 		defer wlc.Close()
@@ -73,11 +73,11 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 	wlccc_raw := wlcdc.RawConn
 
 	if isclient {
-		sc := proxy_client.GetUser().GetIdentityBytes()
+		sc := proxy_client.GetUser().AuthBytes()
 		wlcdc.R.SpecialCommandBytes = sc
 		wlcdc.W.SpecialCommandBytes = sc
 	} else {
-		wlcdc.R.UH = proxy_server
+		wlcdc.R.Auther = proxy_server
 	}
 
 	var rawWRC *net.TCPConn
@@ -110,8 +110,8 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 			}
 
 			//退化回原始状态
-			go netLayer.TryCopy(wrc, wlc, identity)
-			netLayer.TryCopy(wlc, wrc, identity)
+			go netLayer.TryCopy(wrc, wlc, connid)
+			netLayer.TryCopy(wlc, wrc, connid)
 			return
 		}
 	} else {
@@ -157,7 +157,7 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 				tlsConn, err := proxy_client.GetTLS_Client().Handshake(teeConn)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake outClient tls"); ce != nil {
-						ce.Write(zap.Uint32("id", identity), zap.Error(err))
+						ce.Write(zap.Uint32("id", connid), zap.Error(err))
 
 					}
 					return
@@ -166,7 +166,7 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 				wrc, err = proxy_client.Handshake(tlsConn, p[:n], targetAddr)
 				if err != nil {
 					if ce := utils.CanLogErr("failed in handshake"); ce != nil {
-						ce.Write(zap.Uint32("id", identity), zap.String("target", targetAddr.String()), zap.Error(err))
+						ce.Write(zap.Uint32("id", connid), zap.String("target", targetAddr.String()), zap.Error(err))
 					}
 					return
 				}
@@ -302,7 +302,7 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 				log.Printf("SpliceRead R方向 退化…… %d\n", wlcdc.R.GetFailReason())
 			}
 
-			netLayer.TryCopy(wrc, wlc, identity)
+			netLayer.TryCopy(wrc, wlc, connid)
 
 			return
 		}
@@ -413,7 +413,7 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 			log.Println("SpliceRead W方向 退化……", wlcdc.W.GetFailReason())
 		}
 		//就算不用splice, 一样可以用readv来在读那一端增强性能
-		netLayer.TryCopy(wlc, wrc, identity)
+		netLayer.TryCopy(wlc, wrc, connid)
 
 		return
 	}

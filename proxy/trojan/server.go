@@ -41,9 +41,9 @@ func newServer(plainPassStr string) *Server {
 		MultiUserMap: utils.NewMultiUserMap(),
 	}
 	s.StoreKeyAsStr = true
-	s.Key_BytesToStrFunc = PassBytesToStr
-	s.Key_StrToBytesFunc = PassStrToBytes
-	s.TheUserBytesLen = passBytesLen
+	s.Key_AuthBytesToStrFunc = PassBytesToStr
+	s.Key_AuthStrToBytesFunc = PassStrToBytes
+	s.TheAuthBytesLen = passBytesLen
 
 	if plainPassStr != "" {
 		s.AddUser(NewUserByPlainTextPassword(plainPassStr))
@@ -119,7 +119,19 @@ realPart:
 
 	hash := readbuf.Next(passStrLen)
 	hashStr := string(hash)
-	if len(hash) != passStrLen || !s.HasUserByStr(hashStr) {
+	var theUser utils.User
+	ok := false
+
+	if len(hash) != passStrLen {
+
+	} else {
+		theUser = s.AuthUserByStr(hashStr)
+		if theUser != nil {
+			ok = true
+		}
+	}
+
+	if !ok {
 		returnErr = utils.ErrInErr{ErrDesc: "hash not match", ErrDetail: utils.ErrInvalidData, Data: hashStr}
 		goto errorPart
 	}
@@ -191,7 +203,7 @@ realPart:
 
 	if isudp {
 		uc := NewUDPConn(underlay, io.MultiReader(readbuf, underlay))
-		uc.User = User(hashStr)
+		uc.User = theUser.(User)
 		return nil, uc, targetAddr, nil
 
 	} else {
@@ -199,7 +211,7 @@ realPart:
 
 		return &UserTCPConn{
 			Conn:              underlay,
-			User:              User(hashStr),
+			User:              theUser.(User),
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),

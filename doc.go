@@ -36,7 +36,7 @@ lazy 与 xtls类似，在一定条件下可以利用内层tls加密直接传输�
 
 lazy与xtls的不同是，lazy不魔改tls包，所以是可以在 uTLS 的基础上 进行 lazy的，而且也没有 xtls的233漏洞。
 
-目前lazy在测试阶段，只支持vless。
+目前lazy还在完善阶段。
 
 
 Tags

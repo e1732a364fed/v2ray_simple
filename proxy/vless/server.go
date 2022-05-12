@@ -158,7 +158,7 @@ realPart:
 
 	thisUUIDBytes := *(*[16]byte)(unsafe.Pointer(&idBytes[0]))
 
-	if s.HasUserByBytes(thisUUIDBytes[:]) {
+	if s.AuthUserByBytes(thisUUIDBytes[:]) != nil {
 	} else {
 		returnErr = utils.ErrInErr{ErrDesc: "invalid user ", ErrDetail: utils.ErrInvalidData, Data: utils.UUIDToStr(thisUUIDBytes[:])}
 		goto errorPart

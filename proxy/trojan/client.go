@@ -23,7 +23,7 @@ type ClientCreator struct{}
 func (ClientCreator) NewClientFromURL(url *url.URL) (proxy.Client, error) {
 	uuidStr := url.User.Username()
 	c := Client{
-		password_hexStringBytes: SHA224_hexStringBytes(uuidStr),
+		User: NewUserByPlainTextPassword(uuidStr),
 	}
 
 	return &c, nil
@@ -34,8 +34,8 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 	uuidStr := dc.Uuid
 
 	c := Client{
-		password_hexStringBytes: SHA224_hexStringBytes(uuidStr),
-		use_mux:                 dc.Mux,
+		use_mux: dc.Mux,
+		User:    NewUserByPlainTextPassword(uuidStr),
 	}
 
 	return &c, nil
@@ -43,8 +43,8 @@ func (ClientCreator) NewClient(dc *proxy.DialConf) (proxy.Client, error) {
 
 type Client struct {
 	proxy.Base
-	password_hexStringBytes []byte
-	use_mux                 bool
+	User
+	use_mux bool
 }
 
 func (*Client) Name() string {
@@ -62,7 +62,7 @@ func (c *Client) HasInnerMux() (int, string) {
 }
 
 func (c *Client) GetUser() utils.User {
-	return User(c.password_hexStringBytes)
+	return c.User
 }
 
 func WriteAddrToBuf(target netLayer.Addr, buf *bytes.Buffer) {
@@ -91,7 +91,8 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 	}
 	buf := utils.GetBuf()
-	buf.Write(c.password_hexStringBytes)
+
+	buf.WriteString(c.AuthStr())
 	buf.Write(crlf)
 	if c.use_mux {
 		buf.WriteByte(CmdMux)
@@ -118,7 +119,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
 		return &UserTCPConn{
 			Conn:            underlay,
-			User:            User(c.password_hexStringBytes),
+			User:            c.User,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
 		}, nil
 	}
@@ -131,13 +132,13 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 
 	}
 	buf := utils.GetBuf()
-	buf.Write(c.password_hexStringBytes)
+	buf.WriteString(c.AuthStr())
 	buf.Write(crlf)
 	buf.WriteByte(CmdUDPAssociate)
 	WriteAddrToBuf(target, buf)
 
 	uc := NewUDPConn(underlay, nil)
-	uc.User = User(c.password_hexStringBytes)
+	uc.User = c.User
 	uc.handshakeBuf = buf
 	return uc, nil
 }

@@ -45,6 +45,8 @@ func SHA224(password string) (r [passBytesLen]byte) {
 	copy(r[:], hash.Sum(nil))
 	return
 }
+
+//56字节数据转28字节字符串
 func PassStrToBytes(str string) []byte {
 	bs, err := hex.DecodeString(str)
 	if err != nil {
@@ -53,23 +55,42 @@ func PassStrToBytes(str string) []byte {
 
 	return bs
 }
+
+//28字节数据转56字节字符串
 func PassBytesToStr(bs []byte) string {
 	return hex.EncodeToString(bs)
 }
 
-type User string //56字节
+type User struct {
+	hexStr   string
+	plainStr string
+}
 
 func NewUserByPlainTextPassword(plainPass string) User {
-	return User(SHA224_hexStringBytes(plainPass))
+	return User{
+		hexStr:   SHA224_hexString(plainPass),
+		plainStr: plainPass,
+	}
 }
 
-func (u User) GetIdentityStr() string {
-	return string(u)
+//明文密码
+func (u User) IdentityStr() string {
+	return u.plainStr
 }
 
-//28字节
-func (u User) GetIdentityBytes() []byte {
-	return PassStrToBytes(string(u))
+//明文密码
+func (u User) IdentityBytes() []byte {
+	return []byte(u.plainStr)
+}
+
+//56字节hex
+func (u User) AuthStr() string {
+	return u.hexStr
+}
+
+//28字节纯二进制
+func (u User) AuthBytes() []byte {
+	return PassStrToBytes(u.hexStr)
 }
 
 func InitUsers(uc []utils.UserConf) (us []utils.User) {

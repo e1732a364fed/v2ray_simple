@@ -344,6 +344,10 @@ api服务器；tproxy 透明代理； http伪装头.
 
 目前认为只有外层为 tls 的、支持回落的 协议才是主流。
 
+然而，最近墙的 sni 阻断行为再一次打我脸了。看来 vmess/ssr 这种完全随机的协议还是有必要继续使用。。。
+
+
+
 ### 关于vless v1
 
 这里的v1是 verysimple 自己制定的，总是要摸着石头过河嘛。标准的讨论详见 [vless_v1](docs/vless_v1.md)
@@ -658,7 +662,7 @@ grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码。（clash的
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
-来自v2ray的代码有：quic的嗅探，geosite文件的解析。
+来自v2ray的代码有：quic的嗅探，geosite文件的解析(v2fly/domain-list-community)。
 
 （grpc参考了v2ray但是没直接拷贝，而是自己写的。代码看起来像 主要因为 protobuf和grpc谷歌包的特点，导致只要代码是兼容的，写出来肯定是很相似的）
 

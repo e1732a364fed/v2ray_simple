@@ -7,11 +7,14 @@ import (
 	"sync"
 )
 
-//User是一个唯一身份标识。
+//User是一个 可确定唯一身份，且可验证该身份的 标识。
 type User interface {
-	GetIdentityStr() string //每个user唯一，通过比较这个string 即可 判断两个User 是否相等
+	IdentityStr() string //每个user唯一，通过比较这个string 即可 判断两个User 是否相等。相当于 user name
 
-	GetIdentityBytes() []byte //与str类似; 对于程序来说,bytes更方便处理; 可以与str相同，也可以不同.
+	IdentityBytes() []byte //与str类似; 对于程序来说,bytes更方便处理; 可以与str相同，也可以不同.
+
+	AuthStr() string   //AuthStr 可以验证该User的真实性。相当于 user name + password
+	AuthBytes() []byte //与AuthBytes类似
 }
 
 type UserWithPass interface {
@@ -19,35 +22,24 @@ type UserWithPass interface {
 	GetPassword() []byte
 }
 
-//判断用户是否存在，但不提取。
+//判断用户是否存在并取出
 type UserHaser interface {
-	HasUserByBytes(bs []byte) bool
-	UserBytesLen() int //用户名bytes的最小长度
+	HasUserByBytes(bs []byte) User
+	IDBytesLen() int //用户名bytes的最小长度
 }
 
-//匹配用户名和密码，可用于auth
-type UserPassMatcher interface {
-	GetUserByPass(user, pass []byte) User
+//通过验证信息 试图取出 一个User
+type UserAuther interface {
+	AuthUserByStr(idStr string) User
+	AuthUserByBytes(bs []byte) User
+	AuthBytesLen() int
 }
 
-//提取一个User
-type UserGetter interface {
-	GetUserByStr(idStr string) User
-	GetUserByBytes(bs []byte) User
-}
-
-//可判断是否存在，也可以提取
+//可判断是否存在，也可以验证
 type UserContainer interface {
 	UserHaser
 
-	UserGetter
-}
-
-//可判断是否存在，也可以通过用户名、密码提取
-type UserPassContainer interface {
-	UserPassMatcher
-
-	UserGetter
+	UserAuther
 }
 
 // 可以控制 User 登入和登出 的接口
@@ -74,11 +66,17 @@ func InitV2rayUsers(uc []UserConf) (us []User) {
 //一种专门用于v2ray协议族(vmess/vless)的 用于标识用户的符号 , 实现 User 接口
 type V2rayUser [16]byte
 
-func (u V2rayUser) GetIdentityStr() string {
+func (u V2rayUser) IdentityStr() string {
 	return UUIDToStr(u[:])
 }
+func (u V2rayUser) AuthStr() string {
+	return u.IdentityStr()
+}
 
-func (u V2rayUser) GetIdentityBytes() []byte {
+func (u V2rayUser) IdentityBytes() []byte {
+	return u[:]
+}
+func (u V2rayUser) AuthBytes() []byte {
 	return u[:]
 }
 
@@ -91,7 +89,7 @@ func NewV2rayUser(s string) (V2rayUser, error) {
 	return uuid, nil
 }
 
-//used in proxy/socks5 and proxy.http. implements User, UserPassMatcher, UserPassContainer
+//used in proxy/socks5 and proxy.http. implements User
 type UserPass struct {
 	UserID, Password []byte
 }
@@ -103,12 +101,20 @@ func NewUserPass(uc UserConf) *UserPass {
 	}
 }
 
-func (ph *UserPass) GetIdentityStr() string {
+func (ph *UserPass) IdentityStr() string {
 	return string(ph.UserID)
 }
 
-func (ph *UserPass) GetIdentityBytes() []byte {
+func (ph *UserPass) IdentityBytes() []byte {
 	return ph.UserID
+}
+
+func (ph *UserPass) AuthStr() string {
+	return string(ph.UserID) + "\n" + string(ph.Password)
+}
+
+func (ph *UserPass) AuthBytes() []byte {
+	return []byte(ph.AuthStr())
 }
 
 //	return len(ph.User) > 0 && len(ph.Password) > 0
@@ -123,13 +129,13 @@ func (ph *UserPass) GetUserByPass(user, pass []byte) User {
 	return nil
 }
 
-func (ph *UserPass) GetUserByStr(idStr string) User {
+func (ph *UserPass) AuthUserByStr(idStr string) User {
 	if idStr == string(ph.UserID) {
 		return ph
 	}
 	return nil
 }
-func (ph *UserPass) GetUserByBytes(bs []byte) User {
+func (ph *UserPass) AuthUserByBytes(bs []byte) User {
 	if bytes.Equal(bs, ph.UserID) {
 		return ph
 	}
@@ -173,34 +179,47 @@ func (ph *UserPass) InitWithStr(str string) {
 	}
 }
 
-//implements UserBus, UserHaser, UserGetter, UserPassMatcher; 只能存储同一类型的User.
+//implements UserBus, UserHaser, UserGetter; 只能存储同一类型的User.
 // 通过 bytes存储用户id，而不是 str。
 type MultiUserMap struct {
-	UserMap map[string]User
+	IDMap   map[string]User
+	AuthMap map[string]User
 
 	Mutex sync.RWMutex
 
-	TheUserBytesLen int
+	TheUserBytesLen, TheAuthBytesLen int
 
-	StoreKeyAsStr bool //如果这一项给出, 则内部会用 identityStr 作为key;否则会用 string(identityBytes)作为key
+	StoreKeyAsStr bool //如果这一项给出, 则内部会用 identityStr/AuthStr 作为key;否则会用 string(identityBytes) 或 string(AuthBytes) 作为key
 
-	Key_StrToBytesFunc func(string) []byte
+	Key_IDStrToBytesFunc func(string) []byte
 
-	Key_BytesToStrFunc func([]byte) string //必须与 Key_StrToBytesFunc 同时给出
+	Key_IDBytesToStrFunc func([]byte) string //必须与 Key_StrToBytesFunc 同时给出
+
+	Key_AuthStrToBytesFunc func(string) []byte
+
+	Key_AuthBytesToStrFunc func([]byte) string //必须与 Key_AuthStrToBytesFunc 同时给出
 
 }
 
 func NewMultiUserMap() *MultiUserMap {
-	mup := &MultiUserMap{}
-	mup.UserMap = make(map[string]User)
+	mup := &MultiUserMap{
+		IDMap:   make(map[string]User),
+		AuthMap: make(map[string]User),
+	}
+
 	return mup
 }
 
 func (mu *MultiUserMap) SetUseUUIDStr_asKey() {
+	//uuid 既是 id 又是 auth
+
 	mu.StoreKeyAsStr = true
 	mu.TheUserBytesLen = UUID_BytesLen
-	mu.Key_BytesToStrFunc = UUIDToStr
-	mu.Key_StrToBytesFunc = StrToUUID_slice
+	mu.TheAuthBytesLen = UUID_BytesLen
+	mu.Key_IDBytesToStrFunc = UUIDToStr
+	mu.Key_AuthBytesToStrFunc = UUIDToStr
+	mu.Key_IDStrToBytesFunc = StrToUUID_slice
+	mu.Key_AuthStrToBytesFunc = StrToUUID_slice
 }
 
 func (mu *MultiUserMap) AddUser(u User) error {
@@ -213,10 +232,14 @@ func (mu *MultiUserMap) AddUser(u User) error {
 
 func (mu *MultiUserMap) addUser(u User) {
 	if mu.StoreKeyAsStr {
-		mu.UserMap[u.GetIdentityStr()] = u
+
+		mu.IDMap[u.IdentityStr()] = u
+		mu.AuthMap[u.AuthStr()] = u
 
 	} else {
-		mu.UserMap[string(u.GetIdentityBytes())] = u
+
+		mu.IDMap[string(u.IdentityBytes())] = u
+		mu.AuthMap[string(u.AuthBytes())] = u
 	}
 }
 
@@ -224,10 +247,12 @@ func (mu *MultiUserMap) DelUser(u User) error {
 	mu.Mutex.Lock()
 
 	if mu.StoreKeyAsStr {
-		delete(mu.UserMap, u.GetIdentityStr())
+		delete(mu.IDMap, u.AuthStr())
+		delete(mu.AuthMap, u.IdentityStr())
 
 	} else {
-		delete(mu.UserMap, string(u.GetIdentityBytes()))
+		delete(mu.IDMap, string(u.AuthBytes()))
+		delete(mu.AuthMap, string(u.IdentityBytes()))
 
 	}
 
@@ -245,67 +270,57 @@ func (mu *MultiUserMap) LoadUsers(us []User) {
 	}
 }
 
+//通过ID查找
 func (mu *MultiUserMap) HasUserByStr(str string) bool {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if !mu.StoreKeyAsStr && mu.Key_StrToBytesFunc != nil {
+	if !mu.StoreKeyAsStr && mu.Key_IDStrToBytesFunc != nil {
 
-		return mu.UserMap[string(mu.Key_StrToBytesFunc(str))] != nil
+		return mu.IDMap[string(mu.Key_IDStrToBytesFunc(str))] != nil
 
 	} else {
-		return mu.UserMap[str] != nil
+		return mu.IDMap[str] != nil
 
 	}
 }
 
-func (mu *MultiUserMap) HasUserByBytes(bs []byte) bool {
+//通过ID查找
+func (mu *MultiUserMap) HasUserByBytes(bs []byte) User {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if mu.StoreKeyAsStr && mu.Key_BytesToStrFunc != nil {
+	if mu.StoreKeyAsStr && mu.Key_IDBytesToStrFunc != nil {
 
-		return mu.UserMap[mu.Key_BytesToStrFunc(bs)] != nil
+		return mu.IDMap[mu.Key_IDBytesToStrFunc(bs)]
 
 	} else {
-		return mu.UserMap[string(bs)] != nil
+		return mu.IDMap[string(bs)]
 
 	}
 
 }
 
-func (mu *MultiUserMap) UserBytesLen() int {
+func (mu *MultiUserMap) IDBytesLen() int {
 	return mu.TheUserBytesLen
 }
 
-func (mu *MultiUserMap) GetUserByStr(str string) User {
-	mu.Mutex.RLock()
-
-	var u User
-
-	if !mu.StoreKeyAsStr && mu.Key_StrToBytesFunc != nil {
-
-		u = mu.UserMap[string(mu.Key_StrToBytesFunc(str))]
-
-	} else {
-		u = mu.UserMap[str]
-
-	}
-
-	mu.Mutex.RUnlock()
-	return u
+func (mu *MultiUserMap) AuthBytesLen() int {
+	return mu.TheAuthBytesLen
 }
-func (mu *MultiUserMap) GetUserByBytes(bs []byte) User {
+
+//通过Auth查找
+func (mu *MultiUserMap) AuthUserByStr(str string) User {
 	mu.Mutex.RLock()
 
 	var u User
 
-	if mu.StoreKeyAsStr && mu.Key_BytesToStrFunc != nil {
+	if !mu.StoreKeyAsStr && mu.Key_AuthStrToBytesFunc != nil {
 
-		u = mu.UserMap[mu.Key_BytesToStrFunc(bs)]
+		u = mu.AuthMap[string(mu.Key_AuthStrToBytesFunc(str))]
 
 	} else {
-		u = mu.UserMap[string(bs)]
+		u = mu.AuthMap[str]
 
 	}
 
@@ -313,21 +328,21 @@ func (mu *MultiUserMap) GetUserByBytes(bs []byte) User {
 	return u
 }
 
-func (mu *MultiUserMap) GetUserByPass(user, pass []byte) User {
-	u := mu.GetUserByBytes(user)
+//通过Auth查找
+func (mu *MultiUserMap) AuthUserByBytes(bs []byte) User {
+	mu.Mutex.RLock()
 
-	if u == nil {
-		return nil
-	}
-	if up, ok := u.(UserWithPass); ok {
-		if bytes.Equal(pass, up.GetPassword()) {
-			return up
-		}
-		return nil
-	}
-	if len(pass) == 0 {
-		return u
-	}
-	return nil
+	var u User
 
+	if mu.StoreKeyAsStr && mu.Key_AuthBytesToStrFunc != nil {
+
+		u = mu.AuthMap[mu.Key_AuthBytesToStrFunc(bs)]
+
+	} else {
+		u = mu.AuthMap[string(bs)]
+
+	}
+
+	mu.Mutex.RUnlock()
+	return u
 }

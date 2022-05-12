@@ -92,7 +92,7 @@ type ComSniff struct {
 
 	SpecialCommandBytes []byte //目前规定，使用uuid作为special command
 
-	UH utils.UserHaser //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
+	Auther utils.UserAuther //为了在服务端能确认一串数据确实是有效的uuid，需要使用 UserHaser
 
 	SniffedServerName string
 
@@ -440,11 +440,11 @@ func (cd *ComSniff) CommonDetect(p []byte, isRead bool, onlyForSni bool) {
 			//这里就是服务端来读取 特殊指令
 			if !cd.Isclient {
 
-				ubl := cd.UH.UserBytesLen()
+				ubl := cd.Auther.AuthBytesLen()
 
 				if n >= ubl {
 
-					if cd.UH.HasUserByBytes(p[:ubl]) {
+					if cd.Auther.AuthUserByBytes(p[:ubl]) != nil {
 						bs := utils.GetBytes(ubl)
 						copy(bs, p[:ubl])
 						cd.SpecialCommandBytes = bs
