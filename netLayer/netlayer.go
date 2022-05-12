@@ -80,6 +80,8 @@ func IsStrUDP_network(s string) bool {
 	return false
 }
 
+// 返回它所包装前的 那一层 net.Conn, 不一定是 基本连接，
+// 所以仍然可以继续 被识别为 ConnWrapper 并继续解包.
 type ConnWrapper interface {
 	GetRawConn() net.Conn
 }

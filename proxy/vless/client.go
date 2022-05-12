@@ -173,7 +173,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	if c.version == 0 {
 		uc := &UserTCPConn{
 			Conn:            underlay,
-			uuid:            c.user,
+			V2rayUser:       c.user,
 			version:         c.version,
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
 		}
@@ -205,6 +205,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 
 	return &UDPConn{
 		Conn:         underlay,
+		V2rayUser:    c.user,
 		version:      c.version,
 		isClientEnd:  true,
 		raddr:        target,

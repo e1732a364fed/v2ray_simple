@@ -79,8 +79,7 @@ func NewSniffConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure b
 	cc.W.peer = &cc.R.ComSniff
 	cc.R.peer = &cc.W.ComSniff
 
-	if netConn := oldConn.(*net.TCPConn); netConn != nil {
-		//log.Println("NewDetectConn: get netConn!")	// 如果是客户端的socks5，网页浏览的话这里一定能转成 TCPConn, 不信取消注释试试
+	if netConn, ok := oldConn.(*net.TCPConn); ok && netConn != nil {
 		cc.RawConn = netConn
 	}
 

@@ -44,8 +44,10 @@ func HasFullOrSubDomain(domain string, ds DomainHaser) bool {
 // TargetDescription 可以完整地描述一个网络层/传输层上的一个特定目标,
 // 一般来说，一个具体的监听配置就会分配一个tag
 type TargetDescription struct {
-	Addr Addr
-	Tag  string
+	Addr  Addr
+	InTag string
+
+	UserIdentityStr string
 }
 
 // Set 是 “集合” 的意思, 是一组相同类型的数据放到一起。
@@ -60,12 +62,22 @@ type RouteSet struct {
 	IPs       map[netip.Addr]bool //一个确定值
 
 	//Domains匹配子域名，当此域名是目标域名或其子域名时，该规则生效.
-	//Full只匹配完整域名
-	Domains, Full, InTags, Countries map[string]bool // Countries 使用 ISO 3166 字符串 作为key
+	Domains map[string]bool
+
+	//Full只匹配完整域名;
+	Full   map[string]bool
+	InTags map[string]bool
+
+	//Countries 使用 ISO 3166 字符串 作为key.
+	Countries map[string]bool
+
+	//Users 包含所有可匹配的 用户的 identityStr
+	Users map[string]bool
 
 	//Regex是正则匹配域名.
+	Regex []*regexp.Regexp
+
 	//Match 匹配任意字符串
-	Regex           []*regexp.Regexp
 	Match, Geosites []string
 
 	//传输层
@@ -99,6 +111,7 @@ func NewFullRouteSet() *RouteSet {
 		Match:                          make([]string, 0),
 		Domains:                        make(map[string]bool),
 		Full:                           make(map[string]bool),
+		Users:                          make(map[string]bool),
 		Geosites:                       make([]string, 0),
 		InTags:                         make(map[string]bool),
 		Countries:                      make(map[string]bool),
@@ -107,11 +120,32 @@ func NewFullRouteSet() *RouteSet {
 }
 
 func (sg *RouteSet) IsIn(td *TargetDescription) bool {
-	if td.Tag != "" && sg.InTags != nil {
-		if _, found := sg.InTags[td.Tag]; found {
-			return true
+	var tagOk bool
+	if len(sg.InTags) > 0 {
+		if td.InTag != "" {
+			_, tagOk = sg.InTags[td.InTag]
 		}
+	} else {
+		tagOk = true
 	}
+	if !tagOk {
+		return false
+	}
+
+	var userOk bool
+
+	if len(sg.Users) > 0 {
+		if td.UserIdentityStr != "" {
+			_, userOk = sg.Users[td.UserIdentityStr]
+		}
+	} else {
+		userOk = true
+	}
+
+	if !userOk {
+		return false
+	}
+
 	return sg.IsAddrIn(td.Addr)
 
 }
@@ -236,7 +270,9 @@ func NewRoutePolicy() *RoutePolicy {
 }
 
 func (rp *RoutePolicy) AddRouteSet(rs *RouteSet) {
-	rp.List = append(rp.List, rs)
+	if rs != nil {
+		rp.List = append(rp.List, rs)
+	}
 }
 
 // 返回一个 proxy.Client 的 tag。

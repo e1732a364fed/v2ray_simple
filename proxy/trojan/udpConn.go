@@ -12,6 +12,7 @@ import (
 
 type UDPConn struct {
 	net.Conn
+	User
 	optionalReader io.Reader
 
 	bufr *bufio.Reader

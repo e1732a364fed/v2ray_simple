@@ -12,11 +12,15 @@ import (
 
 type UDPConn struct {
 	net.Conn
+
+	utils.V2rayUser //在 Server握手成功后会设置这一项.
+
 	optionalReader io.Reader
 
 	remainFirstBufLen int
 
-	version     int
+	version int
+
 	udp_multi   bool
 	isClientEnd bool
 
@@ -33,6 +37,10 @@ func (u *UDPConn) CloseConnWithRaddr(raddr netLayer.Addr) error {
 }
 func (u *UDPConn) Fullcone() bool {
 	return u.version != 0
+}
+
+func (u *UDPConn) GetProtocolVersion() int {
+	return u.version
 }
 
 func (u *UDPConn) WriteMsgTo(p []byte, raddr netLayer.Addr) error {

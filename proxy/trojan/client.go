@@ -118,6 +118,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 		// 发现直接返回 underlay 反倒无法利用readv, 所以还是统一用包装过的. 目前利用readv是可以加速的.
 		return &UserTCPConn{
 			Conn:            underlay,
+			User:            User(c.password_hexStringBytes),
 			underlayIsBasic: netLayer.IsBasicConn(underlay),
 		}, nil
 	}
@@ -136,6 +137,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 	WriteAddrToBuf(target, buf)
 
 	uc := NewUDPConn(underlay, nil)
+	uc.User = User(c.password_hexStringBytes)
 	uc.handshakeBuf = buf
 	return uc, nil
 }

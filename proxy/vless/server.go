@@ -261,9 +261,10 @@ realPart:
 	if isudp {
 		return nil, &UDPConn{
 			Conn:              underlay,
+			V2rayUser:         thisUUIDBytes,
 			version:           int(version),
-			raddr:             targetAddr,
 			optionalReader:    io.MultiReader(readbuf, underlay),
+			raddr:             targetAddr,
 			remainFirstBufLen: readbuf.Len(),
 			udp_multi:         use_udp_multi,
 		}, targetAddr, nil
@@ -271,10 +272,10 @@ realPart:
 	} else {
 		uc := &UserTCPConn{
 			Conn:              underlay,
+			V2rayUser:         thisUUIDBytes,
 			version:           int(version),
 			optionalReader:    io.MultiReader(readbuf, underlay),
 			remainFirstBufLen: readbuf.Len(),
-			uuid:              thisUUIDBytes,
 			underlayIsBasic:   netLayer.IsBasicConn(underlay),
 			isServerEnd:       true,
 		}

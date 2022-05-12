@@ -11,19 +11,20 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 )
 
-//实现 net.Conn, io.ReaderFrom, utils.UserConn, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper
+//实现 net.Conn, io.ReaderFrom, utils.User, utils.MultiWriter, utils.MultiReader, netLayer.Splicer, netLayer.ConnWrapper
 type UserTCPConn struct {
 	net.Conn
+
+	utils.V2rayUser //在 Server握手成功后会设置这一项.
+
 	optionalReader io.Reader //在服务端 使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
 
 	remainFirstBufLen int //记录 服务端 读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
 
 	underlayIsBasic bool
 
-	uuid             [16]byte
-	convertedUUIDStr string
-	version          int
-	isServerEnd      bool //for v0
+	version     int
+	isServerEnd bool //for v0
 
 	isntFirstPacket bool //for v0
 
@@ -31,15 +32,8 @@ type UserTCPConn struct {
 	mr utils.MultiReader //用于 Readbuffers
 }
 
-func (c *UserTCPConn) GetProtocolVersion() int {
-	return c.version
-}
-func (c *UserTCPConn) GetIdentityStr() string {
-	if c.convertedUUIDStr == "" {
-		c.convertedUUIDStr = utils.UUIDToStr(c.uuid[:])
-	}
-
-	return c.convertedUUIDStr
+func (u *UserTCPConn) GetProtocolVersion() int {
+	return u.version
 }
 
 func (c *UserTCPConn) GetRawConn() net.Conn {

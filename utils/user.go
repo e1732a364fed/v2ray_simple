@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"io"
 	"net/url"
 	"strings"
 	"sync"
@@ -55,12 +54,6 @@ type UserPassContainer interface {
 type UserBus interface {
 	AddUser(User) error
 	DelUser(User)
-}
-
-type UserConn interface {
-	io.ReadWriter
-	User
-	GetProtocolVersion() int
 }
 
 type UserConf struct {

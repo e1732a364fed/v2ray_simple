@@ -9,16 +9,16 @@ import (
 )
 
 //trojan比较简洁，这个 UserTCPConn 只是用于读取握手读取时读到的剩余的缓存。
-//实现 net.Conn, io.ReaderFrom, utils.MultiWriter, netLayer.Splicer
+//实现 net.Conn, io.ReaderFrom, utils.User, utils.MultiWriter, netLayer.Splicer, netLayer.ConnWrapper
 type UserTCPConn struct {
 	net.Conn
+	User
 	optionalReader io.Reader //在使用了缓存读取握手包头后，就产生了buffer中有剩余数据的可能性，此时就要使用MultiReader
 
 	remainFirstBufLen int //记录读取握手包头时读到的buf的长度. 如果我们读超过了这个部分的话,实际上我们就可以不再使用 optionalReader 读取, 而是直接从Conn读取
 
 	underlayIsBasic bool
 
-	hash        string
 	isServerEnd bool
 }
 

@@ -730,7 +730,10 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 			Addr: targetAddr,
 		}
 		if inServer != nil {
-			desc.Tag = inServer.GetTag()
+			desc.InTag = inServer.GetTag()
+		}
+		if uc, ok := wlc.(utils.User); ok {
+			desc.UserIdentityStr = uc.GetIdentityStr()
 		}
 
 		if ce := iics.CanLogDebug("Try routing"); ce != nil {
