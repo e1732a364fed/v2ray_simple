@@ -44,7 +44,7 @@ port = 10800        # 必填
 
 # user的值的结尾的右侧 和 pass 的左侧 中间用 \n 分隔开。 你也可以使用toml的 多行字符串的语法。但是本示例为了清晰起见，还是明确把linefeed写出来了。 这个顺序不能改, 必须user在前 pass在后, 且都不能为空
 
-sniffing.enabled = true #可选，是否嗅探出 tls中的sni，可以帮助 geosite 分流. 该项只能在listen填写，而且一般都是在客户端填写，服务端不用管。因为一般只有客户端需要分流。
+#sniffing.enabled = true #可选，是否嗅探出 tls中的sni，可以帮助 geosite 分流. 该项只能在listen填写，而且一般都是在客户端填写，服务端不用管。因为一般只有客户端需要分流。
 
 
 [[dial]]

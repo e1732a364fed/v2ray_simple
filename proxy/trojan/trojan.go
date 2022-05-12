@@ -66,6 +66,8 @@ func NewUserByPlainTextPassword(plainPass string) User {
 func (u User) GetIdentityStr() string {
 	return string(u)
 }
+
+//28字节
 func (u User) GetIdentityBytes() []byte {
 	return PassStrToBytes(string(u))
 }

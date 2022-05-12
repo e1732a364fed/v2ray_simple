@@ -27,7 +27,7 @@ func init() {
 // 	可以参考 https://www.baeldung.com/linux/tcpdump-capture-ssl-handshake
 type SniffConn struct {
 	net.Conn //这个 Conn本DetectConn 中不会用到，只是为了能让 SniffConn 支持 net.Conn
-	W        *DetectWriter
+	W        *DetectLazyWriter
 	R        *DetectReader
 
 	RawConn *net.TCPConn // 这个是为了让外界能够直接拿到底层的连接
@@ -61,7 +61,7 @@ func NewSniffConn(oldConn net.Conn, rw io.ReadWriter, isclient bool, is_secure b
 
 	cc := &SniffConn{
 		Conn: oldConn,
-		W: &DetectWriter{
+		W: &DetectLazyWriter{
 			Writer: validOne,
 		},
 		R: &DetectReader{
@@ -127,7 +127,7 @@ func (c *ComSniff) HasHandshakePassed() bool {
 	return c.helloPacketPass
 }
 
-// 总之，如果读写都用同样的判断代码的话，客户端和服务端应该就能同步进行 相同的TLS判断
+// 总之，如果读写都用同样的判断代码的话，客户端和服务端应该就能同步进行 相同的TLS判断。首包时p长度至少为1，非首包时p长度至少为3，否则会panic
 func (cd *ComSniff) CommonDetect(p []byte, isRead bool, onlyForSni bool) {
 
 	/*
@@ -319,7 +319,10 @@ func (cd *ComSniff) CommonDetect(p []byte, isRead bool, onlyForSni bool) {
 			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 2
 
-			//log.Println("p0 != 22", p)
+			//if PDD {
+			//	log.Println("p0 != 22", p)
+
+			//}
 
 			//只是不是握手信息， 有可能还是tls其它信息？可能是close alert等情况？这里应该再加一些处理，否则有时网页会打不开，刷新一下才能打开。
 			return
@@ -329,6 +332,7 @@ func (cd *ComSniff) CommonDetect(p []byte, isRead bool, onlyForSni bool) {
 		if p[9] != 3 {
 			cd.DefinitelyNotTLS = true
 			cd.handshakeFailReason = 4
+
 			return
 		}
 		if p[10] == 0 || p[10] > 4 {
@@ -579,14 +583,14 @@ func (dr *DetectReader) Read(p []byte) (n int, err error) {
 	return
 }
 
-// DetectReader 对每个Read的数据进行分析，判断是否是tls流量
-type DetectWriter struct {
+// DetectLazyWriter 对每个Read的数据进行分析，判断是否是tls流量, 并在合适时机写入lazy的特殊指令。
+type DetectLazyWriter struct {
 	io.Writer
 	ComSniff
 }
 
 // 直接写入，而不进行探测
-func (dw *DetectWriter) SimpleWrite(p []byte) (n int, err error) {
+func (dw *DetectLazyWriter) SimpleWrite(p []byte) (n int, err error) {
 	n, err = dw.Writer.Write(p)
 	return
 }
@@ -605,7 +609,7 @@ func (dw *DetectWriter) SimpleWrite(p []byte) (n int, err error) {
 //总之，我们在客户端的 Write 操作，就是 外界试图使用我们的 Write 写入数据.
 //所以在socks5后面 使用的这个 Write， 应该是把 服务端的响应 写回 socks5，比如 serverhello 之类
 //服务端的 Write 操作，也是读 serverhello.
-func (dw *DetectWriter) Write(p []byte) (n int, err error) {
+func (dw *DetectLazyWriter) Write(p []byte) (n int, err error) {
 	//write和Read不一样，Write是，p现在就具有所有的已知信息，所以我们先过滤，然后再发送到远端
 
 	if dw.IsTls {
@@ -650,6 +654,10 @@ func (dw *DetectWriter) Write(p []byte) (n int, err error) {
 
 			// 此处也是不需要保存 要直连发送的数据p 的，在main.go里去直接操作就行
 			// 我们在这里发送特殊指令即可。
+
+			if PDD {
+				log.Println("lazy start to write SpecialCommandBytes,", dw.SpecialCommandBytes)
+			}
 
 			n, err = dw.Writer.Write(dw.SpecialCommandBytes)
 

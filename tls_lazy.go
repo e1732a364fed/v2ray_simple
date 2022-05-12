@@ -73,7 +73,7 @@ func tryTlsLazyRawRelay(identity uint32, useSecureMethod bool, proxy_client prox
 	wlccc_raw := wlcdc.RawConn
 
 	if isclient {
-		sc := []byte(proxy_client.GetUser().GetIdentityBytes())
+		sc := proxy_client.GetUser().GetIdentityBytes()
 		wlcdc.R.SpecialCommandBytes = sc
 		wlcdc.W.SpecialCommandBytes = sc
 	} else {

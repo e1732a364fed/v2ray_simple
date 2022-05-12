@@ -622,6 +622,8 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	//因为无论是 sniffing，还是后面 proxy的握手，还是 lazy功能，抑或是 ws的 earlydata，都要预先获得用户数据，所以要提前读一下
 
+	//serverEnd 的 lazy 比较特殊，要自己读
+
 	if !iics.isTlsLazyServerEnd && !targetAddr.IsUDP() {
 
 		if iics.fallbackFirstBuffer != nil {
@@ -669,14 +671,16 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	//tls请求和纯http请求是可以嗅探 host的，嗅探可以帮助我们使用 geosite 精准分流，所以是很有用的
 
-	if len(iics.firstPayload) > 0 && iics.inServer != nil && iics.inServer.Sniffing() {
+	shouldSniff := iics.inServer.Sniffing() || iics.defaultClient.IsLazyTls()
+
+	if len(iics.firstPayload) > 0 && iics.inServer != nil && shouldSniff {
 		tlsSniff = new(tlsLayer.ComSniff)
 
 		if !iics.isTlsLazyServerEnd {
 			tlsSniff.Isclient = true
 		}
 
-		tlsSniff.CommonDetect(iics.firstPayload, true, !(iics.isTlsLazyServerEnd || iics.defaultClient.IsLazyTls()))
+		tlsSniff.CommonDetect(iics.firstPayload, true, iics.inServer.Sniffing() && !(iics.isTlsLazyServerEnd || iics.defaultClient.IsLazyTls()))
 
 		if sni := tlsSniff.SniffedServerName; sni != "" {
 			if ce := iics.CanLogDebug("Sniffed Sni"); ce != nil {
