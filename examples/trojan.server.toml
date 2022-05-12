@@ -3,7 +3,7 @@ protocol = "trojans"
 #uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"  #使用uuid或者users都可以，可共存, 如果有多个用户就用users, 否则用uuid更简洁。
 users = [ {user = "a684455c-b14f-11ea-bf0d-42010aaa0003"} ] 
 
-# 虽然trojan叫password, 但是因为它没有用户名，所以依然是完全 根据password 的不同 来区分用户， 所以我们这里依然填到 user 或者 uuid中 , 而不是 users里的 pass中.
+# 虽然trojan-go 的配置文件中 叫 password, 但是因为它没有用户名，所以依然是完全 根据password 的不同 来区分用户， 所以我们这里依然填到 user 或者 uuid中 , 而不是 users里的 pass中.
 
 ip = "0.0.0.0"
 host = "your-domain-name.com"
