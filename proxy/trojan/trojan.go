@@ -63,12 +63,15 @@ func PassBytesToStr(bs []byte) string {
 
 type User struct {
 	hexStr   string
+	hexBs    []byte
 	plainStr string
 }
 
 func NewUserByPlainTextPassword(plainPass string) User {
+	bs := SHA224(plainPass)
 	return User{
 		hexStr:   SHA224_hexString(plainPass),
+		hexBs:    bs[:],
 		plainStr: plainPass,
 	}
 }
@@ -90,7 +93,7 @@ func (u User) AuthStr() string {
 
 //28字节纯二进制
 func (u User) AuthBytes() []byte {
-	return PassStrToBytes(u.hexStr)
+	return u.hexBs
 }
 
 func InitUsers(uc []utils.UserConf) (us []utils.User) {
