@@ -146,7 +146,7 @@ func (sg *RouteSet) IsIn(td *TargetDescription) bool {
 		return false
 	}
 
-	if sg.IsNoLimitForNetworkLayer() {
+	if sg.IsNoLimitForNetworkLayer() { //necessary
 		return true
 	}
 

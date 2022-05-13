@@ -21,6 +21,7 @@ type BrutalSender struct {
 	pacer           *pacer
 
 	pktInfoSlots [pktInfoSlotCount]pktInfo
+	ackRate      float64
 }
 
 type pktInfo struct {
@@ -33,9 +34,10 @@ func NewBrutalSender(bps congestion.ByteCount) *BrutalSender {
 	bs := &BrutalSender{
 		bps:             bps,
 		maxDatagramSize: initMaxDatagramSize,
+		ackRate:         1,
 	}
 	bs.pacer = newPacer(func() congestion.ByteCount {
-		return congestion.ByteCount(float64(bs.bps) / bs.getAckRate())
+		return congestion.ByteCount(float64(bs.bps) / bs.ackRate)
 	})
 	return bs
 }
@@ -61,7 +63,7 @@ func (b *BrutalSender) GetCongestionWindow() congestion.ByteCount {
 	if rtt <= 0 {
 		return 10240
 	}
-	return congestion.ByteCount(float64(b.bps) * rtt.Seconds() * 1.5 / b.getAckRate())
+	return congestion.ByteCount(float64(b.bps) * rtt.Seconds() * 1.5 / b.ackRate)
 }
 
 func (b *BrutalSender) OnPacketSent(sentTime time.Time, bytesInFlight congestion.ByteCount,
@@ -81,6 +83,8 @@ func (b *BrutalSender) OnPacketAcked(number congestion.PacketNumber, ackedBytes 
 		b.pktInfoSlots[slot].AckCount = 1
 		b.pktInfoSlots[slot].LossCount = 0
 	}
+	b.updateAckRate(currentTimestamp)
+
 }
 
 func (b *BrutalSender) OnPacketLost(number congestion.PacketNumber, lostBytes congestion.ByteCount,
@@ -95,6 +99,7 @@ func (b *BrutalSender) OnPacketLost(number congestion.PacketNumber, lostBytes co
 		b.pktInfoSlots[slot].AckCount = 0
 		b.pktInfoSlots[slot].LossCount = 1
 	}
+	b.updateAckRate(currentTimestamp)
 }
 
 func (b *BrutalSender) SetMaxDatagramSize(size congestion.ByteCount) {
@@ -102,9 +107,7 @@ func (b *BrutalSender) SetMaxDatagramSize(size congestion.ByteCount) {
 	b.pacer.SetMaxDatagramSize(size)
 }
 
-func (b *BrutalSender) getAckRate() float64 {
-	now := time.Now()
-	currentTimestamp := now.Unix()
+func (b *BrutalSender) updateAckRate(currentTimestamp int64) {
 	minTimestamp := currentTimestamp - pktInfoSlotCount
 	var ackCount, lossCount uint64
 	for _, info := range b.pktInfoSlots {
@@ -115,13 +118,13 @@ func (b *BrutalSender) getAckRate() float64 {
 		lossCount += info.LossCount
 	}
 	if ackCount+lossCount < minSampleCount {
-		return 1
+		b.ackRate = 1
 	}
 	rate := float64(ackCount) / float64(ackCount+lossCount)
 	if rate < minAckRate {
-		return minAckRate
+		b.ackRate = minAckRate
 	}
-	return rate
+	b.ackRate = rate
 }
 
 func (b *BrutalSender) InSlowStart() bool {

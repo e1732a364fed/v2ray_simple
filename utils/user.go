@@ -13,7 +13,7 @@ type User interface {
 
 	IdentityBytes() []byte //与str类似; 对于程序来说,bytes更方便处理; 可以与str相同，也可以不同.
 
-	AuthStr() string   //AuthStr 可以验证该User的真实性。相当于 user name + password
+	AuthStr() string   //AuthStr 可以识别出该用户 并验证该User的真实性。相当于 user name + password
 	AuthBytes() []byte //与AuthBytes类似
 }
 

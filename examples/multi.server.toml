@@ -1,12 +1,14 @@
 [app]
 loglevel = 1
-default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"
+default_uuid = "a684455c-b14f-11ea-bf0d-42010aaa0003"   # 这个除了作为默认用户以外, 还可用作 "管理员账户"这种用途。
+# 每个listen 可以只配置users来配置用户列表，然后 这个default_uuid 会作为 每个listen 的uuid 的值。
+# 这样作为管理员，每个listen自己都能用自己的 账户连上，不必再额外对每一个listen 添加一遍 自己的账户。
 
 [[listen]]
 tag = "my_vlesss1"
 protocol = "vlesss"
 host = "0.0.0.0"
-version = -1
+version = -1    # 支持所有vless版本
 port = 4433
 insecure = true
 fallback = ":80"    #默认回落。当[[fallback]]给出的回落都无法匹配后，使用该值进行回落。
