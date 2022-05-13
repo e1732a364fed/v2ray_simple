@@ -17,7 +17,7 @@ import (
 //下面的部分代码在 main.go 中也有用到.
 func TestUDP(t *testing.T) {
 
-	s := &socks5.Server{}
+	s := socks5.NewServer()
 
 	//建立socks5服务并监听，这里仅用于 udp associate 握手
 	sAddrStr := netLayer.GetRandLocalAddr(true, true)

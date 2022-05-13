@@ -28,7 +28,7 @@ type Server struct {
 	*utils.MultiUserMap
 }
 
-func newServer() *Server {
+func NewServer() *Server {
 	s := &Server{
 		MultiUserMap: utils.NewMultiUserMap(),
 	}
@@ -39,7 +39,7 @@ func newServer() *Server {
 type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	s := newServer()
+	s := NewServer()
 	var userPass utils.UserPass
 	if userPass.InitWithUrl(u) {
 		s.AddUser(&userPass)
@@ -48,7 +48,7 @@ func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-	s := newServer()
+	s := NewServer()
 	if str := lc.Uuid; str != "" {
 
 		var userPass utils.UserPass
