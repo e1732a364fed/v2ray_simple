@@ -14,7 +14,7 @@ type User interface {
 	IdentityBytes() []byte //与str类似; 对于程序来说,bytes更方便处理; 可以与str相同，也可以不同.
 
 	AuthStr() string   //AuthStr 可以识别出该用户 并验证该User的真实性。相当于 user name + password
-	AuthBytes() []byte //与AuthBytes类似
+	AuthBytes() []byte //与 AuthStr 类似
 }
 
 type UserWithPass interface {
@@ -187,17 +187,17 @@ type MultiUserMap struct {
 
 	Mutex sync.RWMutex
 
-	TheUserBytesLen, TheAuthBytesLen int
+	TheIDBytesLen, TheAuthBytesLen int
 
 	StoreKeyAsStr bool //如果这一项给出, 则内部会用 identityStr/AuthStr 作为key;否则会用 string(identityBytes) 或 string(AuthBytes) 作为key
 
-	Key_IDStrToBytesFunc func(string) []byte
+	IDStrToBytesFunc func(string) []byte
 
-	Key_IDBytesToStrFunc func([]byte) string //必须与 Key_StrToBytesFunc 同时给出
+	IDBytesToStrFunc func([]byte) string //必须与 Key_StrToBytesFunc 同时给出
 
-	Key_AuthStrToBytesFunc func(string) []byte
+	AuthStrToBytesFunc func(string) []byte
 
-	Key_AuthBytesToStrFunc func([]byte) string //必须与 Key_AuthStrToBytesFunc 同时给出
+	AuthBytesToStrFunc func([]byte) string //必须与 Key_AuthStrToBytesFunc 同时给出
 
 }
 
@@ -214,12 +214,12 @@ func (mu *MultiUserMap) SetUseUUIDStr_asKey() {
 	//uuid 既是 id 又是 auth
 
 	mu.StoreKeyAsStr = true
-	mu.TheUserBytesLen = UUID_BytesLen
+	mu.TheIDBytesLen = UUID_BytesLen
 	mu.TheAuthBytesLen = UUID_BytesLen
-	mu.Key_IDBytesToStrFunc = UUIDToStr
-	mu.Key_AuthBytesToStrFunc = UUIDToStr
-	mu.Key_IDStrToBytesFunc = StrToUUID_slice
-	mu.Key_AuthStrToBytesFunc = StrToUUID_slice
+	mu.IDBytesToStrFunc = UUIDToStr
+	mu.AuthBytesToStrFunc = UUIDToStr
+	mu.IDStrToBytesFunc = StrToUUID_slice
+	mu.AuthStrToBytesFunc = StrToUUID_slice
 }
 
 func (mu *MultiUserMap) AddUser(u User) error {
@@ -275,9 +275,9 @@ func (mu *MultiUserMap) HasUserByStr(str string) bool {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if !mu.StoreKeyAsStr && mu.Key_IDStrToBytesFunc != nil {
+	if !mu.StoreKeyAsStr && mu.IDStrToBytesFunc != nil {
 
-		return mu.IDMap[string(mu.Key_IDStrToBytesFunc(str))] != nil
+		return mu.IDMap[string(mu.IDStrToBytesFunc(str))] != nil
 
 	} else {
 		return mu.IDMap[str] != nil
@@ -290,9 +290,9 @@ func (mu *MultiUserMap) HasUserByBytes(bs []byte) User {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if mu.StoreKeyAsStr && mu.Key_IDBytesToStrFunc != nil {
+	if mu.StoreKeyAsStr && mu.IDBytesToStrFunc != nil {
 
-		return mu.IDMap[mu.Key_IDBytesToStrFunc(bs)]
+		return mu.IDMap[mu.IDBytesToStrFunc(bs)]
 
 	} else {
 		return mu.IDMap[string(bs)]
@@ -302,7 +302,7 @@ func (mu *MultiUserMap) HasUserByBytes(bs []byte) User {
 }
 
 func (mu *MultiUserMap) IDBytesLen() int {
-	return mu.TheUserBytesLen
+	return mu.TheIDBytesLen
 }
 
 func (mu *MultiUserMap) AuthBytesLen() int {
@@ -315,9 +315,9 @@ func (mu *MultiUserMap) AuthUserByStr(str string) User {
 
 	var u User
 
-	if !mu.StoreKeyAsStr && mu.Key_AuthStrToBytesFunc != nil {
+	if !mu.StoreKeyAsStr && mu.AuthStrToBytesFunc != nil {
 
-		u = mu.AuthMap[string(mu.Key_AuthStrToBytesFunc(str))]
+		u = mu.AuthMap[string(mu.AuthStrToBytesFunc(str))]
 
 	} else {
 		u = mu.AuthMap[str]
@@ -334,9 +334,9 @@ func (mu *MultiUserMap) AuthUserByBytes(bs []byte) User {
 
 	var u User
 
-	if mu.StoreKeyAsStr && mu.Key_AuthBytesToStrFunc != nil {
+	if mu.StoreKeyAsStr && mu.AuthBytesToStrFunc != nil {
 
-		u = mu.AuthMap[mu.Key_AuthBytesToStrFunc(bs)]
+		u = mu.AuthMap[mu.AuthBytesToStrFunc(bs)]
 
 	} else {
 		u = mu.AuthMap[string(bs)]

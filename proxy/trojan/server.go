@@ -41,8 +41,8 @@ func newServer(plainPassStr string) *Server {
 		MultiUserMap: utils.NewMultiUserMap(),
 	}
 	s.StoreKeyAsStr = true
-	s.Key_AuthBytesToStrFunc = PassBytesToStr
-	s.Key_AuthStrToBytesFunc = PassStrToBytes
+	s.AuthBytesToStrFunc = PassBytesToStr
+	s.AuthStrToBytesFunc = PassStrToBytes
 	s.TheAuthBytesLen = passBytesLen
 
 	if plainPassStr != "" {
