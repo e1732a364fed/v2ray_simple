@@ -101,6 +101,13 @@ func NewUserPass(uc UserConf) *UserPass {
 	}
 }
 
+func NewUserPassByData(user, pass []byte) *UserPass {
+	return &UserPass{
+		UserID:   user,
+		Password: pass,
+	}
+}
+
 func (ph *UserPass) IdentityStr() string {
 	return string(ph.UserID)
 }
@@ -130,31 +137,30 @@ func (ph *UserPass) GetUserByPass(user, pass []byte) User {
 }
 
 func (ph *UserPass) AuthUserByStr(idStr string) User {
-	if idStr == string(ph.UserID) {
+	if idStr == ph.AuthStr() {
 		return ph
 	}
 	return nil
 }
 func (ph *UserPass) AuthUserByBytes(bs []byte) User {
-	if bytes.Equal(bs, ph.UserID) {
+	if bytes.Equal(bs, ph.AuthBytes()) {
 		return ph
 	}
 	return nil
 }
 
-//require "user" and "pass" field
-func (ph *UserPass) InitWithUrl(u *url.URL) {
+//require "user" and "pass" field. return true if both not empty.
+func (ph *UserPass) InitWithUrl(u *url.URL) bool {
 	ph.UserID = []byte(u.Query().Get("user"))
-	ph.UserID = []byte(u.Query().Get("pass"))
+	ph.Password = []byte(u.Query().Get("pass"))
+	return len(ph.UserID) > 0 && len(ph.Password) > 0
 }
 
 //uuid: "user:xxxx\npass:xxxx"
-func (ph *UserPass) InitWithStr(str string) {
+func (ph *UserPass) InitWithStr(str string) (ok bool) {
 	strs := strings.SplitN(str, "\n", 2)
 	if len(strs) != 2 {
-
 		return
-
 	}
 
 	var potentialUser, potentialPass string
@@ -177,6 +183,8 @@ func (ph *UserPass) InitWithStr(str string) {
 		ph.UserID = []byte(potentialUser)
 		ph.Password = []byte(potentialPass)
 	}
+	ok = true
+	return
 }
 
 //implements UserBus, UserHaser, UserGetter; 只能存储同一类型的User.

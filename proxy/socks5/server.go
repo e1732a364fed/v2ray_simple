@@ -25,31 +25,54 @@ func init() {
 
 type Server struct {
 	proxy.Base
-	utils.UserPass
+	*utils.MultiUserMap
+}
+
+func newServer() *Server {
+	s := &Server{
+		MultiUserMap: utils.NewMultiUserMap(),
+	}
+	s.StoreKeyAsStr = true
+	return s
 }
 
 type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
-	s := &Server{}
-	s.InitWithUrl(u)
+	s := newServer()
+	var userPass utils.UserPass
+	if userPass.InitWithUrl(u) {
+		s.AddUser(&userPass)
+	}
 	return s, nil
 }
 
-func (ServerCreator) NewServer(lc *proxy.ListenConf) (rs proxy.Server, err error) {
-	s := &Server{}
-	rs = s
+func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
+	s := newServer()
 	if str := lc.Uuid; str != "" {
-		s.InitWithStr(str)
+
+		var userPass utils.UserPass
+		if userPass.InitWithStr(str) {
+			s.AddUser(&userPass)
+		} else {
+			return nil, utils.ErrInvalidData
+		}
+
 	}
-	return
+	if len(lc.Users) > 0 {
+		for _, uc := range lc.Users {
+			up := utils.NewUserPass(uc)
+			s.AddUser(up)
+		}
+	}
+	return s, nil
 }
 
 func (*Server) Name() string { return Name }
 
 func (s *Server) authNone(underlay net.Conn) (returnErr error) {
 	var err error
-	if len(s.Password) == 0 && len(s.UserID) == 0 {
+	if len(s.IDMap) == 0 {
 		_, err = underlay.Write([]byte{Version5, AuthNone})
 		if err != nil {
 			returnErr = fmt.Errorf("failed to write hello response: %w", err)
@@ -125,7 +148,7 @@ For:
 
 			dealtPass = true
 
-			if len(s.Password) == 0 && len(s.UserID) == 0 {
+			if len(s.IDMap) == 0 {
 
 				returnErr = errors.New("not require Password but got AuthPassword")
 				continue
@@ -173,7 +196,9 @@ For:
 
 			pbytes := authBs[2+ulen+1 : 2+ulen+1+plen]
 
-			if bytes.Equal(s.UserID, ubytes) && bytes.Equal(s.Password, pbytes) {
+			thisUP := utils.NewUserPassByData(ubytes, pbytes)
+
+			if s.AuthUserByStr(thisUP.AuthStr()) != nil {
 				_, err = underlay.Write([]byte{1, 0})
 				if err != nil {
 					returnErr = fmt.Errorf("failed to write auth response: %w", err)
