@@ -1,0 +1,10 @@
+version: "3.3"
+services:
+  verysimple:
+    container_name: verysimple
+    restart: always
+    network_mode: "host"
+    volumes:
+      - "/etc/verysimple:/etc/verysimple"
+    command: -c /etc/verysimple/server.toml
+    image: verysimple
