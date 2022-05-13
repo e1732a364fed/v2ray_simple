@@ -5,6 +5,6 @@ services:
     restart: always
     network_mode: "host"
     volumes:
-      - "/path/server.toml:/server.toml"
-    command: -c server.toml
+      - "/etc/verysimple:/etc/verysimple"
+    command: -c /etc/verysimple/server.toml
     image: verysimple
