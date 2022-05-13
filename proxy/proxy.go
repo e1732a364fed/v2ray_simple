@@ -99,7 +99,7 @@ func GetFullName(pc BaseInterface) string {
 	}
 }
 
-// return GetFullName(pc) + "://" + pc.AddrStr()
+// return GetFullName(pc) + "://" + pc.AddrStr() (+ #tag)
 func GetVSI_url(pc BaseInterface) string {
 	n := pc.Name()
 	if n == DirectName {
@@ -108,6 +108,10 @@ func GetVSI_url(pc BaseInterface) string {
 	sb := getFullNameBuilder(pc, n)
 	sb.WriteString("://")
 	sb.WriteString(pc.AddrStr())
+	if t := pc.GetTag(); t != "" {
+		sb.WriteByte('#')
+		sb.WriteString(t)
+	}
 
 	return sb.String()
 }

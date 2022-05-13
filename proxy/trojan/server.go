@@ -40,7 +40,7 @@ func newServer(plainPassStr string) *Server {
 	s := &Server{
 		MultiUserMap: utils.NewMultiUserMap(),
 	}
-	s.StoreKeyAsStr = true
+	s.StoreKeyByStr = true
 	s.AuthBytesToStrFunc = PassBytesToStr
 	s.AuthStrToBytesFunc = PassStrToBytes
 	s.TheAuthBytesLen = passBytesLen

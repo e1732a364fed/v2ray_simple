@@ -51,16 +51,32 @@ type ServerCreator struct{}
 
 func (ServerCreator) NewServerFromURL(u *url.URL) (proxy.Server, error) {
 
-	s := &Server{}
-	s.InitWithUrl(u)
+	s := newServer()
+	var userPass utils.UserPass
+	if userPass.InitWithUrl(u) {
+		s.AddUser(&userPass)
+	}
 	return s, nil
 }
 
 func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
-	s := &Server{}
+	s := newServer()
 	if str := lc.Uuid; str != "" {
-		s.InitWithStr(str)
+		var userPass utils.UserPass
+		if userPass.InitWithStr(str) {
+			s.AddUser(&userPass)
+		} else {
+			return nil, utils.ErrInvalidData
+		}
 	}
+
+	if len(lc.Users) > 0 {
+		for _, uc := range lc.Users {
+			up := utils.NewUserPass(uc)
+			s.AddUser(up)
+		}
+	}
+
 	return s, nil
 }
 
@@ -68,10 +84,18 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 type Server struct {
 	proxy.Base
 
-	utils.UserPass
+	*utils.MultiUserMap
 
 	OnlyConnect bool //是否仅支持Connect命令; 如果为true, 则直接通过 GET http://xxx 这种请求不再被认为是有效的。
 
+}
+
+func newServer() *Server {
+	s := &Server{
+		MultiUserMap: utils.NewMultiUserMap(),
+	}
+	s.StoreKeyByStr = true
+	return s
 }
 
 func (s *Server) CanFallback() bool {
@@ -113,25 +137,31 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 		return
 	}
 
-	if s.Valid() {
+	if len(s.IDMap) > 0 {
 		var ok bool
+		failReason := 0
 		for _, h := range headers {
 
 			if bytes.Equal(h.Head, proxyAuth_headerBytes) {
 				if !bytes.HasPrefix(h.Value, basicAuthValue_prefix) {
+					failReason = 1
 					break
 				}
 				bs := utils.GetMTU()
 				n, err = base64.StdEncoding.Decode(bs, h.Value[len(basicAuthValue_prefix):])
 				if err != nil {
+					failReason = 2
 					break
 				}
 				colonIndex := bytes.IndexByte(bs[:n], ':')
 				if colonIndex < 0 {
+					failReason = 3
 					break
 				}
 
-				if bytes.Equal(bs[:colonIndex], s.UserID) && bytes.Equal(bs[colonIndex+1:n], s.Password) {
+				thisUP := utils.NewUserPassByData(bs[:colonIndex], bs[colonIndex+1:n])
+
+				if s.AuthUserByStr(thisUP.AuthStr()) != nil {
 					ok = true
 				}
 
@@ -139,7 +169,7 @@ func (s *Server) Handshake(underlay net.Conn) (newconn net.Conn, _ netLayer.MsgC
 			}
 		}
 		if !ok {
-			err = errors.New("http auth not pass")
+			err = utils.ErrInErr{ErrDesc: "http require auth not got no valid user/header", ErrDetail: utils.ErrInvalidData, Data: failReason}
 			return
 		}
 	}

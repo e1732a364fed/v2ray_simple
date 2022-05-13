@@ -15,7 +15,7 @@ tag = "dial1"
 host = "127.0.0.1"  
 port = 10801
 
-#uuid = "user:very\npass:simple"
+uuid = "user:very\npass:simple"
 
 [[route]]
 fromTag = ["my_socks5_1"]
@@ -27,7 +27,17 @@ protocol = "socks5"
 host = "127.0.0.1"
 port = 10801
 
-#uuid = "user:very\npass:simple"
+#下面给出 toml的 多行字符串 格式 的 本作 的 uuid 的user和pass 格式 的 示范:
+
+uuid = """
+user:admin
+pass:nimda
+"""
+
+# 或者这种
+#uuid = "user:very\npass:simple"    
+
+users = [ {user = "very", pass = "simple"}, {user = "v2ray", pass = "hard"} ]   #也可以用users 来存储多个用户
 
 [[dial]]
 tag = "direct"

@@ -48,6 +48,11 @@ type ErrBuffer struct {
 	Buf *bytes.Buffer
 }
 
+func (e ErrBuffer) Is(target error) bool {
+	return errors.Is(e.Err, target)
+
+}
+
 func (ef ErrBuffer) Unwarp() error {
 
 	return ef.Err
@@ -75,14 +80,14 @@ func (e ErrInErr) Unwarp() error {
 	return e.ErrDetail
 }
 
-func (e ErrInErr) Is(err error) bool {
-	if e.ErrDetail == err {
+func (e ErrInErr) Is(target error) bool {
+	if e.ErrDetail == target {
 		return true
-	} else if errors.Is(e.ErrDetail, err) {
+	} else if errors.Is(e.ErrDetail, target) {
 		return true
 	} else if len(e.ExtraIs) > 0 {
 		for _, v := range e.ExtraIs {
-			if errors.Is(v, err) {
+			if errors.Is(v, target) {
 				return true
 			}
 		}

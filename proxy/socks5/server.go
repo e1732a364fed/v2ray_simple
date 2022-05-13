@@ -32,7 +32,7 @@ func newServer() *Server {
 	s := &Server{
 		MultiUserMap: utils.NewMultiUserMap(),
 	}
-	s.StoreKeyAsStr = true
+	s.StoreKeyByStr = true
 	return s
 }
 

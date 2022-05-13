@@ -197,7 +197,7 @@ type MultiUserMap struct {
 
 	TheIDBytesLen, TheAuthBytesLen int
 
-	StoreKeyAsStr bool //如果这一项给出, 则内部会用 identityStr/AuthStr 作为key;否则会用 string(identityBytes) 或 string(AuthBytes) 作为key
+	StoreKeyByStr bool //如果这一项给出, 则内部会用 identityStr/AuthStr 作为key;否则会用 string(identityBytes) 或 string(AuthBytes) 作为key
 
 	IDStrToBytesFunc func(string) []byte
 
@@ -221,7 +221,7 @@ func NewMultiUserMap() *MultiUserMap {
 func (mu *MultiUserMap) SetUseUUIDStr_asKey() {
 	//uuid 既是 id 又是 auth
 
-	mu.StoreKeyAsStr = true
+	mu.StoreKeyByStr = true
 	mu.TheIDBytesLen = UUID_BytesLen
 	mu.TheAuthBytesLen = UUID_BytesLen
 	mu.IDBytesToStrFunc = UUIDToStr
@@ -239,7 +239,7 @@ func (mu *MultiUserMap) AddUser(u User) error {
 }
 
 func (mu *MultiUserMap) addUser(u User) {
-	if mu.StoreKeyAsStr {
+	if mu.StoreKeyByStr {
 
 		mu.IDMap[u.IdentityStr()] = u
 		mu.AuthMap[u.AuthStr()] = u
@@ -254,7 +254,7 @@ func (mu *MultiUserMap) addUser(u User) {
 func (mu *MultiUserMap) DelUser(u User) error {
 	mu.Mutex.Lock()
 
-	if mu.StoreKeyAsStr {
+	if mu.StoreKeyByStr {
 		delete(mu.IDMap, u.AuthStr())
 		delete(mu.AuthMap, u.IdentityStr())
 
@@ -283,7 +283,7 @@ func (mu *MultiUserMap) HasUserByStr(str string) bool {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if !mu.StoreKeyAsStr && mu.IDStrToBytesFunc != nil {
+	if !mu.StoreKeyByStr && mu.IDStrToBytesFunc != nil {
 
 		return mu.IDMap[string(mu.IDStrToBytesFunc(str))] != nil
 
@@ -298,7 +298,7 @@ func (mu *MultiUserMap) HasUserByBytes(bs []byte) User {
 	mu.Mutex.RLock()
 	defer mu.Mutex.RUnlock()
 
-	if mu.StoreKeyAsStr && mu.IDBytesToStrFunc != nil {
+	if mu.StoreKeyByStr && mu.IDBytesToStrFunc != nil {
 
 		return mu.IDMap[mu.IDBytesToStrFunc(bs)]
 
@@ -323,7 +323,7 @@ func (mu *MultiUserMap) AuthUserByStr(str string) User {
 
 	var u User
 
-	if !mu.StoreKeyAsStr && mu.AuthStrToBytesFunc != nil {
+	if !mu.StoreKeyByStr && mu.AuthStrToBytesFunc != nil {
 
 		u = mu.AuthMap[string(mu.AuthStrToBytesFunc(str))]
 
@@ -342,7 +342,7 @@ func (mu *MultiUserMap) AuthUserByBytes(bs []byte) User {
 
 	var u User
 
-	if mu.StoreKeyAsStr && mu.AuthBytesToStrFunc != nil {
+	if mu.StoreKeyByStr && mu.AuthBytesToStrFunc != nil {
 
 		u = mu.AuthMap[mu.AuthBytesToStrFunc(bs)]
 
