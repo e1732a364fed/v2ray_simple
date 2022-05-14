@@ -14,7 +14,6 @@ import (
 //tcp就不测了，我们实践直接测试完全好使，这里重点测试UDP
 // 因为chrome也是无法通过 socks5去申请udp链接的，所以没法自己用浏览器测试
 
-//下面的部分代码在 main.go 中也有用到.
 func TestUDP(t *testing.T) {
 
 	s := socks5.NewServer()
