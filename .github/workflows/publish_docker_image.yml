@@ -10,7 +10,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 jobs:
   build_image:
-    name: Push Docker image to multiple registries
+    name: Publish Docker image
     runs-on: ubuntu-latest
     permissions:
       packages: write
