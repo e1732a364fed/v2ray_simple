@@ -668,7 +668,7 @@ tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借�
 
 以上借鉴的代码都是用的MIT协议。
 
-vmess 的客户端代码 来自 clash/transport/vmess, 使用的是 GPLv3协议。该协议我直接 放在 proxy/vmess/ 文件夹下了。
+vmess 的客户端代码 来自 github.com/Dreamacro/clash/transport/vmess, 使用的是 GPLv3协议。该协议我直接 放在 proxy/vmess/ 文件夹下了。
 
 
 ## Stargazers over time
