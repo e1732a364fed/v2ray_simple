@@ -32,6 +32,8 @@ var (
 //使用Addr，是因为有可能请求地址是个域名，而不是ip; 而且通过Addr, MsgConn实际上有可能支持通用的情况,
 // 即可以用于 客户端 一会 请求tcp，一会又请求udp，一会又请求什么其它网络层 这种奇葩情况.
 type MsgConn interface {
+	NetDeadliner
+
 	ReadMsgFrom() ([]byte, Addr, error)
 	WriteMsgTo([]byte, Addr) error
 	CloseConnWithRaddr(raddr Addr) error //关闭特定连接
@@ -307,7 +309,7 @@ func (u UniTargetMsgConn) Close() error {
 
 //UDPMsgConn 实现 MsgConn。 可满足fullcone/symmetric. 在proxy/direct 被用到.
 type UDPMsgConn struct {
-	conn                       *net.UDPConn
+	*net.UDPConn
 	IsServer, fullcone, closed bool
 
 	symmetricMap      map[HashableAddr]*net.UDPConn
@@ -330,7 +332,7 @@ func NewUDPMsgConn(laddr *net.UDPAddr, fullcone bool, isserver bool) (*UDPMsgCon
 	udpConn.SetReadBuffer(MaxUDP_packetLen)
 	udpConn.SetWriteBuffer(MaxUDP_packetLen)
 
-	uc.conn = udpConn
+	uc.UDPConn = udpConn
 	uc.fullcone = fullcone
 	uc.IsServer = isserver
 	if !fullcone {
@@ -377,7 +379,7 @@ func (u *UDPMsgConn) ReadMsgFrom() ([]byte, Addr, error) {
 	if u.fullcone {
 		bs := utils.GetPacket()
 
-		n, ad, err := u.conn.ReadFromUDP(bs)
+		n, ad, err := u.UDPConn.ReadFromUDP(bs)
 
 		if err != nil {
 			return nil, Addr{}, err
@@ -408,13 +410,13 @@ func (u *UDPMsgConn) WriteMsgTo(bs []byte, raddr Addr) error {
 
 		if len(u.symmetricMap) == 0 {
 
-			_, err := u.conn.WriteTo(bs, raddr.ToUDPAddr())
+			_, err := u.UDPConn.WriteTo(bs, raddr.ToUDPAddr())
 			if err == nil {
 				u.symmetricMapMutex.Lock()
-				u.symmetricMap[thishash] = u.conn
+				u.symmetricMap[thishash] = u.UDPConn
 				u.symmetricMapMutex.Unlock()
 			}
-			go u.readSymmetricMsgFromConn(u.conn, thishash)
+			go u.readSymmetricMsgFromConn(u.UDPConn, thishash)
 			return err
 		}
 
@@ -437,7 +439,7 @@ func (u *UDPMsgConn) WriteMsgTo(bs []byte, raddr Addr) error {
 		}
 
 	} else {
-		theConn = u.conn
+		theConn = u.UDPConn
 	}
 
 	_, err := theConn.WriteTo(bs, raddr.ToUDPAddr())
@@ -447,7 +449,7 @@ func (u *UDPMsgConn) WriteMsgTo(bs []byte, raddr Addr) error {
 func (u *UDPMsgConn) CloseConnWithRaddr(raddr Addr) error {
 	if !u.IsServer {
 		if u.fullcone {
-			//u.conn.SetReadDeadline(time.Now())
+			//u.UDPConn.SetReadDeadline(time.Now())
 
 		} else {
 			u.symmetricMapMutex.Lock()
@@ -475,7 +477,7 @@ func (u *UDPMsgConn) Close() error {
 		if !u.fullcone {
 			close(u.symmetricMsgReadChan)
 		}
-		return u.conn.Close()
+		return u.UDPConn.Close()
 	}
 
 	return nil

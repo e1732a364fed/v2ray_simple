@@ -624,46 +624,90 @@ func passToOutClient(iics incomingInserverConnState, isfallback bool, wlc net.Co
 
 	//serverEnd 的 lazy 比较特殊，要自己读
 
-	if !iics.isTlsLazyServerEnd && !targetAddr.IsUDP() {
+	if !iics.isTlsLazyServerEnd {
 
 		if iics.fallbackFirstBuffer != nil {
 
 			iics.firstPayload = iics.fallbackFirstBuffer.Bytes()
 			iics.fallbackFirstBuffer = nil
 
-		} else if wlc != nil {
-			iics.firstPayload = utils.GetMTU()
+		} else {
+			isudp := targetAddr.IsUDP()
 
-			wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
-			n, err := wlc.Read(iics.firstPayload)
-			wlc.SetReadDeadline(time.Time{})
+			if !isudp && wlc != nil {
 
-			if err != nil {
+				bs := utils.GetMTU()
 
-				if !errors.Is(err, os.ErrDeadlineExceeded) {
-					if ce := iics.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
-						ce.Write(
-							zap.String("target", targetAddr.String()),
-							zap.Error(err),
-						)
+				wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
+				n, err := wlc.Read(bs)
+				wlc.SetReadDeadline(time.Time{})
+
+				if err != nil {
+
+					if !errors.Is(err, os.ErrDeadlineExceeded) {
+						if ce := iics.CanLogErr("Read first payload failed not because of timeout, will hung up"); ce != nil {
+							ce.Write(
+								zap.String("target", targetAddr.String()),
+								zap.Error(err),
+							)
+						}
+
+						wlc.Close()
+						return
+					} else {
+						if ce := iics.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
+							ce.Write(
+								zap.String("target", targetAddr.String()),
+								zap.Error(err),
+							)
+						}
 					}
 
-					wlc.Close()
-					return
-				} else {
-					if ce := iics.CanLogWarn("Read first payload but timeout, will relay without first payload."); ce != nil {
-						ce.Write(
-							zap.String("target", targetAddr.String()),
-							zap.Error(err),
-						)
-					}
 				}
 
-			}
+				if n > 0 {
+					iics.firstPayload = bs[:n]
 
-			iics.firstPayload = iics.firstPayload[:n]
+				}
+			} else if isudp && udp_wlc != nil {
+
+				udp_wlc.SetReadDeadline(time.Now().Add(proxy.FirstPayloadTimeout))
+				bs, targetAd, err := udp_wlc.ReadMsgFrom()
+				udp_wlc.SetReadDeadline(time.Time{})
+
+				if err != nil {
+
+					if !errors.Is(err, os.ErrDeadlineExceeded) {
+						if ce := iics.CanLogErr("Read first udp payload failed not because of timeout, will hung up"); ce != nil {
+							ce.Write(
+								zap.String("target", targetAddr.String()),
+								zap.Error(err),
+							)
+						}
+
+						udp_wlc.Close()
+						return
+					} else {
+						if ce := iics.CanLogWarn("Read first udp payload but timeout, will relay without first payload."); ce != nil {
+							ce.Write(
+								zap.String("target", targetAddr.String()),
+								zap.Error(err),
+							)
+						}
+					}
+
+				}
+
+				if len(bs) > 0 {
+					iics.firstPayload = bs
+					iics.udpFirstTarget = targetAd
+
+				}
+			} //if !isudp && wlc != nil {
+
 		}
-	}
+
+	} //if !iics.isTlsLazyServerEnd {
 
 	var tlsSniff *tlsLayer.ComSniff
 
@@ -1199,7 +1243,12 @@ advLayerHandshakeStep:
 
 	} else {
 
-		udp_wrc, err = client.EstablishUDPChannel(clientConn, targetAddr)
+		theAddr := targetAddr
+		if len(iics.firstPayload) > 0 {
+			theAddr = iics.udpFirstTarget
+		}
+
+		udp_wrc, err = client.EstablishUDPChannel(clientConn, iics.firstPayload, theAddr)
 		if err != nil {
 			if ce := iics.CanLogErr("EstablishUDPChannel failed"); ce != nil {
 				ce.Write(
@@ -1260,7 +1309,12 @@ func dialInnerProxy(client proxy.Client, wlc net.Conn, wrc io.ReadWriteCloser, i
 		return
 	}
 	if isudp {
-		realudp_wrc, err = muxClient.EstablishUDPChannel(stream, targetAddr)
+		theAddr := targetAddr
+		if len(iics.firstPayload) > 0 {
+			theAddr = iics.udpFirstTarget
+		}
+
+		realudp_wrc, err = muxClient.EstablishUDPChannel(stream, iics.firstPayload, theAddr)
 		if err != nil {
 			if ce := iics.CanLogDebug("mux inner proxy client handshake failed"); ce != nil {
 				ce.Write(zap.Error(err))

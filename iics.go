@@ -76,7 +76,8 @@ type incomingInserverConnState struct {
 
 	fallbackXver int
 
-	firstPayload []byte
+	firstPayload   []byte
+	udpFirstTarget netLayer.Addr
 
 	isTlsLazyServerEnd bool //比如 listen 是 tls + vless 这种情况
 
