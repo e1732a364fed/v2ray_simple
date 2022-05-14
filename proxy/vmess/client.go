@@ -44,7 +44,6 @@ func NewVmessClient(url *url.URL) (*Client, error) {
 	c.SetAddrStr(addr)
 	user := utils.V2rayUser(uuid)
 	c.user = user
-	//c.users = append(c.users, user.GenAlterIDUsers(int(alterID))...)
 
 	c.opt = OptChunkStream
 	security = strings.ToLower(security)

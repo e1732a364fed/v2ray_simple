@@ -1,6 +1,8 @@
 /*Package vmess implements vmess client.
 
 from github.com/Dreamacro/clash/tree/master/transport/vmess/
+
+本作不支持alterid!=0 的情况.
 */
 package vmess
 
@@ -32,12 +34,14 @@ const (
 	CmdUDP byte = 2
 )
 
+var getkeyBs = []byte("c48619fe-8f02-49e0-b9e9-edf763e17e21")
+
 // GetKey returns the key of AES-128-CFB encrypter
 // Key：MD5(UUID + []byte('c48619fe-8f02-49e0-b9e9-edf763e17e21'))
 func GetKey(uuid [16]byte) []byte {
 	md5hash := md5.New()
 	md5hash.Write(uuid[:])
-	md5hash.Write([]byte("c48619fe-8f02-49e0-b9e9-edf763e17e21"))
+	md5hash.Write(getkeyBs)
 	return md5hash.Sum(nil)
 }
 

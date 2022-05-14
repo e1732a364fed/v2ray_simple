@@ -650,15 +650,12 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 同时，我们对于v2ray/xray等项目也是没有任何责任的。
 
-## 引用的外部包
-
-详见 go.mod 文件
 
 ## 鸣谢
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 
-grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议，文件里都写了，不信自己看。（clash的gun又是借鉴 Qv2ray的gun的）
+grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议，其文件开头都写了，不信自己看。（clash的gun又是借鉴 Qv2ray的gun的）
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
