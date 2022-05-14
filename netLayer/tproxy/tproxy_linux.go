@@ -52,7 +52,7 @@ func HandshakeUDP(underlay *net.UDPConn) (netLayer.MsgConn, netLayer.Addr, error
 
 //implements netLayer.MsgConn
 type MsgConn struct {
-	EasyDeadline
+	netLayer.EasyDeadline
 
 	ourSrcAddr *net.UDPAddr
 
