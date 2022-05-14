@@ -658,7 +658,7 @@ MIT协议！作者不负任何责任。本项目 适合内网测试使用，以�
 
 为了支持hysteria 的阻塞控制，从 https://github.com/HyNetwork/hysteria 的 pkg/congestion里拷贝了 brutal.go 和 pacer.go 到我们的 quic文件夹中.
 
-grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码。（clash的gun又是借鉴 Qv2ray的gun的）
+grpcSimple的客户端实现部分 借鉴了 clash 的gun的代码，该文件单独属于MIT协议，文件里都写了，不信自己看。（clash的gun又是借鉴 Qv2ray的gun的）
 
 tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借鉴了它）
 
@@ -667,6 +667,8 @@ tproxy借鉴了 https://github.com/LiamHaworth/go-tproxy/ , （trojan-go也借�
 （grpc参考了v2ray但是没直接拷贝，而是自己写的。代码看起来像 主要因为 protobuf和grpc谷歌包的特点，导致只要代码是兼容的，写出来肯定是很相似的）
 
 以上借鉴的代码都是用的MIT协议。
+
+vmess 的客户端代码 来自 clash/transport/vmess, 使用的是 GPLv3协议。该协议我直接 放在 proxy/vmess/ 文件夹下了。
 
 
 ## Stargazers over time
