@@ -94,13 +94,13 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	conn.respBodyKey = md5.Sum(conn.reqBodyKey[:])
 
 	// Auth
-	err := conn.Auth()
+	err := conn.auth()
 	if err != nil {
 		return nil, err
 	}
 
 	// Request
-	err = conn.handshake()
+	err = conn.handshake(CmdTCP)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +110,8 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 // ClientConn is a connection to vmess server
 type ClientConn struct {
+	net.Conn
+
 	user     utils.V2rayUser
 	opt      byte
 	security byte
@@ -124,13 +126,12 @@ type ClientConn struct {
 	respBodyIV  [16]byte
 	respBodyKey [16]byte
 
-	net.Conn
 	dataReader io.Reader
 	dataWriter io.Writer
 }
 
-// Auth send auth info: HMAC("md5", UUID, UTC)
-func (c *ClientConn) Auth() error {
+// send auth info: HMAC("md5", UUID, UTC)
+func (c *ClientConn) auth() error {
 	ts := utils.GetBytes(8)
 	defer utils.PutBytes(ts)
 
@@ -144,7 +145,7 @@ func (c *ClientConn) Auth() error {
 }
 
 // handshake sends request to server.
-func (c *ClientConn) handshake() error {
+func (c *ClientConn) handshake(cmd byte) error {
 	buf := utils.GetBuf()
 	defer utils.PutBuf(buf)
 
@@ -160,8 +161,8 @@ func (c *ClientConn) handshake() error {
 	pSec := byte(paddingLen<<4) | c.security // P(4bit) and Sec(4bit)
 	buf.WriteByte(pSec)
 
-	buf.WriteByte(0)      // reserved
-	buf.WriteByte(CmdTCP) // cmd
+	buf.WriteByte(0) // reserved
+	buf.WriteByte(cmd)
 
 	// target
 	err := binary.Write(buf, binary.BigEndian, c.port) // port

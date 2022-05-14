@@ -89,7 +89,7 @@ func (c *RejectClient) Handshake(underlay net.Conn, _ []byte, _ netLayer.Addr) (
 }
 
 //function the same as Handshake
-func (c *RejectClient) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLayer.MsgConn, error) {
+func (c *RejectClient) EstablishUDPChannel(underlay net.Conn, _ []byte, _ netLayer.Addr) (netLayer.MsgConn, error) {
 	c.tryResponseAndClose(underlay)
 	return nil, io.EOF
 }

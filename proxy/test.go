@@ -311,7 +311,7 @@ func TestUDP(protocol string, version int, proxyPort string, use_multi int, t *t
 
 	t.Log("client Dial success")
 
-	wrc, err := fakeClientEndRemoteClient.EstablishUDPChannel(rc, targetStruct_forFakeUDPServer)
+	wrc, err := fakeClientEndRemoteClient.EstablishUDPChannel(rc, nil, targetStruct_forFakeUDPServer)
 	if err != nil {
 		log.Printf("failed in handshake to %v: %v", fakeServerEndLocalServer.AddrStr(), err)
 		t.FailNow()

@@ -22,9 +22,9 @@ type Server struct {
 
 	Config
 
-	Headers *httpLayer.HeaderPreset
-
 	http2.Server
+
+	Headers *httpLayer.HeaderPreset
 
 	path string
 
@@ -114,7 +114,6 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 				}
 			}
 		} else {
-			//没chan 的话，那么我们返回一个错误信息后关闭连接。
 			underlay.Write([]byte(httpLayer.Err403response))
 			underlay.Close()
 		}
@@ -182,8 +181,6 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 							zap.String("raddr", rq.RemoteAddr))
 					}
 
-					//var buf *bytes.Buffer
-
 					respConn := &netLayer.IOWrapper{
 						Reader:    rq.Body,
 						Writer:    rw,
@@ -195,24 +192,8 @@ func (s *Server) StartHandle(underlay net.Conn, newSubConnChan chan net.Conn, fa
 						Conn: respConn,
 					}
 
-					// 如果使用 rq.Write， 那么实际上就是回落到 http1.1, 只有用 http2.Transport.RoundTrip 才是 h2 请求
-
-					//因为h2的特殊性，要建立子连接, 所以要配合调用者 进行特殊处理。
-
-					/*
-						if s.FallbackToH1 {
-							buf = utils.GetBuf()
-							rq.Write(buf)
-
-							respConn.FirstWriteChan = make(chan struct{})
-
-							fm.H1RequestBuf = buf
-
-						} else {
-					*/
 					fm.IsH2 = true
 					fm.H2Request = rq
-					//}
 
 					if s.closed {
 						return

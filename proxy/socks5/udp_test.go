@@ -60,7 +60,7 @@ func TestUDP(t *testing.T) {
 
 					t.Log("socks5 server got udp msg")
 
-					msgConn, err := direct.EstablishUDPChannel(nil, addr)
+					msgConn, err := direct.EstablishUDPChannel(nil, nil, addr)
 					if err != nil {
 						t.Fail()
 						return

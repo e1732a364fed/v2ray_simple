@@ -48,8 +48,8 @@ type Client interface {
 	//Perform handshake when request is TCP。firstPayload 用于如 vless/trojan 这种 没有握手包的协议，可为空。
 	Handshake(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (wrappedConn io.ReadWriteCloser, err error)
 
-	//Establish a channel and constantly request data for each UDP addr through this channel. target can be empty theoretically, depending on the implementation.
-	EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error)
+	//Establish a channel and constantly request data for each UDP addr through this channel. firstpayload and target can be empty theoretically, depending on the implementation.
+	EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error)
 
 	//If udp is send through multiple connection or not
 	IsUDP_MultiChannel() bool

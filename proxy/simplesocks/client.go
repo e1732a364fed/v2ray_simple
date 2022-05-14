@@ -80,7 +80,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 	}, nil
 }
 
-func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
+func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
 	if target.Port <= 0 {
 		return nil, errors.New("simplesocks Client EstablishUDPChannel failed, target port invalid")
 
@@ -91,5 +91,11 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 
 	uc := NewUDPConn(underlay, nil)
 	uc.handshakeBuf = buf
-	return uc, nil
+
+	if len(firstPayload) == 0 {
+		return uc, nil
+
+	} else {
+		return uc, uc.WriteMsgTo(firstPayload, target)
+	}
 }

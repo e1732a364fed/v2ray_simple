@@ -189,7 +189,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 }
 
-func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (netLayer.MsgConn, error) {
+func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
 
 	buf := c.getBufWithCmd(CmdUDP)
 	port := target.Port
@@ -203,7 +203,7 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 
 	target.Network = "udp"
 
-	return &UDPConn{
+	uc := &UDPConn{
 		Conn:         underlay,
 		V2rayUser:    c.user,
 		version:      c.version,
@@ -211,7 +211,12 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, target netLayer.Addr) (n
 		raddr:        target,
 		udp_multi:    c.udp_multi,
 		handshakeBuf: buf,
-	}, nil
+	}
+	if len(firstPayload) == 0 {
+		return uc, nil
+	} else {
+		return uc, uc.WriteMsgTo(firstPayload, target)
+	}
 
 }
 

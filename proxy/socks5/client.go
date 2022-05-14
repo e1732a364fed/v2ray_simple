@@ -141,7 +141,7 @@ func (c *Client) Handshake(underlay net.Conn, firstPayload []byte, target netLay
 
 }
 
-func (c *Client) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLayer.MsgConn, error) {
+func (c *Client) EstablishUDPChannel(underlay net.Conn, firstPayload []byte, target netLayer.Addr) (netLayer.MsgConn, error) {
 	var err error
 	serverPort := 0
 	serverPort, err = Client_EstablishUDPAssociate(underlay)
@@ -165,5 +165,10 @@ func (c *Client) EstablishUDPChannel(underlay net.Conn, _ netLayer.Addr) (netLay
 		return nil, err
 	}
 
-	return &cpc, nil
+	if len(firstPayload) == 0 {
+		return &cpc, nil
+
+	} else {
+		return &cpc, cpc.WriteMsgTo(firstPayload, target)
+	}
 }
