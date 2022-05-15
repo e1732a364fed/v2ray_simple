@@ -72,7 +72,7 @@ cli(交互模式)/apiServer, Docker.
 
 ```sh
 #在verysimple可执行文件所在目录
-git clone github.com/v2fly/domain-list-community
+git clone https://github.com/v2fly/domain-list-community
 mv domain-list-community geosite
 ```
 
