@@ -12,7 +12,22 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certConf *CertConf) *tls.Config {
+func GetMinVerFromExtra(extra map[string]any) uint16 {
+	if len(extra) > 0 {
+		if thing := extra["tls_minVersion"]; thing != nil {
+			if str, ok := (thing).(string); ok && len(str) > 0 {
+				switch str {
+				case "1.2":
+					return tls.VersionTLS12
+				}
+			}
+		}
+	}
+
+	return tls.VersionTLS13
+}
+
+func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certConf *CertConf, minVer uint16) *tls.Config {
 	var certArray []tls.Certificate
 	var err error
 
@@ -43,6 +58,7 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 		NextProtos:         alpn,
 		ServerName:         host,
 		Certificates:       certArray,
+		MinVersion:         minVer,
 	}
 	if certConf != nil && certConf.CA != "" {
 		certPool, err := LoadCA(certConf.CA)
@@ -58,7 +74,7 @@ func GetTlsConfig(insecure, mustHasCert bool, alpn []string, host string, certCo
 	return tConf
 }
 
-func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf) utls.Config {
+func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf, minVer uint16) utls.Config {
 	var certArray []utls.Certificate
 
 	if certConf != nil {
@@ -85,6 +101,7 @@ func GetUTlsConfig(insecure bool, alpn []string, host string, certConf *CertConf
 		NextProtos:         alpn,
 		ServerName:         host,
 		Certificates:       certArray,
+		MinVersion:         minVer,
 	}
 	if certConf != nil && certConf.CA != "" {
 		certPool, err := LoadCA(certConf.CA)

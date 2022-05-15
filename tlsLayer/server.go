@@ -14,7 +14,7 @@ type Server struct {
 }
 
 //如 certFile, keyFile 有一项没给出，则会自动生成随机证书
-func NewServer(host string, certConf *CertConf, isInsecure bool, alpnList []string) (*Server, error) {
+func NewServer(host string, certConf *CertConf, isInsecure bool, alpnList []string, minver uint16) (*Server, error) {
 
 	//发现服务端必须给出 http/1.1 等，否则不会协商出这个alpn，而我们为了回落，是需要协商出所有可能需要的 alpn的。
 
@@ -33,7 +33,7 @@ func NewServer(host string, certConf *CertConf, isInsecure bool, alpnList []stri
 	}
 
 	s := &Server{
-		tlsConfig: GetTlsConfig(isInsecure, true, alpnList, host, certConf),
+		tlsConfig: GetTlsConfig(isInsecure, true, alpnList, host, certConf, minver),
 	}
 
 	return s, nil

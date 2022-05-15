@@ -359,8 +359,9 @@ func (b *Base) InitAdvLayer() {
 					KeyFile:  dc.TLSKey,
 				}
 			}
+			minVer := tlsLayer.GetMinVerFromExtra(dc.Extra)
 
-			tConf = tlsLayer.GetTlsConfig(dc.Insecure, false, dc.Alpn, dc.Host, certConf)
+			tConf = tlsLayer.GetTlsConfig(dc.Insecure, false, dc.Alpn, dc.Host, certConf, minVer)
 
 		}
 
@@ -410,9 +411,12 @@ func (b *Base) InitAdvLayer() {
 		}
 
 		if creator.IsSuper() {
+
+			minVer := tlsLayer.GetMinVerFromExtra(lc.Extra)
+
 			aConf.TlsConf = tlsLayer.GetTlsConfig(lc.Insecure, true, lc.Alpn, lc.Host, &tlsLayer.CertConf{
 				CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
-			})
+			}, minVer)
 		}
 
 		advSer, err := creator.NewServerFromConf(aConf)

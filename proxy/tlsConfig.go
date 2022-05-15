@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"crypto/tls"
 	"net"
 	"net/url"
 
@@ -62,8 +63,9 @@ func prepareTLS_forClient(com BaseInterface, dc *DialConf) error {
 			KeyFile:  dc.TLSKey,
 		}
 	}
+	var minVer uint16 = tlsLayer.GetMinVerFromExtra(dc.Extra)
 
-	clic.Tls_c = tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList, certConf)
+	clic.Tls_c = tlsLayer.NewClient(dc.Host, dc.Insecure, dc.Utls, alpnList, certConf, minVer)
 	return nil
 }
 
@@ -77,9 +79,11 @@ func prepareTLS_forServer(com BaseInterface, lc *ListenConf) error {
 
 	alpnList := updateAlpnListByAdvLayer(com, lc.Alpn)
 
+	var minVer uint16 = tlsLayer.GetMinVerFromExtra(lc.Extra)
+
 	tlsserver, err := tlsLayer.NewServer(lc.Host, &tlsLayer.CertConf{
 		CertFile: lc.TLSCert, KeyFile: lc.TLSKey, CA: lc.CA,
-	}, lc.Insecure, alpnList)
+	}, lc.Insecure, alpnList, minVer)
 
 	if err == nil {
 		serc.Tls_s = tlsserver
@@ -104,7 +108,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com BaseInterf
 		useUtls := utlsStr != "" && utlsStr != "false" && utlsStr != "0"
 
 		if cc != nil {
-			cc.Tls_c = tlsLayer.NewClient(u.Host, insecure, useUtls, nil, nil)
+			cc.Tls_c = tlsLayer.NewClient(u.Host, insecure, useUtls, nil, nil, tls.VersionTLS13)
 
 		}
 
@@ -117,7 +121,7 @@ func prepareTLS_forProxyCommon_withURL(u *url.URL, isclient bool, com BaseInterf
 
 		tlsserver, err := tlsLayer.NewServer(sni, &tlsLayer.CertConf{
 			CertFile: certFile, KeyFile: keyFile,
-		}, insecure, nil)
+		}, insecure, nil, tls.VersionTLS13)
 		if err == nil {
 			if cc != nil {
 				cc.Tls_s = tlsserver
