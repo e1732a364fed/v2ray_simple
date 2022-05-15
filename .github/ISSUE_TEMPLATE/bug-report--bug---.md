@@ -20,7 +20,7 @@ assignees: ''
 
 **Config file 【配置文件，客户端服务端配置都提供】**
 
-**Debug Log 【Debug日志】**
+**Debug Log 【Debug日志, 客户端 和 服务端 的 日志 都提供】**
 
 **Other 【其他】**
 
