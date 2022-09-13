@@ -26,7 +26,7 @@ endef
 endif
 
 
-main: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 win10_arm
+main: linux_amd64 linux_arm64 android_arm64 macos macm win10 win10_arm
 
 extra: linux_arm32_v7 linux_mips64 linux_mips linux_s390x linux_riscv64 win32
 
@@ -60,7 +60,7 @@ android_arm64:
 macos:
 	$(call compile,macOS_intel,darwin,amd64)
 
-macm1:
+macm:
 	$(call compile,macOS_apple,darwin,arm64)
 
 win32:

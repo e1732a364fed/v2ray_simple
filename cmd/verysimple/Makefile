@@ -6,7 +6,7 @@
 # 简单起见，该makefile只负责编译64位的。
 #
 # for embedding geoip file:
-#	make tags="embed_geoip" macm1
+#	make tags="embed_geoip" macm
 #
 # also has grpc_full and noquic tags. See godoc for details.
 #
@@ -113,7 +113,7 @@ endif
 
 $(eval $(call DEPENDABLE_VAR,BUILD_VERSION))
 
-all: linux_amd64 linux_arm64 android_arm64 macos macm1 win10 
+all: linux_amd64 linux_arm64 android_arm64 macos macm win10 
 	@echo "compiling for common platforms"
 
 getver:
@@ -129,7 +129,7 @@ linuxAmdFn     :=${prefix}_linux_amd64
 linuxArmFn     :=${prefix}_linux_arm64
 androidArm64Fn :=${prefix}_android_arm64
 macFn          :=${prefix}_macos
-macM1Fn        :=${prefix}_macm1
+macM1Fn        :=${prefix}_macm
 winFn          :=${prefix}_win10
 
 
