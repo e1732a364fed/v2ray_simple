@@ -62,7 +62,23 @@ sudo cp examples/vlesss.server.toml server.toml
 当然，最好还是用自己的域名+acme等形式 申请真证书。
 
 ## 第三步，服务部分
-然后编辑服务文件
+
+### 简单方式
+
+如果你不愿意使用linux的“后台服务”，只是想手动去令它在后台运行，那么实际上，在verysimple所在位置运行如下一段命令即可。
+
+```
+nohup ./verysimple_linux_amd64 -c server.toml >/dev/null &
+```
+
+这里将它的标准输出舍弃了，因为一般来说我们会在toml配置文件中 配置好日志文件名称；如果不舍弃输出的话，就会多一个输出（到控制台），增加系统负担。
+
+同样，视你的权限来酌情在命令前面添加 `sudo`
+
+
+### 标准方式
+
+编辑服务文件
 `sudo vi /etc/systemd/system/verysimple.service`
 
 ```sh
