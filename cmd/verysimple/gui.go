@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/e1732a364fed/ui"
@@ -14,10 +15,12 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 
-	_ "github.com/e1732a364fed/v2ray_simple/proxy/tun"
+	"github.com/e1732a364fed/v2ray_simple/proxy/tun"
 )
 
 var testFunc func()
+var theTunStartCmds []string
+var me *ui.MultilineEntry
 
 func init() {
 	//gui_mode = true
@@ -28,6 +31,13 @@ func init() {
 		ui.Main(setupUI)
 		testFunc = func() {
 
+		}
+	}
+
+	tun.AddManualRunCmdsListFunc = func(s []string) {
+		theTunStartCmds = s
+		if me != nil {
+			me.SetText(strings.Join(theTunStartCmds, "\n"))
 		}
 	}
 }
@@ -104,7 +114,12 @@ func makeBasicControlsPage() ui.Control {
 	entryForm.Append("Entry", ui.NewEntry(), false)
 	entryForm.Append("Password Entry", ui.NewPasswordEntry(), false)
 	entryForm.Append("Search Entry", ui.NewSearchEntry(), false)
-	entryForm.Append("Multiline Entry", ui.NewMultilineEntry(), true)
+
+	me = ui.NewMultilineEntry()
+	if theTunStartCmds != nil {
+		me.SetText(strings.Join(theTunStartCmds, "\n"))
+	}
+	entryForm.Append("Multiline Entry", me, true)
 	entryForm.Append("Multiline Entry No Wrap", ui.NewNonWrappingMultilineEntry(), true)
 
 	return vbox

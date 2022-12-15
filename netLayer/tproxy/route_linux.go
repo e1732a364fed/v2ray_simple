@@ -3,39 +3,11 @@ package tproxy
 import (
 	"fmt"
 	"os/exec"
-	"strings"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
-	"go.uber.org/zap"
 )
 
 //配置iptables
-
-func execCmd(cmdStr string) (err error) {
-	utils.ZapLogger.Info("tproxy run cmd", zap.String("cmd", cmdStr))
-
-	strs := strings.Split(cmdStr, " ")
-
-	cmd1 := exec.Command(strs[0], strs[1:]...)
-	if err = cmd1.Run(); err != nil {
-		utils.ZapLogger.Error("tproxy run cmd failed", zap.Error(err))
-	}
-
-	return
-}
-
-func execCmdList(cmdStr string) (err error) {
-
-	strs := strings.Split(cmdStr, "\n")
-
-	for _, str := range strs {
-		if err = execCmd(str); err != nil {
-			return
-		}
-	}
-
-	return
-}
 
 const toutyRaterIptableCmdList = `ip rule add fwmark 1 table 100
 ip route add local 0.0.0.0/0 dev lo table 100
@@ -92,7 +64,7 @@ func SetRouteByPort(port int) error {
 	}
 	lastPortSet = port
 
-	return execCmdList(fmt.Sprintf(toutyRaterIptableCmdList, port, port))
+	return utils.ExecCmdMultilineList(fmt.Sprintf(toutyRaterIptableCmdList, port, port))
 }
 
 // port 12345
@@ -103,13 +75,13 @@ func SetIPTablesByDefault() error {
 
 // port 12345
 func CleanupIPTablesByDefault() {
-	execCmdList(fmt.Sprintf(iptableRMCmdList, 12345, 12345))
+	utils.ExecCmdMultilineList(fmt.Sprintf(iptableRMCmdList, 12345, 12345))
 }
 
 // clear iptables set by the last SetRouteByPort call
 func CleanupRoutes() {
 	if lastPortSet != 0 {
-		execCmdList(fmt.Sprintf(iptableRMCmdList, lastPortSet, lastPortSet))
+		utils.ExecCmdMultilineList(fmt.Sprintf(iptableRMCmdList, lastPortSet, lastPortSet))
 		lastPortSet = 0
 	}
 }

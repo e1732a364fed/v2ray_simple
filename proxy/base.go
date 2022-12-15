@@ -493,6 +493,6 @@ func (d *Base) DialUDP(target netLayer.Addr) (mc *netLayer.UDPMsgConn, err error
 	return
 
 }
-func (d *Base) SelfListen() (is, tcp, udp bool) {
+func (d *Base) SelfListen() (is bool, tcp, udp int) {
 	return
 }

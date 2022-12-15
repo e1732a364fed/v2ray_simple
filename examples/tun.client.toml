@@ -55,23 +55,19 @@
 [[listen]]
 protocol = "tun"
 
-# tun Server使用 host 配置作为 tun device name (macos不设此项)
+# tun Server使用 host 配置作为 tun device name
 # 使用 ip 配置作为 gateway 的ip , 若不给出，默认为 10.1.0.20
-# 使用 extra.tun_selfip 作为 tun向外拨号的ip, 若不给出, 默认为 10.1.0.10
-# 使用 extra.tun_mask 作为 子网掩码, 若不给出, 默认为 255.255.255.0
-
+# 使用 extra.tun_selfip 作为 tun向外拨号的ip, 若不给出, 默认为 10.1.0.10 （windows上不配置该项）
 
 # 如果 extra.tun_auto_route 给出，vs_gui会试图自动配置路由表. 
 # 此时必须额外给出需要 直连的ip列表, 比如你的 代理服务器的ip地址; 如果不给出, 则不会自动配置路由表
-
-# 在windows上，还可给出 tun_dns_list 否则windows上,vs默认会使用 114.114.114.114
 
 # 目前的自动配置逻辑 完全仿照上面的路由配置指导。
 
 extra.tun_auto_route = true
 extra.tun_auto_route_direct_list = [ "127.0.0.1" ]
 
-extra.tun_dns_list = [ "223.5.5.5" ] #阿里
+# extra.tun_auto_route_manual = true # 若这项开启，则生成路由命令但不执行，由你自行拷贝到终端并执行。
 
 [[dial]]
 protocol = "vlesss"

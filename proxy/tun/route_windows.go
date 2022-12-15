@@ -1,8 +1,11 @@
 package tun
 
 import (
+	"fmt"
+	"log"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
@@ -11,16 +14,32 @@ import (
 var rememberedRouterIP string
 
 func init() {
+	/*
+		经过测试发现，完全一样的路由命令，自动执行和 手动在控制台输入执行，效果竟然不一样; 手动的能正常运行, 自动的就不行, 怪
+		  后发现，是需要等待4秒钟；3秒都不够；
+
+		要确保wintun的 Gateway显示为 On-link, Interface显示为 设置好的地址；
+		错误时显示的是 Geteway 是 设置好的地址，Interface为原始路由器的地址
+
+			netsh interface ip set address name="vs_wintun" source=static addr=192.168.123.1 mask=255.255.255.0 gateway=none
+
+			route add vps_ip router_ip
+			route add 0.0.0.0 mask 0.0.0.0 vps_ip metric 5
+
+		而且wintun的自动执行行为 和 go-tun2socks 的 tap的行为还是不一样。
+
+		在wintun，如果自动删除原默认路由(0.0.0.0 -> router)，再自动添加新默认路由(0.0.0.0 -> tun)，是添加不上的
+
+		wintun 和 默认路由 都存在时, wintun会优先
+	*/
 	autoRouteFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
-		params := "-nr"
-		out, err := exec.Command("netstat", params).Output()
+
+		out, err := exec.Command("netstat", "-nr").Output()
+
 		if err != nil {
-			if ce := utils.CanLogErr("auto route failed"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
 			return
 		}
-		//log.Println(string(out))
+
 		lines := strings.Split(string(out), "\n")
 		startLineIndex := -1
 		for i, l := range lines {
@@ -56,69 +75,63 @@ func init() {
 		}
 		rememberedRouterIP = routerIP
 
-		params1 := "delete 0.0.0.0 mask 0.0.0.0"
-		out1, err := exec.Command("route", strings.Split(params1, " ")...).Output()
-
-		//这里err只能捕获没有权限运行等错误; 如果路由表修改失败，是不会返回err的
-
-	checkErrStep:
-		if ce := utils.CanLogInfo("auto route delete default"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
-		}
-
-		if err != nil {
-			if ce := utils.CanLogErr("auto route failed"); ce != nil {
-				ce.Write(zap.Error(err))
-			}
-			return
-		}
-
-		params1 = "add 0.0.0.0 mask 0.0.0.0 " + tunGateway + " metric 6"
-		out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
-		if err != nil {
-			goto checkErrStep
-		}
-		if ce := utils.CanLogInfo("auto route add tun"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
+		var strs = []string{
+			fmt.Sprintf(`netsh interface ip set address name="%s" source=static addr=%s mask=255.255.255.0 gateway=none`, tunDevName, tunGateway),
 		}
 
 		for _, v := range directList {
-			params1 = "add " + v + " " + rememberedRouterIP + " metric 5"
-			out1, err = exec.Command("route", strings.Split(params1, " ")...).Output()
-			if err != nil {
-				goto checkErrStep
-			}
-			if ce := utils.CanLogInfo("auto route add direct"); ce != nil {
-				ce.Write(zap.String("output", string(out1)))
-			}
+			strs = append(strs, fmt.Sprintf("route add %s %s metric 5", v, rememberedRouterIP))
+
 		}
 
-		utils.Warn("auto route succeed!")
+		strs = append(strs, fmt.Sprintf("route add 0.0.0.0 mask 0.0.0.0 %s metric 6", tunGateway))
+
+		if manualRoute {
+			utils.Warn("Please try run these commands manually(Administrator):")
+			for _, s := range strs {
+				utils.Warn(s)
+			}
+
+			if AddManualRunCmdsListFunc != nil {
+				AddManualRunCmdsListFunc(strs)
+			}
+		} else {
+			if e := utils.ExecCmdList(strs[:len(strs)-1]); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+			}
+
+			time.Sleep(time.Second * 4)
+			if e := utils.ExecCmd(strs[len(strs)-1]); e != nil {
+				if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+					ce.Write(zap.Error(e))
+				}
+			}
+		}
 
 	}
 
 	autoRouteDownFunc = func(tunDevName, tunGateway, tunIP string, directList []string) {
-		//恢复路由表
-		params := "delete 0.0.0.0 mask 0.0.0.0"
-		out1, _ := exec.Command("route", strings.Split(params, " ")...).Output()
-
-		if ce := utils.CanLogInfo("auto route delete tun route"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
+		if rememberedRouterIP == "" {
+			return
 		}
+		//恢复路由表
 
-		params = "add 0.0.0.0 mask 0.0.0.0 " + rememberedRouterIP + " metric 50"
-		out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
-
-		if ce := utils.CanLogInfo("auto route recover default route"); ce != nil {
-			ce.Write(zap.String("output", string(out1)))
+		strs := []string{
+			"route delete 0.0.0.0 mask 0.0.0.0 " + tunGateway,
+			"route add 0.0.0.0 mask 0.0.0.0 " + rememberedRouterIP + " metric 50",
 		}
 
 		for _, v := range directList {
-			params = "delete " + v + " " + rememberedRouterIP
-			out1, _ = exec.Command("route", strings.Split(params, " ")...).Output()
+			strs = append(strs, "route delete "+v+" "+rememberedRouterIP)
+		}
 
-			if ce := utils.CanLogInfo("auto route delete direct"); ce != nil {
-				ce.Write(zap.String("output", string(out1)))
+		log.Println("running these commands", strs)
+
+		if e := utils.ExecCmdList(strs); e != nil {
+			if ce := utils.CanLogErr("recover auto route failed"); ce != nil {
+				ce.Write(zap.Error(e))
 			}
 		}
 	}

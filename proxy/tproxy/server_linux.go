@@ -72,19 +72,21 @@ func NewServer() (proxy.Server, error) {
 }
 func (*Server) Name() string { return name }
 
-func (s *Server) SelfListen() (is, tcp, udp bool) {
+func (s *Server) SelfListen() (is bool, tcp, udp int) {
 	switch n := s.Network(); n {
 	case "", netLayer.DualNetworkName:
-		tcp = true
-		udp = true
+		tcp = 1
+		udp = 1
 
 	case "tcp":
-		tcp = true
+		tcp = 1
+		udp = -1
 	case "udp":
-		udp = true
+		udp = 1
+		tcp = -1
 	}
 
-	is = tcp || udp
+	is = true
 
 	return
 }
@@ -115,7 +117,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 
 	_, lt, lu := s.SelfListen()
 
-	if lt {
+	if lt > 0 {
 		s.infoChan = infoChan
 
 		lis, err := netLayer.ListenAndAccept("tcp", s.Addr, s.Sockopt, 0, func(conn net.Conn) {
@@ -144,7 +146,7 @@ func (s *Server) StartListen(infoChan chan<- netLayer.TCPRequestInfo, udpInfoCha
 
 	}
 
-	if lu {
+	if lu > 0 {
 		s.udpInfoChan = udpInfoChan
 
 		ad, err := netLayer.NewAddr(s.Addr)

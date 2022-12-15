@@ -338,3 +338,34 @@ func (mc *MsgConnForPacketConn) Close() error {
 func (mc *MsgConnForPacketConn) Fullcone() bool {
 	return true
 }
+
+// Wraps net.PacketConn and implements MsgConn
+type UniSourceMsgConnForPacketConn struct {
+	net.PacketConn
+	Source Addr
+}
+
+func (mc *UniSourceMsgConnForPacketConn) ReadMsgFrom() ([]byte, Addr, error) {
+	bs := utils.GetPacket()
+	n, _, err := mc.ReadFrom(bs)
+	if err != nil {
+		return nil, mc.Source, err
+	}
+
+	return bs[:n], mc.Source, nil
+}
+
+func (mc *UniSourceMsgConnForPacketConn) WriteMsgTo(p []byte, a Addr) error {
+	_, err := mc.WriteTo(p, a.ToAddr())
+	return err
+}
+func (mc *UniSourceMsgConnForPacketConn) CloseConnWithRaddr(raddr Addr) error {
+	return mc.PacketConn.Close()
+
+}
+func (mc *UniSourceMsgConnForPacketConn) Close() error {
+	return mc.PacketConn.Close()
+}
+func (mc *UniSourceMsgConnForPacketConn) Fullcone() bool {
+	return true
+}

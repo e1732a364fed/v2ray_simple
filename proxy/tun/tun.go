@@ -3,7 +3,9 @@
 	tun Server使用 host 配置作为 tun device name
 	使用 ip 配置作为 gateway 的ip
 	使用 extra.tun_selfip 作为 tun向外拨号的ip
-	使用 extra.tun_mask 作为 子网掩码
+
+	mac默认 utun5, windows 默认 vs_wintun
+
 */
 package tun
 
@@ -11,6 +13,7 @@ import (
 	"io"
 	"net"
 	"net/url"
+	"runtime"
 
 	"github.com/e1732a364fed/v2ray_simple/netLayer"
 	"github.com/e1732a364fed/v2ray_simple/netLayer/tun"
@@ -18,6 +21,9 @@ import (
 	"github.com/e1732a364fed/v2ray_simple/utils"
 	"go.uber.org/zap"
 )
+
+var AddManualRunCmdsListFunc func([]string)
+var manualRoute bool
 
 const name = "tun"
 
@@ -51,11 +57,6 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 				s.selfip = str
 			}
 		}
-		if thing := lc.Extra["tun_mask"]; thing != nil {
-			if str, ok := thing.(string); ok {
-				s.mask = str
-			}
-		}
 
 		if thing := lc.Extra["tun_auto_route"]; thing != nil {
 			if auto, autoOk := utils.AnyToBool(thing); autoOk && auto {
@@ -78,14 +79,10 @@ func (ServerCreator) NewServer(lc *proxy.ListenConf) (proxy.Server, error) {
 
 				}
 
-				if thing := lc.Extra["tun_dns_list"]; thing != nil {
+				if thing := lc.Extra["tun_auto_route_manual"]; thing != nil {
 
-					if list, ok := thing.([]any); ok {
-						for _, v := range list {
-							if str, ok := v.(string); ok && str != "" {
-								s.tun_dnsList = append(s.tun_dnsList, str)
-							}
-						}
+					if manual, ok := utils.AnyToBool(thing); ok && manual {
+						manualRoute = true
 					}
 				}
 			}
@@ -110,9 +107,6 @@ func (ServerCreator) AfterCommonConfServer(ps proxy.Server) (err error) {
 	if s.selfip == "" {
 		s.selfip = defaultSelfIP
 	}
-	if s.mask == "" {
-		s.mask = defaultMask
-	}
 
 	return
 }
@@ -126,17 +120,29 @@ type Server struct {
 	udpRequestChan chan<- netLayer.UDPRequestInfo
 	lwipCloser     io.Closer
 
-	devName, realIP, selfip, mask    string
-	autoRoute                        bool
-	autoRouteDirectList, tun_dnsList []string
+	devName, realIP, selfip string
+	autoRoute               bool
+	autoRouteDirectList     []string
 }
 
 func (*Server) Name() string { return name }
 
-func (s *Server) SelfListen() (is, tcp, udp bool) {
+func (s *Server) SelfListen() (is bool, tcp, udp int) {
+	switch n := s.Network(); n {
+	case "", netLayer.DualNetworkName:
+		tcp = 1
+		udp = 1
+
+	case "tcp":
+		tcp = 1
+		udp = -1
+	case "udp":
+		udp = 1
+		tcp = -1
+	}
+
 	is = true
-	tcp = true
-	udp = true
+
 	return
 }
 
@@ -164,23 +170,41 @@ func (s *Server) Stop() {
 
 func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpRequestChan chan<- netLayer.UDPRequestInfo) io.Closer {
 	s.stopped = false
-	//log.Println(s.devName, s.selfip, s.realIP, s.mask)
-	realname, tunDev, err := tun.CreateTun(s.devName, s.selfip, s.realIP, s.mask, s.tun_dnsList)
+
+	if s.devName == "" {
+		switch runtime.GOOS {
+		case "darwin":
+			s.devName = "utun5"
+		case "windows":
+			s.devName = "vs_wintun"
+
+		}
+	}
+	tunDev, err := tun.Open(s.devName)
+	if err != nil {
+		if ce := utils.CanLogErr("tun open failed"); ce != nil {
+			ce.Write(zap.Error(err))
+		}
+		s.stopped = true
+		return nil
+	}
+
+	if s.autoRoute && autoRouteFunc != nil {
+		utils.Info("tun running auto table")
+		autoRouteFunc(s.devName, s.realIP, s.selfip, s.autoRouteDirectList)
+	}
+	s.infoChan = tcpRequestChan
+	s.udpRequestChan = udpRequestChan
+
+	newTchan, newUchan, closer, err := tun.Listen(tunDev)
+
 	if err != nil {
 		if ce := utils.CanLogErr("tun listen failed"); ce != nil {
 			ce.Write(zap.Error(err))
 		}
 		return nil
 	}
-	s.devName = realname
-	if s.autoRoute && autoRouteFunc != nil {
-		utils.Info("tun running auto table")
-		autoRouteFunc(realname, s.realIP, s.selfip, s.autoRouteDirectList)
-	}
-	s.infoChan = tcpRequestChan
-	s.udpRequestChan = udpRequestChan
 
-	newTchan, newUchan, lwipcloser := tun.ListenTun(tunDev)
 	go func() {
 		for tr := range newTchan {
 			if s.stopped {
@@ -205,7 +229,7 @@ func (s *Server) StartListen(tcpRequestChan chan<- netLayer.TCPRequestInfo, udpR
 			udpRequestChan <- ur
 		}
 	}()
-	s.lwipCloser = lwipcloser
+	s.lwipCloser = closer
 
 	return s
 }

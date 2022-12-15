@@ -1,6 +1,7 @@
 package netLayer
 
 import (
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -89,6 +90,11 @@ udp是无连接的，所以需要考虑超时问题。
 func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64 {
 	isfullcone := rc.Fullcone() && lc.Fullcone()
 	go func() {
+
+		if ce := utils.CanLogDebug("Try CopyUDP"); ce != nil {
+			ce.Write(zap.String("from", reflect.TypeOf(lc).String()), zap.String("to", reflect.TypeOf(rc).String()))
+		}
+
 		var count uint64
 
 		var lcReadErr bool
@@ -101,7 +107,7 @@ func RelayUDP(rc, lc MsgConn, downloadByteCount, uploadByteCount *uint64) uint64
 			}
 
 			if ce := utils.CanLogDebug("RelayUDP will write to"); ce != nil {
-				ce.Write(zap.String("raddr", raddr.String()), zap.Int("len", len(bs)))
+				ce.Write(zap.String("src addr", raddr.String()), zap.Int("len", len(bs)))
 			}
 
 			err = rc.WriteMsgTo(bs, raddr)
