@@ -21,6 +21,12 @@ var rememberedRouterName string
 func init() {
 	//https://github.com/xjasonlyu/tun2socks/wiki/Examples
 
+	//通过下面命令可以看到 建立的tun设备
+	//ip addr show
+
+	//通过下面命令查看路由
+	//ip route show
+
 	autoRoutePreFunc = func(tunDevName, tunGateway, tunIP string, directList []string) bool {
 		utils.Info("tun auto setup device for linux...")
 
@@ -89,6 +95,9 @@ func init() {
 		var strs = []string{
 			"ip route del default",
 			"ip route add default via " + rememberedRouterIP,
+
+			"ip link set dev " + tunDevName + " down",
+			"ip tuntap del mode tun dev " + tunDevName,
 		}
 
 		for _, v := range directList {
