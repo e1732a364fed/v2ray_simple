@@ -9,7 +9,7 @@ import (
 
 const (
 	lenSize   = 2
-	chunkSize = 1 << 14 // 16384
+	chunkSize = 1 << 15 // 32768
 )
 
 type chunkedWriter struct {

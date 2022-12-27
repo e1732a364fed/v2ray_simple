@@ -28,13 +28,6 @@ https://github.com/v2fly/v2fly-github-io/issues/26
 */
 package vmess
 
-import (
-	"crypto/md5"
-	"encoding/binary"
-
-	"github.com/e1732a364fed/v2ray_simple/utils"
-)
-
 const Name = "vmess"
 
 // Request Options
@@ -51,7 +44,7 @@ const (
 
 // Security types
 const (
-	SecurityAES128GCM        byte = 3
+	SecurityAES256GCM        byte = 3
 	SecurityChacha20Poly1305 byte = 4
 	SecurityNone             byte = 5
 )
@@ -65,28 +58,4 @@ const (
 	CMDMux_VS byte = 4 //新定义的值，用于使用我们vs的mux方式
 )
 
-var getkeyBs = []byte("c48619fe-8f02-49e0-b9e9-edf763e17e21")
-
-// GetKey returns the key of AES-128-CFB encrypter
-// Key：MD5(UUID + []byte('c48619fe-8f02-49e0-b9e9-edf763e17e21'))
-func GetKey(uuid [16]byte) []byte {
-	md5hash := md5.New()
-	md5hash.Write(uuid[:])
-	md5hash.Write(getkeyBs)
-	return md5hash.Sum(nil)
-}
-
-// TimestampHash returns the iv of AES-128-CFB encrypter
-// IV：MD5(X + X + X + X)，X = []byte(timestamp.now) (8 bytes, Big Endian)
-func TimestampHash(unixSec int64) []byte {
-	ts := utils.GetBytes(8)
-	defer utils.PutBytes(ts)
-
-	binary.BigEndian.PutUint64(ts, uint64(unixSec))
-	md5hash := md5.New()
-	md5hash.Write(ts)
-	md5hash.Write(ts)
-	md5hash.Write(ts)
-	md5hash.Write(ts)
-	return md5hash.Sum(nil)
-}
+// var getkeyBs = []byte("c48619fe-8f02-49e0-b9e9-edf763e17e21")

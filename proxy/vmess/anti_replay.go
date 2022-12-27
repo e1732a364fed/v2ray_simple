@@ -14,15 +14,15 @@ const (
 )
 
 /*
-	我们用map的方式 实现 authid 防重放 机制. 不用v2ray的代码实现。
+我们用map的方式 实现 authid 防重放 机制. 不用v2ray的代码实现。
 
-	v2ray中 “使用 两个filter，每隔120秒swap一次filter” 的方式，感觉不够严谨。第121～240秒的话，
-	实际上 第一个 filter 仍然会存储之前所有数据，而只是第二个filter被重置了，导致 第一个filter是防240秒重放。
-	然后下一个120秒的话，又是 第二个 filter 防 240秒 重放，总之不太符合 标准定义。
-	因为这样的话，实际上把时间按120秒分块了，如果一个id在 第 1秒被使用，然后在第122秒被重新使用，按v2ray的实现，
-	依然会被认定为重放攻击。
+v2ray中 “使用 两个filter，每隔120秒swap一次filter” 的方式，感觉不够严谨。第121～240秒的话，
+实际上 第一个 filter 仍然会存储之前所有数据，而只是第二个filter被重置了，导致 第一个filter是防240秒重放。
+然后下一个120秒的话，又是 第二个 filter 防 240秒 重放，总之不太符合 标准定义。
+因为这样的话，实际上把时间按120秒分块了，如果一个id在 第 1秒被使用，然后在第122秒被重新使用，按v2ray的实现，
+依然会被认定为重放攻击。
 
-	我们只要用 v2ray的 sessionHistory的方式，存储过期时间，然后定时清理 即可。
+我们只要用 v2ray的 sessionHistory的方式，存储过期时间，然后定时清理 即可。
 */
 type authid_antiReplayMachine struct {
 	sync.RWMutex
@@ -74,33 +74,8 @@ func (arm *authid_antiReplayMachine) stop() {
 
 }
 
-func (arm *authid_antiReplayMachine) check(authid [16]byte) (ok bool) {
-	now := time.Now()
-	arm.RLock()
-	expireTime, has := arm.authidMap[authid]
-	arm.RUnlock()
-
-	if !has {
-		arm.Lock()
-		arm.authidMap[authid] = now.Add(authid_antiReplyDuration)
-		arm.Unlock()
-
-		return true
-	}
-	if expireTime.Before(now) {
-		arm.Lock()
-		arm.authidMap[authid] = now.Add(authid_antiReplyDuration)
-		arm.Unlock()
-
-		return true
-	}
-	return false
-}
-
 type sessionID struct {
-	user  [16]byte
-	key   [16]byte
-	nonce [16]byte
+	user [16]byte
 }
 type session_antiReplayMachine struct {
 	sync.RWMutex
@@ -153,21 +128,21 @@ func (h *session_antiReplayMachine) initCache() {
 	h.sessionMap = make(map[sessionID]time.Time, 128)
 }
 
-func (h *session_antiReplayMachine) check(session sessionID) bool {
-	h.Lock()
+// func (h *session_antiReplayMachine) check(session sessionID) bool {
+// 	h.Lock()
 
-	now := time.Now()
+// 	now := time.Now()
 
-	if expire, found := h.sessionMap[session]; found && expire.After(now) {
-		h.Unlock()
-		return false
-	}
+// 	if expire, found := h.sessionMap[session]; found && expire.After(now) {
+// 		h.Unlock()
+// 		return false
+// 	}
 
-	h.sessionMap[session] = now.Add(sessionAntiReplayDuration)
-	h.Unlock()
+// 	h.sessionMap[session] = now.Add(sessionAntiReplayDuration)
+// 	h.Unlock()
 
-	return true
-}
+// 	return true
+// }
 
 func (h *session_antiReplayMachine) removeExpiredEntries(now time.Time) {
 

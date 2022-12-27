@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.2.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d
 	github.com/biter777/countries v1.5.6
+	github.com/cloudflare/circl v1.3.1
 	github.com/dustin/go-humanize v1.0.0
 	github.com/e1732a364fed/ui v0.0.1-alpha.12
 	github.com/gobwas/ws v1.1.0
@@ -85,3 +86,5 @@ retract v1.0.2
 retract v1.0.1
 
 retract v1.0.0
+
+replace github.com/cloudflare/circl => ..\octeep\circl
