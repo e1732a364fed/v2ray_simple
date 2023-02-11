@@ -35,3 +35,4 @@ wintun/
 wintun.dll
 *.aar
 *.jar
+*.pprof

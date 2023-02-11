@@ -332,6 +332,7 @@ func stopMachineAndExit(m *machine.M) {
 
 }
 
+// print close info and call stopMachineAndExit
 func exitBySignal() {
 	utils.Info("Program got close signal.")
 
